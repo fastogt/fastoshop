@@ -1,3 +1,10 @@
+1.10.0 / August 10, 2026
+[Alexandr Topilski]
+- The catalogue grid shows small copies of the photos instead of the supplier's originals: a page of sixty products used to pull megabytes to draw thumbnails. Measured on a real catalogue, a 197 KB photo becomes 16 KB. The product page still shows the original
+- Photos already in a shop get their small copies from the second stage of "Fill in", with the same progress and the same stop button
+- Uploaded files are served with a long, immutable cache: a repeat visitor downloads no photos at all
+- The admin panel had the storefront's icon in its browser tab — the seller's initial, generated for their shop — because it asked for /favicon.svg by absolute path
+
 1.9.0 / August 10, 2026
 [Alexandr Topilski]
 - First public release
