@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/media"
 )
 
 const kMaxUploadSize = 10 << 20 // 10 MB
@@ -208,6 +209,7 @@ func (h *Handler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		if err := os.Remove(filepath.Join(h.uploadsDir, im.Path)); err != nil {
 			log.Warnf("delete image file %q: %v", im.Path, err)
 		}
+		media.RemoveThumb(h.uploadsDir, im.Path)
 	}
 	p, err := h.db.GetProduct(im.ProductID)
 	if err != nil {
@@ -293,6 +295,11 @@ func (h *Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	if _, err := io.Copy(dst, f); err != nil {
 		writeInternalError(w, err)
 		return
+	}
+	// The small copy for the catalogue grid. Not fatal when it fails: the
+	// storefront falls back to the original, it is only heavier.
+	if err := media.MakeThumb(h.uploadsDir, name); err != nil {
+		log.Warnf("thumbnail for %q: %v", name, err)
 	}
 	if err := h.db.AddImage(id, name); err != nil {
 		writeInternalError(w, err)

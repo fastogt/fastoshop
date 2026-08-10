@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/media"
 )
 
 // Same ceiling the admin upload uses: a photo bigger than this is a mistake at
@@ -80,6 +81,11 @@ func fetchImage(im database.ProductImage, uploadsDir string) (string, error) {
 	}
 	if err := os.WriteFile(filepath.Join(uploadsDir, name), data, 0644); err != nil {
 		return "", err
+	}
+	// The small copy is made here, where the file has just been written: sixty
+	// full-size photos on one catalogue page are megabytes of traffic.
+	if err := media.MakeThumb(uploadsDir, name); err != nil {
+		log.Warnf("thumbnail for %q: %v", name, err)
 	}
 	return name, nil
 }

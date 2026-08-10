@@ -3,13 +3,18 @@ package storefront
 import (
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/media"
 )
 
 func setup(t *testing.T) (*database.Database, http.Handler) {
@@ -826,5 +831,54 @@ func TestSinglePhotoHasNoThumbs(t *testing.T) {
 	_ = d.AddImage(p.ID, "https://cdn.example/1.jpg")
 	if strings.Contains(get(t, h, "/p/krasnyj-chajnik"), `class="thumbs"`) {
 		t.Error("one photo must not get a thumbnail strip")
+	}
+}
+
+// The catalogue grid must not pull full-size supplier photos: sixty of them on
+// one page is what makes a real shop slow.
+func TestCatalogUsesThumbnails(t *testing.T) {
+	d, err := database.OpenInMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	_ = d.CreateSettings(&database.Settings{OwnerEmail: "a@b.c", ShopName: "Лавка"})
+	p := &database.Product{Title: "Чайник", Price: 1000, Currency: "RUB", Stock: 1}
+	_ = d.CreateProduct(p)
+
+	uploads := t.TempDir()
+	// A photo big enough to be worth shrinking, plus its small copy.
+	img := image.NewRGBA(image.Rect(0, 0, 1000, 800))
+	f, _ := os.Create(filepath.Join(uploads, "p1-abc.jpg"))
+	_ = jpeg.Encode(f, img, nil)
+	_ = f.Close()
+	if err := media.MakeThumb(uploads, "p1-abc.jpg"); err != nil {
+		t.Fatal(err)
+	}
+	_ = d.AddImage(p.ID, "p1-abc.jpg")
+
+	h := New(d, "https://shop.example.com", uploads).Router()
+	if body := get(t, h, "/"); !strings.Contains(body, "/uploads/p1-abc.t.jpg") {
+		t.Error("catalogue is serving the full-size photo")
+	}
+	// The product page shows the real thing — that is where the buyer looks.
+	body := get(t, h, "/p/chajnik")
+	if !strings.Contains(body, `src="/uploads/p1-abc.jpg"`) {
+		t.Error("product page must show the original")
+	}
+}
+
+// A photo from before thumbnails existed still has to appear, just heavier.
+func TestCatalogFallsBackToOriginal(t *testing.T) {
+	d, _ := database.OpenInMemory()
+	defer func() { _ = d.Close() }()
+	_ = d.CreateSettings(&database.Settings{OwnerEmail: "a@b.c", ShopName: "Лавка"})
+	p := &database.Product{Title: "Чайник", Price: 1000, Currency: "RUB", Stock: 1}
+	_ = d.CreateProduct(p)
+	_ = d.AddImage(p.ID, "p1-old.jpg")
+
+	h := New(d, "https://shop.example.com", t.TempDir()).Router()
+	if body := get(t, h, "/"); !strings.Contains(body, "/uploads/p1-old.jpg") {
+		t.Error("a photo without a thumbnail disappeared from the grid")
 	}
 }

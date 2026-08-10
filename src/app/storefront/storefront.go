@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/media"
 )
 
 //go:embed templates/*.html
@@ -106,6 +107,21 @@ func imageURL(path string) string {
 		return path
 	}
 	return "/uploads/" + path
+}
+
+// thumbURL is what the catalogue grid shows. A 220 px card has no business
+// pulling the supplier's 150 KB original, and there are sixty of them on a
+// page. A photo with no small copy — uploaded before thumbnails existed, or
+// still a link to the supplier — is served as it is: a hole in the grid would
+// be worse than a heavy image.
+//
+// ponytail: one stat per card, sixty per page. Microseconds on a local disk;
+// an in-memory cache is for the day the catalogue moves to network storage.
+func (s *Storefront) thumbURL(path string) string {
+	if media.HasThumb(s.uploads, path) {
+		return "/uploads/" + media.ThumbName(path)
+	}
+	return imageURL(path)
 }
 
 // absImageURL — для og:image и JSON-LD, где нужен абсолютный адрес.
@@ -253,7 +269,7 @@ func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
 	for _, p := range products {
 		vm := cardVM{Product: p, PriceStr: priceStr(p.Price)}
 		if imgs, _ := s.db.ListImages(p.ID); len(imgs) > 0 {
-			vm.ImageURL = imageURL(imgs[0].Path)
+			vm.ImageURL = s.thumbURL(imgs[0].Path)
 		}
 		cards = append(cards, vm)
 	}

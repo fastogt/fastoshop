@@ -8,6 +8,7 @@ const kText = {
   fetch: { ru: "Читаем выгрузку", en: "Reading the feed" },
   products: { ru: "Товары", en: "Products" },
   photos: { ru: "Фото", en: "Photos" },
+  thumbs: { ru: "Миниатюры", en: "Thumbnails" },
   stop: { ru: "Остановить", en: "Stop" },
   stopping: { ru: "Останавливаем…", en: "Stopping…" },
   waiting: { ru: "ждёт", en: "waiting" },

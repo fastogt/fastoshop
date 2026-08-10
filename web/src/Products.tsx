@@ -37,8 +37,8 @@ const kText = {
   fillTitle: { ru: "Что заполнить", en: "What to fill in" },
   fillPhotos: { ru: "Забрать фото к себе", en: "Bring the photos in" },
   fillPhotosHint: {
-    ru: "Фото импортированных товаров лежат ссылками на сервер поставщика: закроет доступ — витрина останется без картинок. Скачаем их к себе. Каталог на 24 тысячи товаров — это несколько гигабайт на диске и десятки минут работы; что не скачается, останется ссылкой.",
-    en: "Photos of imported products are links to the supplier's server: the day they close it, the storefront loses its pictures. This brings them onto our own disk. A catalogue of 24 thousand products means several gigabytes and tens of minutes; anything that fails stays a link.",
+    ru: "Фото импортированных товаров лежат ссылками на сервер поставщика: закроет доступ — витрина останется без картинок. Скачаем их к себе и сделаем уменьшенные копии для плитки каталога — без них страница тянет полноразмерные снимки. Каталог на 24 тысячи товаров — это несколько гигабайт на диске и десятки минут работы; что не скачается, останется ссылкой.",
+    en: "Photos of imported products are links to the supplier's server: the day they close it, the storefront loses its pictures. This brings them onto our own disk and makes the small copies the catalogue grid needs — without them a page pulls full-size photos. A catalogue of 24 thousand products means several gigabytes and tens of minutes; anything that fails stays a link.",
   },
   fillRun: { ru: "Запустить", en: "Start" },
   fillNothing: {

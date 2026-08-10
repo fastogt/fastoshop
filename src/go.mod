@@ -8,6 +8,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	gitlab.com/fastogt/gofastogt v1.20.3 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
+	golang.org/x/image v0.44.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

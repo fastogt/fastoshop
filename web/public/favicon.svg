@@ -1,7 +1,9 @@
-<!-- fastoshop mark: the wordmark's initial on the brand colour (#b4532a,
-     same as --color-brand). Flat and legible at 16 px, where gradients and
-     blurs turn to mush. This is our product's icon, not the shop's — the
-     storefront draws its own from the seller's name. -->
+<!-- fastoshop mark: the wordmark's initial on the brand colour #b4532a, the
+     same one the admin uses. Flat and legible at 16 px, where gradients and
+     blurs turn to mush. This is our product's icon, not the shop's: the
+     storefront draws its own from the seller's name.
+     Keep double hyphens out of this comment — XML forbids them, and strict
+     SVG parsers reject the file outright. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#b4532a"/>
   <path d="M38 17h-7c-5 0-8 3-8 8v3h-5v8h5v14h9V36h7v-8h-7v-2c0-1.4.9-2.2 2.4-2.2H38z"

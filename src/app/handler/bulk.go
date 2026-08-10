@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/i18n"
 	"github.com/fastogt/fastoshop/app/importer"
+	"github.com/fastogt/fastoshop/app/media"
 )
 
 // bulkRequest carries either the rows the owner ticked or the filter they are
@@ -148,11 +151,21 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	if len(imgs) == 0 {
+	missing, err := media.Missing(h.uploadsDir)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	if len(imgs) == 0 && len(missing) == 0 {
 		writeOK(w, startedResponse{})
 		return
 	}
-	ctx, ok := h.job.start(kJobFill, []jobStage{{Task: TaskPhotos, Total: len(imgs)}})
+	ctx, ok := h.job.start(kJobFill, []jobStage{
+		{Task: TaskPhotos, Total: len(imgs)},
+		// Total is what needs a thumbnail right now; the photos downloaded by
+		// the first stage make their own on the way in.
+		{Task: kStageThumbs, Total: len(missing)},
+	})
 	if !ok {
 		writeBadRequest(w, h.msg(i18n.KeyJobBusy))
 		return
@@ -162,9 +175,21 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 			func(done int, inFlight []int64) {
 				h.job.progress(TaskPhotos, done, len(imgs), inFlight)
 			})
-		h.job.finish(&importer.Result{Imported: okCount, Errors: failed}, nil)
+		// Re-read the list: the download has just added files, and photos that
+		// failed to download have no thumbnail to make.
+		rest, err := media.Missing(h.uploadsDir)
+		if err != nil {
+			log.Warnf("scan for thumbnails: %v", err)
+		}
+		h.job.progress(kStageThumbs, 0, len(rest), nil)
+		thumbs, thumbErrors := media.MakeThumbs(ctx, h.uploadsDir, rest, func(done int) {
+			h.job.progress(kStageThumbs, done, len(rest), nil)
+		})
+		h.job.finish(&importer.Result{
+			Imported: okCount, Updated: thumbs, Errors: failed + thumbErrors,
+		}, nil)
 	}()
-	writeOK(w, startedResponse{Started: true, Total: len(imgs)})
+	writeOK(w, startedResponse{Started: true, Total: len(imgs) + len(missing)})
 }
 
 // BulkDelete takes an explicit list only: there is deliberately no "delete

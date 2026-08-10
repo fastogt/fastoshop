@@ -26,6 +26,11 @@ const (
 	TaskPhotos = "photos"
 )
 
+// kStageThumbs is not a task the owner ticks: it is the second half of
+// "photos". A downloaded photo without its small copy would leave the catalogue
+// as heavy as it was, which is the whole reason for downloading it.
+const kStageThumbs = "thumbs"
+
 func validTask(t string) bool {
 	return t == TaskPhotos
 }
