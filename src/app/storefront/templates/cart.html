@@ -1,0 +1,55 @@
+{{define "title"}}Корзина — {{.Shop.ShopName}}{{end}}
+{{define "head"}}
+<meta name="robots" content="noindex">
+{{end}}
+{{define "content"}}
+<h1>Корзина</h1>
+{{if .Ordered}}<p class="notice good ok">Спасибо! Заказ принят, мы свяжемся с вами по телефону.</p>{{end}}
+{{if .SoldOut}}<p class="notice oos">Пока вы оформляли заказ, «{{.SoldOut}}» закончился — мы убрали его из корзины. Заказ не оформлен, проверьте состав и подтвердите ещё раз.</p>{{end}}
+{{if .Dropped}}<p class="notice oos">Часть товаров закончилась и была убрана из корзины.</p>{{end}}
+{{if .Cart}}
+<table class="cart-table">
+{{range .Cart}}
+  <tr>
+    <td>{{if .ImageURL}}<a href="/p/{{.Slug}}"><img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy"></a>{{end}}</td>
+    <td><a href="/p/{{.Slug}}">{{.Title}}</a></td>
+    <td class="unit">{{.PriceStr}} {{$.Shop.Sign}}</td>
+    <td class="qty-cell">
+      <form method="post" action="/cart/update" class="qty">
+        <input type="hidden" name="slug" value="{{.Slug}}">
+        <label for="qty-{{.Slug}}" hidden>Количество</label>
+        <input id="qty-{{.Slug}}" name="qty" type="number" value="{{.Qty}}" min="0" max="{{.Stock}}">
+        <button type="submit">Обновить</button>
+      </form>
+    </td>
+    <td class="line">{{.LineStr}} {{$.Shop.Sign}}</td>
+  </tr>
+{{end}}
+</table>
+<p class="total"><span class="oos">Итого:</span> <span class="price">{{.TotalStr}} {{$.Shop.Sign}}</span></p>
+<div class="checkout">
+  <h2>Оформление заказа</h2>
+  <p class="oos">Оплата при получении. Мы перезвоним и подтвердим.</p>
+  <form method="post" action="/cart/order">
+    <div>
+      <label for="name">Ваше имя</label>
+      <input id="name" name="name" placeholder="Иван" required>
+    </div>
+    <div>
+      <label for="phone">Телефон</label>
+      <input id="phone" name="phone" type="tel" placeholder="+7 999 000-00-00" required>
+    </div>
+    <div>
+      <label for="comment">Комментарий</label>
+      <textarea id="comment" name="comment" placeholder="Удобное время для звонка, пожелания к доставке"></textarea>
+    </div>
+    <button type="submit">Оформить заказ</button>
+  </form>
+</div>
+{{else}}
+<div class="empty">
+  <p>Корзина пуста.</p>
+  <p><a href="/">Перейти в каталог</a></p>
+</div>
+{{end}}
+{{end}}

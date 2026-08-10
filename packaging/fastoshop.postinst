@@ -1,0 +1,22 @@
+#!/bin/sh
+set -e
+
+CONFIG_FILE="/etc/fastoshop.conf"
+NEW_CONFIG_FILE="/usr/share/fastoshop/fastoshop.conf"
+
+if [ -f "$CONFIG_FILE" ]; then
+    echo "Preserving existing configuration file: $CONFIG_FILE"
+else
+    cp "$NEW_CONFIG_FILE" "$CONFIG_FILE"
+fi
+
+chmod +x /usr/bin/fastoshop
+useradd -m -U -d /home/fastocloud fastocloud -s /bin/bash || true
+chown fastocloud:fastocloud "$CONFIG_FILE"
+
+systemctl daemon-reload || true
+systemctl enable fastoshop || true
+systemctl restart fastoshop || true
+
+echo "fastoshop installed. Set base_url in $CONFIG_FILE, configure nginx from"
+echo "/usr/share/fastoshop/nginx-fastoshop.conf.template, then open https://<domain>/admin"

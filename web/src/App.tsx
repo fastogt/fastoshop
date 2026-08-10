@@ -1,0 +1,127 @@
+import { useEffect, useState } from "react";
+import { api } from "./api";
+import { setLang, useLang, useT } from "./i18n";
+import { loadShop } from "./shop";
+import Setup from "./Setup";
+import Login from "./Login";
+import Products from "./Products";
+import Orders from "./Orders";
+import Profile from "./Profile";
+import Import from "./Import";
+import Ozon from "./Ozon";
+
+type Screen = "loading" | "setup" | "login" | "app";
+type Tab = "products" | "orders" | "profile" | "import" | "ozon";
+
+const kText = {
+  products: { ru: "Товары", en: "Products" },
+  orders: { ru: "Заказы", en: "Orders" },
+  import: { ru: "Импорт", en: "Import" },
+  ozon: { ru: "Ozon", en: "Ozon" },
+  profile: { ru: "Профиль", en: "Profile" },
+  openShop: { ru: "Открыть магазин ↗", en: "Open shop ↗" },
+  logout: { ru: "Выйти", en: "Log out" },
+  source: {
+    ru: "FastoShop — открытый код, AGPL-3.0",
+    en: "FastoShop — open source, AGPL-3.0",
+  },
+};
+
+const kTabs: Tab[] = ["products", "orders", "import", "ozon", "profile"];
+
+export default function App() {
+  const [screen, setScreen] = useState<Screen>("loading");
+  const [tab, setTab] = useState<Tab>("products");
+  const t = useT(kText);
+  const lang = useLang();
+
+  useEffect(() => {
+    api.setupNeeded().then(({ needed }) => {
+      if (needed) {
+        setScreen("setup");
+        return;
+      }
+      api
+        .products()
+        .then(() => {
+          loadShop();
+          setScreen("app");
+        })
+        .catch(() => setScreen("login"));
+    });
+  }, []);
+
+  if (screen === "loading") return null;
+  if (screen === "setup") return <Setup onDone={() => setScreen("app")} />;
+  if (screen === "login") return <Login onDone={() => setScreen("app")} />;
+
+  const logout = () => {
+    api.logout().finally(() => setScreen("login"));
+  };
+
+  return (
+    <div className="min-h-screen">
+      <header className="border-line border-b bg-white">
+        <div className="flex items-center gap-1 px-5">
+          <span className="mr-6 text-lg font-extrabold tracking-tight">
+            FastoShop
+          </span>
+          {kTabs.map((k) => (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              className={
+                "-mb-px border-b-2 px-3 py-4 text-sm font-semibold transition-colors " +
+                (tab === k
+                  ? "border-brand text-brand"
+                  : "text-muted hover:text-ink border-transparent")
+              }
+            >
+              {t(k)}
+            </button>
+          ))}
+          <a
+            href="/"
+            target="_blank"
+            rel="noreferrer"
+            className="text-muted hover:text-ink ml-auto text-sm"
+          >
+            {t("openShop")}
+          </a>
+          <button
+            onClick={() => setLang(lang === "ru" ? "en" : "ru")}
+            className="text-muted hover:text-ink ml-4 text-sm font-semibold uppercase"
+          >
+            {lang === "ru" ? "EN" : "RU"}
+          </button>
+          <button
+            onClick={logout}
+            className="text-muted hover:text-ink ml-4 text-sm"
+          >
+            {t("logout")}
+          </button>
+        </div>
+      </header>
+      <main className="px-5 py-8">
+        {tab === "products" && <Products />}
+        {tab === "orders" && <Orders />}
+        {tab === "profile" && <Profile />}
+        {tab === "import" && <Import />}
+        {tab === "ozon" && <Ozon />}
+      </main>
+      {/* AGPL §13: тот, кому магазин отдают как услугу, должен иметь доступ к
+          исходникам. Ссылка в подвале — и есть это предложение; без неё
+          хостинг на собственном продукте нарушает собственную лицензию. */}
+      <footer className="border-line text-muted border-t px-5 py-4 text-sm">
+        <a
+          href="https://github.com/fastogt/fastoshop"
+          target="_blank"
+          rel="noreferrer"
+          className="hover:text-ink"
+        >
+          {t("source")}
+        </a>
+      </footer>
+    </div>
+  );
+}

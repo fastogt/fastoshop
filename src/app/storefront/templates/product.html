@@ -1,0 +1,94 @@
+{{define "title"}}{{.P.Title}} — купить в {{.Shop.ShopName}}{{end}}
+{{define "head"}}
+<meta name="description" content="{{.MetaDescription}}">
+<link rel="canonical" href="{{.BaseURL}}/p/{{.P.Slug}}">
+<meta property="og:title" content="{{.P.Title}}">
+<meta property="og:description" content="{{.MetaDescription}}">
+{{if .Images}}<meta property="og:image" content="{{(index .Images 0).AbsURL}}">{{end}}
+<meta property="og:type" content="product">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": {{.P.Title}},
+  "description": {{.MetaDescription}},
+  {{if .Images}}"image": "{{(index .Images 0).AbsURL}}",{{end}}
+  "sku": {{.P.SKU}},
+  "offers": {
+    "@type": "Offer",
+    "url": "{{.BaseURL}}/p/{{.P.Slug}}",
+    "priceCurrency": "{{.Shop.Currency}}",
+    "price": "{{.PriceStr}}",
+    "availability": "https://schema.org/{{if gt .P.Stock 0}}InStock{{else}}OutOfStock{{end}}"
+  }
+}
+</script>
+{{if .P.Category}}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Каталог", "item": "{{.BaseURL}}/"},
+    {"@type": "ListItem", "position": 2, "name": {{.P.Category}}, "item": "{{.BaseURL}}{{.CategoryURL}}"},
+    {"@type": "ListItem", "position": 3, "name": {{.P.Title}}}
+  ]
+}
+</script>
+{{end}}
+{{end}}
+{{define "content"}}
+<nav class="crumbs" aria-label="Хлебные крошки">
+  <a href="/">Каталог</a>
+  {{if .P.Category}} › <a href="{{.CategoryURL}}">{{.P.Category}}</a>{{end}}
+</nav>
+<article class="product">
+  <div class="gallery">
+    {{/* Полоса с прокруткой и привязкой: галерея без JavaScript. Раньше фото
+         шли столбцом во всю ширину — каждое занимало экран, и до второго надо
+         было листать. */}}
+    <div class="slides">
+    {{range $i, $im := .Images}}<img id="photo-{{$i}}" src="{{$im.URL}}" alt="{{$.P.Title}}" loading="lazy">{{end}}
+    </div>
+    {{if gt (len .Images) 1}}
+    <div class="thumbs">
+    {{range $i, $im := .Images}}<a href="#photo-{{$i}}" aria-label="Фото {{$i}}"><img src="{{$im.URL}}" alt="" loading="lazy"></a>{{end}}
+    </div>
+    {{end}}
+  </div>
+  <div class="info">
+    <h1>{{.P.Title}}</h1>
+    {{if .P.SKU}}<p class="sku">Артикул: {{.P.SKU}}</p>{{end}}
+    <div class="buybox">
+      <p class="price">{{.PriceStr}} {{.Shop.Sign}}</p>
+      {{if gt .P.Stock 0}}
+      <span class="badge in">В наличии: {{.P.Stock}} шт</span>
+      <form method="post" action="/cart/add">
+        <input type="hidden" name="slug" value="{{.P.Slug}}">
+        <div class="qty-row">
+          <div class="field">
+            <label for="qty">Количество</label>
+            <input id="qty" name="qty" type="number" value="1" min="1" max="{{.P.Stock}}">
+          </div>
+          <button type="submit">В корзину</button>
+        </div>
+      </form>
+      {{else}}
+      <span class="badge">Нет в наличии</span>
+      <p class="oos">Напишите нам — сообщим, когда товар вернётся.</p>
+      {{end}}
+      <ul class="trust">
+        <li>Оплата при получении — без предоплаты</li>
+        <li>Подтверждаем заказ звонком</li>
+        {{if .Shop.ShopPhone}}<li>Вопросы: <a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a></li>{{end}}
+      </ul>
+    </div>
+    {{if .P.Description}}
+    <div class="desc">
+      <h3>Описание</h3>
+      {{.P.Description}}
+    </div>
+    {{end}}
+  </div>
+</article>
+{{end}}

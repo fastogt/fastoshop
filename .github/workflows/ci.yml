@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          # go.sum не коммитится (правило проекта), а кэш setup-go требует его хэш.
+          cache: false
+      # go.sum отсутствует в репозитории, поэтому зависимости резолвятся на каждой сборке.
+      - run: go mod tidy
+        working-directory: src
+      - run: go build ./...
+        working-directory: src
+      - run: go vet ./...
+        working-directory: src
+      - run: go test ./...
+        working-directory: src
+      # v7 — первая версия action, понимающая golangci-lint v2.
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.12
+          working-directory: src
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+        working-directory: web
+      - run: npm run lint
+        working-directory: web
+      - run: npm run build
+        working-directory: web

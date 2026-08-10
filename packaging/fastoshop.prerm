@@ -1,0 +1,4 @@
+#!/bin/sh
+set -e
+systemctl stop fastoshop || true
+systemctl disable fastoshop || true

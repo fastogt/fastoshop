@@ -1,0 +1,189 @@
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/i18n"
+	"github.com/fastogt/fastoshop/app/importer"
+)
+
+// bulkRequest carries either the rows the owner ticked or the filter they are
+// looking at. Twenty thousand products cannot be selected by hand, so "all
+// matching" travels as the filter itself.
+type bulkRequest struct {
+	IDs []int64 `json:"ids"`
+	All bool    `json:"all"`
+	Q   string  `json:"q"`
+	// Supplier is a pointer because "" is a real group (goods added by hand),
+	// so it cannot double as "any group".
+	Supplier *string `json:"supplier"`
+
+	Stock       *int    `json:"stock"`
+	Hidden      *bool   `json:"hidden"`
+	NewSupplier *string `json:"new_supplier"`
+	// Tasks is what the fill dialog ticked. A list from the start: filling in a
+	// description or extra photos from the supplier is the same work over the
+	// same selection, and it should not need a second endpoint.
+	Tasks []string `json:"tasks"`
+}
+
+type bulkResponse struct {
+	Updated int `json:"updated"`
+}
+
+func (h *Handler) selection(req bulkRequest) database.Selection {
+	s := database.Selection{IDs: req.IDs, All: req.All, Q: req.Q,
+		Supplier: database.AnySupplier}
+	if req.Supplier != nil {
+		s.Supplier = *req.Supplier
+	}
+	return s
+}
+
+func decodeBulk(w http.ResponseWriter, r *http.Request) (bulkRequest, bool) {
+	var req bulkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeBadRequest(w, "invalid body")
+		return req, false
+	}
+	return req, true
+}
+
+// BulkStock writes one stock level across the selection — the way out of a feed
+// that carried availability but no quantity.
+func (h *Handler) BulkStock(w http.ResponseWriter, r *http.Request) {
+	req, ok := decodeBulk(w, r)
+	if !ok {
+		return
+	}
+	if req.Stock == nil || *req.Stock < 0 {
+		writeBadRequest(w, h.msg(i18n.KeyBadStock))
+		return
+	}
+	n, err := h.db.SetStockBulk(h.selection(req), *req.Stock)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	h.stockChanged()
+	writeOK(w, bulkResponse{Updated: n})
+}
+
+// BulkVisibility takes products off the storefront or puts them back. The
+// marketplace link is untouched on purpose.
+func (h *Handler) BulkVisibility(w http.ResponseWriter, r *http.Request) {
+	req, ok := decodeBulk(w, r)
+	if !ok {
+		return
+	}
+	if req.Hidden == nil {
+		writeBadRequest(w, "hidden required")
+		return
+	}
+	n, err := h.db.SetHiddenBulk(h.selection(req), *req.Hidden)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeOK(w, bulkResponse{Updated: n})
+}
+
+// BulkSupplier moves products between groups, for when an article changes hands.
+func (h *Handler) BulkSupplier(w http.ResponseWriter, r *http.Request) {
+	req, ok := decodeBulk(w, r)
+	if !ok {
+		return
+	}
+	if req.NewSupplier == nil {
+		writeBadRequest(w, h.msg(i18n.KeySupplierRequired))
+		return
+	}
+	n, err := h.db.SetSupplierBulk(h.selection(req), *req.NewSupplier)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeOK(w, bulkResponse{Updated: n})
+}
+
+type startedResponse struct {
+	Started bool `json:"started"`
+	Total   int  `json:"total"`
+}
+
+// BulkFill runs the ticked tasks over the selection in the background. Today the
+// only task pulls the supplier's photos onto our own disk — no feed and no keys
+// are involved, the URLs are already in product_images from the import, so a
+// catalogue brought in months ago is fixed by the same button as one imported a
+// minute ago.
+//
+// r.Context() would cancel the download the moment the response is written.
+//
+//nolint:contextcheck // the job outlives the request on purpose: inheriting
+func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
+	req, ok := decodeBulk(w, r)
+	if !ok {
+		return
+	}
+	if len(req.Tasks) == 0 {
+		writeBadRequest(w, h.msg(i18n.KeyNothingSelected))
+		return
+	}
+	for _, t := range req.Tasks {
+		if !validTask(t) {
+			writeBadRequest(w, "unknown task: "+t)
+			return
+		}
+	}
+	// Checked before the query: a busy slot is the answer whether or not there
+	// turns out to be anything to do.
+	if h.job.busy() {
+		writeBadRequest(w, h.msg(i18n.KeyJobBusy))
+		return
+	}
+	imgs, err := h.db.ListRemoteImages(h.selection(req))
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	if len(imgs) == 0 {
+		writeOK(w, startedResponse{})
+		return
+	}
+	ctx, ok := h.job.start(kJobFill, []jobStage{{Task: TaskPhotos, Total: len(imgs)}})
+	if !ok {
+		writeBadRequest(w, h.msg(i18n.KeyJobBusy))
+		return
+	}
+	go func() {
+		okCount, failed := importer.LocalizeImages(ctx, h.db, h.uploadsDir, imgs,
+			func(done int, inFlight []int64) {
+				h.job.progress(TaskPhotos, done, len(imgs), inFlight)
+			})
+		h.job.finish(&importer.Result{Imported: okCount, Errors: failed}, nil)
+	}()
+	writeOK(w, startedResponse{Started: true, Total: len(imgs)})
+}
+
+// BulkDelete takes an explicit list only: there is deliberately no "delete
+// everything matching the filter". One click erasing a whole catalogue along
+// with its indexed slugs and channel links is not a button worth having.
+func (h *Handler) BulkDelete(w http.ResponseWriter, r *http.Request) {
+	req, ok := decodeBulk(w, r)
+	if !ok {
+		return
+	}
+	if len(req.IDs) == 0 {
+		writeBadRequest(w, h.msg(i18n.KeyNothingSelected))
+		return
+	}
+	n, err := h.db.DeleteProductsBulk(req.IDs)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	h.stockChanged()
+	writeOK(w, bulkResponse{Updated: n})
+}

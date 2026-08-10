@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/* Те же токены, что и на витрине (src/app/storefront/static/style.css):
+   владелец переключается между админкой и своим магазином и не должен
+   чувствовать, что это два разных продукта. */
+@theme {
+  --color-brand: #b4532a;
+  --color-brand-hover: #9a4522;
+  --color-brand-soft: #fbf1ec;
+  --color-ink: #1c1a17;
+  --color-muted: #6f6a62;
+  --color-line: #e7e2da;
+  --color-canvas: #fdfcfa;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+@layer components {
+  .btn {
+    @apply bg-brand hover:bg-brand-hover cursor-pointer rounded-lg px-4 py-2 font-semibold text-white transition-colors;
+  }
+  .btn-ghost {
+    @apply border-line text-ink hover:bg-brand-soft cursor-pointer rounded-lg border bg-white px-4 py-2 font-semibold transition-colors;
+  }
+  .field {
+    @apply border-line focus:border-brand w-full rounded-lg border bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-orange-200;
+  }
+  .label {
+    @apply text-muted mb-1 block text-xs font-semibold;
+  }
+  .card {
+    @apply border-line rounded-xl border bg-white p-5 shadow-sm;
+  }
+  .hint {
+    @apply text-muted text-sm;
+  }
+}

@@ -1,0 +1,30 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{block "title" .}}{{.Shop.ShopName}}{{end}}</title>
+{{if .Shop.Logo}}<link rel="icon" href="/uploads/{{.Shop.Logo}}">{{else}}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{{end}}
+{{if .NoIndex}}<meta name="robots" content="noindex,follow">{{end}}
+{{block "head" .}}{{end}}
+<style>{{.CSS}}</style>
+</head>
+<body>
+<header>
+<a href="/" class="logo">{{if .Shop.Logo}}<img src="/uploads/{{.Shop.Logo}}" alt="{{.Shop.ShopName}}" class="logo-img">{{else}}{{.Shop.ShopName}}{{end}}</a>
+<form action="/" method="get" class="search" role="search">
+<input type="search" name="q" value="{{.Query}}" placeholder="Поиск по товарам" aria-label="Поиск по товарам" maxlength="100">
+<button type="submit">Найти</button>
+</form>
+<nav>
+{{if .Shop.ShopPhone}}<a href="tel:{{.Shop.ShopPhone}}" class="phone">{{.Shop.ShopPhone}}</a>{{end}}
+<a href="/cart" class="cart" rel="nofollow">Корзина{{if .CartCount}} ({{.CartCount}}){{end}}</a>
+</nav>
+</header>
+<main>{{block "content" .}}{{end}}</main>
+<footer>
+<span>© {{.Shop.ShopName}}</span>
+{{if .Shop.ShopPhone}}<a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a>{{end}}
+</footer>
+</body>
+</html>{{end}}

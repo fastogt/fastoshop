@@ -1,0 +1,40 @@
+name: "fastoshop"
+version: "${VERSION}"
+release: "${RELEASE}"
+arch: "${ARCH}"
+section: "web"
+priority: "optional"
+maintainer: "Alexandr Topilski <atopilski@fastocloud.com>"
+description: "Fastoshop - self-hosted shop with marketplace sync"
+vendor: "FastoCloud"
+license: "AGPL-3.0-only"
+
+contents:
+  - src: "./build/bin/fastoshop"
+    dst: "/usr/bin/fastoshop"
+    file_info:
+      mode: 0755
+  - src: "./config/fastoshop.conf"
+    dst: "/usr/share/fastoshop/fastoshop.conf"
+    file_info:
+      mode: 0644
+  - src: "./packaging/fastoshop.service"
+    dst: "/etc/systemd/system/fastoshop.service"
+    file_info:
+      mode: 0644
+  - src: "./packaging/nginx-fastoshop.conf.template"
+    dst: "/usr/share/fastoshop/nginx-fastoshop.conf.template"
+    file_info:
+      mode: 0644
+  - src: "./web/dist/"
+    dst: "/usr/share/fastoshop/frontend/"
+    type: "tree"
+
+scripts:
+  postinstall: "./packaging/fastoshop.postinst"
+  preremove: "./packaging/fastoshop.prerm"
+
+overrides:
+  deb:
+    depends:
+      - systemd

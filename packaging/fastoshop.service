@@ -1,0 +1,12 @@
+[Unit]
+Description=Fastoshop
+After=network.target
+
+[Service]
+User=fastocloud
+ExecStart=/usr/bin/fastoshop -config /etc/fastoshop.conf
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

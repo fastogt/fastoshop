@@ -1,0 +1,236 @@
+package importer
+
+import (
+	"math"
+	"net/http"
+	"time"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/fastogt/fastoshop/app/database"
+)
+
+// Item — карточка из внешнего кабинета в каноничном виде.
+type Item struct {
+	SKU         string
+	Title       string
+	Description string
+	Price       int64 // минорные единицы
+	Stock       int
+	ImageURLs   []string
+	// Barcode — транспорт внутри адаптера, а не поле нашего товара: WB держит
+	// FBS-остаток на баркоде, поэтому его приходится читать, чтобы разложить
+	// остаток по размерам. В БД не попадает — идентификаторы маркетплейса
+	// появятся позже, отдельным шагом подключения канала.
+	Barcode string
+}
+
+// Source — разовый источник каталога (Ozon, WB). Не Channel: только чтение.
+type Source interface {
+	Name() string
+	Count() (int, error) // кнопка «Проверить»: сколько товаров нашли
+	Fetch() ([]Item, error)
+}
+
+// SourceErrors — источник может отбраковать карточку ещё до записи в БД
+// (например, чужая валюта в YML). Такие потери должны доехать до Result,
+// иначе продавец увидит «перенесено 20», не узнав про 3 потерянных.
+type SourceErrors interface {
+	FetchErrors() int
+}
+
+// SourceCurrency — the source knows which currency its prices came in. An empty
+// string means "unknown" (our own CSV), where the owner fills the prices in
+// themselves.
+type SourceCurrency interface {
+	Currency() string
+}
+
+// FeedCurrency answers the one question worth asking before an import: does the
+// feed quote the same money the shop sells in. We hold no exchange rate and
+// fetch none — it goes into the coefficient.
+func FeedCurrency(src Source) string {
+	if c, ok := src.(SourceCurrency); ok {
+		return c.Currency()
+	}
+	return ""
+}
+
+type Result struct {
+	Imported int `json:"imported"`
+	// Updated counts products already in the shop whose supplier price or stock
+	// moved; Skipped counts those the feed repeated unchanged.
+	Updated int `json:"updated"`
+	Skipped int `json:"skipped"`
+	// Conflicts are articles owned by another group. Left untouched: two
+	// suppliers claiming one article is the owner's call, not ours.
+	Conflicts int `json:"conflicts"`
+	// NoSKU are feed rows without an article. Skipped rather than created,
+	// otherwise every weekly import would add them again.
+	NoSKU int `json:"no_sku"`
+	// Duplicates are articles the feed itself repeated.
+	Duplicates int `json:"duplicates"`
+	// NoPrice are rows priced at zero: a product given away for free is worse
+	// than a product missing.
+	NoPrice int `json:"no_price"`
+	// Zeroed counts products the feed no longer lists. They are not deleted:
+	// ozon_links points at the product id and the slug is already indexed, so
+	// recreating one later would break the channel link and a live URL.
+	Zeroed int `json:"zeroed"`
+	Errors int `json:"errors"`
+}
+
+// Stages travel to the admin as keys: the text around them is rendered in the
+// owner's language on the screen, like everything else there.
+const (
+	StageFetch    = "fetch"
+	StageProducts = "products"
+)
+
+var kHTTP = &http.Client{Timeout: 60 * time.Second}
+
+// Run imports the catalogue, turning each source price into a shelf price with
+// the owner's coefficient: exchange rate and import costs folded into one
+// number. The source price is stored as it came, so changing the coefficient
+// later recomputes exactly instead of rescaling a rescaled value.
+// Run imports into one supplier group. The group, not the source, decides what
+// this import may touch: a shop can live off two feeds plus its own goods, and
+// one feed must never reprice or zero out another's.
+// onProgress may be nil. It reports the stage and how far along it is, so the
+// admin can show a bar instead of a spinner that says nothing for two minutes.
+func Run(src Source, db *database.Database, supplier string, coefficient float64,
+	onProgress func(stage string, done, total int)) (*Result, error) {
+	progress := func(stage string, done, total int) {
+		if onProgress != nil {
+			onProgress(stage, done, total)
+		}
+	}
+	progress(StageFetch, 0, 0)
+	items, err := src.Fetch()
+	if err != nil {
+		return nil, err
+	}
+	existing, err := db.ListProducts("")
+	if err != nil {
+		return nil, err
+	}
+	// The stored price is already the shelf price the coefficient made, so it is
+	// in the shop's money — not the feed's. Writing RUB here made a BYN shop
+	// claim rouble prices in its own database.
+	shopCurrency := database.ShopCurrencyRUB
+	if s, err := db.GetSettings(); err == nil && s.Currency != "" {
+		shopCurrency = s.Currency
+	}
+	bySKU := map[string]database.Product{}
+	for _, p := range existing {
+		if p.SKU != "" {
+			bySKU[p.SKU] = p
+		}
+	}
+	seen := map[string]bool{}
+	res := &Result{}
+	if se, ok := src.(SourceErrors); ok {
+		res.Errors += se.FetchErrors()
+	}
+	for i, it := range items {
+		progress(StageProducts, i, len(items))
+		if it.SKU == "" {
+			res.NoSKU++
+			continue
+		}
+		if seen[it.SKU] {
+			res.Duplicates++
+			continue
+		}
+		seen[it.SKU] = true
+		if old, found := bySKU[it.SKU]; found {
+			if old.Supplier != supplier {
+				res.Conflicts++
+				continue
+			}
+			changed, err := merge(db, old, it, coefficient)
+			if err != nil {
+				log.Warnf("import %s: update %q: %v", src.Name(), it.Title, err)
+				res.Errors++
+				continue
+			}
+			if changed {
+				res.Updated++
+			} else {
+				res.Skipped++
+			}
+			continue
+		}
+		if it.Price <= 0 {
+			res.NoPrice++
+			continue
+		}
+		p := &database.Product{SKU: it.SKU, Title: it.Title,
+			Description: it.Description, Price: int64(math.Round(float64(it.Price) * coefficient)),
+			SourcePrice: it.Price, Currency: shopCurrency, Stock: max(it.Stock, 0),
+			Supplier: supplier}
+		if err := db.CreateProduct(p); err != nil {
+			log.Warnf("import %s: create %q: %v", src.Name(), it.Title, err)
+			res.Errors++
+			continue
+		}
+		// The supplier's link is stored, not the file: 20 000 cards mean 60 000
+		// downloads, and the import would take hours instead of a minute. The
+		// storefront renders an absolute URL from product_images.path as happily
+		// as a local name, and the owner pulls the photos onto our disk when they
+		// want to, with "Download photos" in the products table.
+		for _, u := range it.ImageURLs {
+			_ = db.AddImage(p.ID, u)
+		}
+		res.Imported++
+	}
+
+	progress(StageProducts, len(items), len(items))
+
+	// A feed that came back empty is a supplier's outage, not a decision to
+	// withdraw the entire catalogue — zeroing everything on it would take the
+	// shop off sale, and on Ozon too.
+	if len(items) > 0 {
+		zeroed, err := zeroMissing(db, existing, seen, supplier)
+		if err != nil {
+			return nil, err
+		}
+		res.Zeroed = zeroed
+	}
+	return res, nil
+}
+
+// merge updates what the source owns — its price and the stock — and leaves
+// alone what the owner owns: the title, the description and the photos are
+// their SEO work, and a weekly feed must not undo it. A price the owner typed
+// keeps its manual mark and its value.
+func merge(db *database.Database, old database.Product, it Item, coefficient float64) (bool, error) {
+	price := old.Price
+	if !old.PriceManual {
+		price = int64(math.Round(float64(it.Price) * coefficient))
+	}
+	if old.SourcePrice == it.Price && old.Stock == max(it.Stock, 0) && old.Price == price {
+		return false, nil
+	}
+	old.SourcePrice = it.Price
+	old.Stock = max(it.Stock, 0)
+	old.Price = price
+	return true, db.UpdateProduct(&old)
+}
+
+// zeroMissing takes off sale what this group's feed stopped listing. Other
+// groups and the owner's own goods are none of its business.
+func zeroMissing(db *database.Database, existing []database.Product, seen map[string]bool, supplier string) (int, error) {
+	n := 0
+	for _, p := range existing {
+		if p.SKU == "" || p.Supplier != supplier || seen[p.SKU] || p.Stock == 0 {
+			continue
+		}
+		p.Stock = 0
+		if err := db.UpdateProduct(&p); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}

@@ -1,0 +1,366 @@
+import axios from "axios";
+
+const http = axios.create({ baseURL: "/api" });
+
+export interface Product {
+  id: number;
+  sku: string;
+  title: string;
+  slug: string;
+  description: string;
+  price: number;
+  currency: string;
+  stock: number;
+  category: string;
+  supplier: string;
+  hidden: boolean;
+  images: { id: number; path: string }[];
+}
+
+export interface ProductsPage {
+  products: Product[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+export interface Order {
+  id: number;
+  name: string;
+  phone: string;
+  comment: string;
+  items_json: string;
+  status: string;
+  created_at: string;
+}
+
+export interface Settings {
+  owner_email: string;
+  shop_name: string;
+  shop_phone: string;
+  currency: string;
+  lang: string;
+  logo: string;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  smtp_password_set: boolean;
+}
+
+export interface ImportDiffRow {
+  sku: string;
+  title: string;
+  was: number;
+  now: number;
+  shelf: number;
+  percent: number;
+  stock: number;
+}
+
+// Sent by GET /job and, live, by the /job/stream event source.
+export interface JobStage {
+  task: string;
+  done: number;
+  total: number;
+  state: "pending" | "running" | "done";
+}
+
+export interface JobState {
+  running: boolean;
+  kind: string;
+  stages: JobStage[] | null;
+  in_flight: number[] | null;
+  stopped: boolean;
+  result?: ImportResult;
+  error?: string;
+}
+
+export interface ImportDiff {
+  currency: string;
+  total: number;
+  new: number;
+  gone: number;
+  price_up: number;
+  price_down: number;
+  unchanged: number;
+  conflicts: number;
+  no_sku: number;
+  new_items: ImportDiffRow[];
+  gone_items: ImportDiffRow[];
+  price_changes: ImportDiffRow[];
+}
+
+export interface ImportResult {
+  imported: number;
+  updated: number;
+  skipped: number;
+  zeroed: number;
+  conflicts: number;
+  no_sku: number;
+  duplicates: number;
+  no_price: number;
+  errors: number;
+}
+
+export interface OzonStockError {
+  product_id: number;
+  offer_id: string;
+  stock: number;
+  pushed: number;
+  error: string;
+}
+
+export interface OzonPriceError {
+  product_id: number;
+  offer_id: string;
+  price: number;
+  pushed: number;
+  error: string;
+}
+
+export interface OzonSettings {
+  enabled: boolean;
+  client_id: string;
+  api_key_set: boolean;
+  warehouse_id: string;
+  currency: string;
+  linked: number;
+  unlinked: number;
+  pending: number;
+  failed: number;
+  stock_errors: OzonStockError[];
+  price_pending: number;
+  price_failed: number;
+  price_errors: OzonPriceError[];
+  orders_total: number;
+  orders_oversold: number;
+  orders_unresolved: number;
+  poll_error: string;
+}
+
+// All money fields are in kopecks: price is what the owner wants on Ozon,
+// shop_price is the shelf price. An empty title means the product is gone and
+// only the platform card is left.
+export interface OzonLink {
+  product_id: number;
+  offer_id: string;
+  title: string;
+  sku: string;
+  stock: number;
+  shop_price: number;
+  price: number;
+  stock_pushed: number;
+  price_pushed: number;
+  stock_error: string;
+  price_error: string;
+}
+
+export interface OzonLinkPage {
+  links: OzonLink[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// product_id === null: the item could not be matched to a shop product.
+export interface OzonOrderItem {
+  product_id: number | null;
+  offer_id: string;
+  title: string;
+  qty: number;
+}
+
+export interface OzonOrder {
+  posting_number: string;
+  status: string;
+  oversold: boolean;
+  created_at: string;
+  items: OzonOrderItem[];
+}
+
+export interface OzonOrderPage {
+  orders: OzonOrder[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface OzonCandidate {
+  product_id: number;
+  sku: string;
+  title: string;
+  stock: number;
+  price: number;
+  hidden: boolean;
+  published: boolean;
+}
+
+export interface OzonCandidatePage {
+  products: OzonCandidate[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface OzonPublishResult {
+  published: number;
+  no_card: { id: number; title: string; sku: string }[];
+}
+
+export interface OzonUnpublishResult {
+  unpublished: number;
+  failed: { id: number; title: string; sku: string }[];
+}
+
+export interface OzonPriceRule {
+  up_to: number;
+  multiplier: number;
+}
+
+export interface OzonWarehouse {
+  id: string;
+  name: string;
+}
+
+export interface OzonLinkResult {
+  linked: number;
+  unlinked_products: { id: number; title: string; sku: string }[];
+  unlinked_offers: string[];
+}
+
+const data = <T>(r: { data: { data: T } }) => r.data.data;
+
+export const api = {
+  setupNeeded: () => http.get("/setup").then(data<{ needed: boolean }>),
+  setup: (email: string, password: string) =>
+    http.post("/setup", { email, password }),
+  login: (email: string, password: string) =>
+    http.post("/login", { email, password }),
+  products: (
+    page = 1,
+    q = "",
+    supplier?: string,
+    per?: number,
+    sort?: string,
+    dir?: string,
+  ) =>
+    http
+      .get("/products", { params: { page, q, supplier, per, sort, dir } })
+      .then(data<ProductsPage>),
+  bulkStock: (body: Record<string, unknown>) =>
+    http.post("/products/bulk/stock", body).then(data<{ updated: number }>),
+  bulkVisibility: (body: Record<string, unknown>) =>
+    http
+      .post("/products/bulk/visibility", body)
+      .then(data<{ updated: number }>),
+  bulkSupplier: (body: Record<string, unknown>) =>
+    http.post("/products/bulk/supplier", body).then(data<{ updated: number }>),
+  bulkFill: (body: Record<string, unknown>) =>
+    http
+      .post("/products/bulk/fill", body)
+      .then(data<{ started: boolean; total: number }>),
+  job: () => http.get("/job").then(data<JobState>),
+  stopJob: () => http.post("/job/stop"),
+  bulkDelete: (ids: number[]) =>
+    http.post("/products/bulk/delete", { ids }).then(data<{ updated: number }>),
+  createProduct: (p: Partial<Product>) =>
+    http.post("/products", p).then(data<Product>),
+  updateProduct: (id: number, p: Partial<Product>) =>
+    http.put(`/products/${id}`, p).then(data<Product>),
+  uploadImage: (id: number, f: File) => {
+    const fd = new FormData();
+    fd.append("file", f);
+    return http.post(`/products/${id}/images`, fd).then(data<Product>);
+  },
+  categories: () =>
+    http.get("/products/categories").then(data<{ categories: string[] }>),
+  deleteImage: (productId: number, imageId: number) =>
+    http.delete(`/products/${productId}/images/${imageId}`).then(data<Product>),
+  orders: (page = 1, per = 50, sort?: string, dir?: string) =>
+    http
+      .get("/orders", { params: { page, per, sort, dir } })
+      .then(data<{ orders: Order[]; total: number; pages: number }>),
+  setOrderStatus: (id: number, status: string) =>
+    http.put(`/orders/${id}/status`, { status }),
+  bulkOrderStatus: (ids: number[], status: string) =>
+    http.post("/orders/bulk/status", { ids, status }).then(
+      data<{
+        updated: number;
+        failed: { id: number; reason: string }[];
+      }>,
+    ),
+  settings: () => http.get("/settings").then(data<Settings>),
+  updateSettings: (s: Record<string, unknown>) =>
+    http.put("/settings", s).then(data<Settings>),
+  uploadLogo: (f: File) => {
+    const fd = new FormData();
+    fd.append("file", f);
+    return http.post("/settings/logo", fd).then(data<Settings>);
+  },
+  deleteLogo: () => http.delete("/settings/logo").then(data<Settings>),
+  testSmtp: () => http.post("/settings/test-smtp"),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    http.post("/settings/password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  logout: () => http.post("/logout"),
+  importSuppliers: () =>
+    http.get("/import/suppliers").then(data<{ suppliers: string[] }>),
+  importFeed: () =>
+    http.get("/import/feed").then(data<{ url: string; supplier: string }>),
+  importCheck: (body: Record<string, unknown>) =>
+    http.post("/import/check", body).then(data<ImportDiff>),
+  recomputePrices: (coefficient: number) =>
+    http
+      .post("/products/recompute-prices", { coefficient })
+      .then(data<{ updated: number }>),
+  importRun: (body: Record<string, unknown>) =>
+    http.post("/import/run", body).then(data<ImportResult>),
+  ozonSettings: () => http.get("/ozon/settings").then(data<OzonSettings>),
+  saveOzonSettings: (s: Record<string, unknown>) =>
+    http.put("/ozon/settings", s).then(data<OzonSettings>),
+  ozonCheck: () =>
+    http
+      .post("/ozon/check")
+      .then(data<{ total: number; legal_name: string; currency: string }>),
+  ozonLink: () => http.post("/ozon/link").then(data<OzonLinkResult>),
+  ozonUnlink: (productId: number) => http.delete(`/ozon/link/${productId}`),
+  ozonWarehouses: () =>
+    http
+      .post("/ozon/warehouses")
+      .then(data<{ warehouses: OzonWarehouse[] }>)
+      .then((r) => r.warehouses),
+  ozonPush: () =>
+    http.post("/ozon/push").then(data<{ pushed: number; failed: number }>),
+  ozonOrders: (page: number) =>
+    http.get(`/ozon/orders?page=${page}`).then(data<OzonOrderPage>),
+  ozonLinks: (page: number) =>
+    http.get(`/ozon/links?page=${page}`).then(data<OzonLinkPage>),
+  ozonCandidates: (page: number, q: string) =>
+    http
+      .get(`/ozon/candidates`, { params: { page, q } })
+      .then(data<OzonCandidatePage>),
+  ozonPublish: (ids: number[]) =>
+    http
+      .post("/ozon/publish", { product_ids: ids })
+      .then(data<OzonPublishResult>),
+  ozonUnpublish: (ids: number[]) =>
+    http
+      .post("/ozon/unpublish", { product_ids: ids })
+      .then(data<OzonUnpublishResult>),
+  ozonSetPrice: (productId: number, price: number) =>
+    http.put(`/ozon/price/${productId}`, { price }),
+  ozonPriceRules: () =>
+    http.get("/ozon/price/rules").then(data<{ rules: OzonPriceRule[] }>),
+  ozonSetPriceRules: (rules: OzonPriceRule[]) =>
+    http
+      .put("/ozon/price/rules", { rules })
+      .then(data<{ rules: OzonPriceRule[] }>),
+  ozonFillByRules: () =>
+    http.post("/ozon/price/fill-by-rules").then(data<{ filled: number }>),
+  ozonFillPrices: (markupBp: number) =>
+    http
+      .post("/ozon/price/fill", { markup_bp: markupBp })
+      .then(data<{ filled: number }>),
+};

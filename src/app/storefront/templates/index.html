@@ -1,0 +1,36 @@
+{{define "title"}}{{if .Query}}{{.Query}} — поиск{{else}}{{.Shop.ShopName}} — каталог товаров{{end}}{{end}}
+{{define "head"}}
+<meta name="description" content="{{.Shop.ShopName}}: каталог товаров, цены, наличие.">
+{{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">{{end}}
+{{end}}
+{{define "content"}}
+{{if .Query}}
+<h1>Поиск: {{.Query}}</h1>
+{{if .FoundStr}}<p class="found">{{.FoundStr}} · <a href="/">весь каталог</a></p>{{end}}
+{{else}}<h1>Каталог</h1>{{end}}
+{{if .Products}}
+<ul class="grid">
+{{range .Products}}
+  <li><a href="/p/{{.Slug}}">
+    {{if .ImageURL}}<img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy" width="400" height="400">{{end}}
+    <div class="body">
+      <h2>{{.Title}}</h2>
+      {{if le .Stock 0}}<span class="badge">Нет в наличии</span>{{end}}
+      <p class="price">{{.PriceStr}} {{$.Shop.Sign}}</p>
+    </div>
+  </a></li>
+{{end}}
+</ul>
+{{if gt .Pages 1}}
+<nav class="pager">
+  {{if .PrevURL}}<a href="{{.PrevURL}}" rel="prev">← Назад</a>{{end}}
+  <span class="oos">Страница {{.Page}} из {{.Pages}}</span>
+  {{if .NextURL}}<a href="{{.NextURL}}" rel="next">Дальше →</a>{{end}}
+</nav>
+{{end}}
+{{else if .Query}}
+<p class="empty">По запросу «{{.Query}}» ничего не нашлось. <a href="/">Весь каталог</a></p>
+{{else}}
+<p class="empty">Товары скоро появятся.</p>
+{{end}}
+{{end}}
