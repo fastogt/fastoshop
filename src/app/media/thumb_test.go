@@ -138,3 +138,52 @@ func TestRemoveThumb(t *testing.T) {
 	}
 	RemoveThumb(dir, name) // twice must not panic
 }
+
+// A logo is loaded on every page of the shop, so an oversized upload is the
+// most expensive image a seller can add.
+func TestShrinkLogo(t *testing.T) {
+	dir := t.TempDir()
+	name := writeJPEG(t, dir, "logo-abc.jpg", 2000, 600)
+	before, _ := os.Stat(filepath.Join(dir, name))
+
+	if err := Shrink(dir, name); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := os.Stat(filepath.Join(dir, name))
+	if after.Size() >= before.Size() {
+		t.Fatalf("logo not shrunk: %d → %d", before.Size(), after.Size())
+	}
+	f, _ := os.Open(filepath.Join(dir, name))
+	defer func() { _ = f.Close() }()
+	cfg, _, err := image.DecodeConfig(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Width != kLogoWidth {
+		t.Fatalf("width %d, want %d", cfg.Width, kLogoWidth)
+	}
+	// Repeating must be a no-op, not a slow re-encode losing quality each time.
+	if err := Shrink(dir, name); err != nil {
+		t.Fatal(err)
+	}
+	third, _ := os.Stat(filepath.Join(dir, name))
+	if third.Size() != after.Size() {
+		t.Error("a second shrink re-encoded an already small logo")
+	}
+}
+
+// A vector logo has no pixels to throw away and must survive untouched.
+func TestShrinkLeavesSVG(t *testing.T) {
+	dir := t.TempDir()
+	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg"><rect width="9" height="9"/></svg>`)
+	if err := os.WriteFile(filepath.Join(dir, "logo-a.svg"), svg, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := Shrink(dir, "logo-a.svg"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(filepath.Join(dir, "logo-a.svg"))
+	if string(got) != string(svg) {
+		t.Fatal("SVG logo was rewritten")
+	}
+}

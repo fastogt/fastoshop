@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/fastogt/fastoshop/app/media"
 )
 
 // kLogoMaxSize is smaller than a product photo on purpose: a header logo that
@@ -57,6 +59,12 @@ func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 	}
 	old := s.Logo
 	s.Logo = name
+	// The logo loads on every page of the shop. Sellers upload what the designer
+	// gave them — routinely two thousand pixels wide — for a header that draws it
+	// 36 px tall.
+	if err := media.Shrink(h.uploadsDir, name); err != nil {
+		log.Warnf("shrink logo %q: %v", name, err)
+	}
 	if err := h.db.UpdateSettings(s); err != nil {
 		writeInternalError(w, err)
 		return

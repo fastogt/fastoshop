@@ -182,3 +182,49 @@ func MakeThumbs(ctx context.Context, dir string, names []string, onProgress func
 	wg.Wait()
 	return ok, ko
 }
+
+// kLogoWidth: the header draws the logo 36 px tall, and a 2× screen with a wide
+// wordmark needs no more than this. Sellers upload what their designer gave
+// them, which is routinely a 2000 px, 100 KB file loaded on every single page.
+const kLogoWidth = 440
+
+// Shrink replaces a raster image with a narrower copy of itself, in place.
+// Vector logos and images already small enough are left alone.
+func Shrink(dir, name string) error {
+	if strings.EqualFold(filepath.Ext(name), ".svg") {
+		return nil
+	}
+	full := filepath.Join(dir, name)
+	f, err := os.Open(full)
+	if err != nil {
+		return err
+	}
+	src, _, err := image.Decode(f)
+	_ = f.Close()
+	if err != nil {
+		return fmt.Errorf("decode %s: %w", name, err)
+	}
+	b := src.Bounds()
+	if b.Dx() <= kLogoWidth {
+		return nil
+	}
+	h := b.Dy() * kLogoWidth / b.Dx()
+	dst := image.NewRGBA(image.Rect(0, 0, kLogoWidth, h))
+	draw.CatmullRom.Scale(dst, dst.Bounds(), src, b, draw.Over, nil)
+
+	tmp := full + ".part"
+	out, err := os.Create(tmp)
+	if err != nil {
+		return err
+	}
+	if err := jpeg.Encode(out, dst, &jpeg.Options{Quality: kThumbQuality}); err != nil {
+		_ = out.Close()
+		_ = os.Remove(tmp)
+		return err
+	}
+	if err := out.Close(); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return os.Rename(tmp, full)
+}
