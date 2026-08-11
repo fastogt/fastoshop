@@ -8,17 +8,19 @@ import Login from "./Login";
 import Products from "./Products";
 import Orders from "./Orders";
 import Profile from "./Profile";
+import Stats from "./Stats";
 import Import from "./Import";
 import Ozon from "./Ozon";
 
 type Screen = "loading" | "setup" | "invite" | "login" | "app";
-type Tab = "products" | "orders" | "profile" | "import" | "ozon";
+type Tab = "products" | "orders" | "profile" | "import" | "ozon" | "stats";
 
 const kText = {
   products: { ru: "Товары", en: "Products" },
   orders: { ru: "Заказы", en: "Orders" },
   import: { ru: "Импорт", en: "Import" },
   ozon: { ru: "Ozon", en: "Ozon" },
+  stats: { ru: "Статистика", en: "Stats" },
   profile: { ru: "Профиль", en: "Profile" },
   openShop: { ru: "Открыть магазин ↗", en: "Open shop ↗" },
   logout: { ru: "Выйти", en: "Log out" },
@@ -28,7 +30,14 @@ const kText = {
   },
 };
 
-const kTabs: Tab[] = ["products", "orders", "import", "ozon", "profile"];
+const kTabs: Tab[] = [
+  "products",
+  "orders",
+  "import",
+  "ozon",
+  "stats",
+  "profile",
+];
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("loading");
@@ -129,6 +138,7 @@ export default function App() {
         {tab === "profile" && <Profile />}
         {tab === "import" && <Import />}
         {tab === "ozon" && <Ozon />}
+        {tab === "stats" && <Stats />}
       </main>
       {/* AGPL §13: тот, кому магазин отдают как услугу, должен иметь доступ к
           исходникам. Ссылка в подвале — и есть это предложение; без неё

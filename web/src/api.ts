@@ -232,7 +232,38 @@ export interface OzonLinkResult {
 
 const data = <T>(r: { data: { data: T } }) => r.data.data;
 
+export type Stats = {
+  server: {
+    cpu: number;
+    load_average: string;
+    memory_total: number;
+    memory_free: number;
+    hdd_total: number;
+    hdd_free: number;
+    bandwidth_in: number;
+    bandwidth_out: number;
+    uptime: number;
+    os: { name: string; version: string; arch: string };
+    vsystem: string;
+    vrole: string;
+  };
+  shop: {
+    products: number;
+    products_visible: number;
+    orders: number;
+    orders_new: number;
+    database_bytes: number;
+    uploads_bytes: number;
+    uploads_files: number;
+    process_rss_bytes: number;
+    process_cpu: number;
+    process_uptime: number;
+    version: string;
+  };
+};
+
 export const api = {
+  stats: () => http.get("/stats").then(data<Stats>),
   setupNeeded: () => http.get("/setup").then(data<{ needed: boolean }>),
   setup: (email: string, password: string) =>
     http.post("/setup", { email, password }),

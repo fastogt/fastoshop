@@ -10,7 +10,13 @@ import (
 
 type Database struct {
 	db *sql.DB
+	// Путь нужен статистике: она показывает размер файла, а конфиг хранит его
+	// с «~», который к этому моменту уже развёрнут вызывающим.
+	path string
 }
+
+// Path — файл, который база открыла. Для ":memory:" вернёт его же.
+func (d *Database) Path() string { return d.path }
 
 // A second process touches the database now — the nightly backup
 // (`VACUUM INTO`) and `-reset-password`. In rollback-journal mode a reader
@@ -29,7 +35,7 @@ func Open(path string) (*Database, error) {
 	// SQLite writes single-threaded, and ":memory:" hands every new connection
 	// its own empty database — a pool of one connection removes both problems.
 	db.SetMaxOpenConns(1)
-	d := &Database{db: db}
+	d := &Database{db: db, path: path}
 	if err := d.migrate(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
