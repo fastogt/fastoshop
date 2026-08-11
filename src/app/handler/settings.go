@@ -22,10 +22,8 @@ type settingsResponse struct {
 	SMTPUser        string `json:"smtp_user"`
 	SMTPPasswordSet bool   `json:"smtp_password_set"`
 
-	GAMeasurementID    string `json:"ga_measurement_id"`
-	MetrikaCounterID   string `json:"metrika_counter_id"`
-	GoogleVerification string `json:"google_verification"`
-	YandexVerification string `json:"yandex_verification"`
+	GAMeasurementID  string `json:"ga_measurement_id"`
+	MetrikaCounterID string `json:"metrika_counter_id"`
 }
 
 type settingsRequest struct {
@@ -40,10 +38,8 @@ type settingsRequest struct {
 
 	// Pointers: an older admin build does not send these fields, and a missing
 	// field must leave the counters alone instead of tearing them off the page.
-	GAMeasurementID    *string `json:"ga_measurement_id"`
-	MetrikaCounterID   *string `json:"metrika_counter_id"`
-	GoogleVerification *string `json:"google_verification"`
-	YandexVerification *string `json:"yandex_verification"`
+	GAMeasurementID  *string `json:"ga_measurement_id"`
+	MetrikaCounterID *string `json:"metrika_counter_id"`
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -56,11 +52,9 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		OwnerEmail: s.OwnerEmail, ShopName: s.ShopName, ShopPhone: s.ShopPhone,
 		Currency: s.Currency, Lang: s.Lang, Logo: s.Logo,
 		SMTPHost: s.SMTPHost, SMTPPort: s.SMTPPort, SMTPUser: s.SMTPUser,
-		SMTPPasswordSet:    s.SMTPPassword != "",
-		GAMeasurementID:    s.GAMeasurementID,
-		MetrikaCounterID:   s.MetrikaCounterID,
-		GoogleVerification: s.GoogleVerification,
-		YandexVerification: s.YandexVerification,
+		SMTPPasswordSet:  s.SMTPPassword != "",
+		GAMeasurementID:  s.GAMeasurementID,
+		MetrikaCounterID: s.MetrikaCounterID,
 	})
 }
 
@@ -97,12 +91,6 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.MetrikaCounterID != nil {
 		s.MetrikaCounterID = strings.TrimSpace(*req.MetrikaCounterID)
-	}
-	if req.GoogleVerification != nil {
-		s.GoogleVerification = strings.TrimSpace(*req.GoogleVerification)
-	}
-	if req.YandexVerification != nil {
-		s.YandexVerification = strings.TrimSpace(*req.YandexVerification)
 	}
 	if err := h.db.UpdateSettings(s); err != nil {
 		writeInternalError(w, err)

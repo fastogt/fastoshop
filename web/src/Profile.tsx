@@ -56,10 +56,10 @@ const kText = {
     ru: "Ошибка: письмо не отправлено, проверьте настройки",
     en: "Error: the email was not sent, check the settings",
   },
-  seo: { ru: "Счётчики и поисковики", en: "Counters and search engines" },
+  seo: { ru: "Счётчики", en: "Counters" },
   seoHint: {
-    ru: "Заведите счётчик в кабинете и вставьте сюда его номер — код появится на витрине сам. Коды подтверждения нужны один раз: вставьте, сохраните и нажмите «Проверить» в кабинете поисковика. Пока поля пустые, на витрине нет ни одного скрипта.",
-    en: "Create a counter in the provider's cabinet and paste its id here — the snippet appears on the storefront by itself. Verification codes are needed once: paste, save, then press Verify in the search engine's cabinet. While the fields are empty the storefront carries no scripts at all.",
+    ru: "Заведите счётчик в кабинете и вставьте сюда его номер — код появится на витрине сам. Пока поля пустые, на витрине нет ни одного скрипта.",
+    en: "Create a counter in the provider's cabinet and paste its id here — the snippet appears on the storefront by itself. While the fields are empty the storefront carries no scripts at all.",
   },
   gaId: {
     ru: "Google Analytics (Measurement ID)",
@@ -68,18 +68,6 @@ const kText = {
   metrikaId: {
     ru: "Яндекс Метрика (номер счётчика)",
     en: "Yandex Metrica (counter number)",
-  },
-  googleVerification: {
-    ru: "Google Search Console — код подтверждения",
-    en: "Google Search Console verification code",
-  },
-  yandexVerification: {
-    ru: "Яндекс Вебмастер — код подтверждения",
-    en: "Yandex Webmaster verification code",
-  },
-  verificationHint: {
-    ru: 'Только содержимое content="…" из мета-тега, не весь тег.',
-    en: 'Only the content="…" value from the meta tag, not the whole tag.',
   },
   save: { ru: "Сохранить", en: "Save" },
   saved: { ru: "Сохранено", en: "Saved" },
@@ -320,29 +308,6 @@ export default function Profile() {
               }
             />
           </div>
-        </div>
-        <div>
-          <label className="label">{t("googleVerification")}</label>
-          <input
-            className="field"
-            autoComplete="off"
-            value={s.google_verification}
-            onChange={(e) =>
-              setS({ ...s, google_verification: e.target.value })
-            }
-          />
-        </div>
-        <div>
-          <label className="label">{t("yandexVerification")}</label>
-          <input
-            className="field"
-            autoComplete="off"
-            value={s.yandex_verification}
-            onChange={(e) =>
-              setS({ ...s, yandex_verification: e.target.value })
-            }
-          />
-          <p className="hint mt-1">{t("verificationHint")}</p>
         </div>
       </section>
 

@@ -47,8 +47,6 @@ export interface Settings {
   smtp_password_set: boolean;
   ga_measurement_id: string;
   metrika_counter_id: string;
-  google_verification: string;
-  yandex_verification: string;
 }
 
 export interface ImportDiffRow {

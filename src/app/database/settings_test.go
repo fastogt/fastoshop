@@ -42,14 +42,11 @@ func TestSEOSettings(t *testing.T) {
 	s, _ := d.GetSettings()
 	s.GAMeasurementID = "G-ABC123"
 	s.MetrikaCounterID = "12345678"
-	s.GoogleVerification = "gtoken"
-	s.YandexVerification = "ytoken"
 	if err := d.UpdateSettings(s); err != nil {
 		t.Fatal(err)
 	}
 	got, _ := d.GetSettings()
-	if got.GAMeasurementID != "G-ABC123" || got.MetrikaCounterID != "12345678" ||
-		got.GoogleVerification != "gtoken" || got.YandexVerification != "ytoken" {
+	if got.GAMeasurementID != "G-ABC123" || got.MetrikaCounterID != "12345678" {
 		t.Fatalf("counters lost on round-trip: %+v", got)
 	}
 	// Repeat migration: an install that already has the columns must survive a

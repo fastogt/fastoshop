@@ -6,8 +6,6 @@
 <title>{{block "title" .}}{{.Shop.ShopName}}{{end}}</title>
 {{if .Shop.Logo}}<link rel="icon" href="/uploads/{{.Shop.Logo}}">{{else}}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{{end}}
 {{if .NoIndex}}<meta name="robots" content="noindex,follow">{{end}}
-{{if .Shop.GoogleVerification}}<meta name="google-site-verification" content="{{.Shop.GoogleVerification}}">{{end}}
-{{if .Shop.YandexVerification}}<meta name="yandex-verification" content="{{.Shop.YandexVerification}}">{{end}}
 {{block "head" .}}{{end}}
 <style>{{.CSS}}</style>
 </head>

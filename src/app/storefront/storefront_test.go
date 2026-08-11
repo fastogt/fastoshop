@@ -61,8 +61,6 @@ func TestCounters(t *testing.T) {
 	s, _ := d.GetSettings()
 	s.GAMeasurementID = "G-ABC123"
 	s.MetrikaCounterID = "12345678"
-	s.GoogleVerification = "gtoken"
-	s.YandexVerification = "ytoken"
 	if err := d.UpdateSettings(s); err != nil {
 		t.Fatal(err)
 	}
@@ -72,8 +70,6 @@ func TestCounters(t *testing.T) {
 	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
 		body = get(t, h, path)
 		for _, want := range []string{
-			`<meta name="google-site-verification" content="gtoken">`,
-			`<meta name="yandex-verification" content="ytoken">`,
 			"gtag/js?id=G-ABC123",
 			"gtag('config','G-ABC123')",
 			"ym('12345678','init'",

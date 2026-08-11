@@ -58,10 +58,8 @@ type Settings struct {
 	// Analytics counters and search-console ownership tokens, as issued by the
 	// four cabinets. Stored raw: the shop only carries them to the page, and a
 	// format check here would break the day a provider changes its own.
-	GAMeasurementID    string `json:"ga_measurement_id"`
-	MetrikaCounterID   string `json:"metrika_counter_id"`
-	GoogleVerification string `json:"google_verification"`
-	YandexVerification string `json:"yandex_verification"`
+	GAMeasurementID  string `json:"ga_measurement_id"`
+	MetrikaCounterID string `json:"metrika_counter_id"`
 }
 
 func (d *Database) CreateSettings(s *Settings) error {
@@ -77,11 +75,11 @@ func (d *Database) GetSettings() (*Settings, error) {
 	err := d.db.QueryRow(
 		`SELECT owner_email, password_hash, shop_name, shop_phone, smtp_host,
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
-		 ga_measurement_id, metrika_counter_id, google_verification, yandex_verification
+		 ga_measurement_id, metrika_counter_id
 		 FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
-		&s.GAMeasurementID, &s.MetrikaCounterID, &s.GoogleVerification, &s.YandexVerification)
+		&s.GAMeasurementID, &s.MetrikaCounterID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +106,11 @@ func (d *Database) UpdateSettings(s *Settings) error {
 	_, err := d.db.Exec(
 		`UPDATE settings SET owner_email=?, password_hash=?, shop_name=?, shop_phone=?,
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
-		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?,
-		 google_verification=?, yandex_verification=?
+		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
-		s.GAMeasurementID, s.MetrikaCounterID, s.GoogleVerification, s.YandexVerification)
+		s.GAMeasurementID, s.MetrikaCounterID)
 	return err
 }
 

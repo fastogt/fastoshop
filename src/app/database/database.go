@@ -139,13 +139,10 @@ func (d *Database) migrate() error {
 		-- not stored — the admin promises the seller they are not kept.
 		feed_url      TEXT NOT NULL DEFAULT '',
 		feed_supplier TEXT NOT NULL DEFAULT '',
-		-- Counters and search-console ownership tokens. Empty means the storefront
-		-- renders nothing at all: a shop that has not set them up stays without a
-		-- single script on the page.
+		-- Analytics counters. Empty means the storefront renders nothing at all:
+		-- a shop that has not set them up stays without a single script.
 		ga_measurement_id   TEXT NOT NULL DEFAULT '',
-		metrika_counter_id  TEXT NOT NULL DEFAULT '',
-		google_verification TEXT NOT NULL DEFAULT '',
-		yandex_verification TEXT NOT NULL DEFAULT ''
+		metrika_counter_id  TEXT NOT NULL DEFAULT ''
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,
@@ -240,8 +237,6 @@ func (d *Database) addSettingsColumns() error {
 	for _, col := range []string{
 		"ga_measurement_id",
 		"metrika_counter_id",
-		"google_verification",
-		"yandex_verification",
 	} {
 		_, err := d.db.Exec(`ALTER TABLE settings ADD COLUMN ` + col + ` TEXT NOT NULL DEFAULT ''`)
 		if err != nil && !strings.Contains(err.Error(), "duplicate column") {
