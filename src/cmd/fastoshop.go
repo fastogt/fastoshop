@@ -119,6 +119,7 @@ func run(cfg *config.Config) error {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/setup", h.SetupStatus)
 		r.Post("/setup", h.Setup)
+		r.Post("/invite", h.Invite)
 		r.Post("/login", h.Login)
 		r.Group(func(r chi.Router) {
 			r.Use(h.SessionAuth)
@@ -248,6 +249,34 @@ func resetPassword(cfg *config.Config) error {
 	return nil
 }
 
+// inviteOwner заводит владельца и печатает одноразовую ссылку вместо пароля:
+// пароль пришлось бы пересылать письмом, где он и остался бы жить, а ссылка
+// сгорает при первом использовании и протухает за сутки. Магазин письма слать
+// не может — SMTP настраивает сам владелец, которого ещё нет, — поэтому ссылку
+// отдаём в stdout, а провижининг отправляет её своим каналом.
+func inviteOwner(cfg *config.Config, email string) error {
+	dbPath := expandHome(cfg.Settings.Database)
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return fmt.Errorf("db dir: %w", err)
+	}
+	db, err := database.Open(dbPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+
+	if _, err := db.CreateOwner(email); err != nil {
+		return fmt.Errorf("create owner: %w", err)
+	}
+	tok, err := db.NewInviteToken()
+	if err != nil {
+		return fmt.Errorf("invite token: %w", err)
+	}
+	fmt.Printf("Database: %s\nOwner: %s\nInvite (valid 24h): %s/admin/?invite=%s\n",
+		dbPath, email, strings.TrimRight(cfg.Settings.BaseURL, "/"), tok)
+	return nil
+}
+
 // createOwner заводит владельца в момент провижининга: до этого свежий
 // инстанс отдаёт открытый мастер настройки на публичном адресе, и владельцем
 // станет тот, кто первым его откроет.
@@ -276,6 +305,7 @@ func main() {
 	configPath := flag.String("config", version.ConfigPath, "service config")
 	doResetPassword := flag.Bool("reset-password", false, "generate a new owner password and invalidate all sessions")
 	ownerEmail := flag.String("create-owner", "", "create the shop owner with a generated password and exit")
+	inviteEmail := flag.String("invite-owner", "", "create the shop owner and print a one-time link for them to set their own password")
 	flag.Parse()
 
 	if *ver {
@@ -286,6 +316,14 @@ func main() {
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		log.Fatalf("load config: %v", err)
+	}
+
+	if *inviteEmail != "" {
+		if err := inviteOwner(cfg, *inviteEmail); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	if *ownerEmail != "" {

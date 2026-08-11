@@ -3,6 +3,7 @@ import { api } from "./api";
 import { setLang, useLang, useT } from "./i18n";
 import { loadShop } from "./shop";
 import Setup from "./Setup";
+import Invite from "./Invite";
 import Login from "./Login";
 import Products from "./Products";
 import Orders from "./Orders";
@@ -10,7 +11,7 @@ import Profile from "./Profile";
 import Import from "./Import";
 import Ozon from "./Ozon";
 
-type Screen = "loading" | "setup" | "login" | "app";
+type Screen = "loading" | "setup" | "invite" | "login" | "app";
 type Tab = "products" | "orders" | "profile" | "import" | "ozon";
 
 const kText = {
@@ -35,7 +36,17 @@ export default function App() {
   const t = useT(kText);
   const lang = useLang();
 
+  // Ссылка-приглашение приходит письмом и ведёт прямо сюда: владелец уже
+  // заведён при создании магазина, но пароля у него нет.
+  const [invite] = useState(
+    () => new URLSearchParams(window.location.search).get("invite") ?? "",
+  );
+
   useEffect(() => {
+    if (invite) {
+      setScreen("invite");
+      return;
+    }
     api.setupNeeded().then(({ needed }) => {
       if (needed) {
         setScreen("setup");
@@ -49,10 +60,20 @@ export default function App() {
         })
         .catch(() => setScreen("login"));
     });
-  }, []);
+  }, [invite]);
 
   if (screen === "loading") return null;
   if (screen === "setup") return <Setup onDone={() => setScreen("app")} />;
+  if (screen === "invite")
+    return (
+      <Invite
+        token={invite}
+        onDone={() => {
+          window.history.replaceState({}, "", "/admin/");
+          setScreen("app");
+        }}
+      />
+    );
   if (screen === "login") return <Login onDone={() => setScreen("app")} />;
 
   const logout = () => {

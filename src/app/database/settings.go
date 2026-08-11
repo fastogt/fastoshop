@@ -3,6 +3,7 @@ package database
 import (
 	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -196,6 +197,28 @@ func generatePassword(n int) (string, error) {
 // сносит все сессии одним махом, чтобы угнанная кука не пережила смену.
 // Возвращает пароль в открытом виде один раз — нигде не хранится и не
 // логируется.
+// NewInviteToken — одноразовая ссылка на задание пароля. Живёт сутки: её
+// пересылают письмом, и просроченная ссылка безопаснее забытой действующей.
+func (d *Database) NewInviteToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	tok := hex.EncodeToString(b)
+	if err := d.CreateToken(tok, "invite", time.Now().Add(24*time.Hour)); err != nil {
+		return "", err
+	}
+	return tok, nil
+}
+
+// SetOwnerPassword ставит пароль, выбранный самим владельцем по одноразовой
+// ссылке. Сессии не трогаем: приглашение открывают до первого входа, а рвать
+// чужие сессии по чужой ссылке — готовый способ выкинуть владельца из админки.
+func (d *Database) SetOwnerPassword(hash string) error {
+	_, err := d.db.Exec(`UPDATE settings SET password_hash=? WHERE id=1`, hash)
+	return err
+}
+
 func (d *Database) ResetOwnerPassword() (string, error) {
 	pw, hash, err := generateCredentials()
 	if err != nil {

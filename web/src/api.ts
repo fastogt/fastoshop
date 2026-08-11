@@ -236,6 +236,8 @@ export const api = {
   setupNeeded: () => http.get("/setup").then(data<{ needed: boolean }>),
   setup: (email: string, password: string) =>
     http.post("/setup", { email, password }),
+  invite: (token: string, password: string) =>
+    http.post("/invite", { token, password }),
   login: (email: string, password: string) =>
     http.post("/login", { email, password }),
   products: (

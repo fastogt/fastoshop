@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/fastogt/fastoshop/app/config"
 	"github.com/fastogt/fastoshop/app/database"
@@ -231,5 +234,50 @@ func TestInternalErrorDoesNotLeakDetails(t *testing.T) {
 	}
 	if strings.Contains(w.Body.String(), "sql") || strings.Contains(w.Body.String(), "closed") {
 		t.Fatalf("internal details leaked: %s", w.Body.String())
+	}
+}
+
+// Приглашение заменяет пересылку пароля: ссылка одноразовая, чужой токен не
+// подходит, а после использования не работает и правильный.
+func TestInvite(t *testing.T) {
+	d, err := database.OpenInMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	h := NewHandler(&config.Config{}, d, t.TempDir())
+	if _, err := d.CreateOwner("owner@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	tok, err := d.NewInviteToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	body := func(tok, pw string) string {
+		return fmt.Sprintf(`{"token":%q,"password":%q}`, tok, pw)
+	}
+	post := func(b string) int {
+		w := httptest.NewRecorder()
+		h.Invite(w, httptest.NewRequest("POST", "/api/invite", strings.NewReader(b)))
+		return w.Code
+	}
+
+	if code := post(body("deadbeef", "hunter2hunter")); code != http.StatusUnauthorized {
+		t.Errorf("wrong token accepted: %d", code)
+	}
+	if code := post(body(tok, "short")); code != http.StatusBadRequest {
+		t.Errorf("short password accepted: %d", code)
+	}
+	if code := post(body(tok, "hunter2hunter")); code != http.StatusOK {
+		t.Fatalf("invite rejected: %d", code)
+	}
+	if code := post(body(tok, "another-password")); code != http.StatusUnauthorized {
+		t.Errorf("token reusable: %d", code)
+	}
+
+	s, _ := d.GetSettings()
+	if bcrypt.CompareHashAndPassword([]byte(s.PasswordHash), []byte("hunter2hunter")) != nil {
+		t.Error("password not set by invite")
 	}
 }

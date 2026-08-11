@@ -14,12 +14,23 @@ import (
 
 const kSessionTTL = 30 * 24 * time.Hour
 
+// Приглашение живёт сутки: его пересылают письмом, и просроченная ссылка
+// безопаснее забытой действующей.
+const kInviteTTL = 24 * time.Hour
+
+const kPurposeInvite = "invite"
+
 type setupStatusResponse struct {
 	Needed bool `json:"needed"`
 }
 
 type credentialsRequest struct {
 	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type inviteRequest struct {
+	Token    string `json:"token"`
 	Password string `json:"password"`
 }
 
@@ -89,6 +100,39 @@ func (h *Handler) Setup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeOK(w, okStatusResponse{Status: "created"})
+}
+
+// Invite закрывает провижининг без пересылки пароля: владелец заводится при
+// создании магазина, а пароль задаёт сам по одноразовой ссылке. Токен сгорает
+// при использовании, поэтому перехваченное письмо через сутки бесполезно.
+func (h *Handler) Invite(w http.ResponseWriter, r *http.Request) {
+	var req inviteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Password) < 8 {
+		writeBadRequest(w, "token and password (min 8 chars) required")
+		return
+	}
+	if !h.db.ValidToken(req.Token, kPurposeInvite) {
+		writeUnauthorized(w)
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	if err := h.db.SetOwnerPassword(string(hash)); err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	if err := h.db.UseToken(req.Token); err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	if err := h.setSession(w, r); err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeOK(w, okStatusResponse{Status: "ok"})
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
