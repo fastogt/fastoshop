@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -137,7 +138,14 @@ func (d *Database) migrate() error {
 		-- pasting the link again. Only the feed: Ozon and WB keys are deliberately
 		-- not stored — the admin promises the seller they are not kept.
 		feed_url      TEXT NOT NULL DEFAULT '',
-		feed_supplier TEXT NOT NULL DEFAULT ''
+		feed_supplier TEXT NOT NULL DEFAULT '',
+		-- Counters and search-console ownership tokens. Empty means the storefront
+		-- renders nothing at all: a shop that has not set them up stays without a
+		-- single script on the page.
+		ga_measurement_id   TEXT NOT NULL DEFAULT '',
+		metrika_counter_id  TEXT NOT NULL DEFAULT '',
+		google_verification TEXT NOT NULL DEFAULT '',
+		yandex_verification TEXT NOT NULL DEFAULT ''
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,
@@ -217,5 +225,28 @@ func (d *Database) migrate() error {
 		id           INTEGER PRIMARY KEY CHECK (id = 1),
 		orders_since DATETIME NOT NULL
 	);`)
-	return err
+	if err != nil {
+		return err
+	}
+	return d.addSettingsColumns()
+}
+
+// CREATE TABLE IF NOT EXISTS leaves a shop that already has data on the old
+// column set, so columns added to settings after release need an ALTER on top.
+// The duplicate-column error is the idempotency check: SQLite has no
+// ADD COLUMN IF NOT EXISTS, and asking the schema first would be a second
+// round-trip for the same answer.
+func (d *Database) addSettingsColumns() error {
+	for _, col := range []string{
+		"ga_measurement_id",
+		"metrika_counter_id",
+		"google_verification",
+		"yandex_verification",
+	} {
+		_, err := d.db.Exec(`ALTER TABLE settings ADD COLUMN ` + col + ` TEXT NOT NULL DEFAULT ''`)
+		if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+			return fmt.Errorf("add settings.%s: %w", col, err)
+		}
+	}
+	return nil
 }

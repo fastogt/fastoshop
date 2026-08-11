@@ -6,6 +6,8 @@
 <title>{{block "title" .}}{{.Shop.ShopName}}{{end}}</title>
 {{if .Shop.Logo}}<link rel="icon" href="/uploads/{{.Shop.Logo}}">{{else}}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{{end}}
 {{if .NoIndex}}<meta name="robots" content="noindex,follow">{{end}}
+{{if .Shop.GoogleVerification}}<meta name="google-site-verification" content="{{.Shop.GoogleVerification}}">{{end}}
+{{if .Shop.YandexVerification}}<meta name="yandex-verification" content="{{.Shop.YandexVerification}}">{{end}}
 {{block "head" .}}{{end}}
 <style>{{.CSS}}</style>
 </head>
@@ -26,5 +28,11 @@
 <span>© {{.Shop.ShopName}}</span>
 {{if .Shop.ShopPhone}}<a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a>{{end}}
 </footer>
+{{/* Counters go last and load async: a shop with none set stays without a
+single script on the page, which is the point of the storefront. */}}
+{{if .Shop.GAMeasurementID}}<script async src="https://www.googletagmanager.com/gtag/js?id={{.Shop.GAMeasurementID}}"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','{{.Shop.GAMeasurementID}}');</script>{{end}}
+{{if .Shop.MetrikaCounterID}}<script>(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<e.scripts.length;j++){if(e.scripts[j].src===r){return}}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');ym('{{.Shop.MetrikaCounterID}}','init',{clickmap:true,trackLinks:true,accurateTrackBounce:true});</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/{{.Shop.MetrikaCounterID}}" style="position:absolute;left:-9999px" alt=""></div></noscript>{{end}}
 </body>
 </html>{{end}}

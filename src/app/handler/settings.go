@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/i18n"
@@ -20,6 +21,11 @@ type settingsResponse struct {
 	SMTPPort        int    `json:"smtp_port"`
 	SMTPUser        string `json:"smtp_user"`
 	SMTPPasswordSet bool   `json:"smtp_password_set"`
+
+	GAMeasurementID    string `json:"ga_measurement_id"`
+	MetrikaCounterID   string `json:"metrika_counter_id"`
+	GoogleVerification string `json:"google_verification"`
+	YandexVerification string `json:"yandex_verification"`
 }
 
 type settingsRequest struct {
@@ -31,6 +37,13 @@ type settingsRequest struct {
 	SMTPPort     int     `json:"smtp_port"`
 	SMTPUser     string  `json:"smtp_user"`
 	SMTPPassword *string `json:"smtp_password"` // nil = не менять
+
+	// Pointers: an older admin build does not send these fields, and a missing
+	// field must leave the counters alone instead of tearing them off the page.
+	GAMeasurementID    *string `json:"ga_measurement_id"`
+	MetrikaCounterID   *string `json:"metrika_counter_id"`
+	GoogleVerification *string `json:"google_verification"`
+	YandexVerification *string `json:"yandex_verification"`
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +56,11 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		OwnerEmail: s.OwnerEmail, ShopName: s.ShopName, ShopPhone: s.ShopPhone,
 		Currency: s.Currency, Lang: s.Lang, Logo: s.Logo,
 		SMTPHost: s.SMTPHost, SMTPPort: s.SMTPPort, SMTPUser: s.SMTPUser,
-		SMTPPasswordSet: s.SMTPPassword != "",
+		SMTPPasswordSet:    s.SMTPPassword != "",
+		GAMeasurementID:    s.GAMeasurementID,
+		MetrikaCounterID:   s.MetrikaCounterID,
+		GoogleVerification: s.GoogleVerification,
+		YandexVerification: s.YandexVerification,
 	})
 }
 
@@ -74,6 +91,18 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	s.SMTPHost, s.SMTPPort, s.SMTPUser = req.SMTPHost, req.SMTPPort, req.SMTPUser
 	if req.SMTPPassword != nil {
 		s.SMTPPassword = *req.SMTPPassword
+	}
+	if req.GAMeasurementID != nil {
+		s.GAMeasurementID = strings.TrimSpace(*req.GAMeasurementID)
+	}
+	if req.MetrikaCounterID != nil {
+		s.MetrikaCounterID = strings.TrimSpace(*req.MetrikaCounterID)
+	}
+	if req.GoogleVerification != nil {
+		s.GoogleVerification = strings.TrimSpace(*req.GoogleVerification)
+	}
+	if req.YandexVerification != nil {
+		s.YandexVerification = strings.TrimSpace(*req.YandexVerification)
 	}
 	if err := h.db.UpdateSettings(s); err != nil {
 		writeInternalError(w, err)

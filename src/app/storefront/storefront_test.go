@@ -42,6 +42,39 @@ func get(t *testing.T, h http.Handler, path string) string {
 	return w.Body.String()
 }
 
+// The zero-JS storefront is a promise, so an unconfigured shop must carry no
+// counter at all; a configured one must carry ids the providers can actually
+// read back — html/template escapes inside <script>, and a mangled id is a
+// counter that silently collects nothing.
+func TestCounters(t *testing.T) {
+	d, h := setup(t)
+	body := get(t, h, "/")
+	if strings.Contains(body, "<script") {
+		t.Fatal("storefront serves a script without counters configured")
+	}
+	s, _ := d.GetSettings()
+	s.GAMeasurementID = "G-ABC123"
+	s.MetrikaCounterID = "12345678"
+	s.GoogleVerification = "gtoken"
+	s.YandexVerification = "ytoken"
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	body = get(t, h, "/")
+	for _, want := range []string{
+		`<meta name="google-site-verification" content="gtoken">`,
+		`<meta name="yandex-verification" content="ytoken">`,
+		"gtag/js?id=G-ABC123",
+		"gtag('config','G-ABC123')",
+		"ym('12345678','init'",
+		"mc.yandex.ru/watch/12345678",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page missing %q", want)
+		}
+	}
+}
+
 func TestCatalogPage(t *testing.T) {
 	_, h := setup(t)
 	body := get(t, h, "/")
