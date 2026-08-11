@@ -926,3 +926,21 @@ func TestCatalogFallsBackToOriginal(t *testing.T) {
 		t.Error("a photo without a thumbnail disappeared from the grid")
 	}
 }
+
+// The shop language is the seller's choice, and the storefront used to declare
+// Russian regardless: an English shop told every crawler it was in Russian.
+func TestHTMLLang(t *testing.T) {
+	d, h := setup(t)
+	for _, lang := range []string{"ru", "en"} {
+		s, _ := d.GetSettings()
+		s.Lang = lang
+		if err := d.UpdateSettings(s); err != nil {
+			t.Fatal(err)
+		}
+		for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
+			if want := `<html lang="` + lang + `">`; !strings.Contains(get(t, h, path), want) {
+				t.Errorf("%s (lang=%s) missing %s", path, lang, want)
+			}
+		}
+	}
+}
