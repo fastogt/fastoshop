@@ -539,7 +539,7 @@ export default function Ozon() {
   };
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
+    <div className="form-page">
       <div>
         <h1 className="text-xl font-bold">Ozon</h1>
         <p className="hint mt-1">{t("intro")}</p>

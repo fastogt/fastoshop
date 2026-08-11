@@ -131,7 +131,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
+    <div className="form-page">
       <h1 className="text-xl font-bold">{t("title")}</h1>
 
       <section className="card flex flex-col gap-4">

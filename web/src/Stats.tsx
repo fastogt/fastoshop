@@ -94,7 +94,7 @@ export default function Stats() {
     `${bytes(total - free, lang)} / ${bytes(total, lang)}`;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="form-page">
       <p className="hint">{t("hint")}</p>
 
       <section className="card flex flex-col gap-1">

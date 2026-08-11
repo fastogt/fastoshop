@@ -240,7 +240,7 @@ export default function Import() {
     );
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
+    <div className="form-page">
       <div>
         <h1 className="text-xl font-bold">{t("title")}</h1>
         <p className="hint mt-1">{t("subtitle")}</p>

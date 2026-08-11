@@ -92,7 +92,7 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <header className="border-line border-b bg-white">
-        <div className="flex items-center gap-1 px-5">
+        <div className="page flex items-center gap-1">
           <span className="mr-6 text-lg font-extrabold tracking-tight">
             FastoShop
           </span>
@@ -132,7 +132,7 @@ export default function App() {
           </button>
         </div>
       </header>
-      <main className="px-5 py-8">
+      <main className="page py-8">
         {tab === "products" && <Products />}
         {tab === "orders" && <Orders />}
         {tab === "profile" && <Profile />}
@@ -143,15 +143,17 @@ export default function App() {
       {/* AGPL §13: тот, кому магазин отдают как услугу, должен иметь доступ к
           исходникам. Ссылка в подвале — и есть это предложение; без неё
           хостинг на собственном продукте нарушает собственную лицензию. */}
-      <footer className="border-line text-muted border-t px-5 py-4 text-sm">
-        <a
-          href="https://github.com/fastogt/fastoshop"
-          target="_blank"
-          rel="noreferrer"
-          className="hover:text-ink"
-        >
-          {t("source")}
-        </a>
+      <footer className="border-line text-muted border-t py-4 text-sm">
+        <div className="page">
+          <a
+            href="https://github.com/fastogt/fastoshop"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-ink"
+          >
+            {t("source")}
+          </a>
+        </div>
       </footer>
     </div>
   );

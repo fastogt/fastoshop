@@ -34,6 +34,16 @@ body {
   .card {
     @apply border-line rounded-xl border bg-white p-5 shadow-sm;
   }
+  /* Общая ширина страницы: шапка и содержимое обязаны совпадать, иначе меню
+     висит по краю экрана, а таблица под ним — нет. */
+  .page {
+    @apply mx-auto w-full max-w-[1600px] px-5;
+  }
+  /* Формы и карточки читаются в узкой колонке: строка на весь монитор — это
+     полтора десятка сантиметров, глаз теряет начало следующей. */
+  .form-page {
+    @apply flex max-w-2xl flex-col gap-6;
+  }
   .hint {
     @apply text-muted text-sm;
   }
