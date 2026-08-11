@@ -10,12 +10,15 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/media"
 )
+
+var kLDJSON = regexp.MustCompile(`(?s)<script type="application/ld\+json">.*?</script>`)
 
 func setup(t *testing.T) (*database.Database, http.Handler) {
 	t.Helper()
@@ -48,9 +51,12 @@ func get(t *testing.T, h http.Handler, path string) string {
 // counter that silently collects nothing.
 func TestCounters(t *testing.T) {
 	d, h := setup(t)
-	body := get(t, h, "/")
-	if strings.Contains(body, "<script") {
-		t.Fatal("storefront serves a script without counters configured")
+	var body string
+	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
+		// JSON-LD is data, not code, and lives on the product card by design.
+		if strings.Contains(kLDJSON.ReplaceAllString(get(t, h, path), ""), "<script") {
+			t.Fatalf("%s serves a script without counters configured", path)
+		}
 	}
 	s, _ := d.GetSettings()
 	s.GAMeasurementID = "G-ABC123"
@@ -60,17 +66,22 @@ func TestCounters(t *testing.T) {
 	if err := d.UpdateSettings(s); err != nil {
 		t.Fatal(err)
 	}
-	body = get(t, h, "/")
-	for _, want := range []string{
-		`<meta name="google-site-verification" content="gtoken">`,
-		`<meta name="yandex-verification" content="ytoken">`,
-		"gtag/js?id=G-ABC123",
-		"gtag('config','G-ABC123')",
-		"ym('12345678','init'",
-		"mc.yandex.ru/watch/12345678",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("page missing %q", want)
+	// Every page the buyer can land on, not just the catalogue: a product card
+	// is the page search engines send traffic to, and a counter missing there
+	// undercounts exactly the visits worth measuring.
+	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
+		body = get(t, h, path)
+		for _, want := range []string{
+			`<meta name="google-site-verification" content="gtoken">`,
+			`<meta name="yandex-verification" content="ytoken">`,
+			"gtag/js?id=G-ABC123",
+			"gtag('config','G-ABC123')",
+			"ym('12345678','init'",
+			"mc.yandex.ru/watch/12345678",
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s missing %q", path, want)
+			}
 		}
 	}
 }
