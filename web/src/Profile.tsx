@@ -69,6 +69,15 @@ const kText = {
     ru: "Яндекс Метрика (номер счётчика)",
     en: "Yandex Metrica (counter number)",
   },
+  feeds: { ru: "Товарные фиды", en: "Product feeds" },
+  feedsHint: {
+    ru: "Готовые выгрузки каталога: вставьте ссылку в кабинет площадки, и она сама будет забирать товары. YML — для Яндекса (Вебмастер → «Товары и предложения», товарные кампании Директа), вторая — для Google Merchant Center. Скрытые товары в фиды не попадают.",
+    en: "Ready-made catalogue exports: paste the link into the provider's cabinet and it will fetch the products by itself. YML is for Yandex (Webmaster → products, Direct product campaigns), the other one for Google Merchant Center. Hidden products are excluded.",
+  },
+  feedYandex: { ru: "Яндекс (YML)", en: "Yandex (YML)" },
+  feedGoogle: { ru: "Google Merchant", en: "Google Merchant" },
+  copy: { ru: "Копировать", en: "Copy" },
+  copied: { ru: "Скопировано", en: "Copied" },
   save: { ru: "Сохранить", en: "Save" },
   saved: { ru: "Сохранено", en: "Saved" },
   passwordSection: { ru: "Смена пароля", en: "Change password" },
@@ -101,6 +110,7 @@ export default function Profile() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState("");
+  const [copied, setCopied] = useState("");
   const t = useT(kText);
 
   useEffect(() => {
@@ -309,6 +319,40 @@ export default function Profile() {
             />
           </div>
         </div>
+      </section>
+
+      <section className="card flex flex-col gap-4">
+        <div>
+          <h2 className="font-bold">{t("feeds")}</h2>
+          <p className="hint">{t("feedsHint")}</p>
+        </div>
+        {(
+          [
+            ["feedYandex", "/yml.xml"],
+            ["feedGoogle", "/gmc.xml"],
+          ] as const
+        ).map(([label, path]) => (
+          <div key={path}>
+            <label className="label">{t(label)}</label>
+            <div className="flex gap-3">
+              <input
+                className="field flex-1"
+                readOnly
+                value={location.origin + path}
+                onFocus={(e) => e.target.select()}
+              />
+              <button
+                className="btn-ghost"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(location.origin + path);
+                  setCopied(path);
+                }}
+              >
+                {copied === path ? t("copied") : t("copy")}
+              </button>
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* ponytail: the Kufar/Avito section lands in phase 2 with its adapters */}

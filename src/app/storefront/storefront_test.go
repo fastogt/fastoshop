@@ -700,7 +700,7 @@ func TestHeadIsAllowedEverywhere(t *testing.T) {
 	if err := d.CreateProduct(p); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/", "/sitemap.xml", "/robots.txt", "/p/" + p.Slug, "/cart"} {
+	for _, path := range []string{"/", "/sitemap.xml", "/yml.xml", "/gmc.xml", "/robots.txt", "/p/" + p.Slug, "/cart"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("HEAD", path, nil))
 		if w.Code != http.StatusOK {

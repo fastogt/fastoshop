@@ -78,6 +78,8 @@ func (s *Storefront) Router() http.Handler {
 	r.Post("/cart/update", s.CartUpdate)
 	r.Post("/cart/order", s.CartOrder)
 	r.Get("/sitemap.xml", s.Sitemap)
+	r.Get("/yml.xml", s.YML)
+	r.Get("/gmc.xml", s.GMC)
 	r.Get("/robots.txt", s.Robots)
 	r.Get("/favicon.svg", s.Favicon)
 	return r

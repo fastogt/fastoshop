@@ -34,6 +34,30 @@ func (d *Database) ListImages(productID int64) ([]ProductImage, error) {
 	return out, rows.Err()
 }
 
+// AllImages returns every product's photo paths keyed by product id, in
+// position order. The feeds render the whole catalogue in one response, and
+// per-product ListImages calls would be 20 000 round trips.
+// ponytail: the whole table in memory (~60k rows at the proven scale); stream
+// row-by-row if catalogues outgrow that.
+func (d *Database) AllImages() (map[int64][]string, error) {
+	rows, err := d.db.Query(
+		`SELECT product_id, path FROM product_images ORDER BY product_id, position`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[int64][]string{}
+	for rows.Next() {
+		var id int64
+		var path string
+		if err := rows.Scan(&id, &path); err != nil {
+			return nil, err
+		}
+		out[id] = append(out[id], path)
+	}
+	return out, rows.Err()
+}
+
 // GetImage is what deletion needs to know whether a file has to go with the
 // row: an imported photo is a link to the supplier's server, an uploaded one is
 // a file of ours.
