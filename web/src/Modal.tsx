@@ -28,7 +28,7 @@ export default function Modal({ title, onClose, children, footer }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-hidden bg-black/40 p-4 sm:p-8"
       onMouseDown={(e) => {
         // Only a click that both starts and ends on the backdrop closes the
         // dialog: releasing the mouse outside after selecting text inside must
@@ -36,8 +36,12 @@ export default function Modal({ title, onClose, children, footer }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="card w-full max-w-3xl">
-        <div className="border-line mb-4 flex items-center justify-between border-b pb-3">
+      {/* Высота ограничена окном, прокручивается только тело: у товара с длинным
+          описанием и фотографиями «Сохранить» иначе уезжает под нижний край, и
+          владелец ищет кнопку прокруткой подложки. dvh, а не vh: на телефоне vh
+          считается без адресной строки, и низ диалога прячется под неё. */}
+      <div className="card flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col sm:max-h-[calc(100dvh-4rem)]">
+        <div className="border-line flex shrink-0 items-center justify-between border-b pb-3">
           <h2 className="text-lg font-bold">{title}</h2>
           <button
             className="text-muted hover:text-ink cursor-pointer text-2xl leading-none"
@@ -47,9 +51,9 @@ export default function Modal({ title, onClose, children, footer }: Props) {
             ×
           </button>
         </div>
-        {children}
+        <div className="-mx-1 flex-1 overflow-y-auto px-1 py-4">{children}</div>
         {footer && (
-          <div className="border-line mt-4 flex items-center gap-3 border-t pt-4">
+          <div className="border-line flex shrink-0 items-center gap-3 border-t pt-4">
             {footer}
           </div>
         )}
