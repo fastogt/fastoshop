@@ -6,12 +6,12 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// Магазин живёт на двух поставщиках и своих товарах. Загрузка одного фида не
-// имеет права трогать чужое — ни ценой, ни остатком.
+// The shop lives on two suppliers plus its own goods. Uploading one feed has
+// no right to touch what isn't its own — neither price nor stock.
 func TestImportTouchesOnlyItsOwnGroup(t *testing.T) {
 	d := mergeDB(t)
 
-	// Товар второго поставщика и собственный товар владельца.
+	// A second supplier's product and the owner's own product.
 	other := &database.Product{SKU: "OTHER-1", Title: "Чужой", Price: 5000,
 		SourcePrice: 5000, Stock: 9, Supplier: "Второй"}
 	mine := &database.Product{SKU: "MY-1", Title: "Мой", Price: 7000, Stock: 4}
@@ -25,8 +25,8 @@ func TestImportTouchesOnlyItsOwnGroup(t *testing.T) {
 	if _, err := Run(src, d, "Ромашка", 1, nil); err != nil {
 		t.Fatal(err)
 	}
-	// Второй проход без товаров поставщика вообще — обнуление не должно выйти
-	// за пределы его группы.
+	// A second pass with none of the supplier's products at all — the zeroing
+	// must not escape its group.
 	src.items = []Item{{SKU: "P-2", Title: "Молоко", Price: 2000, Stock: 1}}
 	res, err := Run(src, d, "Ромашка", 1, nil)
 	if err != nil {
@@ -46,7 +46,7 @@ func TestImportTouchesOnlyItsOwnGroup(t *testing.T) {
 	}
 }
 
-// Один артикул у двух поставщиков — не молчаливый перехват, а конфликт.
+// One SKU across two suppliers is a conflict, not a silent takeover.
 func TestArticleOwnedByAnotherGroupIsAConflict(t *testing.T) {
 	d := mergeDB(t)
 	mine := &database.Product{SKU: "A", Title: "Мой чайник", Price: 9999,
@@ -60,7 +60,7 @@ func TestArticleOwnedByAnotherGroupIsAConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Conflicts != 1 || res.Imported != 0 || res.Updated != 0 {
+	if res.Skipped != 1 || res.Imported != 0 || res.Updated != 0 {
 		t.Fatalf("%+v", res)
 	}
 	got, _ := d.GetProduct(mine.ID)
@@ -68,15 +68,15 @@ func TestArticleOwnedByAnotherGroupIsAConflict(t *testing.T) {
 		t.Errorf("чужой фид перехватил товар: %+v", got)
 	}
 
-	// И в предпросмотре это тоже конфликт, а не новинка.
-	existing, _ := d.ListProducts("")
+	// And in the preview it is also a conflict, not a new arrival.
+	existing, _ := d.ListProducts()
 	dif := Compare(src.items, existing, "Ромашка", 1)
 	if dif.Conflicts != 1 || dif.New != 0 || dif.Gone != 0 {
 		t.Fatalf("дифф: %+v", dif)
 	}
 }
 
-// Мусор в выгрузке не должен ни падать, ни плодить товары.
+// Garbage in the export must neither crash nor spawn products.
 func TestImportSkipsUnusableRows(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{
@@ -90,15 +90,15 @@ func TestImportSkipsUnusableRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.NoSKU != 1 || res.Duplicates != 1 || res.NoPrice != 1 || res.Imported != 2 {
+	if res.Skipped != 3 || res.Imported != 2 {
 		t.Fatalf("%+v", res)
 	}
-	neg, err := d.GetProductBySlug("minus-na-sklade")
+	neg, err := d.GetVisibleProductBySlug("minus-na-sklade")
 	if err != nil || neg.Stock != 0 {
 		t.Fatalf("отрицательный остаток: %v %+v", err, neg)
 	}
 
-	// Повторная загрузка того же мусора не создаёт ничего заново.
+	// Re-uploading the same garbage creates nothing anew.
 	res, err = Run(src, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)

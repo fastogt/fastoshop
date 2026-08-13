@@ -9,7 +9,7 @@ import (
 )
 
 // Product feeds are the storefront's second traffic channel: the same catalogue
-// the crawler sees on the pages, packaged for Яндекс Товары / Директ (YML) and
+// the crawler sees on the pages, packaged for Yandex Tovary / Direct (YML) and
 // Google Merchant Center (RSS 2.0). The owner pastes the URL into the
 // provider's cabinet once; the provider re-fetches on its own schedule.
 // ponytail: rendered per request like the sitemap; pre-generate when a real

@@ -7,14 +7,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Settings — единственный source of truth деплой-уровня. Всё, что настраивает
-// владелец (SMTP, магазин), живёт в БД (таблица settings), не здесь.
+// Settings — the single source of truth at deploy level. Everything the owner
+// configures (SMTP, shop) lives in the DB (the settings table), not here.
 type Settings struct {
 	Host     string `yaml:"host"`
 	LogPath  string `yaml:"log_path"`
 	LogLevel string `yaml:"log_level"`
 	Database string `yaml:"database"`
-	// BaseURL — публичный адрес витрины (для sitemap, canonical, писем).
+	// BaseURL — the public storefront address (for sitemap, canonical, emails).
 	BaseURL string `yaml:"base_url"`
 }
 

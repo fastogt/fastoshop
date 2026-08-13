@@ -435,8 +435,8 @@ func decimal(minor int64) string {
 	return fmt.Sprintf("%d.%02d", minor/100, minor%100)
 }
 
-// Склада FBS в кабинете может ещё не быть — цены от него не зависят и должны
-// уезжать, иначе продавец видит молчаливое «ничего не произошло».
+// The cabinet may not yet have an FBS warehouse — prices don't depend on it and
+// must go out, or the seller sees a silent "nothing happened".
 func TestPricesPushWithoutWarehouse(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	if err := d.SaveOzonSettings(&database.OzonSettings{
@@ -457,8 +457,8 @@ func TestPricesPushWithoutWarehouse(t *testing.T) {
 	}
 }
 
-// Ошибки вкладки читает владелец, поэтому они идут на его языке — иначе
-// англоязычная админка показывает русский текст на каждую неудачу.
+// The tab's errors are read by the owner, so they come in the owner's language —
+// otherwise an English-language admin shows Russian text on every failure.
 func TestErrorsFollowOwnerLanguage(t *testing.T) {
 	h, d := newTestHandlers(t)
 	if err := d.CreateSettings(&database.Settings{
@@ -466,7 +466,7 @@ func TestErrorsFollowOwnerLanguage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// По умолчанию русский.
+	// Russian by default.
 	w := do(t, h, "PUT", "/price/1", `{"price":-5}`)
 	if w.Code != http.StatusBadRequest ||
 		!strings.Contains(w.Body.String(), "отрицательной") {

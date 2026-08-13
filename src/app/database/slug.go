@@ -13,8 +13,8 @@ var kTranslit = map[rune]string{
 	'ъ': "", 'ы': "y", 'ь': "", 'э': "e", 'ю': "yu", 'я': "ya",
 }
 
-// Slugify превращает название товара в URL-слаг: транслит RU→lat, lowercase,
-// всё не-[a-z0-9] схлопывается в дефисы.
+// Slugify turns a product title into a URL slug: RU→lat transliteration,
+// lowercase, everything non-[a-z0-9] collapses into hyphens.
 func Slugify(s string) string {
 	var b strings.Builder
 	for _, r := range strings.ToLower(s) {

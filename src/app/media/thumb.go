@@ -53,29 +53,34 @@ func HasThumb(dir, name string) bool {
 // anywhere it is called: the shop keeps working off full-size photos, it is
 // only slower.
 func MakeThumb(dir, name string) error {
-	f, err := os.Open(filepath.Join(dir, name))
+	return resize(filepath.Join(dir, name), filepath.Join(dir, ThumbName(name)), kThumbWidth)
+}
+
+// resize writes a JPEG copy of srcPath scaled down to width into dstPath (the
+// two may be the same file). An image already narrow enough is left alone: a
+// copy the size of the original would double the disk for nothing.
+func resize(srcPath, dstPath string, width int) error {
+	f, err := os.Open(srcPath)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = f.Close() }()
 	src, _, err := image.Decode(f)
+	_ = f.Close()
 	if err != nil {
-		return fmt.Errorf("decode %s: %w", name, err)
+		return fmt.Errorf("decode %s: %w", filepath.Base(srcPath), err)
 	}
 
 	b := src.Bounds()
-	if b.Dx() <= kThumbWidth {
-		// Already small: a "thumbnail" the size of the original would double the
-		// disk for nothing.
+	if b.Dx() <= width {
 		return nil
 	}
-	h := b.Dy() * kThumbWidth / b.Dx()
-	dst := image.NewRGBA(image.Rect(0, 0, kThumbWidth, h))
+	h := b.Dy() * width / b.Dx()
+	dst := image.NewRGBA(image.Rect(0, 0, width, h))
 	// CatmullRom over ApproxBiLinear: this runs once per photo, and the result
 	// is what every visitor sees on every catalogue page.
 	draw.CatmullRom.Scale(dst, dst.Bounds(), src, b, draw.Over, nil)
 
-	tmp := filepath.Join(dir, ThumbName(name)+".part")
+	tmp := dstPath + ".part"
 	out, err := os.Create(tmp)
 	if err != nil {
 		return err
@@ -89,9 +94,9 @@ func MakeThumb(dir, name string) error {
 		_ = os.Remove(tmp)
 		return err
 	}
-	// Rename last: a half-written thumbnail must never be served, and the
-	// storefront decides by the file's existence.
-	return os.Rename(tmp, filepath.Join(dir, ThumbName(name)))
+	// Rename last: a half-written image must never be served, and the storefront
+	// decides by the file's existence.
+	return os.Rename(tmp, dstPath)
 }
 
 // RemoveThumb is best effort: deleting a photo should not fail because its
@@ -195,36 +200,5 @@ func Shrink(dir, name string) error {
 		return nil
 	}
 	full := filepath.Join(dir, name)
-	f, err := os.Open(full)
-	if err != nil {
-		return err
-	}
-	src, _, err := image.Decode(f)
-	_ = f.Close()
-	if err != nil {
-		return fmt.Errorf("decode %s: %w", name, err)
-	}
-	b := src.Bounds()
-	if b.Dx() <= kLogoWidth {
-		return nil
-	}
-	h := b.Dy() * kLogoWidth / b.Dx()
-	dst := image.NewRGBA(image.Rect(0, 0, kLogoWidth, h))
-	draw.CatmullRom.Scale(dst, dst.Bounds(), src, b, draw.Over, nil)
-
-	tmp := full + ".part"
-	out, err := os.Create(tmp)
-	if err != nil {
-		return err
-	}
-	if err := jpeg.Encode(out, dst, &jpeg.Options{Quality: kThumbQuality}); err != nil {
-		_ = out.Close()
-		_ = os.Remove(tmp)
-		return err
-	}
-	if err := out.Close(); err != nil {
-		_ = os.Remove(tmp)
-		return err
-	}
-	return os.Rename(tmp, full)
+	return resize(full, full, kLogoWidth)
 }

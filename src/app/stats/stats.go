@@ -1,5 +1,6 @@
-// Package stats собирает метрики машины в том же формате, что отдаёт
-// gofastocloud_backend: одинаковые поля читаются одинаково во всех продуктах.
+// Package stats collects machine metrics in the same format that
+// gofastocloud_backend serves: identical fields read identically across all
+// products.
 package stats
 
 import (
@@ -15,7 +16,7 @@ import (
 	"gitlab.com/fastogt/gofastogt/gofastogt"
 )
 
-// Machine — снимок машины плюс то, что не меняется между замерами.
+// Machine is a snapshot of the machine plus what doesn't change between samples.
 type Machine struct {
 	gofastogt.Machine
 	OS      gofastogt.OperationSystem `json:"os"`
@@ -30,8 +31,8 @@ var (
 	osInfo   gofastogt.OperationSystem
 )
 
-// host.Info() читает файлы в /sys и /etc на каждый вызов, а между запросами
-// эти данные не меняются — считаем один раз за жизнь процесса.
+// host.Info() reads files in /sys and /etc on every call, and this data does
+// not change between requests — compute it once per process lifetime.
 func sysHost() *host.InfoStat {
 	hostOnce.Do(func() { hostInfo, _ = host.Info() })
 	return hostInfo
@@ -49,9 +50,10 @@ func operationSystem() gofastogt.OperationSystem {
 	return osInfo
 }
 
-// Скорость сети — дельта к прошлому замеру, поэтому предыдущий снимок живёт в
-// пакете: страницу открывают из одной админки, передавать его через вызывающего
-// (как в gofastocloud_backend) здесь было бы лишним звеном.
+// Network speed is a delta against the previous sample, so the previous
+// snapshot lives in the package: the page is opened from a single admin, and
+// passing it through the caller (as in gofastocloud_backend) would be an
+// extra link here.
 var (
 	prevMu   sync.Mutex
 	prevIn   uint64
@@ -64,7 +66,7 @@ func Get() Machine {
 	hddTotal, hddFree := Hdd()
 	totalIn, totalOut, speedIn, speedOut := Network()
 
-	// ponytail: cost всегда 0 — тарификации по ресурсам у магазина нет.
+	// ponytail: cost is always 0 — the shop has no resource-based billing.
 	mach := gofastogt.NewMachine(CPUPercent(), 0, LoadAverage(),
 		memTotal, memFree, hddTotal, hddFree,
 		speedIn, speedOut, gofastogt.NewUTCTimestamp(), Uptime(),
@@ -118,9 +120,10 @@ func Uptime() gofastogt.DurationSec {
 	return gofastogt.DurationSec(up)
 }
 
-// Network возвращает суммарные байты и скорость с прошлого замера. Первый
-// вызов после старта отдаёт нулевую скорость: сравнивать ещё не с чем, а
-// делить накопленные байты на аптайм — это средняя за всё время, а не текущая.
+// Network returns cumulative bytes and the speed since the previous sample.
+// The first call after startup reports zero speed: there is nothing to
+// compare against yet, and dividing accumulated bytes by uptime gives the
+// all-time average, not the current rate.
 func Network() (totalIn, totalOut, speedIn, speedOut uint64) {
 	counters, err := net.IOCounters(true)
 	if err != nil {

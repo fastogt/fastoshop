@@ -6,7 +6,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// feed — источник из готового списка позиций, без сети.
+// feed is a source backed by a ready-made list of items, no network.
 type feed struct {
 	name  string
 	items []Item
@@ -26,8 +26,8 @@ func mergeDB(t *testing.T) *database.Database {
 	return d
 }
 
-// Еженедельный фид: цена поставщика доезжает, остаток обновляется, а название и
-// описание остаются такими, какими их сделал владелец.
+// Weekly feed: the supplier price comes through, the stock updates, while the
+// title and description stay the way the owner made them.
 func TestMergeUpdatesPriceAndStockOnly(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{
@@ -37,7 +37,7 @@ func TestMergeUpdatesPriceAndStockOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p, _ := d.GetProductBySlug("chajnik")
+	p, _ := d.GetVisibleProductBySlug("chajnik")
 	p.Title = "Чайник эмалированный 2 л"
 	p.Description = "Текст владельца"
 	if err := d.UpdateProduct(p); err != nil {
@@ -63,14 +63,14 @@ func TestMergeUpdatesPriceAndStockOnly(t *testing.T) {
 	}
 }
 
-// Цену, выставленную руками, пересчёт фида не трогает.
+// A manually set price is left alone by the feed recalculation.
 func TestMergeKeepsManualPrice(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{{SKU: "A", Title: "Кружка", Price: 10000, Stock: 1}}}
 	if _, err := Run(src, d, "Ромашка", 1, nil); err != nil {
 		t.Fatal(err)
 	}
-	p, _ := d.GetProductBySlug("kruzhka")
+	p, _ := d.GetVisibleProductBySlug("kruzhka")
 	p.Price = 77777
 	p.PriceManual = true
 	if err := d.UpdateProduct(p); err != nil {
@@ -90,8 +90,8 @@ func TestMergeKeepsManualPrice(t *testing.T) {
 	}
 }
 
-// Исчезнувший из фида товар снимается с продажи остатком, но остаётся собой:
-// слаг проиндексирован, а на product_id ссылается связь с Ozon.
+// A product that disappeared from the feed is taken off sale via stock, but
+// stays itself: the slug is indexed and the Ozon link references product_id.
 func TestMergeZeroesMissingWithoutDeleting(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{
@@ -101,7 +101,7 @@ func TestMergeZeroesMissingWithoutDeleting(t *testing.T) {
 	if _, err := Run(src, d, "Ромашка", 1, nil); err != nil {
 		t.Fatal(err)
 	}
-	gone, _ := d.GetProductBySlug("kruzhka")
+	gone, _ := d.GetVisibleProductBySlug("kruzhka")
 	if err := d.UpsertOzonLink(&database.OzonLink{ProductID: gone.ID, OfferID: "B"}); err != nil {
 		t.Fatal(err)
 	}
@@ -114,20 +114,20 @@ func TestMergeZeroesMissingWithoutDeleting(t *testing.T) {
 	if res.Zeroed != 1 {
 		t.Fatalf("%+v", res)
 	}
-	still, err := d.GetProductBySlug("kruzhka")
+	still, err := d.GetVisibleProductBySlug("kruzhka")
 	if err != nil {
 		t.Fatalf("товар удалён вместе со слагом: %v", err)
 	}
 	if still.Stock != 0 {
 		t.Errorf("остаток не обнулён: %d", still.Stock)
 	}
-	links, _ := d.ListOzonLinks()
+	links, _ := d.ListOzonLinksPage(1000, 0)
 	if len(links) != 1 || links[0].ProductID != gone.ID {
 		t.Errorf("связь с Ozon потеряна: %+v", links)
 	}
 }
 
-// Пустой ответ источника — это его сбой, а не снятие всего каталога с продажи.
+// An empty source response is its failure, not a delisting of the whole catalogue.
 func TestMergeEmptyFeedDoesNotWipeShop(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{{SKU: "A", Title: "Чайник", Price: 10000, Stock: 5}}}
@@ -142,13 +142,13 @@ func TestMergeEmptyFeedDoesNotWipeShop(t *testing.T) {
 	if res.Zeroed != 0 {
 		t.Fatalf("пустой фид обнулил каталог: %+v", res)
 	}
-	p, _ := d.GetProductBySlug("chajnik")
+	p, _ := d.GetVisibleProductBySlug("chajnik")
 	if p.Stock != 5 {
 		t.Errorf("остаток: %d", p.Stock)
 	}
 }
 
-// Тот же фид второй раз — ничего не создаётся и не обновляется.
+// The same feed a second time — nothing gets created or updated.
 func TestMergeSameFeedIsNoop(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{{SKU: "A", Title: "Чайник", Price: 10000, Stock: 5}}}

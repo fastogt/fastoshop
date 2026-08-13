@@ -10,31 +10,26 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// Item — карточка из внешнего кабинета в каноничном виде.
+// Item is a card from an external seller account in canonical form.
 type Item struct {
 	SKU         string
 	Title       string
 	Description string
-	Price       int64 // минорные единицы
+	Price       int64 // minor units
 	Stock       int
 	ImageURLs   []string
-	// Barcode — транспорт внутри адаптера, а не поле нашего товара: WB держит
-	// FBS-остаток на баркоде, поэтому его приходится читать, чтобы разложить
-	// остаток по размерам. В БД не попадает — идентификаторы маркетплейса
-	// появятся позже, отдельным шагом подключения канала.
-	Barcode string
 }
 
-// Source — разовый источник каталога (Ozon, WB). Не Channel: только чтение.
+// Source is a one-off catalogue source (Ozon, WB). Not a Channel: read-only.
 type Source interface {
 	Name() string
-	Count() (int, error) // кнопка «Проверить»: сколько товаров нашли
+	Count() (int, error) // the "Check" button: how many products were found
 	Fetch() ([]Item, error)
 }
 
-// SourceErrors — источник может отбраковать карточку ещё до записи в БД
-// (например, чужая валюта в YML). Такие потери должны доехать до Result,
-// иначе продавец увидит «перенесено 20», не узнав про 3 потерянных.
+// SourceErrors — a source may reject a card before it is ever written to the
+// DB (e.g. a foreign currency in YML). Such losses must make it into Result,
+// or the seller sees "20 migrated" without learning about the 3 lost.
 type SourceErrors interface {
 	FetchErrors() int
 }
@@ -59,20 +54,11 @@ func FeedCurrency(src Source) string {
 type Result struct {
 	Imported int `json:"imported"`
 	// Updated counts products already in the shop whose supplier price or stock
-	// moved; Skipped counts those the feed repeated unchanged.
+	// moved; Skipped counts those the feed repeated unchanged plus rows the
+	// import refused to create: no article, a duplicate article, a zero price,
+	// or an article owned by another supplier group.
 	Updated int `json:"updated"`
 	Skipped int `json:"skipped"`
-	// Conflicts are articles owned by another group. Left untouched: two
-	// suppliers claiming one article is the owner's call, not ours.
-	Conflicts int `json:"conflicts"`
-	// NoSKU are feed rows without an article. Skipped rather than created,
-	// otherwise every weekly import would add them again.
-	NoSKU int `json:"no_sku"`
-	// Duplicates are articles the feed itself repeated.
-	Duplicates int `json:"duplicates"`
-	// NoPrice are rows priced at zero: a product given away for free is worse
-	// than a product missing.
-	NoPrice int `json:"no_price"`
 	// Zeroed counts products the feed no longer lists. They are not deleted:
 	// ozon_links points at the product id and the slug is already indexed, so
 	// recreating one later would break the channel link and a live URL.
@@ -110,16 +96,9 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 	if err != nil {
 		return nil, err
 	}
-	existing, err := db.ListProducts("")
+	existing, err := db.ListProducts()
 	if err != nil {
 		return nil, err
-	}
-	// The stored price is already the shelf price the coefficient made, so it is
-	// in the shop's money — not the feed's. Writing RUB here made a BYN shop
-	// claim rouble prices in its own database.
-	shopCurrency := database.ShopCurrencyRUB
-	if s, err := db.GetSettings(); err == nil && s.Currency != "" {
-		shopCurrency = s.Currency
 	}
 	bySKU := map[string]database.Product{}
 	for _, p := range existing {
@@ -134,18 +113,16 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 	}
 	for i, it := range items {
 		progress(StageProducts, i, len(items))
-		if it.SKU == "" {
-			res.NoSKU++
-			continue
-		}
-		if seen[it.SKU] {
-			res.Duplicates++
+		if it.SKU == "" || seen[it.SKU] {
+			res.Skipped++
 			continue
 		}
 		seen[it.SKU] = true
 		if old, found := bySKU[it.SKU]; found {
+			// An article owned by another supplier group is left untouched: two
+			// suppliers claiming one article is the owner's call, not ours.
 			if old.Supplier != supplier {
-				res.Conflicts++
+				res.Skipped++
 				continue
 			}
 			changed, err := merge(db, old, it, coefficient)
@@ -161,13 +138,15 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 			}
 			continue
 		}
+		// A zero price is refused: a product given away for free is worse than a
+		// product missing.
 		if it.Price <= 0 {
-			res.NoPrice++
+			res.Skipped++
 			continue
 		}
 		p := &database.Product{SKU: it.SKU, Title: it.Title,
 			Description: it.Description, Price: int64(math.Round(float64(it.Price) * coefficient)),
-			SourcePrice: it.Price, Currency: shopCurrency, Stock: max(it.Stock, 0),
+			SourcePrice: it.Price, Stock: max(it.Stock, 0),
 			Supplier: supplier}
 		if err := db.CreateProduct(p); err != nil {
 			log.Warnf("import %s: create %q: %v", src.Name(), it.Title, err)

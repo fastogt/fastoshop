@@ -34,7 +34,7 @@ type settingsRequest struct {
 	SMTPHost     string  `json:"smtp_host"`
 	SMTPPort     int     `json:"smtp_port"`
 	SMTPUser     string  `json:"smtp_user"`
-	SMTPPassword *string `json:"smtp_password"` // nil = не менять
+	SMTPPassword *string `json:"smtp_password"` // nil = leave unchanged
 
 	// Pointers: an older admin build does not send these fields, and a missing
 	// field must leave the counters alone instead of tearing them off the page.
@@ -125,7 +125,7 @@ func (h *Handler) SetLang(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, okStatusResponse{Status: "ok"})
 }
 
-// TestSMTP шлёт себе тестовое письмо — кнопка «Проверить» в профиле.
+// TestSMTP sends a test email to oneself — the "Check" button in the profile.
 func (h *Handler) TestSMTP(w http.ResponseWriter, r *http.Request) {
 	s, err := h.db.GetSettings()
 	if err != nil {

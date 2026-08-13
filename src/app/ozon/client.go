@@ -37,7 +37,7 @@ func (c *Client) base() string {
 	return kBaseURL
 }
 
-func (c *Client) post(path string, body, out any) error {
+func (c *Client) Post(path string, body, out any) error {
 	data, err := json.Marshal(body)
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func (c *Client) ListProducts() ([]Offer, error) {
 	lastID := ""
 	for range kMaxPages {
 		var page listResponse
-		err := c.post("/v3/product/list", listRequest{
+		err := c.Post("/v3/product/list", listRequest{
 			Filter: listFilter{Visibility: "ALL"},
 			LastID: lastID,
 			Limit:  kListLimit,
@@ -157,7 +157,9 @@ type itemError struct {
 	Message string `json:"message"`
 }
 
-type StockResult struct {
+// ItemResult is one row of a stocks or prices push answer — the two calls share
+// the shape.
+type ItemResult struct {
 	OfferID string      `json:"offer_id"`
 	Updated bool        `json:"updated"`
 	Errors  []itemError `json:"errors"`
@@ -181,17 +183,17 @@ func itemErr(errs []itemError, updated bool) string {
 	return i18n.KeyOzonUnknownReply
 }
 
-func (r StockResult) Err() string { return itemErr(r.Errors, r.Updated) }
+func (r ItemResult) Err() string { return itemErr(r.Errors, r.Updated) }
 
 type stocksResponse struct {
-	Result []StockResult `json:"result"`
+	Result []ItemResult `json:"result"`
 }
 
 // SetStocks sends stocks in a single call; the caller must split the list by
 // kBatchSize itself — the client will not silently truncate someone's batch.
-func (c *Client) SetStocks(items []StockItem) ([]StockResult, error) {
+func (c *Client) SetStocks(items []StockItem) ([]ItemResult, error) {
 	var resp stocksResponse
-	if err := c.post("/v2/products/stocks", stocksRequest{Stocks: items}, &resp); err != nil {
+	if err := c.Post("/v2/products/stocks", stocksRequest{Stocks: items}, &resp); err != nil {
 		return nil, err
 	}
 	return resp.Result, nil
@@ -236,23 +238,15 @@ type pricesRequest struct {
 	Prices []PriceItem `json:"prices"`
 }
 
-type PriceResult struct {
-	OfferID string      `json:"offer_id"`
-	Updated bool        `json:"updated"`
-	Errors  []itemError `json:"errors"`
-}
-
-func (r PriceResult) Err() string { return itemErr(r.Errors, r.Updated) }
-
 type pricesResponse struct {
-	Result []PriceResult `json:"result"`
+	Result []ItemResult `json:"result"`
 }
 
 // SetPrices sends prices in a single call; splitting by kPriceBatchSize is the
 // caller's job, same contract as SetStocks.
-func (c *Client) SetPrices(items []PriceItem) ([]PriceResult, error) {
+func (c *Client) SetPrices(items []PriceItem) ([]ItemResult, error) {
 	var resp pricesResponse
-	if err := c.post("/v1/product/import/prices", pricesRequest{Prices: items}, &resp); err != nil {
+	if err := c.Post("/v1/product/import/prices", pricesRequest{Prices: items}, &resp); err != nil {
 		return nil, err
 	}
 	return resp.Result, nil
@@ -323,7 +317,7 @@ func (c *Client) ListPostings(since, to time.Time) ([]Posting, error) {
 	var out []Posting
 	for page := range kMaxPostingPages {
 		var resp postingListResponse
-		err := c.post("/v3/posting/fbs/list", postingListRequest{
+		err := c.Post("/v3/posting/fbs/list", postingListRequest{
 			Dir: "asc",
 			Filter: postingFilter{
 				Since: since.UTC().Format(time.RFC3339),
@@ -366,7 +360,7 @@ type SellerInfo struct {
 // from the legal entity the seller registered with, so they are read, not asked.
 func (c *Client) SellerInfo() (*SellerInfo, error) {
 	var resp SellerInfo
-	if err := c.post("/v1/seller/info", struct{}{}, &resp); err != nil {
+	if err := c.Post("/v1/seller/info", struct{}{}, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -394,7 +388,7 @@ func (c *Client) ListWarehouses() ([]Warehouse, error) {
 	cursor := ""
 	for {
 		var resp warehouseListResponse
-		err := c.post("/v2/warehouse/list",
+		err := c.Post("/v2/warehouse/list",
 			warehouseListRequest{Limit: kWarehousePageSize, Cursor: cursor}, &resp)
 		if err != nil {
 			return nil, err

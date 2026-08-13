@@ -2,12 +2,14 @@ package importer
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/i18n"
 )
 
 func TestOzonImport(t *testing.T) {
@@ -53,11 +55,11 @@ func TestOzonImport(t *testing.T) {
 	if res.Imported != 1 {
 		t.Fatalf("res: %+v", res)
 	}
-	p, err := d.GetProductBySlug("chajnik")
+	p, err := d.GetVisibleProductBySlug("chajnik")
 	if err != nil || p.SKU != "SKU-1" || p.Price != 250000 || p.Description != "Хороший чайник" {
 		t.Fatalf("%v %+v", err, p)
 	}
-	// FBS-остаток за вычетом резерва; FBO не наш склад и в счёт не идёт.
+	// FBS stock net of the reserve; FBO is not our warehouse and doesn't count.
 	if p.Stock != 7 {
 		t.Fatalf("stock: %d", p.Stock)
 	}
@@ -65,17 +67,17 @@ func TestOzonImport(t *testing.T) {
 	if len(imgs) != 1 {
 		t.Fatalf("images: %+v", imgs)
 	}
-	// Повторный импорт — дедуп по SKU.
+	// A repeat import — dedup by SKU.
 	res, _ = Run(imp, d, "Ромашка", 1, nil)
 	if res.Imported != 0 || res.Skipped != 1 {
 		t.Fatalf("dedup: %+v", res)
 	}
 }
 
-// imgURL отдаёт абсолютный URL мок-картинки на этом же сервере.
+// imgURL returns an absolute URL of a mock image on the same server.
 func imgURL(r *http.Request) string { return "http://" + r.Host + "/img.jpg" }
 
-// wbMux — мок трёх хостов WB сразу: в тесте они указывают на один httptest.
+// wbMux mocks all three WB hosts at once: in the test they point at a single httptest.
 func wbMux(cards string) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/content/v2/get/cards/list", func(w http.ResponseWriter, r *http.Request) {
@@ -111,8 +113,8 @@ func TestWBImportSizes(t *testing.T) {
 	mux.HandleFunc("/api/v3/stocks/7", func(w http.ResponseWriter, r *http.Request) {
 		var req wbStocksRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		// Метод принимает баркоды, а не chrtID: если запросим не тем ключом,
-		// живой WB молча вернёт пустой список и весь каталог приедет с нулём.
+		// The method takes barcodes, not chrtID: if we query with the wrong key,
+		// live WB silently returns an empty list and the whole catalogue arrives at zero.
 		if len(req.Skus) != 3 || req.Skus[0] != "2000000000011" {
 			t.Errorf("stocks request: %+v", req)
 		}
@@ -142,7 +144,7 @@ func TestWBImportSizes(t *testing.T) {
 		{"futbolka-l", "WB-1-L", 5, 120000},
 	}
 	for _, tc := range want {
-		p, err := d.GetProductBySlug(tc.slug)
+		p, err := d.GetVisibleProductBySlug(tc.slug)
 		if err != nil {
 			t.Fatalf("%s: %v", tc.slug, err)
 		}
@@ -151,17 +153,17 @@ func TestWBImportSizes(t *testing.T) {
 		}
 	}
 
-	// Товар с импортированным остатком реально покупаем, а нулевой — нет.
-	live, _ := d.GetProductBySlug("futbolka-l")
+	// A product with imported stock can actually be bought, a zero one cannot.
+	live, _ := d.GetVisibleProductBySlug("futbolka-l")
 	items := []database.OrderItem{{ProductID: live.ID, Qty: 5}}
 	if err := d.CreateOrderWithStock(&database.Order{Name: "Иван", Phone: "+7"}, items); err != nil {
 		t.Fatalf("order: %v", err)
 	}
-	after, _ := d.GetProductBySlug("futbolka-l")
+	after, _ := d.GetVisibleProductBySlug("futbolka-l")
 	if after.Stock != 0 {
 		t.Fatalf("stock after order: %d", after.Stock)
 	}
-	dead, _ := d.GetProductBySlug("futbolka-m")
+	dead, _ := d.GetVisibleProductBySlug("futbolka-m")
 	err = d.CreateOrderWithStock(&database.Order{Name: "Иван", Phone: "+7"},
 		[]database.OrderItem{{ProductID: dead.ID, Qty: 1}})
 	if _, ok := err.(*database.OutOfStockError); !ok {
@@ -194,8 +196,8 @@ func TestWBImportSingleSize(t *testing.T) {
 	if err != nil || res.Imported != 1 {
 		t.Fatalf("%v %+v", err, res)
 	}
-	// Один размер — заголовок и артикул без суффикса.
-	p, err := d.GetProductBySlug("kruzhka")
+	// A single size — title and SKU without a suffix.
+	p, err := d.GetVisibleProductBySlug("kruzhka")
 	if err != nil || p.SKU != "WB-1" || p.Title != "Кружка" || p.Price != 99050 || p.Stock != 4 {
 		t.Fatalf("%v %+v", err, p)
 	}
@@ -246,7 +248,7 @@ func TestYMLImport(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 7}
-	// available="false" не считаем — продавцу интересно, сколько приедет.
+	// available="false" is not counted — the seller cares how many will arrive.
 	n, err := imp.Count()
 	if err != nil || n != 4 {
 		t.Fatalf("count: %v %d", err, n)
@@ -255,12 +257,12 @@ func TestYMLImport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Чужая валюта — не импорт, а ошибка: молча приехавшие BYN сломали бы прайс.
+	// A foreign currency is an error, not an import: BYN arriving silently would break the price list.
 	if res.Imported != 3 || res.Errors != 1 {
 		t.Fatalf("res: %+v", res)
 	}
 
-	p, err := d.GetProductBySlug("terka-plastmassovaya")
+	p, err := d.GetVisibleProductBySlug("terka-plastmassovaya")
 	if err != nil || p.SKU != "TR-1" || p.Price != 51520 || p.Stock != 7 ||
 		p.Description != "Пять насадок" {
 		t.Fatalf("%v %+v", err, p)
@@ -269,15 +271,15 @@ func TestYMLImport(t *testing.T) {
 	if len(imgs) != 2 {
 		t.Fatalf("images: %+v", imgs)
 	}
-	// vendorCode пустой — артикулом становится id оффера, описания нет.
-	kovsh, err := d.GetProductBySlug("kovsh-emalirovannyj")
+	// vendorCode is empty — the offer id becomes the SKU, there is no description.
+	kovsh, err := d.GetVisibleProductBySlug("kovsh-emalirovannyj")
 	if err != nil || kovsh.SKU != "059144" || kovsh.Price != 120000 || kovsh.Description != "" {
 		t.Fatalf("%v %+v", err, kovsh)
 	}
-	if _, err := d.GetProductBySlug("snyatyj-s-prodazhi"); err == nil {
+	if _, err := d.GetVisibleProductBySlug("snyatyj-s-prodazhi"); err == nil {
 		t.Fatal("available=false должен был отсеяться")
 	}
-	if _, err := d.GetProductBySlug("kastryulya-minskaya"); err == nil {
+	if _, err := d.GetVisibleProductBySlug("kastryulya-minskaya"); err == nil {
 		t.Fatal("BYN не должен был импортироваться")
 	}
 
@@ -292,7 +294,8 @@ func TestYMLTooBig(t *testing.T) {
 	defer srv.Close()
 
 	imp := &YML{URL: srv.URL + "/feed.xml", MaxBytes: 100}
-	if _, err := imp.Count(); err == nil || !strings.Contains(err.Error(), "больше") {
+	var ke *i18n.KeyError
+	if _, err := imp.Count(); !errors.As(err, &ke) || ke.Key != i18n.KeyYMLTooBig {
 		t.Fatalf("expected size error, got %v", err)
 	}
 }
@@ -348,8 +351,8 @@ func TestYMLFeedCurrency(t *testing.T) {
 	if c := FeedCurrency(imp); c != database.ShopCurrencyBYN {
 		t.Fatalf("feed currency: %q", c)
 	}
-	p, err := d.GetProductBySlug("kastryulya-minskaya")
-	if err != nil || p.Price != 8450 || p.Currency != database.ShopCurrencyBYN {
+	p, err := d.GetVisibleProductBySlug("kastryulya-minskaya")
+	if err != nil || p.Price != 8450 {
 		t.Fatalf("%v %+v", err, p)
 	}
 }

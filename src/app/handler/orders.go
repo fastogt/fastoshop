@@ -150,8 +150,8 @@ func (h *Handler) BulkOrderStatus(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, res)
 }
 
-// csvSafe гасит формульную инъекцию: имя/телефон/названия приходят из публичной
-// формы заказа, а Excel и LibreOffice выполняют ячейку, начинающуюся с = + - @.
+// csvSafe neutralizes formula injection: name/phone/titles come from the public
+// order form, and Excel and LibreOffice execute a cell starting with = + - @.
 func csvSafe(s string) string {
 	if s == "" {
 		return s
@@ -163,30 +163,24 @@ func csvSafe(s string) string {
 	return s
 }
 
-// ExportOrdersCSV — журнал продаж (для налоговой/бухгалтера) за ?from=&to=
-// (YYYY-MM-DD, опционально).
+// ExportOrdersCSV — the sales journal (for the tax office/accountant).
 func (h *Handler) ExportOrdersCSV(w http.ResponseWriter, r *http.Request) {
 	list, err := h.db.ListOrders()
 	if err != nil {
 		writeInternalError(w, err)
 		return
 	}
-	from, to := r.URL.Query().Get("from"), r.URL.Query().Get("to")
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="orders.csv"`)
 	cw := csv.NewWriter(w)
 	_ = cw.Write([]string{"id", "date", "name", "phone", "items", "total", "status"})
 	for _, o := range list {
-		day := o.CreatedAt.Format("2006-01-02")
-		if (from != "" && day < from) || (to != "" && day > to) {
-			continue
-		}
 		var items []orderItem
 		var total int64
 		var desc, totalCell string
 		if err := json.Unmarshal([]byte(o.ItemsJSON), &items); err != nil {
-			// Это налоговый журнал: битую строку нельзя показывать нулём,
-			// иначе выручка молча занижается. Пустой total = «посчитай руками».
+			// This is a tax journal: a broken row must not be shown as zero,
+			// or revenue is silently understated. Empty total = "count by hand".
 			desc = h.msg(i18n.KeyCSVParseFailed)
 		} else {
 			for _, it := range items {

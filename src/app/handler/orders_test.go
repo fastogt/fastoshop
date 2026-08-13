@@ -21,7 +21,7 @@ func TestOrdersAndSettings(t *testing.T) {
 	r.Get("/api/settings", h.GetSettings)
 	r.Put("/api/settings", h.UpdateSettings)
 
-	// Заказ создаётся витриной (Task 10); здесь — напрямую в БД.
+	// Orders are created by the storefront (Task 10); here — directly in the DB.
 	_ = h.db.CreateOrder(&database.Order{Name: "Иван", Phone: "+7999",
 		ItemsJSON: `[{"sku":"T-1","title":"Чайник","price":250000,"qty":2}]`})
 
@@ -38,7 +38,7 @@ func TestOrdersAndSettings(t *testing.T) {
 		t.Fatalf("status: %d", w.Code)
 	}
 
-	// Недопустимый статус — 400.
+	// Invalid status — 400.
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("PUT", "/api/orders/1/status",
 		strings.NewReader(`{"status":"hacked"}`)))
@@ -46,7 +46,7 @@ func TestOrdersAndSettings(t *testing.T) {
 		t.Fatalf("bad status: %d", w.Code)
 	}
 
-	// CSV с заголовком и строкой.
+	// CSV with a header and one row.
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/orders.csv", nil))
 	csv := w.Body.String()
@@ -55,7 +55,7 @@ func TestOrdersAndSettings(t *testing.T) {
 		t.Fatalf("csv: %s", csv)
 	}
 
-	// Settings: до setup — 404; после — маскирует секреты.
+	// Settings: before setup — 404; after — secrets are masked.
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/settings", nil))
 	if w.Code != http.StatusNotFound {
@@ -79,8 +79,8 @@ func TestOrdersAndSettings(t *testing.T) {
 	}
 }
 
-// Битый items_json нельзя выводить нулём: это налоговый журнал.
-// Имя из публичной формы нельзя писать сырым: Excel выполнит формулу.
+// Broken items_json must not be printed as zero: this is a tax journal.
+// A name from the public form must not be written raw: Excel runs the formula.
 func TestExportOrdersCSVSafety(t *testing.T) {
 	h := newTestHandler(t)
 	r := chi.NewRouter()

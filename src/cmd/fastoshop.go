@@ -34,15 +34,15 @@ func expandHome(p string) string {
 	return p
 }
 
-// listen: путь, начинающийся со слэша, — это unix-сокет, всё остальное —
-// TCP-адрес. Сокет снимает вопрос раздачи портов, когда на одном сервере
-// живёт несколько независимых инстансов.
+// listen: a path starting with a slash is a unix socket, everything else is
+// a TCP address. The socket removes the question of handing out ports when
+// several independent instances live on one server.
 func listen(addr string) (net.Listener, error) {
 	if !strings.HasPrefix(addr, "/") {
 		return net.Listen("tcp", addr)
 	}
-	// systemd не удаляет сокет за процессом, убитым SIGKILL, — без этого
-	// рестарт упал бы на "address already in use".
+	// systemd does not remove the socket after a process killed with SIGKILL —
+	// without this the restart would fail with "address already in use".
 	if err := os.Remove(addr); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("stale socket: %w", err)
 	}
@@ -50,8 +50,8 @@ func listen(addr string) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Права ставим явно: umask делает сокет недоступным для группы, а
-	// подключается к нему nginx (юнит запускается с Group=www-data).
+	// Set the permissions explicitly: umask makes the socket inaccessible to
+	// the group, and nginx connects to it (the unit runs with Group=www-data).
 	if err := os.Chmod(addr, 0660); err != nil {
 		_ = ln.Close()
 		return nil, fmt.Errorf("socket perms: %w", err)
@@ -99,11 +99,11 @@ func run(cfg *config.Config) error {
 	}
 
 	uploadsDir := filepath.Join(filepath.Dir(dbPath), "uploads")
-	h := handler.NewHandler(cfg, db, uploadsDir)
+	h := handler.NewHandler(db, uploadsDir)
 	sf := storefront.New(db, cfg.Settings.BaseURL, uploadsDir)
 
-	// Синк остатков стартует всегда: настройки читаются на каждом проходе, и
-	// включение отправки из админки не должно требовать рестарта сервиса.
+	// The stock sync always starts: settings are read on every pass, and
+	// enabling pushes from the admin must not require a service restart.
 	syncCtx, stopSync := context.WithCancel(context.Background())
 	defer stopSync()
 	ozonWorker := ozon.NewWorker(db)
@@ -161,23 +161,23 @@ func run(cfg *config.Config) error {
 		})
 	})
 
-	// FileServer сам по себе отдаёт листинг каталога: имена всех загруженных
-	// файлов — не то, что стоит показывать публично.
+	// FileServer on its own serves a directory listing: the names of all
+	// uploaded files are not something to show publicly.
 	uploads := http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir)))
 	r.Handle("/uploads/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if strings.HasSuffix(req.URL.Path, "/") {
 			http.NotFound(w, req)
 			return
 		}
-		// Имя файла содержит случайный суффикс и меняется вместе с содержимым
-		// (p<id>-<token>.jpg), поэтому кешировать можно навсегда. Без этого
-		// заголовка покупатель скачивает все фотографии каталога заново на
-		// каждой странице — на живом магазине это мегабайты лишнего трафика.
+		// The file name carries a random suffix and changes with the content
+		// (p<id>-<token>.jpg), so it can be cached forever. Without this
+		// header a shopper re-downloads every catalog photo on each page —
+		// on a live shop that is megabytes of wasted traffic.
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		uploads.ServeHTTP(w, req)
 	}))
 
-	// Админ-SPA под /admin.
+	// The admin SPA under /admin.
 	adminFS := http.Dir(version.ShareFolderPath + "/frontend")
 	adminServer := http.StripPrefix("/admin", http.FileServer(adminFS))
 	r.Get("/admin*", func(w http.ResponseWriter, req *http.Request) {
@@ -191,7 +191,7 @@ func run(cfg *config.Config) error {
 		adminServer.ServeHTTP(w, req)
 	})
 
-	// Всё остальное — витрина.
+	// Everything else is the storefront.
 	r.Mount("/", sf.Router())
 
 	ln, err := listen(cfg.Settings.Host)
@@ -220,10 +220,10 @@ func run(cfg *config.Config) error {
 	}
 }
 
-// resetPassword — путь восстановления, когда владелец забыл пароль: у
-// self-hosted магазина нет службы поддержки, а SMTP опционален и обычно не
-// настроен ровно тогда, когда он нужнее всего, поэтому recovery живёт в
-// бинаре, а не в письме.
+// resetPassword is the recovery path for when the owner forgot the password:
+// a self-hosted shop has no support desk, and SMTP is optional and usually
+// unconfigured exactly when it is needed most, so recovery lives in the
+// binary, not in an email.
 func resetPassword(cfg *config.Config) error {
 	dbPath := expandHome(cfg.Settings.Database)
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
@@ -243,18 +243,19 @@ func resetPassword(cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("reset password: %w", err)
 	}
-	// Печатаем базу и владельца до пароля: на сервере с несколькими инстансами
-	// «не тот конфиг» иначе проходит незаметно.
+	// Print the database and owner before the password: on a server with
+	// several instances "wrong config" otherwise goes unnoticed.
 	fmt.Printf("Database: %s\nOwner: %s\nNew password: %s\nLog in at /admin with it, then change it under Profile.\n",
 		dbPath, s.OwnerEmail, pw)
 	return nil
 }
 
-// inviteOwner заводит владельца и печатает одноразовую ссылку вместо пароля:
-// пароль пришлось бы пересылать письмом, где он и остался бы жить, а ссылка
-// сгорает при первом использовании и протухает за сутки. Магазин письма слать
-// не может — SMTP настраивает сам владелец, которого ещё нет, — поэтому ссылку
-// отдаём в stdout, а провижининг отправляет её своим каналом.
+// inviteOwner creates the owner and prints a one-time link instead of a
+// password: a password would have to be sent by email, where it would keep
+// living, while the link burns on first use and expires within a day. The
+// shop cannot send emails — SMTP is configured by the owner, who doesn't
+// exist yet — so the link goes to stdout and provisioning delivers it
+// through its own channel.
 func inviteOwner(cfg *config.Config, email string) error {
 	dbPath := expandHome(cfg.Settings.Database)
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
@@ -278,9 +279,9 @@ func inviteOwner(cfg *config.Config, email string) error {
 	return nil
 }
 
-// createOwner заводит владельца в момент провижининга: до этого свежий
-// инстанс отдаёт открытый мастер настройки на публичном адресе, и владельцем
-// станет тот, кто первым его откроет.
+// createOwner creates the owner at provisioning time: until then a fresh
+// instance serves an open setup wizard on a public address, and whoever
+// opens it first becomes the owner.
 func createOwner(cfg *config.Config, email string) error {
 	dbPath := expandHome(cfg.Settings.Database)
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {

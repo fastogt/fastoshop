@@ -1,24 +1,20 @@
 package importer
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
 	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/ozon"
 )
 
 // Ozon Seller API: https://docs.ozon.ru/api/seller/
 type Ozon struct {
 	ClientID string
 	APIKey   string
-	BaseURL  string // по умолчанию https://api-seller.ozon.ru; в тестах — мок
+	BaseURL  string // defaults to https://api-seller.ozon.ru; a mock in tests
 }
 
 func (o *Ozon) Name() string { return "ozon" }
@@ -26,35 +22,11 @@ func (o *Ozon) Name() string { return "ozon" }
 // Currency: an Ozon seller account is settled in roubles whatever the shop sells in.
 func (o *Ozon) Currency() string { return database.ShopCurrencyRUB }
 
-func (o *Ozon) base() string {
-	if o.BaseURL != "" {
-		return o.BaseURL
-	}
-	return "https://api-seller.ozon.ru"
-}
-
+// post goes through the channel package's client: one implementation of the
+// Seller API auth and error handling instead of a second copy here.
 func (o *Ozon) post(path string, body any, out any) error {
-	data, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("POST", o.base()+path, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Client-Id", o.ClientID)
-	req.Header.Set("Api-Key", o.APIKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := kHTTP.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	raw, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("ozon %s: %d: %s", path, resp.StatusCode, raw)
-	}
-	return json.Unmarshal(raw, out)
+	c := &ozon.Client{ClientID: o.ClientID, APIKey: o.APIKey, BaseURL: o.BaseURL}
+	return c.Post(path, body, out)
 }
 
 type ozonListResponse struct {
@@ -67,7 +39,7 @@ type ozonListResponse struct {
 	} `json:"result"`
 }
 
-// Тела запросов — именованные структуры, не map[string]any (правило проекта).
+// Request bodies are named structs, not map[string]any (project rule).
 type ozonListFilter struct {
 	Visibility string `json:"visibility"`
 }
@@ -106,14 +78,14 @@ type ozonStocksResponse struct {
 	} `json:"items"`
 }
 
-// stocks отдаёт доступный к продаже FBS-остаток по product_id. Свободный
-// остаток — present минус reserved: зарезервированное уже продано.
+// stocks returns the sellable FBS stock keyed by product_id. Free stock is
+// present minus reserved: what is reserved has already been sold.
 func (o *Ozon) stocks() map[int64]int {
 	var out ozonStocksResponse
-	// ponytail: одна страница без курсора — столько же, сколько тянет list().
+	// ponytail: one page without a cursor — the same amount list() pulls.
 	if err := o.post("/v4/product/info/stocks",
 		ozonStocksRequest{Limit: 1000, Filter: ozonStocksFilter{Visibility: "ALL"}}, &out); err != nil {
-		// Остаток не критичен для переноса карточек: импорт не валим.
+		// Stock is not critical for migrating cards: don't fail the import.
 		log.Warnf("import ozon: stocks: %v", err)
 		return nil
 	}
@@ -133,8 +105,8 @@ func (o *Ozon) stocks() map[int64]int {
 
 func (o *Ozon) list() (*ozonListResponse, error) {
 	var out ozonListResponse
-	// ponytail: одна страница (1000 товаров), пагинация — когда появится
-	// клиент с каталогом больше.
+	// ponytail: one page (1000 products); pagination comes when a client
+	// with a bigger catalogue shows up.
 	err := o.post("/v3/product/list",
 		ozonListRequest{Filter: ozonListFilter{Visibility: "ALL"}, Limit: 1000}, &out)
 	return &out, err

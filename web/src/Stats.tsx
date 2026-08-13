@@ -82,6 +82,7 @@ export default function Stats() {
       .stats()
       .then(setS)
       .catch(() => setErr(t("failed")));
+    // Deliberately once per page load: the page itself says it is a snapshot.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

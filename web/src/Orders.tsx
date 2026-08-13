@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type Order } from "./api";
+import { api, apiError, type Order } from "./api";
 import { useLang, useT } from "./i18n";
 import DataTable, { type Sort } from "./DataTable";
 import { IconCheck, IconUndo, IconX } from "./Icons";
@@ -45,12 +45,8 @@ const kText = {
 // Reopening an order can hit the stock limit: the server refuses, and the shop
 // owner must see why instead of a select that silently rolls back.
 // gofastogt wraps the text in "invalid input (…)" — show only the substance.
-const statusError = (err: unknown, fallback: string) => {
-  const message = (
-    err as { response?: { data?: { error?: { message?: string } } } }
-  ).response?.data?.error?.message;
-  return message?.match(/\((.*)\)$/)?.[1] ?? fallback;
-};
+const statusError = (err: unknown, fallback: string) =>
+  apiError(err)?.match(/\((.*)\)$/)?.[1] ?? fallback;
 
 export default function Orders() {
   const [list, setList] = useState<Order[]>([]);
@@ -75,8 +71,8 @@ export default function Orders() {
     reload();
   }, [reload]);
 
-  // Статус двигает остатки, поэтому каждый заказ идёт своей транзакцией:
-  // отказ по одному не должен откатывать остальные и не должен пройти молча.
+  // Status changes move stock, so each order goes in its own transaction: a
+  // failure on one must not roll back the others and must not pass silently.
   const bulkStatus = async (ids: number[], status: string) => {
     setBulkMsg("");
     try {
@@ -211,8 +207,8 @@ export default function Orders() {
           setPage(1);
         }}
         selectable
-        // Ни одно действие над заказами не применяется к «всем по фильтру»:
-        // статус двигает остатки, и такой размах — не рабочий сценарий.
+        // No order action applies to "everything by filter": status changes
+        // move stock, and that kind of sweep is not a working scenario.
         allowAll={false}
         bulkActions={[
           {

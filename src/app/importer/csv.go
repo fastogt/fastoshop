@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // CSV is the shop's own template: a fixed set of columns the owner fills in a
@@ -16,7 +18,7 @@ type CSV struct {
 	Data []byte
 
 	rows   []Item
-	errs   []string
+	errs   int
 	parsed bool
 }
 
@@ -83,7 +85,8 @@ func (c *CSV) parse() {
 
 	records, err := r.ReadAll()
 	if err != nil {
-		c.errs = append(c.errs, err.Error())
+		log.Warnf("csv: %v", err)
+		c.errs++
 		return
 	}
 	if len(records) == 0 {
@@ -97,7 +100,8 @@ func (c *CSV) parse() {
 	}
 	for _, want := range []string{"sku", "title", "price"} {
 		if _, ok := col[want]; !ok {
-			c.errs = append(c.errs, fmt.Sprintf("column %q is missing", want))
+			log.Warnf("csv: column %q is missing", want)
+			c.errs++
 			return
 		}
 	}
@@ -115,9 +119,10 @@ func (c *CSV) parse() {
 		}
 		price, err := parseMoney(get(row, "price"))
 		if err != nil {
-			// The line number is what makes this actionable: "row 418" sends the
-			// owner straight to the cell.
-			c.errs = append(c.errs, fmt.Sprintf("row %d: price %q: %v", n+2, get(row, "price"), err))
+			// The line number is what makes the log actionable: "row 418" sends
+			// whoever reads it straight to the cell.
+			log.Warnf("csv: row %d: price %q: %v", n+2, get(row, "price"), err)
+			c.errs++
 			continue
 		}
 		stock, _ := strconv.Atoi(get(row, "stock"))
@@ -166,8 +171,4 @@ func (c *CSV) Fetch() ([]Item, error) {
 
 // FetchErrors reports rows the file itself made unusable, so a broken cell shows
 // up in the result instead of quietly shrinking the catalogue.
-func (c *CSV) FetchErrors() int { return len(c.errs) }
-
-// Problems lists those rows for the owner: a count alone does not say which cell
-// to fix.
-func (c *CSV) Problems() []string { return c.errs }
+func (c *CSV) FetchErrors() int { return c.errs }

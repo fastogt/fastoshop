@@ -56,7 +56,7 @@ func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	total, err := h.db.CountProducts("", q, database.AnySupplier)
+	total, err := h.db.CountProducts(q, database.AnySupplier)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -114,10 +114,7 @@ func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 				unlinkedProduct{ID: p.ID, Title: p.Title, SKU: p.SKU})
 			continue
 		}
-		link := &database.OzonLink{
-			ProductID: p.ID, OfferID: o.OfferID,
-			OzonID: strconv.FormatInt(o.ProductID, 10),
-		}
+		link := &database.OzonLink{ProductID: p.ID, OfferID: o.OfferID}
 		if err := h.db.UpsertOzonLink(link); err != nil {
 			writeInternalError(w, err)
 			return
@@ -207,7 +204,7 @@ func (h *Handlers) zeroOut(w http.ResponseWriter, links []database.OzonLinkState
 			writeBadRequest(w, err.Error())
 			return nil, err
 		}
-		byOffer := make(map[string]StockResult, len(results))
+		byOffer := make(map[string]ItemResult, len(results))
 		for _, res := range results {
 			byOffer[res.OfferID] = res
 		}

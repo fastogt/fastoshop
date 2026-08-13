@@ -83,6 +83,7 @@ FastoShop — self-hosted магазин для продавца, который
 # На свежем Debian/Ubuntu VPS:
 sudo apt install ./fastoshop_<version>_amd64.deb
 sudo nano /etc/fastoshop.conf        # base_url: https://shop.example.com
+sudo systemctl enable --now fastoshop
 # заменить DOMAIN_PLACEHOLDER на свой домен, затем:
 sudo cp /usr/share/fastoshop/nginx-fastoshop.conf.template /etc/nginx/sites-enabled/fastoshop
 sudo nginx -t && sudo systemctl reload nginx

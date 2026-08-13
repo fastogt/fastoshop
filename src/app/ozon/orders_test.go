@@ -22,7 +22,7 @@ func TestPollAppliesPostingOnce(t *testing.T) {
 		t.Fatalf("B: ожидали 3, получили %d", got)
 	}
 
-	// Второй раз то же отправление — леддер отбивает его по UNIQUE.
+	// The same posting a second time — the ledger rejects it via UNIQUE.
 	pass(t, w)
 	if stockOf(t, d, a) != 7 || stockOf(t, d, b) != 3 {
 		t.Fatalf("повторное отправление сдвинуло остатки: A=%d B=%d",
@@ -97,8 +97,8 @@ func TestPollCancellationRestocksOnce(t *testing.T) {
 		t.Fatalf("отмена не вернула товар: %d", got)
 	}
 
-	// Ещё две встречи той же отмены (в том числе под другим отменяющим
-	// статусом) остаток больше не двигают.
+	// Two more encounters of the same cancellation (including under a different
+	// cancelling status) no longer move the stock.
 	pass(t, w)
 	m.setPostings(posting("0004-1", "not_accepted", line("A", 2)))
 	pass(t, w)
@@ -121,7 +121,7 @@ func TestPollCancelledOnFirstSightDoesNotMoveStock(t *testing.T) {
 		t.Fatalf("отмена не записана: %v %+v", err, orders)
 	}
 
-	// И следующая встреча тоже ничего не возвращает.
+	// And the next encounter restocks nothing either.
 	pass(t, w)
 	if got := stockOf(t, d, id); got != 5 {
 		t.Fatalf("отменённое отправление вернуло несписанный товар: %d", got)
@@ -132,8 +132,8 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	seedLinked(t, d, "A", 5)
 
-	// Ответ неизвестного формата — курсор трогать нельзя, иначе окно с
-	// продажами уедет навсегда.
+	// A response of unknown shape — the cursor must not be touched, or the
+	// window with the sales drifts away forever.
 	m.mu.Lock()
 	m.postingsRaw = `{"result":{"postings":[{"status":"awaiting_deliver"}]}}`
 	m.mu.Unlock()
@@ -160,8 +160,8 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	}
 	t.Logf("курсор: %s", since.Format(time.RFC3339))
 
-	// Следующий опрос уходит с нахлёстом назад — и переспрошенное отправление
-	// проходит вхолостую.
+	// The next poll goes out with an overlap backwards — and the re-fetched
+	// posting passes through as a no-op.
 	pass(t, w)
 	fs := m.filters()
 	last, err := time.Parse(time.RFC3339, fs[len(fs)-1].Since)
@@ -178,8 +178,8 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	}
 }
 
-// TestFullCycle — срез целиком: связали, отправили уровень, площадка продала,
-// опрос применил продажу, следующий проход отправил уменьшенный уровень.
+// TestFullCycle — the whole slice: linked, pushed a level, the marketplace sold,
+// the poll applied the sale, the next pass pushed the reduced level.
 func TestFullCycle(t *testing.T) {
 	h, d := newTestHandlers(t)
 	m := newOzonMock(t)
@@ -244,7 +244,7 @@ func TestOrdersEndpointPaginates(t *testing.T) {
 	if len(second.Orders) != 3 || second.Page != 2 {
 		t.Fatalf("вторая страница: %+v", second)
 	}
-	// Новые сверху: первое на второй странице старее последнего на первой.
+	// Newest first: the first on page two is older than the last on page one.
 	if second.Orders[0].CreatedAt.After(first.Orders[len(first.Orders)-1].CreatedAt) {
 		t.Fatalf("порядок страниц сломан: %s vs %s",
 			second.Orders[0].CreatedAt, first.Orders[len(first.Orders)-1].CreatedAt)

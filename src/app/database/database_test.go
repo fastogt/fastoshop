@@ -35,15 +35,15 @@ func TestFileDatabasePragmas(t *testing.T) {
 	}
 }
 
-// Повторное открытие моделирует рестарт сервиса: схема создаётся идемпотентно,
-// данные не теряются.
+// Reopening models a service restart: the schema is created idempotently,
+// data is not lost.
 func TestReopenKeepsData(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "shop.db")
 	d, err := Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := d.CreateProduct(&Product{Title: "Товар", Currency: "RUB"}); err != nil {
+	if err := d.CreateProduct(&Product{Title: "Товар"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := d.Close(); err != nil {
@@ -55,7 +55,7 @@ func TestReopenKeepsData(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = d2.Close() }()
-	list, err := d2.ListProducts("")
+	list, err := d2.ListProducts()
 	if err != nil || len(list) != 1 || list[0].Title != "Товар" {
 		t.Fatalf("%v %+v", err, list)
 	}

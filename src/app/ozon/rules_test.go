@@ -8,8 +8,8 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// Лестница из разобранного скрипта перепродавца: на дешёвом товаре процент не
-// отбивает комиссию, поэтому маржа берётся кратностью.
+// A ladder taken apart from a reseller's script: on a cheap product a percentage
+// doesn't cover the commission, so the margin is taken as a multiple.
 var kLadder = []database.OzonPriceRule{
 	{UpTo: 5000, Multiplier: 13},
 	{UpTo: 10000, Multiplier: 8},
@@ -23,11 +23,11 @@ func TestPriceLadderBands(t *testing.T) {
 	rules := append([]database.OzonPriceRule(nil), kLadder...)
 	cases := []struct{ shelf, want int64 }{
 		{3000, 39000},    // 30 ₽ -> ×13
-		{5000, 40000},    // граница включается в следующую полосу: ×8
+		{5000, 40000},    // the boundary belongs to the next band: ×8
 		{15000, 105000},  // ×7
 		{30000, 150000},  // ×5
 		{70000, 280000},  // ×4
-		{150000, 375000}, // и выше: ×2.5
+		{150000, 375000}, // and above: ×2.5
 	}
 	for _, c := range cases {
 		if got := database.ApplyRule(rules, c.shelf); got != c.want {
@@ -36,8 +36,8 @@ func TestPriceLadderBands(t *testing.T) {
 	}
 }
 
-// Без полосы «и выше» дорогие товары молча остались бы без цены, и это
-// выглядело бы как «лестница не сработала».
+// Without the "and above" band expensive products would silently stay without
+// a price, and that would look like "the ladder didn't work".
 func TestPriceRulesRequireOpenBand(t *testing.T) {
 	h, _, _ := publishTest(t)
 	body, _ := json.Marshal(priceRulesRequest{Rules: []database.OzonPriceRule{
@@ -68,7 +68,7 @@ func TestFillPricesByRules(t *testing.T) {
 	}
 	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{cheap, pricey, mine}})
 	do(t, h, "POST", "/publish", string(body))
-	// Своя цена уже проставлена — лестница не имеет права её трогать.
+	// A price of one's own is already set — the ladder has no right to touch it.
 	setPrice(t, d, mine, 111111)
 
 	body, _ = json.Marshal(priceRulesRequest{Rules: kLadder})
@@ -90,7 +90,7 @@ func TestFillPricesByRules(t *testing.T) {
 	}
 }
 
-// Порядок ввода полос не должен влиять на результат.
+// The order the bands are entered in must not affect the result.
 func TestPriceRulesSortedOnSave(t *testing.T) {
 	h, d, _ := publishTest(t)
 	shuffled := []database.OzonPriceRule{

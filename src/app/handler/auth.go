@@ -14,10 +14,6 @@ import (
 
 const kSessionTTL = 30 * 24 * time.Hour
 
-// Приглашение живёт сутки: его пересылают письмом, и просроченная ссылка
-// безопаснее забытой действующей.
-const kInviteTTL = 24 * time.Hour
-
 const kPurposeInvite = "invite"
 
 type setupStatusResponse struct {
@@ -49,10 +45,10 @@ func newToken() string {
 	return hex.EncodeToString(b)
 }
 
-// isTLS — прод стоит за nginx+certbot, который терминирует TLS и проксирует
-// плейн-HTTP, поэтому r.TLS там всегда nil: полагаемся на X-Forwarded-Proto.
-// Без этого Secure-кука выключила бы вход в проде, а на локальном http — вход
-// вообще, поэтому флаг не константа.
+// isTLS — prod sits behind nginx+certbot, which terminates TLS and proxies
+// plain HTTP, so r.TLS is always nil there: we rely on X-Forwarded-Proto.
+// Without this the Secure cookie would break login in prod, and on local http
+// login entirely, which is why the flag is not a constant.
 func isTLS(r *http.Request) bool {
 	return r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 }
@@ -102,9 +98,10 @@ func (h *Handler) Setup(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, okStatusResponse{Status: "created"})
 }
 
-// Invite закрывает провижининг без пересылки пароля: владелец заводится при
-// создании магазина, а пароль задаёт сам по одноразовой ссылке. Токен сгорает
-// при использовании, поэтому перехваченное письмо через сутки бесполезно.
+// Invite covers provisioning without sending a password around: the owner is
+// created when the shop is created and sets the password themselves via a
+// one-time link. The token burns on use, so an intercepted email is useless a
+// day later.
 func (h *Handler) Invite(w http.ResponseWriter, r *http.Request) {
 	var req inviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Password) < 8 {
@@ -183,7 +180,7 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	// Кука уже проверена SessionAuth, поэтому она точно есть.
+	// The cookie has already been checked by SessionAuth, so it is definitely there.
 	if c, err := r.Cookie("session"); err == nil {
 		if err := h.db.DeleteOtherTokens(c.Value); err != nil {
 			writeInternalError(w, err)

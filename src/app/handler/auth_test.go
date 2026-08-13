@@ -9,7 +9,6 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/fastogt/fastoshop/app/config"
 	"github.com/fastogt/fastoshop/app/database"
 )
 
@@ -20,13 +19,13 @@ func newTestHandler(t *testing.T) *Handler {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	return NewHandler(&config.Config{}, d, t.TempDir())
+	return NewHandler(d, t.TempDir())
 }
 
 func TestSetupLoginFlow(t *testing.T) {
 	h := newTestHandler(t)
 
-	// Setup доступен, пока владельца нет.
+	// Setup is available while there is no owner yet.
 	w := httptest.NewRecorder()
 	h.SetupStatus(w, httptest.NewRequest("GET", "/api/setup", nil))
 	if !strings.Contains(w.Body.String(), `"needed":true`) {
@@ -44,7 +43,7 @@ func TestSetupLoginFlow(t *testing.T) {
 		t.Fatal("setup must set session cookie")
 	}
 
-	// Повторный setup — 404.
+	// A second setup — 404.
 	w = httptest.NewRecorder()
 	h.Setup(w, httptest.NewRequest("POST", "/api/setup",
 		strings.NewReader(`{"email":"x@y.z","password":"hack"}`)))
@@ -52,7 +51,7 @@ func TestSetupLoginFlow(t *testing.T) {
 		t.Fatalf("second setup must 404, got %d", w.Code)
 	}
 
-	// Неверный пароль — 401.
+	// Wrong password — 401.
 	w = httptest.NewRecorder()
 	h.Login(w, httptest.NewRequest("POST", "/api/login",
 		strings.NewReader(`{"email":"a@b.c","password":"wrong"}`)))
@@ -60,7 +59,7 @@ func TestSetupLoginFlow(t *testing.T) {
 		t.Fatalf("bad login: %d", w.Code)
 	}
 
-	// Верный — кука.
+	// Correct one — a cookie.
 	w = httptest.NewRecorder()
 	h.Login(w, httptest.NewRequest("POST", "/api/login",
 		strings.NewReader(`{"email":"a@b.c","password":"secret123"}`)))
@@ -69,7 +68,7 @@ func TestSetupLoginFlow(t *testing.T) {
 	}
 	sess := w.Result().Cookies()[0]
 
-	// Middleware: без куки — 401, с кукой — 200.
+	// Middleware: without the cookie — 401, with it — 200.
 	protected := h.SessionAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -87,8 +86,9 @@ func TestSetupLoginFlow(t *testing.T) {
 	}
 }
 
-// Кука сессии должна нести Secure там, где соединение TLS (в проде — по
-// X-Forwarded-Proto от nginx), и не нести на локальном http, иначе вход сломан.
+// The session cookie must carry Secure where the connection is TLS (in prod —
+// via X-Forwarded-Proto from nginx) and not carry it on local plain http,
+// otherwise login is broken.
 func TestSessionCookieSecureFlag(t *testing.T) {
 	h := newTestHandler(t)
 	w := httptest.NewRecorder()
@@ -116,7 +116,7 @@ func TestChangePassword(t *testing.T) {
 		strings.NewReader(`{"email":"a@b.c","password":"secret123"}`)))
 	sess := w.Result().Cookies()[0]
 
-	// Неверный текущий пароль — 401, хэш не меняется.
+	// Wrong current password — 401, the hash stays unchanged.
 	req := httptest.NewRequest("POST", "/api/settings/password",
 		strings.NewReader(`{"current_password":"wrong","new_password":"newpass123"}`))
 	req.AddCookie(sess)
@@ -132,7 +132,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatal("old password must still work after failed change")
 	}
 
-	// Слишком короткий новый пароль — 400.
+	// Too short a new password — 400.
 	req = httptest.NewRequest("POST", "/api/settings/password",
 		strings.NewReader(`{"current_password":"secret123","new_password":"short"}`))
 	req.AddCookie(sess)
@@ -142,13 +142,13 @@ func TestChangePassword(t *testing.T) {
 		t.Fatalf("short new password: %d %s", w.Code, w.Body.String())
 	}
 
-	// Ещё одна сессия — должна протухнуть после смены пароля.
+	// One more session — it must expire after the password change.
 	w = httptest.NewRecorder()
 	h.Login(w, httptest.NewRequest("POST", "/api/login",
 		strings.NewReader(`{"email":"a@b.c","password":"secret123"}`)))
 	otherSess := w.Result().Cookies()[0]
 
-	// Верная смена пароля.
+	// A valid password change.
 	req = httptest.NewRequest("POST", "/api/settings/password",
 		strings.NewReader(`{"current_password":"secret123","new_password":"newpass123"}`))
 	req.AddCookie(sess)
@@ -158,7 +158,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatalf("change password: %d %s", w.Code, w.Body.String())
 	}
 
-	// Старый пароль больше не работает, новый — работает.
+	// The old password no longer works, the new one does.
 	w = httptest.NewRecorder()
 	h.Login(w, httptest.NewRequest("POST", "/api/login",
 		strings.NewReader(`{"email":"a@b.c","password":"secret123"}`)))
@@ -176,7 +176,7 @@ func TestChangePassword(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	// Сессия, из которой сменили пароль, остаётся рабочей.
+	// The session that changed the password stays valid.
 	req = httptest.NewRequest("GET", "/api/products", nil)
 	req.AddCookie(sess)
 	w = httptest.NewRecorder()
@@ -185,7 +185,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatalf("calling session must stay valid: %d", w.Code)
 	}
 
-	// Другая сессия инвалидирована сменой пароля.
+	// The other session is invalidated by the password change.
 	req = httptest.NewRequest("GET", "/api/products", nil)
 	req.AddCookie(otherSess)
 	w = httptest.NewRecorder()
@@ -222,7 +222,7 @@ func TestLogout(t *testing.T) {
 	}
 }
 
-// Репозиторий публичный: детали внутренних ошибок (SQL, пути) наружу не идут.
+// The repository is public: internal error details (SQL, paths) never go out.
 func TestInternalErrorDoesNotLeakDetails(t *testing.T) {
 	h := newTestHandler(t)
 	_ = h.db.Close()
@@ -237,15 +237,15 @@ func TestInternalErrorDoesNotLeakDetails(t *testing.T) {
 	}
 }
 
-// Приглашение заменяет пересылку пароля: ссылка одноразовая, чужой токен не
-// подходит, а после использования не работает и правильный.
+// The invite replaces sending a password around: the link is one-time, a
+// foreign token doesn't fit, and after use even the correct one stops working.
 func TestInvite(t *testing.T) {
 	d, err := database.OpenInMemory()
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	h := NewHandler(&config.Config{}, d, t.TempDir())
+	h := NewHandler(d, t.TempDir())
 	if _, err := d.CreateOwner("owner@example.com"); err != nil {
 		t.Fatal(err)
 	}

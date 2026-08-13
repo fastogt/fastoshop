@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// mockCabinet отдаёт кабинет с перечисленными артикулами и требует наши ключи.
+// mockCabinet serves a cabinet with the listed SKUs and requires our keys.
 func mockCabinet(t *testing.T, offers ...string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -43,7 +42,7 @@ func newTestHandlers(t *testing.T) (*Handlers, *database.Database) {
 	return NewHandlers(d, NewWorker(d)), d
 }
 
-// do гоняет запрос через настоящий chi-роутер вкладки, а не мимо него.
+// do drives the request through the tab's real chi router, not around it.
 func do(t *testing.T, h *Handlers, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	var r *http.Request
@@ -72,7 +71,7 @@ func decode[T any](t *testing.T, w *httptest.ResponseRecorder) T {
 func TestSettingsRoundTrip(t *testing.T) {
 	h, _ := newTestHandlers(t)
 
-	// Свежая база: пустая форма, а не 500.
+	// A fresh database: an empty form, not a 500.
 	got := decode[settingsResponse](t, do(t, h, "GET", "/settings", ""))
 	if got.ClientID != "" || got.APIKeySet {
 		t.Fatalf("fresh settings: %+v", got)
@@ -91,14 +90,14 @@ func TestSettingsRoundTrip(t *testing.T) {
 		t.Fatalf("saved: %+v", got)
 	}
 
-	// api_key = nil — ключ не трогаем, остальное меняем.
+	// api_key = nil — leave the key alone, change the rest.
 	got = decode[settingsResponse](t, do(t, h, "PUT", "/settings",
 		`{"enabled":false,"client_id":"cid2","warehouse_id":"wh-2"}`))
 	if !got.APIKeySet || got.Enabled || got.ClientID != "cid2" {
 		t.Fatalf("nil api_key must keep old: %+v", got)
 	}
 
-	// Явная пустая строка — сброс.
+	// An explicit empty string is a reset.
 	got = decode[settingsResponse](t, do(t, h, "PUT", "/settings",
 		`{"client_id":"cid2","api_key":""}`))
 	if got.APIKeySet {
@@ -161,38 +160,28 @@ func TestLinkMatchesBySKU(t *testing.T) {
 		t.Fatalf("unlinked offers: %+v", got.UnlinkedOffers)
 	}
 
-	links, err := d.ListOzonLinks()
+	links, err := d.ListOzonLinksPage(1000, 0)
 	if err != nil || len(links) != 2 {
 		t.Fatalf("links: %v %+v", err, links)
 	}
 
-	// Повторное связывание идемпотентно: те же две строки, без дублей.
+	// Relinking is idempotent: the same two rows, no duplicates.
 	got = decode[linkResponse](t, do(t, h, "POST", "/link", ""))
-	links, _ = d.ListOzonLinks()
+	links, _ = d.ListOzonLinksPage(1000, 0)
 	if got.Linked != 2 || len(links) != 2 {
 		t.Fatalf("relink: %+v %+v", got, links)
 	}
 
-	// Счётчики на вкладке: 2 связано, 1 нет.
+	// The tab's counters: 2 linked, 1 not.
 	s := decode[settingsResponse](t, do(t, h, "GET", "/settings", ""))
 	if s.Linked != 2 || s.Unlinked != 1 {
 		t.Fatalf("counts: %+v", s)
 	}
-
-	// Отвязка снимает ровно одну связь.
-	target := strconv.FormatInt(links[0].ProductID, 10)
-	if w := do(t, h, "DELETE", "/link/"+target, ""); w.Code != http.StatusOK {
-		t.Fatalf("unlink: %d %s", w.Code, w.Body.String())
-	}
-	links, _ = d.ListOzonLinks()
-	if len(links) != 1 {
-		t.Fatalf("after unlink: %+v", links)
-	}
 }
 
-// v2 отдаёт склады без конверта "result" и страницами по курсору — на живом
-// кабинете v1 отвечает "obsolete method". Проверяем обе страницы и то, что
-// повтор курсора на последней странице не зацикливает.
+// v2 returns warehouses without the "result" envelope and in cursor pages —
+// on a live cabinet v1 answers "obsolete method". We check both pages and that
+// a repeated cursor on the last page does not loop forever.
 func TestListWarehousesPaginates(t *testing.T) {
 	calls := 0
 	mux := http.NewServeMux()

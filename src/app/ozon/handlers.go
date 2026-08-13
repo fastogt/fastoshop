@@ -32,7 +32,6 @@ func (h *Handlers) Routes() chi.Router {
 	r.Put("/settings", h.SaveSettings)
 	r.Post("/check", h.Check)
 	r.Post("/link", h.Link)
-	r.Delete("/link/{productID}", h.Unlink)
 	r.Post("/warehouses", h.Warehouses)
 	r.Post("/push", h.Push)
 	r.Get("/orders", h.Orders)
@@ -363,7 +362,7 @@ func (h *Handlers) client(w http.ResponseWriter) (*Client, bool) {
 	return &Client{ClientID: s.ClientID, APIKey: s.APIKey, BaseURL: h.BaseURL}, true
 }
 
-// Check is the "Проверить" button: a live request with the saved keys so the
+// Check is the "Check" button: a live request with the saved keys so the
 // owner sees that the cabinet answers at all.
 func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 	c, ok := h.client(w)
@@ -406,7 +405,7 @@ func (h *Handlers) Link(w http.ResponseWriter, r *http.Request) {
 		writeBadRequest(w, err.Error())
 		return
 	}
-	products, err := h.db.ListProducts("")
+	products, err := h.db.ListProducts()
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -428,11 +427,7 @@ func (h *Handlers) Link(w http.ResponseWriter, r *http.Request) {
 				unlinkedProduct{ID: p.ID, Title: p.Title, SKU: p.SKU})
 			continue
 		}
-		link := &database.OzonLink{
-			ProductID: p.ID,
-			OfferID:   o.OfferID,
-			OzonID:    strconv.FormatInt(o.ProductID, 10),
-		}
+		link := &database.OzonLink{ProductID: p.ID, OfferID: o.OfferID}
 		if err := h.db.UpsertOzonLink(link); err != nil {
 			writeInternalError(w, err)
 			return
@@ -469,7 +464,7 @@ func (h *Handlers) Warehouses(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, res)
 }
 
-// Push is the "Отправить сейчас" button: the same pass the worker runs, only
+// Push is the "Push now" button: the same pass the worker runs, only
 // synchronous and with the counters in the answer.
 // pushError turns our own sentinels into the owner's language and leaves
 // anything else as is: an unexpected failure is more useful verbatim.
@@ -490,19 +485,6 @@ func (h *Handlers) Push(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeOK(w, pushResponse{Pushed: pushed, Failed: failed})
-}
-
-func (h *Handlers) Unlink(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "productID"), 10, 64)
-	if err != nil {
-		writeBadRequest(w, "invalid product id")
-		return
-	}
-	if err := h.db.DeleteOzonLink(id); err != nil {
-		writeInternalError(w, err)
-		return
-	}
-	writeOK(w, okStatusResponse{Status: "unlinked"})
 }
 
 // Links is the linked-products table: what we know about every link, including

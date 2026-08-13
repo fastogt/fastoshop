@@ -6,6 +6,6 @@ const (
 	ConfigPath      = "/etc/fastoshop.conf"
 )
 
-// VersionApp подставляется линковщиком из тега сборки (см. LDFLAGS в Makefile).
-// Значение по умолчанию видно только при сборке из исходников вручную.
+// VersionApp is injected by the linker from the build tag (see LDFLAGS in the
+// Makefile). The default value is only visible when building from source by hand.
 var VersionApp = "dev"

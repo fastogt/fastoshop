@@ -28,7 +28,7 @@ func seedProduct(t *testing.T, d *database.Database, sku string, stock int) int6
 	return p.ID
 }
 
-// Публикация — это выбор владельца, а не всё, что совпало по артикулу.
+// Publishing is the owner's choice, not everything that matched by SKU.
 func TestPublishOnlySelected(t *testing.T) {
 	h, d, _ := publishTest(t, "A", "B")
 	idA := seedProduct(t, d, "A", 5)
@@ -39,13 +39,13 @@ func TestPublishOnlySelected(t *testing.T) {
 	if got.Published != 1 || len(got.NoCard) != 0 {
 		t.Fatalf("publish: %+v", got)
 	}
-	links, _ := d.ListOzonLinks()
+	links, _ := d.ListOzonLinksPage(1000, 0)
 	if len(links) != 1 || links[0].ProductID != idA {
 		t.Fatalf("в канал уехало лишнее: %+v", links)
 	}
 }
 
-// Товар без карточки в кабинете называется по имени, а не пропадает молча.
+// A product without a card in the cabinet is named by name, not dropped silently.
 func TestPublishReportsMissingCard(t *testing.T) {
 	h, d, _ := publishTest(t, "A")
 	idA := seedProduct(t, d, "A", 5)
@@ -58,9 +58,9 @@ func TestPublishReportsMissingCard(t *testing.T) {
 	}
 }
 
-// Главное свойство среза: связь исчезает только после того, как на площадку
-// уехал ноль. Иначе карточка остаётся торговать остатком, который мы больше
-// не ведём.
+// The slice's key property: the link disappears only after a zero has gone
+// out to the marketplace. Otherwise the card keeps selling from a stock we no
+// longer track.
 func TestUnpublishZeroesStockFirst(t *testing.T) {
 	h, d, m := publishTest(t, "A")
 	id := seedProduct(t, d, "A", 5)
@@ -81,13 +81,13 @@ func TestUnpublishZeroesStockFirst(t *testing.T) {
 	if last := m.lastBatch(t); len(last) != 1 || last[0].Stock != 0 {
 		t.Fatalf("перед отвязкой не отправлен ноль: %+v", last)
 	}
-	if links, _ := d.ListOzonLinks(); len(links) != 0 {
+	if links, _ := d.ListOzonLinksPage(1000, 0); len(links) != 0 {
 		t.Fatalf("связь осталась: %+v", links)
 	}
 }
 
-// Если площадка ноль не приняла, связь обязана остаться — иначе мы забудем про
-// карточку, которая продолжает продавать.
+// If the marketplace did not accept the zero, the link must remain — otherwise
+// we forget about a card that keeps selling.
 func TestUnpublishKeepsLinkWhenZeroRejected(t *testing.T) {
 	h, d, m := publishTest(t, "A")
 	id := seedProduct(t, d, "A", 5)
@@ -102,12 +102,12 @@ func TestUnpublishKeepsLinkWhenZeroRejected(t *testing.T) {
 	if got.Unpublished != 0 || len(got.Failed) != 1 {
 		t.Fatalf("unpublish: %+v", got)
 	}
-	if links, _ := d.ListOzonLinks(); len(links) != 1 {
+	if links, _ := d.ListOzonLinksPage(1000, 0); len(links) != 1 {
 		t.Fatalf("связь потеряна при неудачном обнулении: %+v", links)
 	}
 }
 
-// Товар, который на площадку никогда не уезжал, снимается без вызова API.
+// A product that never went out to the marketplace is delisted without an API call.
 func TestUnpublishNeverPushedNeedsNoCall(t *testing.T) {
 	h, d, m := publishTest(t, "A")
 	id := seedProduct(t, d, "A", 5)
@@ -124,7 +124,7 @@ func TestUnpublishNeverPushedNeedsNoCall(t *testing.T) {
 	}
 }
 
-// Скрытый с витрины товар остаётся кандидатом на публикацию: это разные решения.
+// A product hidden from the storefront remains a publish candidate: those are separate decisions.
 func TestCandidatesIncludeHidden(t *testing.T) {
 	h, d, _ := publishTest(t, "A")
 	id := seedProduct(t, d, "A", 5)

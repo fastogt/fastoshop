@@ -1,10 +1,11 @@
 package database
 
 import (
+	"cmp"
 	"database/sql"
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 )
 
 // OzonPriceRule is one band of the markup ladder: everything below UpTo (in
@@ -45,14 +46,14 @@ func ValidPriceRules(rules []OzonPriceRule) error {
 // sortRules puts the bands in ascending order with the open-ended one last, so
 // the first match is the right one regardless of how the owner typed them in.
 func sortRules(rules []OzonPriceRule) {
-	sort.SliceStable(rules, func(i, j int) bool {
-		if rules[i].UpTo == 0 {
-			return false
+	slices.SortStableFunc(rules, func(a, b OzonPriceRule) int {
+		if a.UpTo == 0 {
+			return 1
 		}
-		if rules[j].UpTo == 0 {
-			return true
+		if b.UpTo == 0 {
+			return -1
 		}
-		return rules[i].UpTo < rules[j].UpTo
+		return cmp.Compare(a.UpTo, b.UpTo)
 	})
 }
 

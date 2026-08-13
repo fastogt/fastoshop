@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Product } from "./api";
+import { toRubles, toMinor } from "./money";
 import DataTable, { type Selection, type Sort } from "./DataTable";
 import Modal from "./Modal";
 import {
@@ -137,18 +138,7 @@ const kText = {
   thPrice: { ru: "Цена", en: "Price" },
   thStock: { ru: "Остаток", en: "In stock" },
   outOfStock: { ru: "нет", en: "none" },
-  prev: { ru: "← Назад", en: "← Back" },
-  next: { ru: "Дальше →", en: "Next →" },
-  pageOf: {
-    ru: "{page} из {pages} · всего: {total}",
-    en: "{page} of {pages} · total: {total}",
-  },
 };
-
-// Prices are stored in minor units, but the shop owner thinks in rubles.
-const toRubles = (minor: number) => (minor / 100).toFixed(2);
-const toMinor = (rubles: string) =>
-  Math.round(Number(rubles.replace(",", ".")) * 100);
 
 // path is either a local file name or an absolute source URL: the importer
 // keeps a link to the marketplace photo instead of downloading it.
@@ -218,14 +208,14 @@ export default function Products() {
     setStock(null);
   };
 
-  // Массовое действие применяется либо к отмеченным строкам, либо ко всему,
-  // что показывает текущий фильтр: 20 000 строк галочками не отметить, поэтому
-  // на сервер уезжает сам фильтр.
+  // A bulk action applies either to the checked rows or to everything the
+  // current filter shows: 20,000 rows cannot be ticked by hand, so the filter
+  // itself is sent to the server.
   const [fillSel, setFillSel] = useState<Selection | null>(null);
   const [fillTasks, setFillTasks] = useState<string[]>(["photos"]);
 
-  // Задача одна на инстанс, поэтому и полоса, и кружки в строках берутся из
-  // одного состояния; по её окончании перечитываем страницу.
+  // One job per instance, so both the bar and the per-row spinners come from a
+  // single state; when it finishes we re-read the page.
   const job = useJob(() => {
     void reload();
     if (jobResult.current) {
@@ -243,8 +233,8 @@ export default function Products() {
   }
   const inFlight = new Set(job?.running ? (job.in_flight ?? []) : []);
 
-  // Пока задача идёт, страница перечитывается: докачанные строки сами меняют
-  // хотлинк на свою миниатюру.
+  // While the job runs the page is re-read: rows already downloaded swap the
+  // hotlink for their own thumbnail on their own.
   useEffect(() => {
     if (!job?.running) return;
     const id = setInterval(() => void reload(), 3000);
@@ -314,8 +304,8 @@ export default function Products() {
     const p = { ...edit, price: toMinor(priceRub) };
     delete p.stock;
     if (stock !== null) p.stock = stock;
-    // supplier всегда отправляем явно: поле есть в форме, и пустое значение —
-    // осмысленный выбор «без поставщика», а не «не трогать».
+    // supplier is always sent explicitly: the field is in the form, and an
+    // empty value is a deliberate "no supplier" choice, not "leave as is".
     p.supplier = edit.supplier ?? "";
     if (edit.id) await api.updateProduct(edit.id, p);
     else await api.createProduct(p);
@@ -347,8 +337,8 @@ export default function Products() {
             </button>
           }
         >
-          {/* Одна галочка сегодня, но список: поиск, перевод и заполнение
-              описаний — та же работа над той же выборкой. */}
+          {/* One checkbox today, but a list: searching, translating and filling
+              descriptions is the same work over the same selection. */}
           <label className="flex cursor-pointer items-start gap-3">
             <input
               type="checkbox"
@@ -528,8 +518,8 @@ export default function Products() {
                       </button>
                     </span>
                   ))}
-                  {/* Родной input file показывает «Не выбран ни один файл» и не
-                    поддаётся стилизации — прячем его за подписью-кнопкой. */}
+                  {/* The native file input shows "No file chosen" and resists
+                    styling — we hide it behind a button-styled label. */}
                   <label className="btn-ghost border-line flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 border-2 border-dashed text-center text-xs">
                     <span className="text-lg leading-none">+</span>
                     {t("addPhoto")}
@@ -677,8 +667,9 @@ export default function Products() {
             label: t("bulkDelete"),
             icon: <IconTrash />,
             danger: true,
-            // Нет режима «удалить всё по фильтру»: одна кнопка, стирающая
-            // каталог вместе с проиндексированными адресами, того не стоит.
+            // There is no "delete everything by filter" mode: a single button
+            // that wipes the catalogue along with its indexed URLs is not worth
+            // it.
             idsOnly: true,
             onClick: (sel) => bulk("delete", sel),
           },

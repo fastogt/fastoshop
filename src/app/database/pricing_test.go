@@ -2,8 +2,9 @@ package database
 
 import "testing"
 
-// Пересчёт обязан идти от цены источника, а не от текущей: иначе партии,
-// завезённые по разным курсам, разъезжаются, а округление копится.
+// Recalculation must start from the source price, not the current one:
+// otherwise batches brought in at different rates drift apart, and rounding
+// accumulates.
 func TestApplyPriceCoefficient(t *testing.T) {
 	d, err := OpenInMemory()
 	if err != nil {
@@ -45,7 +46,7 @@ func TestApplyPriceCoefficient(t *testing.T) {
 		t.Errorf("товар без источника тронут: %d", got.Price)
 	}
 
-	// Второй пересчёт идёт от источника, а не от уже уменьшенной цены.
+	// The second recalculation starts from the source, not the already reduced price.
 	if _, err := d.ApplyPriceCoefficient(2); err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +58,7 @@ func TestApplyPriceCoefficient(t *testing.T) {
 	if c, _ := d.PriceCoefficient(); c != 2 {
 		t.Errorf("коэффициент не сохранён: %v", c)
 	}
-	// Опечатка в поле не должна умножать каталог на сто.
+	// A typo in the field must not multiply the catalog by a hundred.
 	if _, err := d.ApplyPriceCoefficient(0); err == nil {
 		t.Error("нулевой коэффициент принят")
 	}

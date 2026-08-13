@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"strings"
 )
 
 // Selection is what a bulk action applies to: either explicit rows, or
@@ -29,12 +28,8 @@ func (s Selection) where() (string, []any, bool) {
 	if len(s.IDs) == 0 {
 		return "", nil, false
 	}
-	args := make([]any, len(s.IDs))
-	for i, id := range s.IDs {
-		args[i] = id
-	}
-	return fmt.Sprintf(" WHERE id IN (%s)",
-		strings.TrimSuffix(strings.Repeat("?,", len(s.IDs)), ",")), args, true
+	in, args := inClause(s.IDs)
+	return fmt.Sprintf(" WHERE id IN (%s)", in), args, true
 }
 
 func (d *Database) bulkUpdate(s Selection, set string, values ...any) (int, error) {
@@ -82,12 +77,8 @@ func (d *Database) DeleteProductsBulk(ids []int64) (int, error) {
 	if len(ids) == 0 {
 		return 0, nil
 	}
-	args := make([]any, len(ids))
-	for i, id := range ids {
-		args[i] = id
-	}
-	res, err := d.db.Exec(fmt.Sprintf(`DELETE FROM products WHERE id IN (%s)`,
-		strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")), args...)
+	in, args := inClause(ids)
+	res, err := d.db.Exec(fmt.Sprintf(`DELETE FROM products WHERE id IN (%s)`, in), args...)
 	if err != nil {
 		return 0, err
 	}

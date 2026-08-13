@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api, type ImportDiff } from "./api";
+import { api, apiError, type ImportDiff } from "./api";
+import { toRubles } from "./money";
 import { useT, type Phrase } from "./i18n";
 import { useJob } from "./useJob";
 import JobBar from "./JobBar";
@@ -139,17 +140,14 @@ const kText = {
   errorReason: { ru: "проверьте ключи", en: "check the keys" },
 };
 
-// Цены приходят в копейках, как везде на проводе.
-const toRubles = (minor: number) => (minor / 100).toFixed(2);
-
 export default function Import() {
   const [src, setSrc] = useState<Src>("ozon");
   const [clientId, setClientId] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [token, setToken] = useState("");
   const [url, setUrl] = useState("");
-  // Единица, а не ноль: YML сообщает только «есть в наличии», и нулевой
-  // умолчательный остаток делает весь завезённый каталог непокупаемым.
+  // One, not zero: YML only says "in stock", and a default stock of zero would
+  // make the whole imported catalogue unbuyable.
   const [stock, setStock] = useState("1");
   const [coefficient, setCoefficient] = useState("1");
   const [supplier, setSupplier] = useState("");
@@ -164,15 +162,16 @@ export default function Import() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const coef = Number(coefficient.replace(",", ".")) || 1;
-  // До «Проверить» валюту фида знаем только у маркетплейсов: у них кабинет
-  // всегда рублёвый. Свой CSV владелец заполняет в деньгах магазина.
+  // Before "Check" we only know the feed currency for marketplaces: their
+  // cabinet is always in rubles. The owner fills their own CSV in the shop's
+  // money.
   const feedMoney = diff?.currency || (src === "csv" ? currency : "RUB");
   const t = useT(kText);
   const guide = useT(kGuide);
   const label = useT(kLabel);
 
-  // Импорт живёт на сервере: результат приходит из задачи, а не из ответа на
-  // запуск, поэтому перезагруженная страница ничего не теряет.
+  // The import lives on the server: the result comes from the job, not from the
+  // launch response, so a reloaded page loses nothing.
   const job = useJob(() => {
     if (jobDone.current) setMsg(jobDone.current);
     api.importSuppliers().then((x) => setSuppliers(x.suppliers));
@@ -231,13 +230,7 @@ export default function Import() {
   };
 
   const fail = (e: unknown) =>
-    setMsg(
-      t("error", {
-        reason:
-          (e as { response?: { data?: { error?: { message?: string } } } })
-            .response?.data?.error?.message ?? t("errorReason"),
-      }),
-    );
+    setMsg(t("error", { reason: apiError(e) ?? t("errorReason") }));
 
   return (
     <div className="form-page">
@@ -304,8 +297,8 @@ export default function Import() {
               onChange={async (e) => {
                 const f = e.target.files?.[0];
                 if (!f) return;
-                // Читаем байтами, а не текстом: кодировку определяет сервер,
-                // иначе cp1251 превратится в мусор ещё в браузере.
+                // Read as bytes, not text: the server detects the encoding,
+                // otherwise cp1251 turns into garbage already in the browser.
                 const buf = new Uint8Array(await f.arrayBuffer());
                 let bin = "";
                 for (const b of buf) bin += String.fromCharCode(b);

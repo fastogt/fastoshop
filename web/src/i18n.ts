@@ -18,7 +18,7 @@ const initial = (): Lang => {
 let lang: Lang = initial();
 const listeners = new Set<() => void>();
 
-export const getLang = (): Lang => lang;
+const getLang = (): Lang => lang;
 
 const apply = (next: Lang) => {
   lang = next;

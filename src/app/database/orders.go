@@ -15,6 +15,9 @@ type Order struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// CreateOrder inserts an order without touching stock (stock_applied = 0) — the
+// state orders from before stock accounting are in. The storefront uses
+// CreateOrderWithStock; this exists so tests can produce that legacy state.
 func (d *Database) CreateOrder(o *Order) error {
 	res, err := d.db.Exec(
 		`INSERT INTO orders (name, phone, comment, items_json) VALUES (?, ?, ?, ?)`,
@@ -27,12 +30,13 @@ func (d *Database) CreateOrder(o *Order) error {
 	return nil
 }
 
-// SetOrderStatus двигает остаток вместе со статусом: отмена возвращает товар на
-// склад, возврат в работу списывает его заново. Флаг stock_applied гарантирует,
-// что переключение туда-сюда двигает остаток ровно один раз в каждую сторону, а
-// заказы из времён без учёта (stock_applied = 0) не возвращают ничего.
-// Возврат в работу может не состояться: тогда *OutOfStockError и статус не
-// меняется — обещать покупателю товар, которого нет, нельзя.
+// SetOrderStatus moves stock together with the status: a cancellation returns
+// the product to the warehouse, putting the order back to work deducts it
+// again. The stock_applied flag guarantees that toggling back and forth moves
+// stock exactly once in each direction, and orders from the days before
+// tracking (stock_applied = 0) return nothing.
+// Putting an order back to work may fail: then *OutOfStockError and the status
+// does not change — promising the buyer a product that is gone is not allowed.
 func (d *Database) SetOrderStatus(id int64, status string) error {
 	return d.withTx(func(tx *sql.Tx) error {
 		var current string
@@ -73,19 +77,6 @@ var kOrderSortable = map[string]string{
 	"name":    "name",
 }
 
-// id is the tiebreaker for the same reason as in products: orders placed within
-// one second would otherwise page unstably.
-func orderOrderBy(sort string, desc bool) string {
-	col, ok := kOrderSortable[sort]
-	if !ok {
-		return " ORDER BY created_at DESC, id DESC"
-	}
-	if desc {
-		return " ORDER BY " + col + " DESC, id DESC"
-	}
-	return " ORDER BY " + col + " ASC, id ASC"
-}
-
 func (d *Database) CountOrders(status string) (int, error) {
 	var n int
 	var err error
@@ -108,7 +99,7 @@ func (d *Database) ListOrdersPage(status, sort string, desc bool, limit, offset 
 	}
 	args = append(args, limit, offset)
 	return d.scanOrders(`SELECT id, name, phone, comment, items_json, status, created_at
-		 FROM orders`+where+orderOrderBy(sort, desc)+` LIMIT ? OFFSET ?`, args...)
+		 FROM orders`+where+orderBy(kOrderSortable, sort, desc)+` LIMIT ? OFFSET ?`, args...)
 }
 
 func (d *Database) ListOrders() ([]Order, error) {

@@ -13,13 +13,13 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// WB: Content API (карточки) + Prices API (цены) + Marketplace API (остатки на
-// складах продавца) — три разных хоста. https://dev.wildberries.ru/
+// WB: Content API (cards) + Prices API (prices) + Marketplace API (stock on
+// the seller's warehouses) — three different hosts. https://dev.wildberries.ru/
 type WB struct {
 	Token          string
-	ContentURL     string // по умолчанию https://content-api.wildberries.ru
-	PricesURL      string // по умолчанию https://discounts-prices-api.wildberries.ru
-	MarketplaceURL string // по умолчанию https://marketplace-api.wildberries.ru
+	ContentURL     string // defaults to https://content-api.wildberries.ru
+	PricesURL      string // defaults to https://discounts-prices-api.wildberries.ru
+	MarketplaceURL string // defaults to https://marketplace-api.wildberries.ru
 }
 
 func (w *WB) Name() string { return "wb" }
@@ -88,7 +88,7 @@ type wbCardsResponse struct {
 			ChrtID   int64    `json:"chrtID"`
 			TechSize string   `json:"techSize"`
 			WBSize   string   `json:"wbSize"`
-			Skus     []string `json:"skus"` // баркоды размера
+			Skus     []string `json:"skus"` // the size's barcodes
 		} `json:"sizes"`
 	} `json:"cards"`
 	Cursor struct {
@@ -115,7 +115,7 @@ type wbCardsRequest struct {
 
 func (w *WB) cards() (*wbCardsResponse, error) {
 	var out wbCardsResponse
-	// ponytail: одна страница (100 карточек), пагинация — когда понадобится.
+	// ponytail: one page (100 cards); pagination comes when it is needed.
 	err := w.do("POST", w.content()+"/content/v2/get/cards/list",
 		wbCardsRequest{Settings: wbSettings{
 			Cursor: wbCursor{Limit: 100}, Filter: wbFilter{WithPhoto: -1}}}, &out)
@@ -145,21 +145,21 @@ type wbStocksResponse struct {
 	} `json:"stocks"`
 }
 
-// stocks складывает остаток размера по всем складам продавца: у нас один склад
-// в модели, а WB позволяет держать товар на нескольких. Ключ — баркод, а не
-// chrtID: FBS-остаток на WB висит именно на баркоде размера.
+// stocks sums a size's stock across all the seller's warehouses: our model has
+// one warehouse while WB allows keeping goods on several. The key is the
+// barcode, not chrtID: on WB the FBS stock hangs off the size's barcode.
 func (w *WB) stocks(barcodes []string) map[string]int {
 	if len(barcodes) == 0 {
 		return nil
 	}
 	var whs []wbWarehouse
 	if err := w.do("GET", w.marketplace()+"/api/v3/warehouses", nil, &whs); err != nil {
-		// Остаток не критичен для переноса карточек: импорт не валим.
+		// Stock is not critical for migrating cards: don't fail the import.
 		log.Warnf("import wb: warehouses: %v", err)
 		return nil
 	}
-	// ponytail: лимит метода — 1000 баркодов за запрос; каталог больше режем по
-	// первой тысяче, как и всё остальное в этом импортёре.
+	// ponytail: the method's limit is 1000 barcodes per request; a bigger
+	// catalogue is cut at the first thousand, like everything else in this importer.
 	if len(barcodes) > 1000 {
 		barcodes = barcodes[:1000]
 	}
@@ -198,7 +198,7 @@ func (w *WB) priceBySize() (map[int64]int64, map[int64]int64) {
 	for _, g := range priceResp.Data.ListGoods {
 		for i, s := range g.Sizes {
 			kop := int64(s.DiscountedPrice * 100)
-			// sizeID в Prices API — тот же chrtID, что и в Контенте.
+			// sizeID in the Prices API is the same chrtID as in Content.
 			bySize[s.SizeID] = kop
 			if i == 0 {
 				byNm[g.NmID] = kop
@@ -208,9 +208,9 @@ func (w *WB) priceBySize() (map[int64]int64, map[int64]int64) {
 	return byNm, bySize
 }
 
-// Fetch разворачивает карточку WB в товар на каждый размер: у нас одна цена и
-// один остаток на товар, вариантов в модели нет, а FBS-остаток на WB живёт
-// именно на размере.
+// Fetch expands a WB card into a product per size: we have one price and one
+// stock per product with no variants in the model, while on WB the FBS stock
+// lives exactly on the size.
 func (w *WB) Fetch() ([]Item, error) {
 	c, err := w.cards()
 	if err != nil {
@@ -220,8 +220,8 @@ func (w *WB) Fetch() ([]Item, error) {
 	var barcodes []string
 	for _, card := range c.Cards {
 		for _, s := range card.Sizes {
-			// ponytail: у размера может быть несколько баркодов; берём первый —
-			// по нему же спрашиваем остаток.
+			// ponytail: a size may have several barcodes; take the first —
+			// it is the same one we ask the stock for.
 			if len(s.Skus) > 0 {
 				barcodes = append(barcodes, s.Skus[0])
 			}
@@ -267,7 +267,6 @@ func (w *WB) Fetch() ([]Item, error) {
 			items = append(items, Item{
 				SKU: sku, Title: title, Description: card.Description,
 				Price: price, Stock: stockByBarcode[barcode], ImageURLs: urls,
-				Barcode: barcode,
 			})
 		}
 	}

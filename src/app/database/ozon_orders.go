@@ -5,21 +5,21 @@ import (
 	"time"
 )
 
-// kSQLiteTime — формат, в котором SQLite отдаёт CURRENT_TIMESTAMP и в котором
-// драйвер разбирает DATETIME-колонки. Пишем время только так: смешение с
-// RFC3339 ломает сравнения дат прямо в SQL.
+// kSQLiteTime — the format SQLite emits for CURRENT_TIMESTAMP and the one the
+// driver uses to parse DATETIME columns. Time is written only this way: mixing
+// in RFC3339 breaks date comparisons right inside SQL.
 const kSQLiteTime = "2006-01-02 15:04:05"
 
-// OzonPostingItem — строка отправления в терминах площадки: сопоставление с
-// товаром магазина происходит уже внутри транзакции применения.
+// OzonPostingItem — a posting line in the marketplace's terms: matching it to
+// a shop product happens later, inside the apply transaction.
 type OzonPostingItem struct {
 	OfferID string
 	Qty     int
 }
 
-// OzonPosting — отправление Ozon в том виде, в каком его применяет леддер.
-// Cancelled считает вызывающий: набор «отменённых» статусов — знание о
-// площадке, а не о базе.
+// OzonPosting — an Ozon posting in the shape the ladder applies it. Cancelled
+// is computed by the caller: the set of "cancelled" statuses is knowledge
+// about the marketplace, not about the database.
 type OzonPosting struct {
 	PostingNumber string
 	Status        string
@@ -28,10 +28,10 @@ type OzonPosting struct {
 	Items         []OzonPostingItem
 }
 
-// OzonStatusCancelled — под ним леддер хранит любую отмену, какой бы из
-// отменяющих статусов ни прислал Ozon. Иначе переход cancelled → not_accepted
-// выглядел бы как новая отмена и вернул бы остаток второй раз; отдельной
-// колонки «остаток возвращён» это стоить не должно.
+// OzonStatusCancelled — the ladder stores any cancellation under it, whichever
+// of the cancelling statuses Ozon sent. Otherwise the cancelled → not_accepted
+// transition would look like a fresh cancellation and return the stock a
+// second time; this should not cost a separate "stock returned" column.
 const OzonStatusCancelled = "cancelled"
 
 func (p *OzonPosting) storedStatus() string {
@@ -41,16 +41,17 @@ func (p *OzonPosting) storedStatus() string {
 	return p.Status
 }
 
-// ApplyOzonPosting применяет отправление ровно один раз и отдаёт, двигался ли
-// при этом остаток.
+// ApplyOzonPosting applies a posting exactly once and reports whether stock
+// moved in the process.
 //
-// Идемпотентность держится на UNIQUE(posting_number): вставка либо создаёт
-// строку (отправление новое), либо не делает ничего (уже применяли). Проверять
-// SELECT-ом до вставки нельзя — два прохода синка разошлись бы в эту щель.
+// Idempotency rests on UNIQUE(posting_number): the insert either creates the
+// row (the posting is new) or does nothing (already applied). Checking with a
+// SELECT before the insert is not an option — two sync passes would slip
+// through that gap.
 //
-// Отмена возвращает товар на склад ровно на переходе «применяли → отменено»:
-// повторное появление того же отменённого отправления в окне перекрытия
-// курсора уже ничего не двигает.
+// A cancellation returns stock exactly on the "applied → cancelled"
+// transition: the same cancelled posting reappearing in the cursor's overlap
+// window no longer moves anything.
 func (d *Database) ApplyOzonPosting(p *OzonPosting) (moved bool, err error) {
 	err = d.withTx(func(tx *sql.Tx) error {
 		res, err := tx.Exec(
@@ -81,9 +82,9 @@ func (d *Database) ApplyOzonPosting(p *OzonPosting) (moved bool, err error) {
 	return moved, nil
 }
 
-// applyNewPosting записывает позиции и списывает остаток. Отправление, которое
-// мы впервые видим уже отменённым, только записывается: списывать и тут же
-// возвращать один и тот же товар — лишнее движение склада на ровном месте.
+// applyNewPosting records the lines and deducts stock. A posting we first see
+// already cancelled is only recorded: deducting and immediately returning the
+// same product is a pointless stock movement out of thin air.
 func applyNewPosting(tx *sql.Tx, id int64, p *OzonPosting) (bool, error) {
 	moved, oversold := false, false
 	for _, it := range p.Items {
@@ -107,8 +108,8 @@ func applyNewPosting(tx *sql.Tx, id int64, p *OzonPosting) (bool, error) {
 		if have < it.Qty {
 			oversold = true
 		}
-		// MAX(0, ...) — отказать в списании нельзя: площадка уже продала, и
-		// отрицательный остаток на витрине хуже, чем ноль.
+		// MAX(0, ...) — refusing the deduction is not an option: the marketplace
+		// has already sold, and negative stock on the storefront is worse than zero.
 		if _, err := tx.Exec(
 			`UPDATE products SET stock = MAX(0, stock - ?), updated_at = CURRENT_TIMESTAMP
 			 WHERE id = ?`, it.Qty, *productID); err != nil {
@@ -124,9 +125,9 @@ func applyNewPosting(tx *sql.Tx, id int64, p *OzonPosting) (bool, error) {
 	return moved, nil
 }
 
-// applySeenPosting обрабатывает уже известное отправление: интересен только
-// переход в отменённый статус, всё остальное — обновление статуса без движения
-// склада.
+// applySeenPosting handles a posting we already know: only the transition into
+// a cancelled status is interesting, everything else is a status update with
+// no stock movement.
 func applySeenPosting(tx *sql.Tx, p *OzonPosting) (bool, error) {
 	var id int64
 	var status string
@@ -140,8 +141,8 @@ func applySeenPosting(tx *sql.Tx, p *OzonPosting) (bool, error) {
 		return false, nil
 	}
 	moved := false
-	// Возврат только на переходе «не отменено → отменено». Отправление,
-	// увиденное отменённым сразу, склад не списывало — возвращать нечего.
+	// Return only on the "not cancelled → cancelled" transition. A posting seen
+	// as cancelled from the start never deducted stock — there is nothing to return.
 	if p.Cancelled && status != OzonStatusCancelled {
 		items, err := ozonOrderStock(tx, id)
 		if err != nil {
@@ -156,14 +157,14 @@ func applySeenPosting(tx *sql.Tx, p *OzonPosting) (bool, error) {
 	return moved, err
 }
 
-// ozonOrderStock читает позиции целиком до первого Exec: соединение у
-// транзакции одно, держать открытый Rows во время записи нельзя.
-// Несопоставленные строки выпадают — возвращать остаток некуда.
+// ozonOrderStock reads all lines before the first Exec: the transaction has a
+// single connection, and an open Rows must not be held while writing.
+// Unmatched lines drop out — there is nowhere to return their stock.
 //
-// ponytail: возвращаем заказанное qty, а не фактически списанное. Разойтись они
-// могут только у оверселла (списали меньше, чем продали) — если это начнёт
-// мешать, заводить в ozon_order_items колонку applied_qty: таблица новая,
-// ALTER TABLE на живых инстансах не потребуется.
+// ponytail: we return the ordered qty, not what was actually deducted. They can
+// diverge only on an oversell (deducted less than sold) — if that starts to
+// hurt, add an applied_qty column to ozon_order_items: the table is new, no
+// ALTER TABLE on live instances will be needed.
 func ozonOrderStock(tx *sql.Tx, id int64) ([]OrderItem, error) {
 	rows, err := tx.Query(
 		`SELECT product_id, qty FROM ozon_order_items
@@ -183,8 +184,8 @@ func ozonOrderStock(tx *sql.Tx, id int64) ([]OrderItem, error) {
 	return out, rows.Err()
 }
 
-// resolveOffer ищет товар по артикулу площадки. nil — связи нет: позицию всё
-// равно записываем, чтобы владелец увидел непонятую продажу, а не пустоту.
+// resolveOffer looks up a product by the marketplace SKU. nil — no link: the
+// line is recorded anyway, so the owner sees an unrecognized sale, not a blank.
 func resolveOffer(tx *sql.Tx, offerID string) (*int64, error) {
 	var id int64
 	err := tx.QueryRow(
@@ -220,8 +221,8 @@ func (d *Database) CountOzonOrders() (int, error) {
 	return n, err
 }
 
-// CountOzonOrderState — счётчики для шапки вкладки: всего продаж, из них с
-// оверселлом и с несопоставленными позициями.
+// CountOzonOrderState — counters for the tab header: total sales, of those how
+// many oversold and how many with unmatched lines.
 func (d *Database) CountOzonOrderState() (total, oversold, unresolved int, err error) {
 	err = d.db.QueryRow(
 		`SELECT (SELECT COUNT(*) FROM ozon_orders),
@@ -231,9 +232,9 @@ func (d *Database) CountOzonOrderState() (total, oversold, unresolved int, err e
 	return total, oversold, unresolved, err
 }
 
-// ListOzonOrdersPage отдаёт страницу продаж с позициями. Позиции читаются
-// вторым запросом по уже собранным id: JOIN размножил бы строки и сломал
-// постраничность.
+// ListOzonOrdersPage returns a page of sales with their lines. Lines are read
+// by a second query over the already collected ids: a JOIN would multiply rows
+// and break pagination.
 func (d *Database) ListOzonOrdersPage(limit, offset int) ([]OzonOrder, error) {
 	rows, err := d.db.Query(
 		`SELECT id, posting_number, status, oversold, created_at
@@ -272,8 +273,8 @@ func (d *Database) loadOzonOrderItems(orders []OzonOrder, byID map[int64]int) er
 	if lo > hi {
 		lo, hi = hi, lo
 	}
-	// Диапазон id вместо IN (...): страница всегда непрерывна по id внутри
-	// своих границ, а склеивать плейсхолдеры руками незачем.
+	// An id range instead of IN (...): a page is always contiguous by id within
+	// its bounds, and there is no reason to glue placeholders together by hand.
 	rows, err := d.db.Query(
 		`SELECT i.ozon_order_id, i.product_id, i.offer_id, i.qty, COALESCE(p.title, '')
 		 FROM ozon_order_items i LEFT JOIN products p ON p.id = i.product_id
@@ -295,8 +296,8 @@ func (d *Database) loadOzonOrderItems(orders []OzonOrder, byID map[int64]int) er
 	return rows.Err()
 }
 
-// OzonOrdersSince отдаёт нулевое время, если опрос ещё ни разу не проходил —
-// вызывающий сам решает, с какого окна начинать первый раз.
+// OzonOrdersSince returns the zero time if polling has never run — the caller
+// decides itself which window to start with the first time.
 func (d *Database) OzonOrdersSince() (time.Time, error) {
 	var t time.Time
 	err := d.db.QueryRow(`SELECT orders_since FROM ozon_cursor WHERE id = 1`).Scan(&t)

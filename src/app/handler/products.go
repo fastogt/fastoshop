@@ -24,10 +24,9 @@ type productRequest struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Price       int64  `json:"price"`
-	Currency    string `json:"currency"`
-	// Указатель, как smtp_password в настройках: отсутствие поля значит «не
-	// трогать». Иначе форма товара, открытая до продажи, вернула бы остаток к
-	// показанному в ней числу и воскресила уже проданные единицы.
+	// A pointer, like smtp_password in settings: a missing field means "don't
+	// touch". Otherwise a product form opened before a sale would reset the
+	// stock to the number it displayed and resurrect already sold units.
 	Stock    *int   `json:"stock"`
 	Category string `json:"category"`
 	// Supplier group. Pointer for the same reason as the others: a client that
@@ -77,7 +76,7 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := &database.Product{SKU: req.SKU, Title: req.Title, Description: req.Description,
-		Price: req.Price, Currency: req.Currency, Category: req.Category}
+		Price: req.Price, Category: req.Category}
 	if req.Stock != nil {
 		p.Stock = *req.Stock
 	}
@@ -91,7 +90,7 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	// Перечитываем: slug и timestamps проставляет БД, в запросе их нет.
+	// Re-read: the slug and timestamps are set by the DB, the request lacks them.
 	saved, err := h.db.GetProduct(p.ID)
 	if err != nil {
 		writeInternalError(w, err)
@@ -117,7 +116,7 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := &database.Product{ID: id, SKU: req.SKU, Title: req.Title,
-		Description: req.Description, Price: req.Price, Currency: req.Currency,
+		Description: req.Description, Price: req.Price,
 		Stock: old.Stock, Category: req.Category, Hidden: old.Hidden,
 		// Carried from the stored row: the admin form knows nothing about the
 		// source price, and dropping it would leave the product out of every
@@ -137,9 +136,6 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	// must not overwrite this row.
 	if req.Price != old.Price {
 		p.PriceManual = true
-	}
-	if p.Currency == "" {
-		p.Currency = old.Currency
 	}
 	if err := h.db.UpdateProduct(p); err != nil {
 		writeInternalError(w, err)
@@ -164,8 +160,8 @@ func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	// Удалённый товар — это ноль на площадке, и ждать тик, продавая уже
-	// несуществующее, незачем.
+	// A deleted product means zero on the marketplace, and there is no point
+	// waiting for the tick while selling something that no longer exists.
 	h.stockChanged()
 	writeOK(w, okStatusResponse{Status: "deleted"})
 }
@@ -221,7 +217,7 @@ func (h *Handler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	category, search := q.Get("category"), strings.TrimSpace(q.Get("q"))
+	search := strings.TrimSpace(q.Get("q"))
 	per := kAdminPageSize
 	if n, err := strconv.Atoi(q.Get("per")); err == nil && n > 0 {
 		per = min(n, kAdminMaxPageSize)
@@ -236,7 +232,7 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	sort := q.Get("sort")
 	desc := q.Get("dir") == "desc"
-	total, err := h.db.CountProducts(category, search, supplier)
+	total, err := h.db.CountProducts(search, supplier)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -250,8 +246,8 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	// enrich делает по запросу на товар: 100 строк — 101 запрос к локальной
-	// SQLite, замеряно как незаметное. Джойн понадобится, если вырастет per.
+	// enrich issues one query per product: 100 rows — 101 queries to local
+	// SQLite, measured as unnoticeable. A join will be needed if per grows.
 	out := make([]productResponse, 0, len(list))
 	for _, p := range list {
 		out = append(out, h.enrich(p))

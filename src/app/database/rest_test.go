@@ -9,7 +9,7 @@ import (
 
 func TestImages(t *testing.T) {
 	d := openTest(t)
-	p := &Product{Title: "x", Currency: "RUB"}
+	p := &Product{Title: "x"}
 	_ = d.CreateProduct(p)
 	if err := d.AddImage(p.ID, "a.jpg"); err != nil {
 		t.Fatal(err)

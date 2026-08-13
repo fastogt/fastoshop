@@ -10,7 +10,7 @@ func TestBuildMessage(t *testing.T) {
 	s := string(msg)
 	for _, want := range []string{
 		"From: shop@x.ru", "To: owner@x.ru",
-		"Subject: =?UTF-8?B?", // тема закодирована — иначе кириллица ломается
+		"Subject: =?UTF-8?b?", // subject is encoded — Cyrillic breaks otherwise
 		"Content-Type: text/plain; charset=UTF-8",
 		"Иван",
 	} {

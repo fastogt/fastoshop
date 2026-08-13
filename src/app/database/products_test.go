@@ -15,7 +15,7 @@ func openTest(t *testing.T) *Database {
 func TestProductCRUD(t *testing.T) {
 	d := openTest(t)
 	p := &Product{SKU: "T-1", Title: "Красный чайник", Description: "Отличный",
-		Price: 250000, Currency: "RUB", Stock: 3, Category: "kitchen"}
+		Price: 250000, Stock: 3, Category: "kitchen"}
 	if err := d.CreateProduct(p); err != nil {
 		t.Fatal(err)
 	}
@@ -23,8 +23,8 @@ func TestProductCRUD(t *testing.T) {
 		t.Fatalf("id=%d slug=%q", p.ID, p.Slug)
 	}
 
-	// Дубликат названия получает суффикс.
-	p2 := &Product{SKU: "T-2", Title: "Красный чайник", Price: 1, Currency: "RUB"}
+	// A duplicate title gets a suffix.
+	p2 := &Product{SKU: "T-2", Title: "Красный чайник", Price: 1}
 	if err := d.CreateProduct(p2); err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestProductCRUD(t *testing.T) {
 		t.Fatalf("dup slug=%q", p2.Slug)
 	}
 
-	got, err := d.GetProductBySlug("krasnyj-chajnik")
+	got, err := d.GetVisibleProductBySlug("krasnyj-chajnik")
 	if err != nil || got.ID != p.ID {
 		t.Fatalf("by slug: %v %+v", err, got)
 	}
@@ -41,7 +41,7 @@ func TestProductCRUD(t *testing.T) {
 	if err := d.UpdateProduct(p); err != nil {
 		t.Fatal(err)
 	}
-	list, err := d.ListProducts("")
+	list, err := d.ListProducts()
 	if err != nil || len(list) != 2 {
 		t.Fatalf("list: %v n=%d", err, len(list))
 	}

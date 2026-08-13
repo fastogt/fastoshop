@@ -19,13 +19,14 @@ import (
 
 const kCartCookie = "cart"
 
-// ponytail: корзина живёт в куке, без таблицы и сессий. Браузеры режут куку на
-// ~4 КБ, поэтому потолок — 20 позиций; если понадобится больше, заводить
-// таблицу carts с ключом-токеном в куке.
+// ponytail: the cart lives in a cookie, no table and no sessions. Browsers cap
+// a cookie at ~4 KB, hence the 20-line ceiling; if more is ever needed, add a
+// carts table keyed by a token stored in the cookie.
 const kMaxCartLines = 20
 
-// cartLine — всё, что доверяем покупателю: слаг и количество. Цена, название и
-// наличие всегда перечитываются из БД, иначе правка куки меняла бы сумму заказа.
+// cartLine is everything we trust the buyer with: slug and quantity. Price,
+// title and availability are always re-read from the DB, otherwise editing the
+// cookie would change the order total.
 type cartLine struct {
 	Slug string `json:"slug"`
 	Qty  int    `json:"qty"`
@@ -83,9 +84,10 @@ type cartRowVM struct {
 	LineStr  string
 }
 
-// resolveCart перечитывает каждую позицию из БД и молча снимает те, чей товар
-// удалён или кончился: заказать несуществующее нельзя. Второе значение —
-// признак, что состав корзины изменился и куку надо переписать.
+// resolveCart re-reads every line from the DB and silently drops those whose
+// product was deleted or ran out: what no longer exists cannot be ordered. The
+// second return value flags that the cart contents changed and the cookie must
+// be rewritten.
 func (s *Storefront) resolveCart(lines []cartLine) ([]cartRowVM, int64, bool) {
 	rows := make([]cartRowVM, 0, len(lines))
 	var total int64
@@ -131,10 +133,10 @@ func (s *Storefront) Cart(w http.ResponseWriter, r *http.Request) {
 		Ordered: r.URL.Query().Get("ordered") == "1"})
 }
 
-// cartSoldOut — товар кончился между рендером корзины и нажатием «Оформить».
-// Заказ не создан, поэтому вместо редиректа на «спасибо» показываем ту же
-// корзину без пропавшей позиции: покупатель видит, что именно изменилось, и
-// подтверждает оставшееся сам.
+// cartSoldOut — the product ran out between rendering the cart and pressing
+// "Checkout". No order was created, so instead of redirecting to "thank you" we
+// show the same cart without the vanished line: the buyer sees exactly what
+// changed and confirms the rest themselves.
 func (s *Storefront) cartSoldOut(w http.ResponseWriter, r *http.Request, slug, title string) {
 	lines := make([]cartLine, 0, kMaxCartLines)
 	for _, l := range readCart(r) {

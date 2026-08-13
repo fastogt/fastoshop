@@ -7,6 +7,11 @@
 // products the seller sells.
 package i18n
 
+import (
+	"errors"
+	"fmt"
+)
+
 const (
 	LangRU = "ru"
 	LangEN = "en"
@@ -43,6 +48,10 @@ const (
 	KeyNothingSelected     = "nothing_selected"
 	KeyJobBusy             = "job_busy"
 	KeyBadCurrency         = "bad_currency"
+	KeyYMLBadURL           = "yml_bad_url"
+	KeyYMLBadStatus        = "yml_bad_status"
+	KeyYMLTooBig           = "yml_too_big"
+	KeyYMLBadXML           = "yml_bad_xml"
 )
 
 var kMessages = map[string][2]string{
@@ -120,6 +129,16 @@ var kMessages = map[string][2]string{
 		"коэффициент должен быть больше нуля и не больше 1000",
 		"the coefficient must be greater than zero and at most 1000",
 	},
+	KeyYMLBadURL: {
+		"ссылка должна начинаться с http:// или https://",
+		"the link must start with http:// or https://",
+	},
+	KeyYMLBadStatus: {"сервер выгрузки ответил %d", "the feed server answered %d"},
+	KeyYMLTooBig: {
+		"выгрузка больше %d МБ — такой каталог мы не тянем",
+		"the feed is over %d MB — we do not pull a catalogue that size",
+	},
+	KeyYMLBadXML: {"не удалось разобрать XML выгрузки", "could not parse the feed XML"},
 }
 
 // T returns the message for lang, falling back to Russian: an unknown language
@@ -133,6 +152,26 @@ func T(lang, key string) string {
 		return m[1]
 	}
 	return m[0]
+}
+
+// KeyError is an error the owner will read: a message key plus its arguments.
+// Error() renders English for logs and wrapping; the handler localizes it on
+// the way out with Localize.
+type KeyError struct {
+	Key  string
+	Args []any
+}
+
+func (e *KeyError) Error() string { return fmt.Sprintf(T(LangEN, e.Key), e.Args...) }
+
+// Localize renders err for the owner: KeyErrors in their language, anything
+// else as is — someone else's error text is not ours to rewrite.
+func Localize(lang string, err error) string {
+	var ke *KeyError
+	if errors.As(err, &ke) {
+		return fmt.Sprintf(T(lang, ke.Key), ke.Args...)
+	}
+	return err.Error()
 }
 
 // TIfKey translates a string only if it is one of our keys. Errors stored in the

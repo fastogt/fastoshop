@@ -169,7 +169,7 @@ func (w *Worker) pushStocks(c *Client, warehouse int64) (pushed, failed int, hal
 			w.backoffStocks(batch, callErr)
 			return pushed, failed + len(batch), true, nil
 		}
-		byOffer := make(map[string]StockResult, len(results))
+		byOffer := make(map[string]ItemResult, len(results))
 		for _, res := range results {
 			byOffer[res.OfferID] = res
 		}
@@ -219,7 +219,7 @@ func (w *Worker) pushPrices(c *Client, currency string) (pushed, failed int, err
 			w.backoffPrices(batch, callErr)
 			return pushed, failed + len(batch), nil
 		}
-		byOffer := make(map[string]PriceResult, len(results))
+		byOffer := make(map[string]ItemResult, len(results))
 		for _, res := range results {
 			byOffer[res.OfferID] = res
 		}

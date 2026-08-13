@@ -8,9 +8,10 @@ import (
 	"gitlab.com/fastogt/gofastogt/gofastogt"
 )
 
-// Значения машинозависимы, поэтому проверяем не числа, а что сбор не паникует и
-// заполняет обязательное: пустой memory_total на странице выглядит как поломка
-// магазина, хотя сломан был бы сборщик.
+// The values are machine-dependent, so we check not the numbers but that the
+// collection doesn't panic and fills in the required fields: an empty
+// memory_total on the page looks like the shop is broken, while it would be
+// the collector that broke.
 func TestGet(t *testing.T) {
 	m := Get()
 
@@ -42,8 +43,8 @@ func TestGet(t *testing.T) {
 	}
 }
 
-// Скорость — дельта между замерами: первый вызов сравнивать не с чем, и
-// выдавать там среднюю за аптайм было бы враньём.
+// Speed is the delta between samples: the first call has nothing to compare
+// against, and reporting the uptime average there would be a lie.
 func TestNetworkSpeedNeedsTwoSamples(t *testing.T) {
 	prevMu.Lock()
 	prevIn, prevOut, prevTime = 0, 0, 0

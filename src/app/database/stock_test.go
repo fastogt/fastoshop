@@ -19,7 +19,7 @@ func openFile(t *testing.T) *Database {
 
 func product(t *testing.T, d *Database, title string, stock int) *Product {
 	t.Helper()
-	p := &Product{Title: title, Price: 100, Currency: "RUB", Stock: stock}
+	p := &Product{Title: title, Price: 100, Stock: stock}
 	if err := d.CreateProduct(p); err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func order(items ...OrderItem) (*Order, []OrderItem) {
 	return &Order{Name: "Иван", Phone: "+7999", ItemsJSON: "[]"}, items
 }
 
-// Гонка за последней единицей: победитель ровно один, остаток не уходит в минус.
+// Race for the last unit: exactly one winner, stock does not go negative.
 func TestConcurrentCheckoutLastUnit(t *testing.T) {
 	d := openFile(t)
 	p := product(t, d, "Чайник", 1)
@@ -79,8 +79,8 @@ func TestConcurrentCheckoutLastUnit(t *testing.T) {
 	}
 }
 
-// Одной позиции из трёх не хватило — не должно остаться ни заказа, ни позиций,
-// ни движения остатков по соседним товарам.
+// One of three lines fell short — no order, no lines, and no stock movement on
+// the neighboring products must remain.
 func TestCheckoutRollsBackWholeCart(t *testing.T) {
 	d := openFile(t)
 	a := product(t, d, "Чайник", 5)
@@ -132,9 +132,9 @@ func TestOrderStatusStockMovesOnce(t *testing.T) {
 	}{
 		{"done", 3},
 		{"cancelled", 5},
-		{"cancelled", 5}, // повтор не возвращает второй раз
+		{"cancelled", 5}, // a repeat does not return a second time
 		{"new", 3},
-		{"done", 3}, // движение только на переходах через cancelled
+		{"done", 3}, // movement only on transitions through cancelled
 		{"cancelled", 5},
 	}
 	for _, s := range steps {
@@ -157,7 +157,7 @@ func TestUncancelRefusedWhenStockGone(t *testing.T) {
 	if err := d.SetOrderStatus(o.ID, "cancelled"); err != nil {
 		t.Fatal(err)
 	}
-	// Возвращённую единицу продали другому покупателю.
+	// The returned unit was sold to another buyer.
 	o2, items2 := order(OrderItem{ProductID: p.ID, Qty: 1})
 	if err := d.CreateOrderWithStock(o2, items2); err != nil {
 		t.Fatal(err)
@@ -178,8 +178,8 @@ func TestUncancelRefusedWhenStockGone(t *testing.T) {
 	}
 }
 
-// Заказ из времён без учёта остатков: списания не было, значит отмена ничего не
-// возвращает.
+// An order from the days before stock tracking: nothing was deducted, so a
+// cancellation returns nothing.
 func TestLegacyOrderDoesNotRestock(t *testing.T) {
 	d := openFile(t)
 	p := product(t, d, "Чайник", 3)
@@ -195,7 +195,8 @@ func TestLegacyOrderDoesNotRestock(t *testing.T) {
 	}
 }
 
-// Товар удалили после заказа: история заказа цела, а возвращать остаток некуда.
+// The product was deleted after the order: the order history stays intact, and
+// there is nowhere to return the stock.
 func TestRestockSkipsDeletedProduct(t *testing.T) {
 	d := openFile(t)
 	p := product(t, d, "Чайник", 2)

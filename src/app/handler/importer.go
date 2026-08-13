@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -112,10 +113,10 @@ func (h *Handler) ImportCheck(w http.ResponseWriter, r *http.Request) {
 	// items, and it keeps the whole "staged upload" machinery out of the product.
 	items, err := src.Fetch()
 	if err != nil {
-		writeBadRequest(w, err.Error())
+		writeBadRequest(w, i18n.Localize(h.lang(), err))
 		return
 	}
-	existing, err := h.db.ListProducts("")
+	existing, err := h.db.ListProducts()
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -190,6 +191,11 @@ func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 		// cabinet keys stay unsaved.
 		if err == nil && req.Source == "yml" {
 			err = h.db.SaveFeed(&database.Feed{URL: req.URL, Supplier: supplier})
+		}
+		// The job stores plain text for the admin, so the owner's language is
+		// applied here, at the last point the error is still typed.
+		if err != nil {
+			err = errors.New(i18n.Localize(h.lang(), err))
 		}
 		h.job.finish(res, err)
 	}()

@@ -27,8 +27,6 @@ type OzonSettings struct {
 type OzonLink struct {
 	ProductID int64
 	OfferID   string
-	OzonID    string
-	Price     int64
 }
 
 // GetOzonSettings returns empty settings rather than an error on a fresh
@@ -86,34 +84,15 @@ func (d *Database) SetOzonCurrency(currency string) error {
 // the platform price the owner set nor the state of the sync.
 func (d *Database) UpsertOzonLink(l *OzonLink) error {
 	_, err := d.db.Exec(
-		`INSERT INTO ozon_links (product_id, offer_id, ozon_id) VALUES (?, ?, ?)
-		 ON CONFLICT(product_id) DO UPDATE SET offer_id=excluded.offer_id,
-		   ozon_id=excluded.ozon_id`,
-		l.ProductID, l.OfferID, l.OzonID)
+		`INSERT INTO ozon_links (product_id, offer_id) VALUES (?, ?)
+		 ON CONFLICT(product_id) DO UPDATE SET offer_id=excluded.offer_id`,
+		l.ProductID, l.OfferID)
 	return err
 }
 
 func (d *Database) DeleteOzonLink(productID int64) error {
 	_, err := d.db.Exec(`DELETE FROM ozon_links WHERE product_id=?`, productID)
 	return err
-}
-
-func (d *Database) ListOzonLinks() ([]OzonLink, error) {
-	rows, err := d.db.Query(
-		`SELECT product_id, offer_id, ozon_id, price FROM ozon_links ORDER BY product_id`)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	var out []OzonLink
-	for rows.Next() {
-		var l OzonLink
-		if err := rows.Scan(&l.ProductID, &l.OfferID, &l.OzonID, &l.Price); err != nil {
-			return nil, err
-		}
-		out = append(out, l)
-	}
-	return out, rows.Err()
 }
 
 // OzonStockRow is a link whose stock is due for a push. Stock is already the

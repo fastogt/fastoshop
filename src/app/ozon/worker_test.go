@@ -99,7 +99,7 @@ func newOzonMock(t *testing.T) *ozonMock {
 		}
 		var resp stocksResponse
 		for _, it := range req.Stocks {
-			res := StockResult{OfferID: it.OfferID, Updated: true}
+			res := ItemResult{OfferID: it.OfferID, Updated: true}
 			if msg, bad := itemErr[it.OfferID]; bad {
 				res.Updated = false
 				res.Errors = []itemError{{Code: "ERR", Message: msg}}
@@ -127,7 +127,7 @@ func newOzonMock(t *testing.T) *ozonMock {
 		}
 		var resp pricesResponse
 		for _, it := range req.Prices {
-			res := PriceResult{OfferID: it.OfferID, Updated: true}
+			res := ItemResult{OfferID: it.OfferID, Updated: true}
 			if msg, bad := itemErr[it.OfferID]; bad {
 				res.Updated = false
 				res.Errors = []itemError{{Code: "ERR", Message: msg}}

@@ -9,14 +9,13 @@ import (
 // whether it is already published, and what was last pushed for it. Published is
 // the presence of a link row — the link set IS the published set.
 type OzonCandidate struct {
-	ProductID   int64
-	SKU         string
-	Title       string
-	Stock       int64
-	Price       int64
-	Hidden      bool
-	Published   bool
-	StockPushed int64
+	ProductID int64
+	SKU       string
+	Title     string
+	Stock     int64
+	Price     int64
+	Hidden    bool
+	Published bool
 }
 
 // ListOzonCandidates returns a page of shop products with their publication
@@ -27,7 +26,7 @@ func (d *Database) ListOzonCandidates(q string, limit, offset int) ([]OzonCandid
 	args = append(args, limit, offset)
 	rows, err := d.db.Query(
 		`SELECT p.id, p.sku, p.title, MAX(p.stock, 0), p.price, p.hidden,
-		        l.product_id IS NOT NULL, COALESCE(l.stock_pushed, -1)
+		        l.product_id IS NOT NULL
 		 FROM products p LEFT JOIN ozon_links l ON l.product_id = p.id`+
 			strings.ReplaceAll(where, "category=", "p.category=")+
 			` ORDER BY p.id LIMIT ? OFFSET ?`, args...)
@@ -39,7 +38,7 @@ func (d *Database) ListOzonCandidates(q string, limit, offset int) ([]OzonCandid
 	for rows.Next() {
 		var c OzonCandidate
 		if err := rows.Scan(&c.ProductID, &c.SKU, &c.Title, &c.Stock, &c.Price,
-			&c.Hidden, &c.Published, &c.StockPushed); err != nil {
+			&c.Hidden, &c.Published); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -61,14 +60,10 @@ func (d *Database) OzonLinksByProducts(ids []int64) ([]OzonLinkState, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	args := make([]any, len(ids))
-	for i, id := range ids {
-		args[i] = id
-	}
+	in, args := inClause(ids)
 	q := fmt.Sprintf(
 		`SELECT product_id, offer_id, stock_pushed FROM ozon_links
-		 WHERE product_id IN (%s)`,
-		strings.TrimSuffix(strings.Repeat("?,", len(ids)), ","))
+		 WHERE product_id IN (%s)`, in)
 	rows, err := d.db.Query(q, args...)
 	if err != nil {
 		return nil, err
@@ -90,13 +85,9 @@ func (d *Database) ProductsByIDs(ids []int64) ([]Product, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	args := make([]any, len(ids))
-	for i, id := range ids {
-		args[i] = id
-	}
+	in, args := inClause(ids)
 	rows, err := d.db.Query(fmt.Sprintf(`SELECT `+kProductCols+` FROM products
-		 WHERE id IN (%s)`,
-		strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")), args...)
+		 WHERE id IN (%s)`, in), args...)
 	if err != nil {
 		return nil, err
 	}

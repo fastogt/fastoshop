@@ -34,9 +34,9 @@ type statsResponse struct {
 	Shop   shopStats     `json:"shop"`
 }
 
-// Обход uploads — это десятки тысяч файлов на каталоге в 24 000 товаров.
-// Открытая вкладка админки не должна устраивать du по кругу, поэтому размер
-// живёт минуту: за минуту он не меняется настолько, чтобы это было заметно.
+// Walking uploads means tens of thousands of files on a 24,000-product catalog.
+// An open admin tab must not run du in a loop, so the size lives for a minute:
+// it doesn't change enough within a minute for anyone to notice.
 const kUploadsSizeTTL = time.Minute
 
 var (
@@ -68,8 +68,8 @@ func dirSize(dir string) (int64, int) {
 	return total, count
 }
 
-// dbSize считает и -wal: под WAL часть данных живёт в нём, и размер одного
-// .db занижает картину тем сильнее, чем активнее магазин.
+// dbSize counts the -wal too: under WAL part of the data lives in it, and the
+// size of the .db alone understates the picture the more active the shop is.
 func dbSize(path string) int64 {
 	var total int64
 	for _, p := range []string{path, path + "-wal"} {
@@ -81,7 +81,7 @@ func dbSize(path string) int64 {
 }
 
 func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
-	products, _ := h.db.CountProducts("", "", database.AnySupplier)
+	products, _ := h.db.CountProducts("", database.AnySupplier)
 	visible, _ := h.db.CountVisibleProducts("", "")
 	orders, _ := h.db.CountOrders("")
 	ordersNew, _ := h.db.CountOrders("new")
@@ -98,8 +98,8 @@ func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
 		Version:         version.VersionApp,
 	}
 
-	// Процесс спрашиваем у системы: RSS из runtime.MemStats показывает кучу Go,
-	// а владельцу нужна та цифра, по которой systemd считает MemoryMax.
+	// Ask the system about the process: RSS from runtime.MemStats shows the Go
+	// heap, while the owner needs the figure systemd uses for MemoryMax.
 	if p, err := process.NewProcess(int32(os.Getpid())); err == nil {
 		if m, err := p.MemoryInfo(); err == nil {
 			shop.ProcessRSSBytes = m.RSS

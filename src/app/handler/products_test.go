@@ -54,7 +54,7 @@ func TestProductAPI(t *testing.T) {
 		t.Fatalf("create must return real created_at: %s", w.Body.String())
 	}
 
-	// Пустой title — 400.
+	// Empty title — 400.
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("POST", "/api/products", strings.NewReader(`{"title":""}`)))
 	if w.Code != http.StatusBadRequest {
@@ -75,7 +75,7 @@ func TestProductAPI(t *testing.T) {
 		t.Fatalf("upload: %d %s", w.Code, w.Body.String())
 	}
 
-	// Update отдаёт slug/timestamps.
+	// Update returns slug/timestamps.
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("PUT", "/api/products/1",
 		strings.NewReader(`{"title":"Чайник","price":300000}`)))
@@ -92,7 +92,7 @@ func TestProductAPI(t *testing.T) {
 	if updated.Data.Slug != "chajnik" || updated.Data.CreatedAt.IsZero() {
 		t.Fatalf("update response must carry slug+timestamps: %s", w.Body.String())
 	}
-	// List отдаёт товар с картинками.
+	// List returns the product with its images.
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/products", nil))
 	body := w.Body.String()
@@ -111,7 +111,7 @@ func TestProductAPI(t *testing.T) {
 func TestListProductsPaginationAndSearch(t *testing.T) {
 	h := newTestHandler(t)
 	r := router(h)
-	// Больше потолка страницы: иначе проверка «per ограничен» ничего не проверяет.
+	// More than the page cap: otherwise the "per is capped" check checks nothing.
 	const seeded = kAdminMaxPageSize + 50
 	for i := range seeded {
 		body := fmt.Sprintf(`{"title":"Товар %d","sku":"SKU-%d","price":100}`, i, i)
@@ -137,7 +137,7 @@ func TestListProductsPaginationAndSearch(t *testing.T) {
 		return got.Data
 	}
 
-	// Без параметров — первая страница дефолтного размера.
+	// No parameters — the first page of the default size.
 	def := list("")
 	if len(def.Products) != kAdminPageSize || def.Total != seeded || def.Page != 1 {
 		t.Fatalf("default page: %d items %+v", len(def.Products), def)
@@ -146,13 +146,13 @@ func TestListProductsPaginationAndSearch(t *testing.T) {
 		last.Page != def.Pages {
 		t.Fatalf("last page: %d items %+v", len(last.Products), last)
 	}
-	// per ограничен потолком.
+	// per is capped at the maximum.
 	if big := list("?per=9999"); len(big.Products) != kAdminMaxPageSize {
 		t.Fatalf("per must be capped: %d", len(big.Products))
 	}
-	// Поиск по названию и по артикулу.
-	// Последний по счёту — единственный титул, который не является префиксом
-	// соседних («Товар 42» совпал бы и с «Товар 420»).
+	// Search by title and by SKU.
+	// The very last one is the only title that is not a prefix of its
+	// neighbors ("Товар 42" would also match "Товар 420").
 	lastTitle := fmt.Sprintf("Товар %d", seeded-1)
 	if s := list("?q=" + url.QueryEscape(lastTitle)); s.Total != 1 || s.Products[0].Title != lastTitle {
 		t.Fatalf("title search: %+v", s)
@@ -160,7 +160,7 @@ func TestListProductsPaginationAndSearch(t *testing.T) {
 	if s := list("?q=SKU-249"); s.Total != 1 || s.Products[0].SKU != "SKU-249" {
 		t.Fatalf("sku search: %+v", s)
 	}
-	// Подстановочные знаки — литералы, а не «найди всё».
+	// Wildcards are literals, not "match everything".
 	if s := list("?q=%25"); s.Total != 0 {
 		t.Fatalf("%% must be escaped, got %d", s.Total)
 	}
@@ -169,7 +169,7 @@ func TestListProductsPaginationAndSearch(t *testing.T) {
 	}
 }
 
-// Название из одной пунктуации даёт пустой слаг → недостижимая страница товара.
+// A punctuation-only title yields an empty slug → an unreachable product page.
 func TestCreateProductPunctuationOnlyTitle(t *testing.T) {
 	h := newTestHandler(t)
 	r := router(h)
@@ -189,11 +189,11 @@ func TestCreateProductPunctuationOnlyTitle(t *testing.T) {
 	if got.Data.Slug == "" {
 		t.Fatalf("slug must not be empty: %s", w.Body.String())
 	}
-	if p, err := h.db.GetProductBySlug(got.Data.Slug); err != nil || p.ID != got.Data.ID {
+	if p, err := h.db.GetVisibleProductBySlug(got.Data.Slug); err != nil || p.ID != got.Data.ID {
 		t.Fatalf("product must be reachable by slug %q: %v", got.Data.Slug, err)
 	}
 
-	// Второй такой же товар не должен упереться в уникальный индекс.
+	// A second such product must not hit the unique index.
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("POST", "/api/products", strings.NewReader(`{"title":"???"}`)))
 	if w.Code != http.StatusOK {
@@ -201,8 +201,8 @@ func TestCreateProductPunctuationOnlyTitle(t *testing.T) {
 	}
 }
 
-// Остаток живёт своей жизнью (продажи его уменьшают), поэтому форма товара
-// меняет его только когда явно прислала поле.
+// Stock lives its own life (sales decrease it), so the product form changes
+// it only when the field was explicitly sent.
 func TestUpdateProductStockOptional(t *testing.T) {
 	h := newTestHandler(t)
 	r := router(h)
@@ -245,8 +245,8 @@ func TestUpdateProductStockOptional(t *testing.T) {
 	}
 }
 
-// Фото можно не только добавить, но и убрать — иначе ошибочная загрузка
-// остаётся в карточке навсегда. Файл нашего же аплоада уходит с диска.
+// A photo can be removed, not just added — otherwise a mistaken upload stays
+// on the card forever. A file from our own upload leaves the disk.
 func TestUploadAndDeleteImage(t *testing.T) {
 	h := newTestHandler(t)
 	r := router(h)

@@ -29,7 +29,7 @@ func setup(t *testing.T) (*database.Database, http.Handler) {
 	t.Cleanup(func() { _ = d.Close() })
 	_ = d.CreateSettings(&database.Settings{OwnerEmail: "a@b.c", PasswordHash: "h", ShopName: "Лавка"})
 	p := &database.Product{Title: "Красный чайник", Description: "Хорош",
-		Price: 250000, Currency: "RUB", Stock: 3, Category: "kitchen"}
+		Price: 250000, Stock: 3, Category: "kitchen"}
 	_ = d.CreateProduct(p)
 	sf := New(d, "https://shop.example.com", t.TempDir())
 	return d, sf.Router()
@@ -113,7 +113,7 @@ func TestProductPageSEO(t *testing.T) {
 func TestJSONLDValidWithHostileTitle(t *testing.T) {
 	d, h := setup(t)
 	p := &database.Product{Title: `Чайник "Гром" <script>&`, Description: `1" > 2`,
-		Price: 100, Currency: "RUB", Stock: 1}
+		Price: 100, Stock: 1}
 	if err := d.CreateProduct(p); err != nil {
 		t.Fatal(err)
 	}
@@ -138,9 +138,9 @@ func TestJSONLDValidWithHostileTitle(t *testing.T) {
 	}
 }
 
-// ldImage достаёт image из JSON-LD. Сравниваем разобранным значением, а не
-// подстрокой: в JS-контексте html/template экранирует слэши (\/), это валидный
-// JSON, но не совпадает с исходной строкой.
+// ldImage extracts image from the JSON-LD. We compare the parsed value, not a
+// substring: in a JS context html/template escapes slashes (\/), which is valid
+// JSON but does not match the original string.
 func ldImage(t *testing.T, body string) string {
 	t.Helper()
 	_, rest, ok := strings.Cut(body, `<script type="application/ld+json">`)
@@ -157,11 +157,11 @@ func ldImage(t *testing.T, body string) string {
 	return ld.Image
 }
 
-// Импорт больше не качает фото — в product_images.path лежит абсолютный URL
-// источника. Он должен доехать до <img>, og:image и JSON-LD как есть.
+// Import no longer downloads photos — product_images.path holds the absolute
+// source URL. It must reach <img>, og:image and JSON-LD as is.
 func TestRemoteImageURLRenderedAsIs(t *testing.T) {
 	d, h := setup(t)
-	p, _ := d.GetProductBySlug("krasnyj-chajnik")
+	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
 	const remote = "https://cdn.example/x.jpg"
 	if err := d.AddImage(p.ID, remote); err != nil {
 		t.Fatal(err)
@@ -186,10 +186,10 @@ func TestRemoteImageURLRenderedAsIs(t *testing.T) {
 	}
 }
 
-// Локальные загрузки из админки продолжают жить под /uploads/.
+// Local uploads from the admin keep living under /uploads/.
 func TestLocalImageStillUnderUploads(t *testing.T) {
 	d, h := setup(t)
-	p, _ := d.GetProductBySlug("krasnyj-chajnik")
+	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
 	if err := d.AddImage(p.ID, "p1-abc.jpg"); err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +219,7 @@ func seedCatalog(t *testing.T, d *database.Database, n int) {
 
 func TestCatalogPagination(t *testing.T) {
 	d, h := setup(t)
-	seedCatalog(t, d, 130) // +1 из setup = 131 товар, три страницы по 60
+	seedCatalog(t, d, 130) // +1 from setup = 131 products, three pages of 60
 
 	first := get(t, h, "/")
 	if n := strings.Count(first, `<li><a href="/p/`); n != kCatalogPageSize {
@@ -246,7 +246,7 @@ func TestCatalogPagination(t *testing.T) {
 			t.Errorf("page 2 missing %q", want)
 		}
 	}
-	// Третья страница — хвост каталога, «Дальше» уже нет.
+	// The third page is the catalogue tail, no "Next" anymore.
 	last := get(t, h, "/?page=3")
 	if strings.Contains(last, `href="/?page=4"`) {
 		t.Error("last page must not link forward")
@@ -263,7 +263,7 @@ func TestCatalogPageEdgeCases(t *testing.T) {
 		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		return w.Code
 	}
-	// За последней страницей — 404, а не пустая 200: мягкие 404 засоряют индекс.
+	// Past the last page is a 404, not an empty 200: soft 404s clutter the index.
 	if c := code("/?page=99999"); c != http.StatusNotFound {
 		t.Errorf("page beyond last: %d, want 404", c)
 	}
@@ -273,7 +273,7 @@ func TestCatalogPageEdgeCases(t *testing.T) {
 	if c := code("/?page=0"); c != http.StatusNotFound {
 		t.Errorf("page=0: %d, want 404", c)
 	}
-	// У одного набора товаров — один URL.
+	// One set of products has exactly one URL.
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/?page=1", nil))
 	if w.Code != http.StatusMovedPermanently || w.Header().Get("Location") != "/" {
@@ -283,7 +283,7 @@ func TestCatalogPageEdgeCases(t *testing.T) {
 
 func TestOutOfStockAvailability(t *testing.T) {
 	d, h := setup(t)
-	p, _ := d.GetProductBySlug("krasnyj-chajnik")
+	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
 	p.Stock = 0
 	_ = d.UpdateProduct(p)
 	body := get(t, h, "/p/krasnyj-chajnik")
@@ -309,7 +309,7 @@ func TestSitemapRobots404(t *testing.T) {
 	}
 }
 
-// client — минимальная банка кук: тащит `cart` между запросами, как браузер.
+// client is a minimal cookie jar: it carries `cart` between requests, like a browser.
 type client struct {
 	h      http.Handler
 	cookie *http.Cookie
@@ -361,7 +361,7 @@ func (c *client) cart(t *testing.T) string {
 
 func secondProduct(t *testing.T, d *database.Database) *database.Product {
 	t.Helper()
-	p := &database.Product{Title: "Синий стакан", Price: 30000, Currency: "RUB", Stock: 10}
+	p := &database.Product{Title: "Синий стакан", Price: 30000, Stock: 10}
 	if err := d.CreateProduct(p); err != nil {
 		t.Fatal(err)
 	}
@@ -446,7 +446,7 @@ func TestCartCheckoutCreatesSingleOrder(t *testing.T) {
 	if it := byTitle["Синий стакан"]; it.Price != 30000 || it.Qty != 3 {
 		t.Errorf("стакан: %+v", it)
 	}
-	// Кука очищена — повторная отправка не создаёт второй заказ.
+	// The cookie is cleared — resubmitting does not create a second order.
 	if c.cookie != nil {
 		t.Errorf("cart cookie must be cleared, got %q", c.cookie.Value)
 	}
@@ -479,7 +479,7 @@ func TestCartTamperedCookieCannotSetPrice(t *testing.T) {
 
 func TestCartOutOfStockCannotBeAdded(t *testing.T) {
 	d, h := setup(t)
-	p, _ := d.GetProductBySlug("krasnyj-chajnik")
+	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
 	p.Stock = 0
 	_ = d.UpdateProduct(p)
 	c := &client{h: h}
@@ -492,15 +492,15 @@ func TestCartOutOfStockCannotBeAdded(t *testing.T) {
 	}
 }
 
-// Товар кончился уже после добавления — строка снимается на рендере, заказать
-// исчезнувшее нельзя.
+// The product ran out after it was added — the line is dropped at render time,
+// what has vanished cannot be ordered.
 func TestCartDropsVanishedProduct(t *testing.T) {
 	d, h := setup(t)
 	secondProduct(t, d)
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "1")
 	c.add(t, "sinij-stakan", "1")
-	p, _ := d.GetProductBySlug("krasnyj-chajnik")
+	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
 	p.Stock = 0
 	_ = d.UpdateProduct(p)
 	body := c.cart(t)
@@ -563,7 +563,7 @@ func TestCartHeaderCountAndProductButton(t *testing.T) {
 	}
 }
 
-// Единственный чекаут — старый одностраничный /p/{slug}/order удалён.
+// The only checkout — the old single-page /p/{slug}/order has been removed.
 func TestLegacyProductOrderRouteGone(t *testing.T) {
 	_, h := setup(t)
 	w := httptest.NewRecorder()
@@ -582,16 +582,16 @@ func TestCheckoutDecrementsStock(t *testing.T) {
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("checkout: %d", w.Code)
 	}
-	p, _ := d.GetProductBySlug("krasnyj-chajnik")
+	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
 	if p.Stock != 1 {
 		t.Fatalf("stock %d, want 1", p.Stock)
 	}
 }
 
-// Списание не сошлось на оформлении: заказа нет, покупатель видит названную
-// причину, позиция уходит из корзины. Здесь это вызвано дублем строки в куке
-// (две по 3 при остатке 3) — тот же путь, что и гонка двух покупателей за
-// последней единицей, но воспроизводимо.
+// Stock deduction failed at checkout: no order exists, the buyer sees the named
+// reason, the line leaves the cart. Here it is triggered by a duplicated cookie
+// line (two of 3 with a stock of 3) — the same path as two buyers racing for
+// the last unit, but reproducible.
 func TestCheckoutSoldOutRace(t *testing.T) {
 	d, h := setup(t)
 	second := secondProduct(t, d)
@@ -616,18 +616,18 @@ func TestCheckoutSoldOutRace(t *testing.T) {
 	if p, _ := d.GetProduct(second.ID); p.Stock != 10 {
 		t.Errorf("second product stock moved: %d", p.Stock)
 	}
-	if p, _ := d.GetProductBySlug("krasnyj-chajnik"); p.Stock != 3 {
+	if p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik"); p.Stock != 3 {
 		t.Errorf("stock must be untouched: %d", p.Stock)
 	}
-	// Позиция снята с корзины, остальное на месте.
+	// The line is removed from the cart, the rest stays in place.
 	cart := c.cart(t)
 	if strings.Contains(cart, "Красный чайник") || !strings.Contains(cart, "Синий стакан") {
 		t.Errorf("cart must keep only what is available\n%s", cart)
 	}
 }
 
-// Витрину белорусского магазина нельзя показывать в рублях: подпись видит
-// покупатель, а priceCurrency уезжает в выдачу поисковика.
+// A Belarusian shop's storefront must not show Russian rubles: the buyer sees
+// the label, and priceCurrency ends up in the search engine results.
 func TestStorefrontCurrencyBYN(t *testing.T) {
 	d, h := setup(t)
 	if err := d.UpdateSettings(&database.Settings{
@@ -652,8 +652,9 @@ func TestStorefrontCurrencyBYN(t *testing.T) {
 	}
 }
 
-// Скрытый товар обязан исчезнуть отовсюду разом. Особенно из sitemap: карта,
-// ведущая на 404, портит доверие поисковика ко всему сайту.
+// A hidden product must vanish from everywhere at once. Especially from the
+// sitemap: a map leading to 404s hurts the search engine's trust in the whole
+// site.
 func TestHiddenProductLeavesStorefront(t *testing.T) {
 	d, h := setup(t)
 	p := &database.Product{Title: "Тайный чайник", Price: 1000, Stock: 5}
@@ -681,7 +682,7 @@ func TestHiddenProductLeavesStorefront(t *testing.T) {
 		t.Errorf("страница скрытого товара: %d, ждали 404", w.Code)
 	}
 
-	// И его нельзя заказать в обход витрины, зная слаг.
+	// And it cannot be ordered around the storefront by knowing the slug.
 	form := strings.NewReader("slug=" + p.Slug + "&qty=1")
 	w = httptest.NewRecorder()
 	r := httptest.NewRequest("POST", "/cart/add", form)
@@ -692,8 +693,8 @@ func TestHiddenProductLeavesStorefront(t *testing.T) {
 	}
 }
 
-// HEAD должен вести себя как GET: им проверяют доступность мониторинги, чекеры
-// ссылок и часть краулеров, а 405 на витрине выглядит как сломанный сайт.
+// HEAD must behave like GET: monitoring, link checkers and some crawlers use it
+// to probe availability, and a 405 on the storefront looks like a broken site.
 func TestHeadIsAllowedEverywhere(t *testing.T) {
 	d, h := setup(t)
 	p := &database.Product{Title: "Чайник HEAD", Price: 1000, Stock: 1}
@@ -709,8 +710,8 @@ func TestHeadIsAllowedEverywhere(t *testing.T) {
 	}
 }
 
-// Иконка вкладки берётся из названия магазина: витрина принадлежит продавцу, и
-// ставить туда наш знак значило бы брендировать чужой магазин.
+// The tab icon comes from the shop name: the storefront belongs to the seller,
+// and putting our mark there would brand somebody else's shop.
 func TestFaviconUsesShopInitial(t *testing.T) {
 	d, h := setup(t)
 	if err := d.UpdateSettings(&database.Settings{
@@ -725,15 +726,15 @@ func TestFaviconUsesShopInitial(t *testing.T) {
 	if !strings.Contains(body, "<svg") {
 		t.Errorf("не svg: %s", body)
 	}
-	// И страница на неё ссылается, иначе браузер продолжит просить favicon.ico.
+	// And the page links to it, otherwise the browser keeps asking for favicon.ico.
 	if page := get(t, h, "/"); !strings.Contains(page, `href="/favicon.svg"`) {
 		t.Error("страница не ссылается на иконку")
 	}
 }
 
-// Логотип продавца заменяет текстовое название в шапке и становится иконкой
-// вкладки. Название при этом не пропадает: оно уезжает в alt, иначе главная
-// страница теряет текстовый сигнал о том, чей это магазин.
+// The seller's logo replaces the text name in the header and becomes the tab
+// icon. The name does not disappear though: it moves into alt, otherwise the
+// home page loses its textual signal of whose shop this is.
 func TestShopLogoReplacesName(t *testing.T) {
 	d, h := setup(t)
 	base := &database.Settings{OwnerEmail: "a@b.c", PasswordHash: "h",
@@ -741,7 +742,7 @@ func TestShopLogoReplacesName(t *testing.T) {
 	if err := d.UpdateSettings(base); err != nil {
 		t.Fatal(err)
 	}
-	// Ищем именно тег, а не класс: класс есть и во встроенном CSS.
+	// Look for the tag itself, not the class: the class also appears in the inline CSS.
 	if page := get(t, h, "/"); !strings.Contains(page, "Лавка Ивана") ||
 		strings.Contains(page, `<img src="/uploads/`) {
 		t.Fatal("без логотипа в шапке должно быть название текстом")
@@ -768,8 +769,8 @@ func TestShopLogoReplacesName(t *testing.T) {
 func TestStorefrontSearch(t *testing.T) {
 	d, h := setup(t)
 	_ = d.CreateProduct(&database.Product{Title: "Синяя кастрюля", Price: 100000,
-		Currency: "RUB", Stock: 1, SKU: "KS-7"})
-	hidden := &database.Product{Title: "Чайник со склада", Price: 100, Currency: "RUB", Hidden: true}
+		Stock: 1, SKU: "KS-7"})
+	hidden := &database.Product{Title: "Чайник со склада", Price: 100, Hidden: true}
 	_ = d.CreateProduct(hidden)
 
 	body := get(t, h, "/?q="+url.QueryEscape("кастрюл"))
@@ -816,7 +817,7 @@ func TestStorefrontSearch(t *testing.T) {
 func TestSearchResultCount(t *testing.T) {
 	d, h := setup(t)
 	for _, n := range []string{"Кружка синяя", "Кружка белая"} {
-		_ = d.CreateProduct(&database.Product{Title: n, Price: 100, Currency: "RUB", Stock: 1})
+		_ = d.CreateProduct(&database.Product{Title: n, Price: 100, Stock: 1})
 	}
 	body := get(t, h, "/?q="+url.QueryEscape("Кружка"))
 	for _, want := range []string{"нашлось 2 товара", `href="/"`} {
@@ -883,7 +884,7 @@ func TestCatalogUsesThumbnails(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = d.Close() })
 	_ = d.CreateSettings(&database.Settings{OwnerEmail: "a@b.c", ShopName: "Лавка"})
-	p := &database.Product{Title: "Чайник", Price: 1000, Currency: "RUB", Stock: 1}
+	p := &database.Product{Title: "Чайник", Price: 1000, Stock: 1}
 	_ = d.CreateProduct(p)
 
 	uploads := t.TempDir()
@@ -913,7 +914,7 @@ func TestCatalogFallsBackToOriginal(t *testing.T) {
 	d, _ := database.OpenInMemory()
 	defer func() { _ = d.Close() }()
 	_ = d.CreateSettings(&database.Settings{OwnerEmail: "a@b.c", ShopName: "Лавка"})
-	p := &database.Product{Title: "Чайник", Price: 1000, Currency: "RUB", Stock: 1}
+	p := &database.Product{Title: "Чайник", Price: 1000, Stock: 1}
 	_ = d.CreateProduct(p)
 	_ = d.AddImage(p.ID, "p1-old.jpg")
 

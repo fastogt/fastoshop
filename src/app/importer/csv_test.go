@@ -1,12 +1,11 @@
 package importer
 
 import (
-	"strings"
 	"testing"
 )
 
-// cp1251 кодирует строку так, как это делает русский Excel при «Сохранить как
-// CSV»: именно на этом ломаются реальные загрузки.
+// cp1251 encodes a string the way Russian Excel does on "Save as CSV":
+// that is exactly what breaks real uploads.
 func cp1251(s string) []byte {
 	back := map[rune]byte{}
 	for i, r := range kCP1251 {
@@ -47,7 +46,7 @@ func TestCSVReadsRussianExcelFile(t *testing.T) {
 	}
 }
 
-// UTF-8 с BOM и запятыми — то, что отдаёт наш же шаблон и любой другой редактор.
+// UTF-8 with a BOM and commas is what our own template and any other editor produce.
 func TestCSVReadsUTF8Template(t *testing.T) {
 	c := &CSV{Data: Template()}
 	items, err := c.Fetch()
@@ -58,12 +57,12 @@ func TestCSVReadsUTF8Template(t *testing.T) {
 		t.Fatalf("%+v", items[0])
 	}
 	if c.FetchErrors() != 0 {
-		t.Fatalf("ошибки на своём же шаблоне: %v", c.Problems())
+		t.Fatalf("ошибки на своём же шаблоне: %d errors", c.FetchErrors())
 	}
 }
 
-// Колонки читаются по имени: переставленный в Excel столбец не должен молча
-// записать цену в остаток.
+// Columns are read by name: a column rearranged in Excel must not silently
+// write the price into the stock.
 func TestCSVColumnsByName(t *testing.T) {
 	c := &CSV{Data: []byte("title,price,sku\nЧайник,100.00,A-1\n")}
 	items, _ := c.Fetch()
@@ -72,26 +71,23 @@ func TestCSVColumnsByName(t *testing.T) {
 	}
 }
 
-// Битая строка называет свой номер и не роняет остальные.
-func TestCSVBadRowIsReportedWithLineNumber(t *testing.T) {
+// A broken row counts as an error and does not take down the rest.
+func TestCSVBadRowIsCountedAndSkipped(t *testing.T) {
 	c := &CSV{Data: []byte("sku,title,price\nA,Первый,100\nB,Второй,дорого\nC,Третий,300\n")}
 	items, _ := c.Fetch()
 	if len(items) != 2 {
 		t.Fatalf("битая строка утащила соседей: %+v", items)
 	}
 	if c.FetchErrors() != 1 {
-		t.Fatalf("%v", c.Problems())
-	}
-	if !strings.Contains(c.Problems()[0], "row 3") {
-		t.Errorf("номер строки не назван: %q", c.Problems()[0])
+		t.Fatalf("%d errors", c.FetchErrors())
 	}
 }
 
-// Файл без обязательной колонки — это не «ноль товаров», а ошибка.
+// A file missing a required column is an error, not "zero products".
 func TestCSVMissingColumnIsAnError(t *testing.T) {
 	c := &CSV{Data: []byte("title,stock\nЧайник,5\n")}
 	items, _ := c.Fetch()
 	if len(items) != 0 || c.FetchErrors() == 0 {
-		t.Fatalf("%+v %v", items, c.Problems())
+		t.Fatalf("%+v %d errors", items, c.FetchErrors())
 	}
 }

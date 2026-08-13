@@ -12,7 +12,7 @@ func shopProduct(sku string, sourcePrice int64) database.Product {
 		Supplier: "П"}
 }
 
-// На пустом магазине весь фид — новинки, и ничего не исчезло.
+// On an empty shop the whole feed is new arrivals, and nothing has gone.
 func TestDiffFirstImport(t *testing.T) {
 	items := []Item{{SKU: "A", Title: "Чайник", Price: 10000}}
 	d := Compare(items, nil, "П", 0.5)
@@ -24,8 +24,8 @@ func TestDiffFirstImport(t *testing.T) {
 	}
 }
 
-// Повторная загрузка того же фида не должна выглядеть как изменение — иначе
-// владелец каждую неделю видит «изменилось всё» и перестаёт смотреть.
+// Re-uploading the same feed must not look like a change — otherwise the
+// owner sees "everything changed" every week and stops looking.
 func TestDiffSameFeedIsQuiet(t *testing.T) {
 	items := []Item{{SKU: "A", Price: 10000}, {SKU: "B", Price: 20000}}
 	existing := []database.Product{shopProduct("A", 10000), shopProduct("B", 20000)}
@@ -42,7 +42,7 @@ func TestDiffClassifiesChanges(t *testing.T) {
 	items := []Item{
 		{SKU: "UP", Price: 12000},   // +20%
 		{SKU: "DOWN", Price: 5000},  // −50%
-		{SKU: "SAME", Price: 10000}, // без изменений
+		{SKU: "SAME", Price: 10000}, // unchanged
 		{SKU: "NEW", Price: 30000},
 	}
 	existing := []database.Product{
@@ -56,7 +56,7 @@ func TestDiffClassifiesChanges(t *testing.T) {
 	if d.GoneItems[0].SKU != "GONE" {
 		t.Fatalf("исчезнувший: %+v", d.GoneItems)
 	}
-	// Сильнее всего изменившееся — первым, независимо от знака.
+	// The biggest change comes first, regardless of sign.
 	if d.PriceChanges[0].SKU != "DOWN" || d.PriceChanges[0].Percent != -50 {
 		t.Fatalf("порядок изменений: %+v", d.PriceChanges)
 	}
@@ -65,8 +65,8 @@ func TestDiffClassifiesChanges(t *testing.T) {
 	}
 }
 
-// Товар, импортированный до появления цены источника, не должен занимать первое
-// место с бесконечным ростом и вытеснять настоящие новости.
+// A product imported before the source price existed must not take first place
+// with infinite growth and crowd out the real news.
 func TestDiffZeroSourcePriceHasNoPercent(t *testing.T) {
 	items := []Item{{SKU: "OLD", Price: 50000}, {SKU: "REAL", Price: 11000}}
 	existing := []database.Product{shopProduct("OLD", 0), shopProduct("REAL", 10000)}
@@ -79,8 +79,8 @@ func TestDiffZeroSourcePriceHasNoPercent(t *testing.T) {
 	}
 }
 
-// Счётчик обязан быть полным, даже когда список обрезан: «показано 50» без
-// «из 312» читается как «изменилось 50».
+// The counter must be complete even when the list is truncated: "showing 50"
+// without "of 312" reads as "50 changed".
 func TestDiffCountsSurviveTruncation(t *testing.T) {
 	var items []Item
 	var existing []database.Product

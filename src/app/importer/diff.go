@@ -1,8 +1,9 @@
 package importer
 
 import (
+	"cmp"
 	"math"
-	"sort"
+	"slices"
 
 	"github.com/fastogt/fastoshop/app/database"
 )
@@ -132,8 +133,8 @@ func Compare(items []Item, existing []database.Product, supplier string, coeffic
 
 	// Biggest movement first, in either direction: a 60% cut matters as much as
 	// a 60% rise.
-	sort.SliceStable(changes, func(i, j int) bool {
-		return math.Abs(changes[i].Percent) > math.Abs(changes[j].Percent)
+	slices.SortStableFunc(changes, func(a, b DiffRow) int {
+		return cmp.Compare(math.Abs(b.Percent), math.Abs(a.Percent))
 	})
 	d.PriceChanges = changes[:min(kListLimit, len(changes))]
 	return d

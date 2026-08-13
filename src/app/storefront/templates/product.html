@@ -44,9 +44,9 @@
 </nav>
 <article class="product">
   <div class="gallery">
-    {{/* Полоса с прокруткой и привязкой: галерея без JavaScript. Раньше фото
-         шли столбцом во всю ширину — каждое занимало экран, и до второго надо
-         было листать. */}}
+    {{/* A scroll strip with snapping: a gallery without JavaScript. Photos used
+         to run in a full-width column — each one filled the screen, and you had
+         to scroll to reach the second. */}}
     <div class="slides">
     {{range $i, $im := .Images}}<img id="photo-{{$i}}" src="{{$im.URL}}" alt="{{$.P.Title}}" loading="lazy">{{end}}
     </div>

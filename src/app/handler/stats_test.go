@@ -12,9 +12,9 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// Цифры магазина должны совпадать с базой, а не быть правдоподобными: страница
-// статистики — единственное место, где владелец видит размер каталога, и
-// расхождение здесь никто не заметит.
+// The shop figures must match the database, not merely look plausible: the
+// stats page is the only place where the owner sees the catalog size, and a
+// discrepancy here would go unnoticed.
 func TestStats(t *testing.T) {
 	h := newTestHandler(t)
 	if err := h.db.CreateSettings(&database.Settings{OwnerEmail: "a@b.c", PasswordHash: "h"}); err != nil {
@@ -26,12 +26,12 @@ func TestStats(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Файл в uploads: обход каталога считается отдельно от базы, и нулевой
-	// размер при непустой папке — тихая поломка.
+	// A file in uploads: the directory walk is counted separately from the DB,
+	// and a zero size with a non-empty folder is a silent breakage.
 	if err := os.WriteFile(filepath.Join(h.uploadsDir, "p1.jpg"), make([]byte, 2048), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	uploadsAt = time.Time{} // сбрасываем минутный кэш от соседних тестов
+	uploadsAt = time.Time{} // reset the one-minute cache left by neighboring tests
 
 	w := httptest.NewRecorder()
 	h.Stats(w, httptest.NewRequest("GET", "/api/stats", nil))

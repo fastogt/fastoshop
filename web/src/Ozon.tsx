@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   api,
+  apiError,
   type OzonSettings,
   type OzonLinkResult,
   type OzonLinkPage,
@@ -13,14 +14,10 @@ import {
   type OzonOrder,
 } from "./api";
 import { useLang, useT } from "./i18n";
+import { toRubles, toMinor } from "./money";
 import { useSign } from "./shop";
 import DataTable from "./DataTable";
 import { IconDownload, IconUpload } from "./Icons";
-
-// Prices travel in kopecks and are shown in rubles, same idiom as Products.tsx.
-const toRubles = (minor: number) => (minor / 100).toFixed(2);
-const toMinor = (rubles: string) =>
-  Math.round(Number(rubles.replace(",", ".")) * 100);
 
 // Ozon posting statuses live in the same dictionary under their raw codes. An
 // unknown status is shown as is: the platform keeps adding new ones, and hiding
@@ -186,10 +183,6 @@ const kText = {
   priceQueued: { ru: "цена ждёт отправки", en: "price queued to send" },
   priceSent: { ru: "отправлено {price} {cur}", en: "sent {price} {cur}" },
 
-  back: { ru: "Назад", en: "Back" },
-  forward: { ru: "Вперёд", en: "Next" },
-  pageOf: { ru: "Страница {page} из {pages}", en: "Page {page} of {pages}" },
-
   extraOnOzon: {
     ru: "Есть в кабинете, нет в магазине",
     en: "In the account, not in the shop",
@@ -317,10 +310,7 @@ export default function Ozon() {
   if (!s) return null;
 
   const fail = (e: unknown) =>
-    t("errorPrefix") +
-    ": " +
-    ((e as { response?: { data?: { error?: { message?: string } } } }).response
-      ?.data?.error?.message ?? t("errorCheckKeys"));
+    t("errorPrefix") + ": " + (apiError(e) ?? t("errorCheckKeys"));
 
   const isError = (m: string) => m.startsWith(t("errorPrefix"));
 
@@ -555,9 +545,10 @@ export default function Ozon() {
           <label className="label">Client-Id</label>
           <input
             className="field"
-            // Браузер принимает пару «текст + пароль» за форму входа и
-            // подставляет сюда сохранённые логин и пароль от админки. Сохранив
-            // их, владелец положил бы свой пароль в базу как ключ Ozon.
+            // The browser mistakes a "text + password" pair for a login form
+            // and autofills the saved admin login and password here. Saving
+            // them, the owner would put their password into the DB as the Ozon
+            // key.
             name="ozon-client-id"
             autoComplete="off"
             value={s.client_id}
@@ -695,9 +686,9 @@ export default function Ozon() {
           pageSize={candidates?.page_size ?? 100}
           onPage={setCandPage}
           selectable
-          // Публикация тянет список карточек кабинета и сверяет артикулы, поэтому
-          // работает по явному списку; «всё по фильтру» здесь означало бы
-          // безостановочный проход по каталогу на стороне площадки.
+          // Publishing pulls the cabinet's card list and matches SKUs, so it
+          // works off an explicit list; "everything by filter" here would mean
+          // a non-stop sweep over the catalogue on the marketplace side.
           allowAll={false}
           bulkActions={[
             {

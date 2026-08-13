@@ -61,7 +61,6 @@ interface Props<T> {
   allowAll?: boolean;
   bulkActions?: BulkAction[];
   emptyTitle: string;
-  emptyHint?: string;
   onRowClick?: (row: T) => void;
 }
 
@@ -119,7 +118,6 @@ export default function DataTable<T>({
   allowAll = true,
   bulkActions = [],
   emptyTitle,
-  emptyHint,
   onRowClick,
 }: Props<T>) {
   const t = useT(kText);
@@ -227,7 +225,6 @@ export default function DataTable<T>({
       {rows.length === 0 ? (
         <div className="hint py-12 text-center">
           <p className="font-semibold">{emptyTitle}</p>
-          {emptyHint && <p className="mt-1">{emptyHint}</p>}
         </div>
       ) : (
         <div className="card overflow-x-auto p-0">

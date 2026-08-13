@@ -19,7 +19,7 @@ const kSigns: Record<string, string> = {
 // rendered here and on the storefront.
 export const signOf = (code: string) => kSigns[code] ?? code;
 
-export const getCurrency = () => currency;
+const getCurrency = () => currency;
 
 export const setCurrency = (next: string) => {
   if (next === currency) return;
@@ -45,7 +45,7 @@ export const loadShop = () => {
   });
 };
 
-export const useCurrency = () =>
+const useCurrency = () =>
   useSyncExternalStore(subscribe, getCurrency, getCurrency);
 
 export const useSign = () => signOf(useCurrency());

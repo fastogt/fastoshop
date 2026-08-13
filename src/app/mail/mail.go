@@ -2,15 +2,15 @@ package mail
 
 import (
 	"crypto/tls"
-	"encoding/base64"
 	"fmt"
+	"mime"
 	"net/smtp"
 
 	"github.com/fastogt/fastoshop/app/database"
 )
 
 func buildMessage(from, to, subject, body string) []byte {
-	encSubject := "=?UTF-8?B?" + base64.StdEncoding.EncodeToString([]byte(subject)) + "?="
+	encSubject := mime.BEncoding.Encode("UTF-8", subject)
 	return []byte("From: " + from + "\r\n" +
 		"To: " + to + "\r\n" +
 		"Subject: " + encSubject + "\r\n" +
@@ -19,9 +19,9 @@ func buildMessage(from, to, subject, body string) []byte {
 		"\r\n" + body + "\r\n")
 }
 
-// Send шлёт письмо владельцу через SMTP из settings. Порт 465 = implicit TLS
-// (Яндекс 360 / VK WorkSpace), поэтому tls.Dial, а не smtp.SendMail (тот умеет
-// только STARTTLS).
+// Send emails the owner via the SMTP from settings. Port 465 = implicit TLS
+// (Yandex 360 / VK WorkSpace), hence tls.Dial rather than smtp.SendMail (the
+// latter only speaks STARTTLS).
 func Send(s *database.Settings, subject, body string) error {
 	if s.SMTPHost == "" {
 		return fmt.Errorf("smtp not configured")

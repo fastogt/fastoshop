@@ -2,6 +2,12 @@ import axios from "axios";
 
 const http = axios.create({ baseURL: "/api" });
 
+// apiError digs the server's message out of the gofastogt error envelope;
+// undefined when the failure never reached the server (network, timeout).
+export const apiError = (e: unknown): string | undefined =>
+  (e as { response?: { data?: { error?: { message?: string } } } }).response
+    ?.data?.error?.message;
+
 export interface Product {
   id: number;
   sku: string;
@@ -9,7 +15,6 @@ export interface Product {
   slug: string;
   description: string;
   price: number;
-  currency: string;
   stock: number;
   category: string;
   supplier: string;
@@ -360,7 +365,6 @@ export const api = {
       .post("/ozon/check")
       .then(data<{ total: number; legal_name: string; currency: string }>),
   ozonLink: () => http.post("/ozon/link").then(data<OzonLinkResult>),
-  ozonUnlink: (productId: number) => http.delete(`/ozon/link/${productId}`),
   ozonWarehouses: () =>
     http
       .post("/ozon/warehouses")

@@ -24,8 +24,8 @@ func bulkDB(t *testing.T) (*Database, map[string]int64) {
 	return d, ids
 }
 
-// Главный сценарий: фид принёс нулевые остатки, владелец проставляет их разом —
-// но только своей группе.
+// The main scenario: the feed brought zero stock, the owner sets it in one go —
+// but only for their own group.
 func TestSetStockForWholeGroup(t *testing.T) {
 	d, ids := bulkDB(t)
 	n, err := d.SetStockBulk(Selection{All: true, Supplier: "Ромашка"}, 7)
@@ -43,7 +43,8 @@ func TestSetStockForWholeGroup(t *testing.T) {
 	}
 }
 
-// «Всё по фильтру» уважает и поиск, иначе кнопка сделает не то, что показано.
+// "All by filter" respects the search too, otherwise the button would do
+// something other than what is shown.
 func TestBulkRespectsSearch(t *testing.T) {
 	d, ids := bulkDB(t)
 	n, err := d.SetStockBulk(Selection{All: true, Supplier: AnySupplier, Q: "Хлеб"}, 5)
@@ -60,8 +61,8 @@ func TestBulkRespectsSearch(t *testing.T) {
 	}
 }
 
-// Пустой выбор без флага «всё» не должен трогать ничего: иначе промах по кнопке
-// переписал бы каталог.
+// An empty selection without the "all" flag must touch nothing: otherwise a
+// misclick on the button would rewrite the catalog.
 func TestBulkEmptySelectionTouchesNothing(t *testing.T) {
 	d, ids := bulkDB(t)
 	n, err := d.SetStockBulk(Selection{Supplier: AnySupplier}, 99)
@@ -95,7 +96,7 @@ func TestBulkRejectsNegativeStock(t *testing.T) {
 	}
 }
 
-// Перенос между группами: артикул сменил поставщика.
+// Moving between groups: the SKU changed its supplier.
 func TestBulkMoveBetweenSuppliers(t *testing.T) {
 	d, ids := bulkDB(t)
 	if _, err := d.SetSupplierBulk(Selection{IDs: []int64{ids["R-1"]}}, "Оптбаза"); err != nil {
@@ -107,7 +108,7 @@ func TestBulkMoveBetweenSuppliers(t *testing.T) {
 	}
 }
 
-// Удаление работает только по явному списку: режима «снести всё по фильтру» нет.
+// Deletion works only by an explicit list: there is no "wipe all by filter" mode.
 func TestBulkDeleteNeedsExplicitIDs(t *testing.T) {
 	d, ids := bulkDB(t)
 	n, err := d.DeleteProductsBulk(nil)
@@ -125,7 +126,7 @@ func TestBulkDeleteNeedsExplicitIDs(t *testing.T) {
 	}
 }
 
-// Сортировка идёт в SQL по всему каталогу, а не по загруженной странице.
+// Sorting runs in SQL over the whole catalog, not over the loaded page.
 func TestSortingIsServerSide(t *testing.T) {
 	d, _ := bulkDB(t)
 	asc, err := d.ListProductsSorted("", AnySupplier, "price", false, 2, 0)
@@ -139,11 +140,11 @@ func TestSortingIsServerSide(t *testing.T) {
 	if desc[0].Price != 4000 {
 		t.Fatalf("по убыванию: %+v", desc)
 	}
-	// Неизвестная колонка не должна попадать в SQL.
+	// An unknown column must not make it into the SQL.
 	if _, err := d.ListProductsSorted("", AnySupplier, "price; DROP TABLE products", false, 5, 0); err != nil {
 		t.Fatalf("инъекция в ORDER BY: %v", err)
 	}
-	if n, _ := d.CountProducts("", "", AnySupplier); n != 4 {
+	if n, _ := d.CountProducts("", AnySupplier); n != 4 {
 		t.Fatalf("таблица пострадала: %d", n)
 	}
 }

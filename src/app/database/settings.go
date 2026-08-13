@@ -12,8 +12,8 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// Алфавит без визуально спутываемых символов (0/O, 1/l/I) — пароль
-// диктуют по SSH или читают с экрана.
+// Alphabet without visually confusable characters (0/O, 1/l/I) — the password
+// gets dictated over SSH or read off a screen.
 const kGeneratedPasswordAlphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
 const kGeneratedPasswordLength = 16
 
@@ -136,24 +136,24 @@ func (d *Database) UseToken(token string) error {
 	return err
 }
 
-// CleanupExpiredTokens удаляет протухшие токены; вызывается один раз при
-// старте — таблица не растёт бесконечно на долгоживущем инстансе.
+// CleanupExpiredTokens deletes stale tokens; called once at startup — the
+// table does not grow forever on a long-lived instance.
 func (d *Database) CleanupExpiredTokens() error {
 	_, err := d.db.Exec(`DELETE FROM auth_tokens WHERE expires_at < CURRENT_TIMESTAMP`)
 	return err
 }
 
-// DeleteOtherTokens инвалидирует все сессии, кроме той, из которой вызвана
-// смена пароля: угнанная кука умирает вместе со старым паролем, а вкладку,
-// где пароль сменили, из-под владельца не выбивает.
+// DeleteOtherTokens invalidates every session except the one the password
+// change was made from: a hijacked cookie dies with the old password, while
+// the tab where the password was changed does not kick the owner out.
 func (d *Database) DeleteOtherTokens(except string) error {
 	_, err := d.db.Exec(`DELETE FROM auth_tokens WHERE token != ?`, except)
 	return err
 }
 
-// CreateOwner закрывает окно, в котором свежий инстанс отдаёт открытый
-// мастер настройки: владельца заводит провижининг, а не первый, кто угадал
-// адрес. Возвращает пароль в открытом виде один раз.
+// CreateOwner closes the window in which a fresh instance serves an open setup
+// wizard: the owner is created by provisioning, not by whoever guessed the
+// address first. Returns the plaintext password exactly once.
 func (d *Database) CreateOwner(email string) (string, error) {
 	if s, err := d.GetSettings(); err == nil {
 		return "", fmt.Errorf("owner already exists (%s)", s.OwnerEmail)
@@ -192,13 +192,14 @@ func generatePassword(n int) (string, error) {
 	return string(out), nil
 }
 
-// ResetOwnerPassword — путь восстановления через CLI (`fastoshop
-// -reset-password`): генерирует новый пароль, сохраняет его bcrypt-хэш и
-// сносит все сессии одним махом, чтобы угнанная кука не пережила смену.
-// Возвращает пароль в открытом виде один раз — нигде не хранится и не
-// логируется.
-// NewInviteToken — одноразовая ссылка на задание пароля. Живёт сутки: её
-// пересылают письмом, и просроченная ссылка безопаснее забытой действующей.
+// ResetOwnerPassword — the recovery path via the CLI (`fastoshop
+// -reset-password`): generates a new password, stores its bcrypt hash and
+// wipes all sessions in one sweep so a hijacked cookie does not survive the
+// change. Returns the plaintext password exactly once — it is stored nowhere
+// and never logged.
+// NewInviteToken — a one-time link for setting the password. Lives for a day:
+// it is forwarded by email, and an expired link is safer than a forgotten
+// working one.
 func (d *Database) NewInviteToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -211,9 +212,10 @@ func (d *Database) NewInviteToken() (string, error) {
 	return tok, nil
 }
 
-// SetOwnerPassword ставит пароль, выбранный самим владельцем по одноразовой
-// ссылке. Сессии не трогаем: приглашение открывают до первого входа, а рвать
-// чужие сессии по чужой ссылке — готовый способ выкинуть владельца из админки.
+// SetOwnerPassword sets the password the owner chose themselves via the
+// one-time link. Sessions are left alone: the invite is opened before the
+// first login, and killing someone else's sessions via someone else's link is
+// a ready-made way to throw the owner out of the admin.
 func (d *Database) SetOwnerPassword(hash string) error {
 	_, err := d.db.Exec(`UPDATE settings SET password_hash=? WHERE id=1`, hash)
 	return err

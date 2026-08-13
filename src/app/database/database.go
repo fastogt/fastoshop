@@ -3,19 +3,18 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type Database struct {
 	db *sql.DB
-	// Путь нужен статистике: она показывает размер файла, а конфиг хранит его
-	// с «~», который к этому моменту уже развёрнут вызывающим.
+	// The path is needed by the stats page: it shows the file size, while the
+	// config stores it with a "~" that the caller has already expanded by now.
 	path string
 }
 
-// Path — файл, который база открыла. Для ":memory:" вернёт его же.
+// Path — the file the database opened. For ":memory:" it returns just that.
 func (d *Database) Path() string { return d.path }
 
 // A second process touches the database now — the nightly backup
@@ -65,7 +64,6 @@ func (d *Database) migrate() error {
 		-- 1 = the owner set this price themselves; a recompute must not overwrite
 		-- their work.
 		price_manual INTEGER NOT NULL DEFAULT 0,
-		currency    TEXT NOT NULL DEFAULT 'RUB',
 		stock       INTEGER NOT NULL DEFAULT 0,
 		category    TEXT NOT NULL DEFAULT '',
 		-- Whose goods these are: a group the owner names (a supplier).
@@ -171,7 +169,6 @@ func (d *Database) migrate() error {
 	CREATE TABLE IF NOT EXISTS ozon_links (
 		product_id   INTEGER PRIMARY KEY,
 		offer_id     TEXT NOT NULL,
-		ozon_id      TEXT NOT NULL DEFAULT '',
 		-- Price ON OZON in kopecks; 0 = we do not manage this product's price on
 		-- the platform (products.price is the shelf price, a different number).
 		price        INTEGER NOT NULL DEFAULT 0,
@@ -200,8 +197,7 @@ func (d *Database) migrate() error {
 		-- 1 = the platform sold more than we had on the books: stock hit zero and
 		-- refusing after the fact is no longer possible.
 		oversold       INTEGER NOT NULL DEFAULT 0,
-		created_at     DATETIME NOT NULL,
-		applied_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		created_at     DATETIME NOT NULL
 	);
 	-- Deliberately without an FK on products: the row must outlive the product,
 	-- and an unmatched item (product_id IS NULL) must reach the owner's eyes
@@ -228,26 +224,5 @@ func (d *Database) migrate() error {
 		id           INTEGER PRIMARY KEY CHECK (id = 1),
 		orders_since DATETIME NOT NULL
 	);`)
-	if err != nil {
-		return err
-	}
-	return d.addSettingsColumns()
-}
-
-// CREATE TABLE IF NOT EXISTS leaves a shop that already has data on the old
-// column set, so columns added to settings after release need an ALTER on top.
-// The duplicate-column error is the idempotency check: SQLite has no
-// ADD COLUMN IF NOT EXISTS, and asking the schema first would be a second
-// round-trip for the same answer.
-func (d *Database) addSettingsColumns() error {
-	for _, col := range []string{
-		"ga_measurement_id",
-		"metrika_counter_id",
-	} {
-		_, err := d.db.Exec(`ALTER TABLE settings ADD COLUMN ` + col + ` TEXT NOT NULL DEFAULT ''`)
-		if err != nil && !strings.Contains(err.Error(), "duplicate column") {
-			return fmt.Errorf("add settings.%s: %w", col, err)
-		}
-	}
-	return nil
+	return err
 }

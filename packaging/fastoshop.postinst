@@ -15,8 +15,13 @@ useradd -m -U -d /home/fastocloud fastocloud -s /bin/bash || true
 chown fastocloud:fastocloud "$CONFIG_FILE"
 
 systemctl daemon-reload || true
-systemctl enable fastoshop || true
-systemctl restart fastoshop || true
+# Deb convention: install does not enable. A multi-shop host installs this
+# package only as a dependency and runs fastoshop@<name> units instead.
+if systemctl is-enabled fastoshop >/dev/null 2>&1; then
+    systemctl restart fastoshop || true
+fi
 
 echo "fastoshop installed. Set base_url in $CONFIG_FILE, configure nginx from"
-echo "/usr/share/fastoshop/nginx-fastoshop.conf.template, then open https://<domain>/admin"
+echo "/usr/share/fastoshop/nginx-fastoshop.conf.template, then run:"
+echo "  systemctl enable --now fastoshop"
+echo "and open https://<domain>/admin"

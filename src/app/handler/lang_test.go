@@ -10,8 +10,8 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// Свежий магазин обязан иметь язык: пустое значение приехало бы в админку и
-// оставило переключатель без выбранного состояния.
+// A fresh shop must have a language: an empty value would arrive in the admin
+// and leave the switcher with no selected state.
 func TestLangDefaultsAndRoundTrip(t *testing.T) {
 	h := newTestHandler(t)
 	if _, err := h.db.CreateOwner("a@b.c"); err != nil {
@@ -34,7 +34,7 @@ func TestLangDefaultsAndRoundTrip(t *testing.T) {
 		t.Fatalf("lang not stored: %q", h.lang())
 	}
 
-	// Неизвестный язык отклоняем, иначе сообщения молча уедут в фолбэк.
+	// Reject an unknown language, otherwise messages silently fall back.
 	w = httptest.NewRecorder()
 	h.SetLang(w, httptest.NewRequest("PUT", "/api/settings/lang",
 		strings.NewReader(`{"lang":"de"}`)))
@@ -42,7 +42,7 @@ func TestLangDefaultsAndRoundTrip(t *testing.T) {
 		t.Fatalf("bad lang accepted: %d", w.Code)
 	}
 
-	// Смена языка не должна ронять остальные настройки.
+	// Changing the language must not break the other settings.
 	s, err := h.db.GetSettings()
 	if err != nil || s.OwnerEmail != "a@b.c" || s.Currency != database.ShopCurrencyRUB {
 		t.Fatalf("settings damaged: %+v %v", s, err)

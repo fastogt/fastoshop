@@ -30,8 +30,8 @@ type Storefront struct {
 	index   *template.Template
 	product *template.Template
 	cart    *template.Template
-	// OnStockChange будит синк площадок после списания остатка заказом. Поле, а
-	// не аргумент конструктора: связь односторонняя и необязательная.
+	// OnStockChange wakes the marketplace sync after an order deducts stock. A
+	// field rather than a constructor argument: the link is one-way and optional.
 	OnStockChange func()
 }
 
@@ -89,17 +89,17 @@ func priceStr(minor int64) string {
 	return fmt.Sprintf("%.2f", float64(minor)/100)
 }
 
-// kCatalogPageSize — ~60 карточек ≈ 100–200 КБ HTML: страница остаётся лёгкой
-// для мобильного и для краулера, каталог на 20 000 позиций больше не рендерится
-// целиком.
+// kCatalogPageSize — ~60 cards ≈ 100–200 KB of HTML: the page stays light for
+// mobile and for the crawler, and a 20,000-item catalogue is no longer rendered
+// in one piece.
 // A search box is not a text field: anything longer than this is a bot or a
 // paste, and it has no business reaching the database or the page title.
 const kMaxQueryRunes = 100
 
 const kCatalogPageSize = 60
 
-// product_images.path хранит либо имя локального файла (загрузка из админки),
-// либо абсолютный URL источника (импорт больше не качает фото).
+// product_images.path holds either a local file name (uploaded via the admin)
+// or an absolute source URL (import no longer downloads photos).
 func isRemoteImage(path string) bool {
 	return strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://")
 }
@@ -126,7 +126,7 @@ func (s *Storefront) thumbURL(path string) string {
 	return imageURL(path)
 }
 
-// absImageURL — для og:image и JSON-LD, где нужен абсолютный адрес.
+// absImageURL — for og:image and JSON-LD, where an absolute address is required.
 func (s *Storefront) absImageURL(path string) string {
 	if isRemoteImage(path) {
 		return path
@@ -134,8 +134,8 @@ func (s *Storefront) absImageURL(path string) string {
 	return s.baseURL + "/uploads/" + path
 }
 
-// orderItemJSON — снапшот позиции в orders.items_json. Тот же формат читает
-// CSV-экспорт (handler/orders.go, orderItem).
+// orderItemJSON is the snapshot of a line item in orders.items_json. The same
+// format is read by the CSV export (handler/orders.go, orderItem).
 type orderItemJSON struct {
 	SKU   string `json:"sku"`
 	Title string `json:"title"`
@@ -160,15 +160,15 @@ type cardVM struct {
 	PriceStr string
 }
 
-// imageVM — готовые адреса картинки: относительный для <img>, абсолютный для
-// og:image и JSON-LD.
+// imageVM — ready-made image addresses: relative for <img>, absolute for
+// og:image and JSON-LD.
 type imageVM struct {
 	URL    string
 	AbsURL string
 }
 
-// pageVM — данные шаблона. Одна структура на обе страницы: типизированная
-// модель вместо map[string]any (правило проекта: никаких any в сигнатурах).
+// pageVM is the template data. One struct for both pages: a typed model
+// instead of map[string]any (project rule: no any in signatures).
 type pageVM struct {
 	Shop            *database.Settings
 	BaseURL         string
@@ -195,8 +195,8 @@ type pageVM struct {
 	SoldOut         string
 }
 
-// catalogURL — адрес страницы каталога с сохранённой категорией. Первая
-// страница всегда без ?page=, чтобы у одного набора товаров был один URL.
+// catalogURL is the catalogue page address with the category preserved. The
+// first page never carries ?page=, so one set of products has exactly one URL.
 func catalogURL(category string, page int, query string) string {
 	q := url.Values{}
 	if category != "" {
@@ -214,9 +214,9 @@ func catalogURL(category string, page int, query string) string {
 	return "/?" + q.Encode()
 }
 
-// foundStr — «нашёлся 1 товар» / «2 товара» / «5 товаров». Плюрализация живёт
-// здесь, а не в шаблоне: витрина рендерится на языке товаров, и правило у
-// русского числительного одно на весь магазин.
+// foundStr — «нашёлся 1 товар» / «2 товара» / «5 товаров». Pluralization lives
+// here, not in the template: the storefront renders in the language of the
+// products, and the Russian numeral rule is one for the whole shop.
 func foundStr(n int) string {
 	word := "товаров"
 	switch {
@@ -240,7 +240,7 @@ func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
 	page := 1
 	if raw := r.URL.Query().Get("page"); raw != "" {
 		n, err := strconv.Atoi(raw)
-		// Мусор в ?page= — 404, а не пустая выдача: мягкие 404 отравляют индекс.
+		// Garbage in ?page= is a 404, not an empty listing: soft 404s poison the index.
 		if err != nil || n < 1 {
 			http.NotFound(w, r)
 			return
@@ -285,8 +285,9 @@ func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
 	if query != "" {
 		data.NoIndex = true
 		data.Canonical = ""
-		// На пустой выдаче счётчик молчит: ниже уже стоит сообщение с самим
-		// запросом и ссылкой в каталог, две одинаковые фразы подряд — шум.
+		// On an empty result the counter stays silent: below there is already a
+		// message with the query itself and a link back to the catalogue, and two
+		// identical phrases in a row are noise.
 		if total > 0 {
 			data.FoundStr = foundStr(total)
 		}

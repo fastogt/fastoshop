@@ -45,8 +45,8 @@ export default function App() {
   const t = useT(kText);
   const lang = useLang();
 
-  // Ссылка-приглашение приходит письмом и ведёт прямо сюда: владелец уже
-  // заведён при создании магазина, но пароля у него нет.
+  // The invite link arrives by email and leads straight here: the owner is
+  // already created with the shop, but has no password yet.
   const [invite] = useState(
     () => new URLSearchParams(window.location.search).get("invite") ?? "",
   );
@@ -140,9 +140,9 @@ export default function App() {
         {tab === "ozon" && <Ozon />}
         {tab === "stats" && <Stats />}
       </main>
-      {/* AGPL §13: тот, кому магазин отдают как услугу, должен иметь доступ к
-          исходникам. Ссылка в подвале — и есть это предложение; без неё
-          хостинг на собственном продукте нарушает собственную лицензию. */}
+      {/* AGPL §13: whoever is offered the shop as a service must have access to
+          the sources. The footer link is that offer; without it, hosting our
+          own product would violate our own license. */}
       <footer className="border-line text-muted border-t py-4 text-sm">
         <div className="page">
           <a
