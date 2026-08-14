@@ -30,6 +30,7 @@ type Storefront struct {
 	index   *template.Template
 	product *template.Template
 	cart    *template.Template
+	info    *template.Template
 	// OnStockChange wakes the marketplace sync after an order deducts stock. A
 	// field rather than a constructor argument: the link is one-way and optional.
 	OnStockChange func()
@@ -48,6 +49,7 @@ func New(db *database.Database, baseURL, uploadsDir string) *Storefront {
 		index:   template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/index.html")),
 		product: template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/product.html")),
 		cart:    template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/cart.html")),
+		info:    template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/info.html")),
 	}
 }
 
@@ -74,6 +76,7 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/", s.Index)
 	r.Get("/p/{slug}", s.Product)
 	r.Get("/cart", s.Cart)
+	r.Get("/info", s.Info)
 	r.Post("/cart/add", s.CartAdd)
 	r.Post("/cart/update", s.CartUpdate)
 	r.Post("/cart/order", s.CartOrder)
@@ -328,6 +331,24 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Info publishes delivery, payment and returns. A shop that does not say how it
+// ships and how it takes money is rejected by Yandex and Google shopping alike,
+// and the buyer has nowhere to read the terms they are agreeing to. 404 while
+// the owner has not written them: an empty page under a link in every footer is
+// worse than no link.
+func (s *Storefront) Info(w http.ResponseWriter, r *http.Request) {
+	shop := s.shop()
+	if shop.Terms == "" {
+		http.NotFound(w, r)
+		return
+	}
+	data := pageVM{Shop: shop, BaseURL: s.baseURL, CSS: template.CSS(styleCSS),
+		CartCount: cartCount(r), Canonical: s.baseURL + "/info"}
+	if err := s.info.ExecuteTemplate(w, "base", data); err != nil {
+		log.Errorf("render info: %v", err)
+	}
+}
+
 type sitemapURL struct {
 	Loc     string `xml:"loc"`
 	LastMod string `xml:"lastmod,omitempty"`
@@ -347,6 +368,9 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 	}
 	set := sitemapSet{NS: "http://www.sitemaps.org/schemas/sitemap/0.9",
 		URLs: []sitemapURL{{Loc: s.baseURL + "/"}}}
+	if s.shop().Terms != "" {
+		set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/info"})
+	}
 	for _, p := range products {
 		set.URLs = append(set.URLs, sitemapURL{
 			Loc: s.baseURL + "/p/" + p.Slug, LastMod: p.UpdatedAt.Format("2006-01-02")})

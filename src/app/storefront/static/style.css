@@ -309,10 +309,13 @@ form.qty button:hover { background: var(--accent-soft); }
 
 /* Реквизиты набираются переводами строк, как их пишет владелец: адрес и номера
    на одной строке читаются как каша. */
-.requisites {
+.requisites,
+.terms {
   white-space: pre-line;
   line-height: 1.5;
 }
+
+.terms { max-width: 60ch; margin-block: 20px; }
 
 footer {
   padding-block: 28px 40px;

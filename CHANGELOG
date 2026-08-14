@@ -1,3 +1,18 @@
+1.11.0 / August 14, 2026
+[Alexandr Topilski]
+- Legal details for the shop: a free-form block in the Profile that goes into the footer of every storefront page and into schema.org/Organization markup, so search engines and buyers can see whom they are dealing with
+- A "Delivery and payment" page: delivery, payment and returns written as plain text in the Profile, published at /info, linked from the footer and listed in the sitemap. Neither Yandex nor Google accepts a shop into shopping results without published terms; an empty field means no page and no link
+- Product feeds for Yandex (/yml.xml) and Google Merchant Center (/gmc.xml)
+- Search engines and analytics: Google Analytics and Yandex Metrika ids in the Profile, and the storefront still carries no script at all while both are empty
+- Order emails come from the shop, not from a mailbox: the sender name is the shop name, and the address can differ from the SMTP login for owners whose provider forbids sending as another user
+- A product with no photos shows a placeholder instead of an empty column half a page tall
+- Instance stats in the admin: CPU, memory, disks, network, uptime, the size of the database and of the uploads directory
+- New shops are handed a one-time invite link instead of a printed password
+- An uploaded logo larger than needed is shrunk on upload
+- The storefront's html lang follows the shop language
+- Search-engine verification fields are gone from the Profile: proving domain ownership is the owner's business, and every registrar and search engine offers a way that needs no field in the shop
+- The admin keeps one page width across tabs, and a product dialog scrolls itself instead of the page behind it
+
 1.10.0 / August 10, 2026
 [Alexandr Topilski]
 - The catalogue grid shows small copies of the photos instead of the supplier's originals: a page of sixty products used to pull megabytes to draw thumbnails. Measured on a real catalogue, a 197 KB photo becomes 16 KB. The product page still shows the original

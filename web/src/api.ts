@@ -54,6 +54,7 @@ export interface Settings {
   ga_measurement_id: string;
   metrika_counter_id: string;
   requisites: string;
+  terms: string;
 }
 
 export interface ImportDiffRow {

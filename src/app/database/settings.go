@@ -48,6 +48,10 @@ type Settings struct {
 	// differs by country and by whether the seller is a company or a sole
 	// trader — a set of typed fields would fit one case and fight the rest.
 	Requisites string `json:"requisites"`
+	// Delivery, payment and returns, free-form multiline, shown at /info. Yandex
+	// and Google both check that a shop publishes its terms before they let it
+	// into shopping results, and the buyer has to read them somewhere.
+	Terms string `json:"terms"`
 	// Logo file name; empty means the shop is represented by its name.
 	Logo string `json:"logo"`
 	// Shop-wide currency: one shop sells in one country's money. Products carry
@@ -85,11 +89,11 @@ func (d *Database) GetSettings() (*Settings, error) {
 	err := d.db.QueryRow(
 		`SELECT owner_email, password_hash, shop_name, shop_phone, smtp_host,
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
-		 ga_measurement_id, metrika_counter_id, requisites, smtp_from
+		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms
 		 FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
-		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom)
+		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms)
 	if err != nil {
 		return nil, err
 	}
@@ -117,11 +121,11 @@ func (d *Database) UpdateSettings(s *Settings) error {
 		`UPDATE settings SET owner_email=?, password_hash=?, shop_name=?, shop_phone=?,
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
 		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?,
-		 smtp_from=?
+		 smtp_from=?, terms=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
-		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom)
+		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom, s.Terms)
 	return err
 }
 

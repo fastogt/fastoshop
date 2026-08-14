@@ -26,6 +26,7 @@ type settingsResponse struct {
 	GAMeasurementID  string `json:"ga_measurement_id"`
 	MetrikaCounterID string `json:"metrika_counter_id"`
 	Requisites       string `json:"requisites"`
+	Terms            string `json:"terms"`
 }
 
 type settingsRequest struct {
@@ -44,6 +45,7 @@ type settingsRequest struct {
 	GAMeasurementID  *string `json:"ga_measurement_id"`
 	MetrikaCounterID *string `json:"metrika_counter_id"`
 	Requisites       *string `json:"requisites"`
+	Terms            *string `json:"terms"`
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +63,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		GAMeasurementID:  s.GAMeasurementID,
 		MetrikaCounterID: s.MetrikaCounterID,
 		Requisites:       s.Requisites,
+		Terms:            s.Terms,
 	})
 }
 
@@ -101,6 +104,9 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Requisites != nil {
 		s.Requisites = strings.TrimSpace(*req.Requisites)
+	}
+	if req.Terms != nil {
+		s.Terms = strings.TrimSpace(*req.Terms)
 	}
 	if err := h.db.UpdateSettings(s); err != nil {
 		writeInternalError(w, err)

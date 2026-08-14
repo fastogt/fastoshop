@@ -1030,3 +1030,43 @@ func TestNoPhotoPlaceholder(t *testing.T) {
 		}
 	}
 }
+
+// Yandex and Google both refuse a shop that does not publish how it ships and
+// how it takes money, so the page has to exist — and has to stay out of the
+// footer and the sitemap while the owner has not written the terms.
+func TestInfoPage(t *testing.T) {
+	d, h := setup(t)
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/info", nil))
+	if w.Code != http.StatusNotFound {
+		t.Errorf("empty terms: GET /info = %d, want 404", w.Code)
+	}
+	if body := get(t, h, "/"); strings.Contains(body, `href="/info"`) {
+		t.Error("footer links to /info with no terms filled in")
+	}
+	if strings.Contains(get(t, h, "/sitemap.xml"), "/info") {
+		t.Error("sitemap lists /info with no terms filled in")
+	}
+
+	const terms = "Доставка курьером — 1–2 дня.\nОплата при получении."
+	s, _ := d.GetSettings()
+	s.Terms = terms
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	_, after, ok := strings.Cut(get(t, h, "/info"), `<div class="terms">`)
+	if !ok {
+		t.Fatal("/info has no terms block")
+	}
+	if block, _, _ := strings.Cut(after, "</div>"); !strings.Contains(block, "Оплата при получении") {
+		t.Errorf("terms block is missing the text: %q", block)
+	}
+	if body := get(t, h, "/"); !strings.Contains(body, `href="/info"`) {
+		t.Error("footer does not link to /info")
+	}
+	if !strings.Contains(get(t, h, "/sitemap.xml"), "https://shop.example.com/info") {
+		t.Error("sitemap does not list /info")
+	}
+}

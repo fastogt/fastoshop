@@ -22,6 +22,15 @@ const kText = {
     ru: "ООО «Лавка»\nМинск, ул. Мира, 1\nУНП 123456789",
     en: "Ivan's Shop LLC\n1 Mira St, Minsk\nReg. no. 123456789",
   },
+  terms: { ru: "Доставка и оплата", en: "Delivery and payment" },
+  termsHint: {
+    ru: "Сроки и стоимость доставки, способы оплаты, возврат. Открываются отдельной страницей со ссылкой в подвале витрины. Без них магазин не берут ни Яндекс, ни Google в товарную выдачу. Пустое поле — страницы нет.",
+    en: "Delivery times and cost, payment methods, returns. Shown as a separate page linked from the storefront footer. Without them neither Yandex nor Google accepts the shop into shopping results. An empty field means no page.",
+  },
+  termsPlaceholder: {
+    ru: "Доставка курьером по Минску — 1–2 дня, 10 руб.\nПочтой по Беларуси — 3–5 дней.\nОплата наличными или картой при получении.\nВозврат в течение 14 дней.",
+    en: "Courier delivery within the city — 1–2 days.\nPost — 3–5 days.\nCash or card on delivery.\nReturns within 14 days.",
+  },
   logo: { ru: "Логотип", en: "Logo" },
   logoHint: {
     ru: "Показывается в шапке витрины вместо названия и становится иконкой вкладки. JPEG, PNG, WebP или SVG, до 2 МБ. Без логотипа магазин представлен названием — это тоже нормально.",
@@ -194,6 +203,18 @@ export default function Profile() {
             onChange={(e) => setS({ ...s, requisites: e.target.value })}
           />
           <p className="hint mt-1">{t("requisitesHint")}</p>
+        </div>
+        <div>
+          <label className="label">{t("terms")}</label>
+          <textarea
+            className="field"
+            rows={5}
+            autoComplete="off"
+            placeholder={t("termsPlaceholder")}
+            value={s.terms}
+            onChange={(e) => setS({ ...s, terms: e.target.value })}
+          />
+          <p className="hint mt-1">{t("termsHint")}</p>
         </div>
         <div>
           <label className="label">{t("logo")}</label>
