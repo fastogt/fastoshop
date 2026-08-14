@@ -303,6 +303,13 @@ form.qty button:hover { background: var(--accent-soft); }
 
 .pager { display: flex; gap: 20px; align-items: center; justify-content: center; margin-block: 28px; font-weight: 600; }
 
+/* Реквизиты набираются переводами строк, как их пишет владелец: адрес и номера
+   на одной строке читаются как каша. */
+.requisites {
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
 footer {
   padding-block: 28px 40px;
   margin-top: 48px;

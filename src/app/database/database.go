@@ -146,7 +146,9 @@ func (d *Database) migrate() error {
 		-- Analytics counters. Empty means the storefront renders nothing at all:
 		-- a shop that has not set them up stays without a single script.
 		ga_measurement_id   TEXT NOT NULL DEFAULT '',
-		metrika_counter_id  TEXT NOT NULL DEFAULT ''
+		metrika_counter_id  TEXT NOT NULL DEFAULT '',
+		-- Legal details for the storefront footer, free-form multiline.
+		requisites          TEXT NOT NULL DEFAULT ''
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,

@@ -24,6 +24,7 @@ type settingsResponse struct {
 
 	GAMeasurementID  string `json:"ga_measurement_id"`
 	MetrikaCounterID string `json:"metrika_counter_id"`
+	Requisites       string `json:"requisites"`
 }
 
 type settingsRequest struct {
@@ -40,6 +41,7 @@ type settingsRequest struct {
 	// field must leave the counters alone instead of tearing them off the page.
 	GAMeasurementID  *string `json:"ga_measurement_id"`
 	MetrikaCounterID *string `json:"metrika_counter_id"`
+	Requisites       *string `json:"requisites"`
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +57,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		SMTPPasswordSet:  s.SMTPPassword != "",
 		GAMeasurementID:  s.GAMeasurementID,
 		MetrikaCounterID: s.MetrikaCounterID,
+		Requisites:       s.Requisites,
 	})
 }
 
@@ -91,6 +94,9 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.MetrikaCounterID != nil {
 		s.MetrikaCounterID = strings.TrimSpace(*req.MetrikaCounterID)
+	}
+	if req.Requisites != nil {
+		s.Requisites = strings.TrimSpace(*req.Requisites)
 	}
 	if err := h.db.UpdateSettings(s); err != nil {
 		writeInternalError(w, err)

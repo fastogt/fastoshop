@@ -13,6 +13,15 @@ const kText = {
   shopName: { ru: "Название магазина", en: "Shop name" },
   shopNamePlaceholder: { ru: "Лавка Ивана", en: "Ivan's Shop" },
   shopPhone: { ru: "Телефон для покупателей", en: "Customer phone number" },
+  requisites: { ru: "Реквизиты", en: "Legal details" },
+  requisitesHint: {
+    ru: "Юрлицо, адрес, регистрационный номер — то, что по закону должно быть на сайте. Показываются в подвале витрины и попадают в разметку организации для поисковиков. Пишите как есть, переводы строк сохраняются.",
+    en: "Legal entity, address, registration number — what the law requires on the site. Shown in the storefront footer and put into the organisation markup for search engines. Write it as is, line breaks are kept.",
+  },
+  requisitesPlaceholder: {
+    ru: "ООО «Лавка»\nМинск, ул. Мира, 1\nУНП 123456789",
+    en: "Ivan's Shop LLC\n1 Mira St, Minsk\nReg. no. 123456789",
+  },
   logo: { ru: "Логотип", en: "Logo" },
   logoHint: {
     ru: "Показывается в шапке витрины вместо названия и становится иконкой вкладки. JPEG, PNG, WebP или SVG, до 2 МБ. Без логотипа магазин представлен названием — это тоже нормально.",
@@ -168,6 +177,18 @@ export default function Profile() {
             value={s.shop_phone}
             onChange={(e) => setS({ ...s, shop_phone: e.target.value })}
           />
+        </div>
+        <div>
+          <label className="label">{t("requisites")}</label>
+          <textarea
+            className="field"
+            rows={4}
+            autoComplete="off"
+            placeholder={t("requisitesPlaceholder")}
+            value={s.requisites}
+            onChange={(e) => setS({ ...s, requisites: e.target.value })}
+          />
+          <p className="hint mt-1">{t("requisitesHint")}</p>
         </div>
         <div>
           <label className="label">{t("logo")}</label>

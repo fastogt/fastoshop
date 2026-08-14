@@ -24,8 +24,24 @@
 <main>{{block "content" .}}{{end}}</main>
 <footer>
 <span>© {{.Shop.ShopName}}</span>
+{{if .Shop.Requisites}}<div class="requisites">{{.Shop.Requisites}}</div>{{end}}
 {{if .Shop.ShopPhone}}<a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a>{{end}}
 </footer>
+{{/* Organization ties the site to a legal entity: search engines show the
+contacts in the snippet, and the buyer sees whom they are paying. Rendered only
+when the owner filled the details — an Organization with a name alone is noise
+in the markup. */}}
+{{if .Shop.Requisites}}<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": {{.Shop.ShopName}},
+  "url": {{.BaseURL}},
+  {{if .Shop.Logo}}"logo": {{printf "%s/uploads/%s" .BaseURL .Shop.Logo}},{{end}}
+  {{if .Shop.ShopPhone}}"telephone": {{.Shop.ShopPhone}},{{end}}
+  "description": {{.Shop.Requisites}}
+}
+</script>{{end}}
 {{/* Counters go last and load async: a shop with none set stays without a
 single script on the page, which is the point of the storefront. */}}
 {{if .Shop.GAMeasurementID}}<script async src="https://www.googletagmanager.com/gtag/js?id={{.Shop.GAMeasurementID}}"></script>

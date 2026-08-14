@@ -43,6 +43,11 @@ type Settings struct {
 	PasswordHash string `json:"-"`
 	ShopName     string `json:"shop_name"`
 	ShopPhone    string `json:"shop_phone"`
+	// Legal details shown in the storefront footer, free-form multiline: a shop
+	// selling in Russia or Belarus is required to publish them, and their shape
+	// differs by country and by whether the seller is a company or a sole
+	// trader — a set of typed fields would fit one case and fight the rest.
+	Requisites string `json:"requisites"`
 	// Logo file name; empty means the shop is represented by its name.
 	Logo string `json:"logo"`
 	// Shop-wide currency: one shop sells in one country's money. Products carry
@@ -76,11 +81,11 @@ func (d *Database) GetSettings() (*Settings, error) {
 	err := d.db.QueryRow(
 		`SELECT owner_email, password_hash, shop_name, shop_phone, smtp_host,
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
-		 ga_measurement_id, metrika_counter_id
+		 ga_measurement_id, metrika_counter_id, requisites
 		 FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
-		&s.GAMeasurementID, &s.MetrikaCounterID)
+		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites)
 	if err != nil {
 		return nil, err
 	}
@@ -107,11 +112,11 @@ func (d *Database) UpdateSettings(s *Settings) error {
 	_, err := d.db.Exec(
 		`UPDATE settings SET owner_email=?, password_hash=?, shop_name=?, shop_phone=?,
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
-		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?
+		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
-		s.GAMeasurementID, s.MetrikaCounterID)
+		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites)
 	return err
 }
 

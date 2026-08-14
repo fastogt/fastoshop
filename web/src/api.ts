@@ -52,6 +52,7 @@ export interface Settings {
   smtp_password_set: boolean;
   ga_measurement_id: string;
   metrika_counter_id: string;
+  requisites: string;
 }
 
 export interface ImportDiffRow {

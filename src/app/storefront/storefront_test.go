@@ -941,3 +941,61 @@ func TestHTMLLang(t *testing.T) {
 		}
 	}
 }
+
+// Requisites are what a buyer checks before paying a stranger, and what the law
+// requires a shop in Russia or Belarus to publish. Empty means the markup stays
+// clean: an Organization carrying only a name is noise, not data.
+func TestRequisites(t *testing.T) {
+	d, h := setup(t)
+
+	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
+		// Ищем разметку и блок, а не слово: класс .requisites живёт в инлайновом
+		// CSS на каждой странице и совпал бы всегда.
+		if body := get(t, h, path); strings.Contains(body, `"Organization"`) ||
+			strings.Contains(body, `class="requisites"`) {
+			t.Errorf("%s carries an Organization with no details filled in", path)
+		}
+	}
+
+	const details = "ООО «Лавка»\nМинск, ул. Мира, 1\nУНП 123456789"
+	s, _ := d.GetSettings()
+	s.Requisites = details
+	s.ShopPhone = "+375291234567"
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
+		body := get(t, h, path)
+		// Именно блок подвала, а не текст где угодно: те же реквизиты лежат в
+		// JSON-LD, и поиск по подстроке проходил бы с пустым подвалом.
+		_, after, ok := strings.Cut(body, `<div class="requisites">`)
+		if !ok {
+			t.Fatalf("%s: no requisites block in the footer", path)
+		}
+		if block, _, _ := strings.Cut(after, "</div>"); !strings.Contains(block, "УНП 123456789") {
+			t.Errorf("%s: footer block is missing the details: %q", path, block)
+		}
+		blocks := kLDJSON.FindAllString(body, -1)
+		var org map[string]any
+		for _, b := range blocks {
+			raw := strings.TrimSuffix(strings.SplitN(b, ">", 2)[1], "</script>")
+			var m map[string]any
+			if err := json.Unmarshal([]byte(raw), &m); err != nil {
+				t.Fatalf("%s: ld+json invalid: %v\n%s", path, err, raw)
+			}
+			if m["@type"] == "Organization" {
+				org = m
+			}
+		}
+		if org == nil {
+			t.Fatalf("%s: no Organization block", path)
+		}
+		if org["description"] != details {
+			t.Errorf("%s: description = %q", path, org["description"])
+		}
+		if org["telephone"] != "+375291234567" {
+			t.Errorf("%s: telephone = %q", path, org["telephone"])
+		}
+	}
+}
