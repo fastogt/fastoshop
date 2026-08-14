@@ -5,9 +5,26 @@ import (
 	"fmt"
 	"mime"
 	"net/smtp"
+	"strings"
 
 	"github.com/fastogt/fastoshop/app/database"
 )
+
+// fromHeader is "Shop name <address>". The inbox shows a name, not a bare
+// address — «info» tells the owner nothing about which shop just sold
+// something. Cyrillic is allowed in a header only MIME-encoded; a plain ASCII
+// name still needs quoting, or a comma in "Ivan's Shop, Ltd" would split the
+// header into two addresses.
+func fromHeader(name, addr string) string {
+	if name == "" {
+		return addr
+	}
+	enc := mime.BEncoding.Encode("UTF-8", name)
+	if enc == name {
+		enc = `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(name) + `"`
+	}
+	return enc + " <" + addr + ">"
+}
 
 func buildMessage(from, to, subject, body string) []byte {
 	encSubject := mime.BEncoding.Encode("UTF-8", subject)
@@ -60,7 +77,8 @@ func Send(s *database.Settings, subject, body string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := wc.Write(buildMessage(sender(s), s.OwnerEmail, subject, body)); err != nil {
+	if _, err := wc.Write(buildMessage(
+		fromHeader(s.ShopName, sender(s)), s.OwnerEmail, subject, body)); err != nil {
 		return err
 	}
 	if err := wc.Close(); err != nil {

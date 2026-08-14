@@ -39,3 +39,19 @@ func TestSenderFallsBackToLogin(t *testing.T) {
 		t.Errorf("From header: %q", msg)
 	}
 }
+
+// The inbox should show the shop, not the mailbox: "info" tells the owner
+// nothing about which shop just sold something.
+func TestFromHeader(t *testing.T) {
+	cases := []struct{ name, addr, want string }{
+		{"", "shop@x.by", "shop@x.by"},
+		{"Лавка Ивана", "shop@x.by", "=?UTF-8?b?0JvQsNCy0LrQsCDQmNCy0LDQvdCw?= <shop@x.by>"},
+		{`Ivan's Shop, Ltd`, "shop@x.by", `"Ivan's Shop, Ltd" <shop@x.by>`},
+		{`Say "hi"`, "shop@x.by", `"Say \"hi\"" <shop@x.by>`},
+	}
+	for _, c := range cases {
+		if got := fromHeader(c.name, c.addr); got != c.want {
+			t.Errorf("fromHeader(%q) = %q, want %q", c.name, got, c.want)
+		}
+	}
+}
