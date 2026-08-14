@@ -53,6 +53,11 @@ const kText = {
   },
   smtpHost: { ru: "SMTP-хост", en: "SMTP host" },
   smtpPort: { ru: "Порт", en: "Port" },
+  smtpFrom: { ru: "Отправитель писем", en: "Sender address" },
+  smtpFromHint: {
+    ru: "Адрес в поле «От кого». Пусто — берётся логин. Заполните, если логин не адрес: сервисы рассылок пускают по API-ключу, а почта Google — по основному ящику, тогда как письмо должно приходить от адреса магазина.",
+    en: "The address in the From field. Empty means the login is used. Fill it in when the login is not an address: relays sign in by an API key and Google mail by the main mailbox, while the letter should come from the shop's address.",
+  },
   smtpUser: { ru: "Логин (полный email)", en: "Login (full email)" },
   smtpPassword: { ru: "Пароль приложения", en: "App password" },
   smtpPasswordSet: { ru: "сохранён", en: "saved" },
@@ -281,6 +286,18 @@ export default function Profile() {
             value={s.smtp_user}
             onChange={(e) => setS({ ...s, smtp_user: e.target.value })}
           />
+        </div>
+        <div>
+          <label className="label">{t("smtpFrom")}</label>
+          <input
+            className="field"
+            name="smtp-from"
+            autoComplete="off"
+            placeholder={s.smtp_user || "shop@example.ru"}
+            value={s.smtp_from}
+            onChange={(e) => setS({ ...s, smtp_from: e.target.value })}
+          />
+          <p className="hint mt-1">{t("smtpFromHint")}</p>
         </div>
         <div>
           <label className="label">{t("smtpPassword")}</label>

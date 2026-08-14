@@ -20,6 +20,7 @@ type settingsResponse struct {
 	SMTPHost        string `json:"smtp_host"`
 	SMTPPort        int    `json:"smtp_port"`
 	SMTPUser        string `json:"smtp_user"`
+	SMTPFrom        string `json:"smtp_from"`
 	SMTPPasswordSet bool   `json:"smtp_password_set"`
 
 	GAMeasurementID  string `json:"ga_measurement_id"`
@@ -35,6 +36,7 @@ type settingsRequest struct {
 	SMTPHost     string  `json:"smtp_host"`
 	SMTPPort     int     `json:"smtp_port"`
 	SMTPUser     string  `json:"smtp_user"`
+	SMTPFrom     string  `json:"smtp_from"`
 	SMTPPassword *string `json:"smtp_password"` // nil = leave unchanged
 
 	// Pointers: an older admin build does not send these fields, and a missing
@@ -54,6 +56,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		OwnerEmail: s.OwnerEmail, ShopName: s.ShopName, ShopPhone: s.ShopPhone,
 		Currency: s.Currency, Lang: s.Lang, Logo: s.Logo,
 		SMTPHost: s.SMTPHost, SMTPPort: s.SMTPPort, SMTPUser: s.SMTPUser,
+		SMTPFrom:         s.SMTPFrom,
 		SMTPPasswordSet:  s.SMTPPassword != "",
 		GAMeasurementID:  s.GAMeasurementID,
 		MetrikaCounterID: s.MetrikaCounterID,
@@ -86,6 +89,7 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		s.Lang = req.Lang
 	}
 	s.SMTPHost, s.SMTPPort, s.SMTPUser = req.SMTPHost, req.SMTPPort, req.SMTPUser
+	s.SMTPFrom = strings.TrimSpace(req.SMTPFrom)
 	if req.SMTPPassword != nil {
 		s.SMTPPassword = *req.SMTPPassword
 	}

@@ -49,6 +49,10 @@
          to scroll to reach the second. */}}
     <div class="slides">
     {{range $i, $im := .Images}}<img id="photo-{{$i}}" src="{{$im.URL}}" alt="{{$.P.Title}}" loading="lazy">{{end}}
+    {{/* A card with no photo left a hole the height of the page next to the
+         price. The shop's own mark fills it: neutral, already loaded elsewhere
+         on the page, and it says whose shop this is instead of nothing. */}}
+    {{if not .Images}}<img class="nophoto" src="/nophoto.svg" alt="Фото нет">{{end}}
     </div>
     {{if gt (len .Images) 1}}
     <div class="thumbs">

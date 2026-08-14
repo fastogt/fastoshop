@@ -12,7 +12,8 @@
 <ul class="grid">
 {{range .Products}}
   <li><a href="/p/{{.Slug}}">
-    {{if .ImageURL}}<img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy" width="400" height="400">{{end}}
+    {{if .ImageURL}}<img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy" width="400" height="400">
+    {{else}}<img class="nophoto" src="/nophoto.svg" alt="" loading="lazy" width="400" height="400">{{end}}
     <div class="body">
       <h2>{{.Title}}</h2>
       {{if le .Stock 0}}<span class="badge">Нет в наличии</span>{{end}}

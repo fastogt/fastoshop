@@ -49,6 +49,7 @@ export interface Settings {
   smtp_host: string;
   smtp_port: number;
   smtp_user: string;
+  smtp_from: string;
   smtp_password_set: boolean;
   ga_measurement_id: string;
   metrika_counter_id: string;

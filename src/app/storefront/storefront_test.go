@@ -999,3 +999,34 @@ func TestRequisites(t *testing.T) {
 		}
 	}
 }
+
+// A product without photos left a hole half a page tall next to the price. The
+// stub is served as a file, so a catalogue of sixty cards costs one request.
+func TestNoPhotoPlaceholder(t *testing.T) {
+	d, h := setup(t)
+
+	for _, path := range []string{"/", "/p/krasnyj-chajnik"} {
+		if !strings.Contains(get(t, h, path), `src="/nophoto.svg"`) {
+			t.Errorf("%s: no placeholder for a product without photos", path)
+		}
+	}
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/nophoto.svg", nil))
+	if w.Code != http.StatusOK || !strings.HasPrefix(w.Body.String(), "<svg") {
+		t.Fatalf("/nophoto.svg: %d %.40s", w.Code, w.Body.String())
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "image/svg+xml" {
+		t.Errorf("content-type = %q", ct)
+	}
+
+	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
+	if err := d.AddImage(p.ID, "https://cdn.example/x.jpg"); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"/", "/p/krasnyj-chajnik"} {
+		if strings.Contains(get(t, h, path), "/nophoto.svg") {
+			t.Errorf("%s: placeholder shown next to a real photo", path)
+		}
+	}
+}

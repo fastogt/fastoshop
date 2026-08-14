@@ -19,6 +19,17 @@ func buildMessage(from, to, subject, body string) []byte {
 		"\r\n" + body + "\r\n")
 }
 
+// sender is the address the letter comes from. It is not the login: a relay
+// (SendPulse, Mailgun) authenticates by an API key, and putting that in From
+// gets the mail refused; a Workspace alias needs the real mailbox to sign in
+// while the letter should carry the shop's own address.
+func sender(s *database.Settings) string {
+	if s.SMTPFrom != "" {
+		return s.SMTPFrom
+	}
+	return s.SMTPUser
+}
+
 // Send emails the owner via the SMTP from settings. Port 465 = implicit TLS
 // (Yandex 360 / VK WorkSpace), hence tls.Dial rather than smtp.SendMail (the
 // latter only speaks STARTTLS).
@@ -39,7 +50,7 @@ func Send(s *database.Settings, subject, body string) error {
 	if err := c.Auth(smtp.PlainAuth("", s.SMTPUser, s.SMTPPassword, s.SMTPHost)); err != nil {
 		return fmt.Errorf("smtp auth: %w", err)
 	}
-	if err := c.Mail(s.SMTPUser); err != nil {
+	if err := c.Mail(sender(s)); err != nil {
 		return err
 	}
 	if err := c.Rcpt(s.OwnerEmail); err != nil {
@@ -49,7 +60,7 @@ func Send(s *database.Settings, subject, body string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := wc.Write(buildMessage(s.SMTPUser, s.OwnerEmail, subject, body)); err != nil {
+	if _, err := wc.Write(buildMessage(sender(s), s.OwnerEmail, subject, body)); err != nil {
 		return err
 	}
 	if err := wc.Close(); err != nil {

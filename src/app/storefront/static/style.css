@@ -220,6 +220,10 @@ main > h1 { margin-block: 28px 20px; }
   background: var(--surface);
 }
 
+/* Заглушка «нет фото» рисуется целиком в SVG, поэтому растягивать её кадром
+   нельзя — только вписывать. */
+.nophoto { object-fit: contain !important; background: var(--surface); }
+
 .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
 .thumbs a { display: block; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
 .thumbs img { display: block; width: 64px; height: 64px; object-fit: cover; background: var(--surface); }

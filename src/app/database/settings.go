@@ -56,10 +56,14 @@ type Settings struct {
 	Currency string `json:"currency"`
 	// Owner's language. One shop has one owner, so this drives both the admin
 	// and the text the server renders for them (errors, emails).
-	Lang         string `json:"lang"`
-	SMTPHost     string `json:"smtp_host"`
-	SMTPPort     int    `json:"smtp_port"`
-	SMTPUser     string `json:"smtp_user"`
+	Lang     string `json:"lang"`
+	SMTPHost string `json:"smtp_host"`
+	SMTPPort int    `json:"smtp_port"`
+	SMTPUser string `json:"smtp_user"`
+	// Envelope and header sender. Empty means the login is used — the common
+	// case; a relay logs in by an API key and a Workspace alias signs in as the
+	// real mailbox, and both need the letter to come from the shop's address.
+	SMTPFrom     string `json:"smtp_from"`
 	SMTPPassword string `json:"-"`
 	// Analytics counters and search-console ownership tokens, as issued by the
 	// four cabinets. Stored raw: the shop only carries them to the page, and a
@@ -81,11 +85,11 @@ func (d *Database) GetSettings() (*Settings, error) {
 	err := d.db.QueryRow(
 		`SELECT owner_email, password_hash, shop_name, shop_phone, smtp_host,
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
-		 ga_measurement_id, metrika_counter_id, requisites
+		 ga_measurement_id, metrika_counter_id, requisites, smtp_from
 		 FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
-		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites)
+		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom)
 	if err != nil {
 		return nil, err
 	}
@@ -112,11 +116,12 @@ func (d *Database) UpdateSettings(s *Settings) error {
 	_, err := d.db.Exec(
 		`UPDATE settings SET owner_email=?, password_hash=?, shop_name=?, shop_phone=?,
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
-		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?
+		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?,
+		 smtp_from=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
-		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites)
+		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom)
 	return err
 }
 

@@ -148,7 +148,9 @@ func (d *Database) migrate() error {
 		ga_measurement_id   TEXT NOT NULL DEFAULT '',
 		metrika_counter_id  TEXT NOT NULL DEFAULT '',
 		-- Legal details for the storefront footer, free-form multiline.
-		requisites          TEXT NOT NULL DEFAULT ''
+		requisites          TEXT NOT NULL DEFAULT '',
+		-- Sender address; empty means smtp_user is used.
+		smtp_from           TEXT NOT NULL DEFAULT ''
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,
