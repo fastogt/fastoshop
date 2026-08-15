@@ -1,3 +1,7 @@
+1.13.1 / August 15, 2026
+[Alexandr Topilski]
+- The import screen says out loud whose photos and descriptions a feed carries, and asks the owner to confirm they may use them before the button works. It arrives with an Excel price list and a marketplace account just as it does with a feed, and it is also what makes the import an instruction from the owner rather than something we did to their shop
+
 1.13.0 / August 15, 2026
 [Alexandr Topilski]
 - The Categories tab: the storefront's sections are now yours to keep. Create a section (including an empty one, before anything is in it), rename it, move it under another parent, set the order of siblings, hide a branch from the storefront, delete it. The tree is on the left, the form on the right — the layout every catalogue admin uses

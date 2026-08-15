@@ -52,6 +52,18 @@ const kText = {
     ru: "Фид отдаёт цены в {from}, а магазин продаёт в {to}. Курс мы не знаем и наружу за ним не ходим — заложите его в коэффициент, иначе цены {from} встанут на витрину со знаком {to}.",
     en: "The feed quotes prices in {from} while the shop sells in {to}. We hold no exchange rate and fetch none — fold one into the coefficient, or {from} prices land on the storefront labelled {to}.",
   },
+  rights: {
+    ru: "Фотографии и описания принадлежат поставщику: и в выгрузке, и в прайсе Excel, и в кабинете площадки. Запуская импорт, вы подтверждаете, что вправе их использовать, и поручаете разместить их в вашем магазине.",
+    en: "Photos and descriptions belong to the supplier, whether they come from a feed, an Excel price list or a marketplace account. By starting an import you confirm you may use them and instruct us to place them in your shop.",
+  },
+  rightsAgree: {
+    ru: "Подтверждаю, что вправе использовать материалы поставщика",
+    en: "I confirm I may use the supplier's materials",
+  },
+  rightsLink: {
+    ru: "Правообладателям",
+    en: "For rights holders",
+  },
   recompute: { ru: "Пересчитать цены", en: "Recompute prices" },
   recomputeSection: { ru: "Пересчёт цен", en: "Price recompute" },
   recomputeHint: {
@@ -161,6 +173,9 @@ export default function Import() {
   const [recomputeMsg, setRecomputeMsg] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  // Подтверждение прав снимается после каждого импорта: следующая загрузка это
+  // следующее поручение владельца, а не продолжение прежнего.
+  const [rightsOk, setRightsOk] = useState(false);
   const coef = Number(coefficient.replace(",", ".")) || 1;
   // Before "Check" we only know the feed currency for marketplaces: their
   // cabinet is always in rubles. The owner fills their own CSV in the shop's
@@ -408,6 +423,24 @@ export default function Import() {
           )}
         </div>
 
+        <div className="note">
+          <p>{t("rights")}</p>
+          <label className="mt-2 flex cursor-pointer items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={rightsOk}
+              onChange={(e) => setRightsOk(e.target.checked)}
+            />
+            <span>{t("rightsAgree")}</span>
+          </label>
+          <p className="hint mt-1">
+            <a href="https://fastoshop.by/pravoobladatelyam" target="_blank">
+              {t("rightsLink")}
+            </a>
+          </p>
+        </div>
+
         <div className="flex items-center gap-3">
           <button
             className="btn-ghost"
@@ -429,9 +462,10 @@ export default function Import() {
           </button>
           <button
             className="btn"
-            disabled={busy}
+            disabled={busy || !rightsOk}
             onClick={() => {
               setBusy(true);
+              setRightsOk(false);
               setMsg(t("running"));
               setDiff(null);
               api
