@@ -452,24 +452,6 @@ export default function Products() {
                 />
               </div>
               <div className="min-w-40 flex-1">
-                <label className="label">{t("labelCategory")}</label>
-                <input
-                  className="field"
-                  list="product-categories"
-                  placeholder="Посуда/Кастрюли"
-                  value={edit.category ?? ""}
-                  onChange={(e) =>
-                    setEdit({ ...edit, category: e.target.value })
-                  }
-                />
-                <datalist id="product-categories">
-                  {categories.map((c) => (
-                    <option key={c} value={c} />
-                  ))}
-                </datalist>
-                <p className="hint mt-1">{t("categoryHint")}</p>
-              </div>
-              <div className="min-w-40 flex-1">
                 <label className="label">{t("labelSupplier")}</label>
                 <input
                   className="field"
@@ -486,6 +468,24 @@ export default function Products() {
                   ))}
                 </datalist>
               </div>
+            </div>
+            {/* Категория — путь, а пути длинные: своя строка во всю ширину,
+                а не четверть строки рядом с ценой. */}
+            <div>
+              <label className="label">{t("labelCategory")}</label>
+              <input
+                className="field"
+                list="product-categories"
+                placeholder="Посуда/Кастрюли"
+                value={edit.category ?? ""}
+                onChange={(e) => setEdit({ ...edit, category: e.target.value })}
+              />
+              <datalist id="product-categories">
+                {categories.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+              <p className="hint mt-1">{t("categoryHint")}</p>
             </div>
             <p className="hint -mt-2">{t("fieldsHint")}</p>
             <div>

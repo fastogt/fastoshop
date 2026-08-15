@@ -3,7 +3,6 @@ package importer
 import (
 	"math"
 	"net/http"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -25,23 +24,12 @@ type Item struct {
 	Category string
 }
 
-// kCategorySep separates path segments. A slash inside a category name would
-// invent a level that is not there, so CategoryPath replaces it.
-const kCategorySep = "/"
+// kCategorySep separates path segments; the shape of a path is decided in
+// database.CategoryPath, which every source here goes through.
+const kCategorySep = database.CategorySep
 
-// CategoryPath builds the stored path: empty segments disappear, a slash inside
-// a name turns into a dash, and the whole thing is joined by one separator.
-// Every source goes through here, so what a path is gets decided in one place.
-func CategoryPath(segments ...string) string {
-	out := make([]string, 0, len(segments))
-	for _, s := range segments {
-		s = strings.TrimSpace(strings.ReplaceAll(s, kCategorySep, "-"))
-		if s != "" {
-			out = append(out, s)
-		}
-	}
-	return strings.Join(out, kCategorySep)
-}
+// CategoryPath is database.CategoryPath under the name the sources use.
+func CategoryPath(segments ...string) string { return database.CategoryPath(segments...) }
 
 // Source is a one-off catalogue source (Ozon, WB). Not a Channel: read-only.
 type Source interface {

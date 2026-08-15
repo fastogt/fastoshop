@@ -53,12 +53,9 @@ const (
 	KeyYMLTooBig           = "yml_too_big"
 	KeyYMLBadXML           = "yml_bad_xml"
 
-	// The draft text of a category page: assembled from the shop's own data so
-	// the owner starts from something true rather than an empty box.
-	KeyDraftIntro      = "draft_intro"
-	KeyDraftAssortment = "draft_assortment"
-	KeyDraftPriceRange = "draft_price_range"
-	KeyDraftPriceOne   = "draft_price_one"
+	KeyCategoryNoName    = "category_no_name"
+	KeyCategoryExists    = "category_exists"
+	KeyCategorySlugTaken = "category_slug_taken"
 )
 
 var kMessages = map[string][2]string{
@@ -107,14 +104,12 @@ var kMessages = map[string][2]string{
 		"Ozon не ответил по этому артикулу", "Ozon did not answer for this article",
 	},
 	KeyOzonUnknownReply: {"неизвестный ответ Ozon", "unrecognised Ozon reply"},
-	// %s — category, %s — shop, %d — how many products.
-	KeyDraftIntro: {
-		"%s в магазине «%s», товаров: %d.", "%s at %s, products: %d.",
+	KeyCategoryNoName:   {"у категории должно быть название", "a category needs a name"},
+	KeyCategoryExists:   {"такая категория уже есть", "this category already exists"},
+	KeyCategorySlugTaken: {
+		"другая категория уже занимает такой адрес на витрине",
+		"another category already holds that storefront address",
 	},
-	KeyDraftAssortment: {"В наличии: %s.", "In stock: %s."},
-	// %s — the lowest price, %s — the highest, %s — the currency sign.
-	KeyDraftPriceRange: {"Цены от %s до %s %s.", "Prices from %s to %s %s."},
-	KeyDraftPriceOne:   {"Цена — %s %s.", "Price — %s %s."},
 	KeyOzonNothingSelected: {
 		"не выбрано ни одного товара", "no products selected",
 	},

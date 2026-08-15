@@ -1,9 +1,12 @@
 1.13.0 / August 15, 2026
 [Alexandr Topilski]
-- A "Draft" button in the category editor: the shop assembles a starting text out of what it already knows — what the category holds, how many items, the price range in your currency and your own delivery terms. Nothing is invented and nothing is published; it lands in the box to be rewritten. An empty box is the reason category texts never get written
-- Deleting a category text is its own button and its own endpoint, instead of hiding behind "save an empty field"
-- A text of your own on a category page, written in the new Categories tab: it shows above the goods and becomes the page description for search engines. A listing plus a paragraph is the landing page shops keep a separate site section for; without it every category page describes itself with the same generated sentence
-- The Categories tab lists the whole tree with the number of goods in each node and shows at a glance which ones are still without a text
+- The Categories tab: the storefront's sections are now yours to keep. Create a section (including an empty one, before anything is in it), rename it, move it under another parent, set the order of siblings, hide a branch from the storefront, delete it. The tree is on the left, the form on the right — the layout every catalogue admin uses
+- Renaming or moving a section carries its products and its whole branch with it, in one transaction, and the old address answers 301 instead of 404: tidying the tree must not throw away what a page earned in search
+- Deleting a section is not deleting what stands on it: the products and the subcategories move up to the parent, and a root section's goods simply lose their category
+- A hidden section and everything below it disappears from the catalogue, the category index and the sitemap
+- Two names that would produce one storefront address are refused with a message instead of one page quietly replacing the other
+- A text of your own on a category page: it shows above the goods and becomes the page description for search engines, instead of the same generated sentence on every page
+- The category field in the product dialog took a quarter of a line and cut the path off; it now has a row of its own
 
 1.12.0 / August 15, 2026
 [Alexandr Topilski]

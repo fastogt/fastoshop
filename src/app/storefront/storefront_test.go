@@ -1256,3 +1256,45 @@ func TestCategoryText(t *testing.T) {
 		t.Error("a cleared text must leave no block")
 	}
 }
+
+// Tidying the tree must not throw away what a page earned: a renamed category
+// answers 301 at its old address, and a hidden one disappears from the shop
+// altogether.
+func TestCategoryRenameAndHide(t *testing.T) {
+	d, h := setup(t)
+	if err := d.CreateProduct(&database.Product{Title: "КПБ Евро", Price: 100,
+		Stock: 1, Category: "Текстиль/КПБ"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.CreateProduct(&database.Product{Title: "Кастрюля", Price: 100,
+		Stock: 1, Category: "Посуда"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := d.RenameCategory("Текстиль", "Домашний текстиль"); err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/c/tekstil/kpb", nil))
+	if w.Code != http.StatusMovedPermanently ||
+		w.Header().Get("Location") != "/c/domashnij-tekstil/kpb" {
+		t.Errorf("old address = %d %q, want 301 to the new one", w.Code, w.Header().Get("Location"))
+	}
+	if body := get(t, h, "/c/domashnij-tekstil/kpb"); !strings.Contains(body, "КПБ Евро") {
+		t.Error("the renamed category lost its goods")
+	}
+
+	if err := d.SetCategoryHidden("Посуда", true); err != nil {
+		t.Fatal(err)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/c/posuda", nil))
+	if w.Code != http.StatusNotFound {
+		t.Errorf("hidden category = %d, want 404", w.Code)
+	}
+	for _, path := range []string{"/", "/c", "/sitemap.xml"} {
+		if strings.Contains(get(t, h, path), "/c/posuda") {
+			t.Errorf("%s still links to a hidden category", path)
+		}
+	}
+}

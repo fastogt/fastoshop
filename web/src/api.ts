@@ -26,6 +26,18 @@ export interface CategoryNode {
   path: string;
   count: number;
   body: string;
+  position: number;
+  hidden: boolean;
+}
+
+// What may change on a category. The move fields are optional on purpose: a
+// request that only hides a node must not rename it back to its old name.
+export interface CategoryPatch {
+  name?: string;
+  parent?: string;
+  position?: number;
+  hidden?: boolean;
+  body?: string;
 }
 
 export interface ProductsPage {
@@ -323,20 +335,16 @@ export const api = {
   },
   categories: () =>
     http.get("/products/categories").then(data<{ categories: string[] }>),
-  categoryTree: (q?: string) =>
+  categoryTree: () =>
+    http.get("/categories").then(data<{ categories: CategoryNode[] }>),
+  createCategory: (parent: string, name: string) =>
+    http.post("/categories", { parent, name }).then(data<{ path: string }>),
+  updateCategory: (path: string, patch: CategoryPatch) =>
+    http.put("/categories", { path, ...patch }).then(data<{ path: string }>),
+  deleteCategory: (path: string) =>
     http
-      .get("/categories", { params: q ? { q } : undefined })
-      .then(data<{ categories: CategoryNode[]; total: number }>),
-  setCategoryText: (path: string, body: string) =>
-    http.put("/categories/text", { path, body }).then(data<{ status: string }>),
-  deleteCategoryText: (path: string) =>
-    http
-      .delete("/categories/text", { params: { path } })
+      .delete("/categories", { params: { path } })
       .then(data<{ status: string }>),
-  categoryDraft: (path: string) =>
-    http
-      .get("/categories/draft", { params: { path } })
-      .then(data<{ body: string }>),
   deleteImage: (productId: number, imageId: number) =>
     http.delete(`/products/${productId}/images/${imageId}`).then(data<Product>),
   orders: (page = 1, per = 50, sort?: string, dir?: string) =>

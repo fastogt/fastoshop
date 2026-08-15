@@ -338,6 +338,13 @@ func (s *Storefront) Category(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// The address may be one the owner renamed away. It is in the index and in
+	// somebody's bookmarks, so it moves rather than dies — otherwise tidying the
+	// tree would throw away everything the page had earned.
+	if to, ok, err := s.db.CategoryRedirectBySlug(want); err == nil && ok {
+		http.Redirect(w, r, "/c/"+to, http.StatusMovedPermanently)
+		return
+	}
 	// An unknown or emptied category is a 404, not an empty listing: a soft 404
 	// keeps the address in the index and spends the crawl budget on nothing.
 	http.NotFound(w, r)
@@ -364,7 +371,7 @@ func (s *Storefront) Categories(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func categoryVMs(nodes []database.CategoryNode) []categoryVM {
+func categoryVMs(nodes []database.Category) []categoryVM {
 	out := make([]categoryVM, 0, len(nodes))
 	for _, n := range nodes {
 		segments := strings.Split(n.Path, database.CategorySep)
@@ -376,13 +383,13 @@ func categoryVMs(nodes []database.CategoryNode) []categoryVM {
 
 // children returns the nodes one level below path — the links that let a buyer
 // and a crawler walk down the tree.
-func children(nodes []database.CategoryNode, path string) []categoryVM {
+func children(nodes []database.Category, path string) []categoryVM {
 	prefix := path + database.CategorySep
 	depth := 1
 	if path != "" {
 		depth = len(strings.Split(path, database.CategorySep)) + 1
 	}
-	var out []database.CategoryNode
+	var out []database.Category
 	for _, n := range nodes {
 		if path != "" && !strings.HasPrefix(n.Path, prefix) {
 			continue

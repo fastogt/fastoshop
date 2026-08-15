@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 )
@@ -296,69 +295,6 @@ func (d *Database) queryProducts(query string, args ...any) ([]Product, error) {
 // with a life of its own.
 func (d *Database) Categories() ([]string, error) {
 	return d.distinct("category")
-}
-
-// CategoryNode is one node of the storefront's category tree: the path as
-// stored, how many visible products sit at or below it, and when the newest of
-// them changed — the sitemap needs a lastmod, and a listing needs a count.
-type CategoryNode struct {
-	Path  string
-	Count int
-	// LastMod is a date, "2006-01-02", not a time: it is written into the
-	// sitemap as a date and compared as one. A string because MAX() drops the
-	// column's type and the driver hands back text — and because ISO dates sort
-	// lexicographically, so the comparison below needs no parsing.
-	LastMod string
-}
-
-// VisibleCategories builds the tree the storefront renders. The paths are read
-// as they are stored, then every parent is folded in: "Текстиль/Спальня/КПБ"
-// also produces "Текстиль" and "Текстиль/Спальня", each with the products of
-// everything below it. Only rows the buyer can see count — a category made
-// entirely of hidden goods is a page with nothing on it.
-//
-// ponytail: one GROUP BY over the whole table, measured at 14 ms on 23 835
-// products. When a catalogue outgrows that, the upgrade is a materialised
-// counter updated on write.
-func (d *Database) VisibleCategories() ([]CategoryNode, error) {
-	rows, err := d.db.Query(`SELECT category, COUNT(*), substr(MAX(updated_at), 1, 10)
-		 FROM products WHERE hidden=0 AND category<>'' GROUP BY category`)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	byPath := map[string]*CategoryNode{}
-	for rows.Next() {
-		var path, last string
-		var count int
-		if err := rows.Scan(&path, &count, &last); err != nil {
-			return nil, err
-		}
-		segments := strings.Split(path, CategorySep)
-		for i := range segments {
-			key := strings.Join(segments[:i+1], CategorySep)
-			node, ok := byPath[key]
-			if !ok {
-				node = &CategoryNode{Path: key}
-				byPath[key] = node
-			}
-			node.Count += count
-			if last > node.LastMod {
-				node.LastMod = last
-			}
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	out := make([]CategoryNode, 0, len(byPath))
-	for _, node := range byPath {
-		out = append(out, *node)
-	}
-	// A stable order: the map above has none, and a sitemap that reshuffles on
-	// every request looks like a changing site to a crawler.
-	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
-	return out, nil
 }
 
 // Suppliers lists the groups in use. Derived from the products rather than kept
