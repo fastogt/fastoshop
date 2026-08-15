@@ -1,6 +1,6 @@
 {{define "title"}}{{if .Query}}{{.Query}} — поиск{{else}}{{.Category}} — купить в {{.Shop.ShopName}}{{end}}{{end}}
 {{define "head"}}
-<meta name="description" content="{{.Category}} — {{.FoundStr}} в магазине «{{.Shop.ShopName}}»: цены, наличие, доставка.">
+<meta name="description" content="{{if .MetaDescription}}{{.MetaDescription}}{{else}}{{.Category}} — {{.FoundStr}} в магазине «{{.Shop.ShopName}}»: цены, наличие, доставка.{{end}}">
 {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">{{end}}
 {{/* The path a buyer walked, spelled out for the search engine: the snippet
      shows it instead of a bare address. */}}
@@ -22,6 +22,7 @@
 </nav>
 <h1>{{.Category}}</h1>
 <p class="found">{{.FoundStr}}</p>
+{{if .CategoryText}}<div class="cat-text">{{.CategoryText}}</div>{{end}}
 {{template "children" .}}
 {{template "filters" .}}
 {{template "grid" .}}

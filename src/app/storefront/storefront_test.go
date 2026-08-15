@@ -1208,3 +1208,51 @@ func TestHeadThroughOuterRouter(t *testing.T) {
 		}
 	}
 }
+
+// The owner's text is what makes a category page a landing page instead of a
+// listing: it shows above the goods and becomes the page description, because a
+// generated one repeats on every page of every shop.
+func TestCategoryText(t *testing.T) {
+	d, h := setup(t)
+	if err := d.CreateProduct(&database.Product{Title: "Кастрюля", Price: 100,
+		Stock: 1, Category: "Посуда/Кастрюли"}); err != nil {
+		t.Fatal(err)
+	}
+
+	plain := get(t, h, "/c/posuda/kastryuli")
+	if strings.Contains(plain, `class="cat-text"`) {
+		t.Error("an empty text must leave no block on the page")
+	}
+
+	const body = "Кастрюли из нержавейки и эмали, от полутора до десяти литров. " +
+		"Оптом от десяти штук, доставка по Беларуси за три дня. " +
+		"Берём под заказ то, чего нет на складе, и держим цену месяц."
+	if err := d.SetCategoryText("Посуда/Кастрюли", body); err != nil {
+		t.Fatal(err)
+	}
+
+	page := get(t, h, "/c/posuda/kastryuli")
+	if !strings.Contains(page, "Оптом от десяти штук") {
+		t.Error("the text is not on the page")
+	}
+	desc := description(page)
+	if !strings.HasPrefix(desc, "Кастрюли из нержавейки") {
+		t.Errorf("description does not come from the text: %q", desc)
+	}
+	if len([]rune(desc)) > 160 {
+		t.Errorf("description is %d runes, a snippet shows about 160", len([]rune(desc)))
+	}
+	// Cut on a sentence, never mid-word: a description ending in "дост" reads as
+	// a broken page in the search results.
+	if !strings.HasSuffix(desc, ".") && !strings.HasSuffix(desc, "…") {
+		t.Errorf("description ends mid-sentence: %q", desc)
+	}
+
+	// Clearing the field removes the block rather than leaving an empty one.
+	if err := d.SetCategoryText("Посуда/Кастрюли", "  "); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(get(t, h, "/c/posuda/kastryuli"), `class="cat-text"`) {
+		t.Error("a cleared text must leave no block")
+	}
+}

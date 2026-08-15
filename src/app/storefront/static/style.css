@@ -327,6 +327,9 @@ form.qty button:hover { background: var(--accent-soft); }
 }
 .cats a:hover { border-color: var(--accent); }
 
+/* Текст категории — то, ради чего магазин раньше держал отдельный лендинг. */
+.cat-text { white-space: pre-line; max-width: 70ch; line-height: 1.6; margin-block: 12px 20px; }
+
 /* Фильтры — ссылки: состояние живёт в адресе, JS на витрине по-прежнему нет. */
 .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 12px 20px; font-size: 15px; }
 .filters a {

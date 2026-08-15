@@ -226,7 +226,11 @@ type pageVM struct {
 	FoundStr        string
 	CategoryURL     string
 	Category        string
-	Crumbs          []crumbVM
+	// CategoryText is the owner's own words above the listing, and the first
+	// sentences of it become the page description: generated text is the same on
+	// every page of every shop, and a search engine has seen it a million times.
+	CategoryText string
+	Crumbs       []crumbVM
 	// CrumbsEnd is the position the product itself takes in BreadcrumbList,
 	// after every category above it.
 	CrumbsEnd  int
@@ -430,6 +434,23 @@ func filterLinks(f database.CatalogFilter) []filterVM {
 	return out
 }
 
+// metaFrom cuts a description out of the owner's text: whole sentences up to
+// the length a snippet shows, so the tail is never a word broken in half.
+func metaFrom(text string) string {
+	text = strings.Join(strings.Fields(strings.ReplaceAll(text, "\n", " ")), " ")
+	if len([]rune(text)) <= 160 {
+		return text
+	}
+	cut := string([]rune(text)[:160])
+	if i := strings.LastIndexAny(cut, ".!?"); i > 60 {
+		return cut[:i+1]
+	}
+	if i := strings.LastIndex(cut, " "); i > 0 {
+		return cut[:i] + "…"
+	}
+	return cut
+}
+
 func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category string, tpl *template.Template) {
 	// The buyer's search. A shop the size of a marketplace catalogue cannot be
 	// browsed page by page, and the storefront has no JavaScript to search with —
@@ -493,6 +514,10 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 		segments := strings.Split(category, database.CategorySep)
 		data.Category = segments[len(segments)-1]
 		data.Crumbs = crumbs(category)
+		if text, err := s.db.CategoryTextOf(category); err == nil {
+			data.CategoryText = text
+			data.MetaDescription = metaFrom(text)
+		}
 	}
 	// A result page is thin, endless and duplicates the catalogue: search belongs
 	// out of the index. noindex,follow rather than robots.txt — a page blocked

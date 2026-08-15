@@ -6,6 +6,7 @@ import Setup from "./Setup";
 import Invite from "./Invite";
 import Login from "./Login";
 import Products from "./Products";
+import Categories from "./Categories";
 import Orders from "./Orders";
 import Profile from "./Profile";
 import Stats from "./Stats";
@@ -13,10 +14,18 @@ import Import from "./Import";
 import Ozon from "./Ozon";
 
 type Screen = "loading" | "setup" | "invite" | "login" | "app";
-type Tab = "products" | "orders" | "profile" | "import" | "ozon" | "stats";
+type Tab =
+  | "products"
+  | "categories"
+  | "orders"
+  | "profile"
+  | "import"
+  | "ozon"
+  | "stats";
 
 const kText = {
   products: { ru: "Товары", en: "Products" },
+  categories: { ru: "Категории", en: "Categories" },
   orders: { ru: "Заказы", en: "Orders" },
   import: { ru: "Импорт", en: "Import" },
   ozon: { ru: "Ozon", en: "Ozon" },
@@ -32,6 +41,7 @@ const kText = {
 
 const kTabs: Tab[] = [
   "products",
+  "categories",
   "orders",
   "import",
   "ozon",
@@ -134,6 +144,7 @@ export default function App() {
       </header>
       <main className="page py-8">
         {tab === "products" && <Products />}
+        {tab === "categories" && <Categories />}
         {tab === "orders" && <Orders />}
         {tab === "profile" && <Profile />}
         {tab === "import" && <Import />}

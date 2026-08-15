@@ -95,6 +95,15 @@ func (d *Database) migrate() error {
 	-- Every category page filters by this column, and a catalogue has hundreds
 	-- of them.
 	CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+	-- The owner's text for a category page. Keyed by the path itself rather than
+	-- by an id: categories are derived from the products and have no identity of
+	-- their own, and a row whose category disappeared costs nothing but comes
+	-- back to life if the path returns.
+	CREATE TABLE IF NOT EXISTS category_texts (
+		path       TEXT PRIMARY KEY,
+		body       TEXT NOT NULL DEFAULT '',
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
 	CREATE TABLE IF NOT EXISTS orders (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
 		name       TEXT NOT NULL,

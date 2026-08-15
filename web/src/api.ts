@@ -22,6 +22,12 @@ export interface Product {
   images: { id: number; path: string }[];
 }
 
+export interface CategoryNode {
+  path: string;
+  count: number;
+  body: string;
+}
+
 export interface ProductsPage {
   products: Product[];
   total: number;
@@ -317,6 +323,12 @@ export const api = {
   },
   categories: () =>
     http.get("/products/categories").then(data<{ categories: string[] }>),
+  categoryTree: (q?: string) =>
+    http
+      .get("/categories", { params: q ? { q } : undefined })
+      .then(data<{ categories: CategoryNode[]; total: number }>),
+  setCategoryText: (path: string, body: string) =>
+    http.put("/categories/text", { path, body }).then(data<{ status: string }>),
   deleteImage: (productId: number, imageId: number) =>
     http.delete(`/products/${productId}/images/${imageId}`).then(data<Product>),
   orders: (page = 1, per = 50, sort?: string, dir?: string) =>

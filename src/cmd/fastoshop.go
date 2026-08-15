@@ -135,6 +135,8 @@ func run(cfg *config.Config) error {
 			r.Delete("/products/{id}/images/{imageID}", h.DeleteImage)
 			r.Post("/products/recompute-prices", h.RecomputePrices)
 			r.Get("/products/categories", h.Categories)
+			r.Get("/categories", h.CategoryList)
+			r.Put("/categories/text", h.SetCategoryText)
 			r.Post("/products/bulk/stock", h.BulkStock)
 			r.Post("/products/bulk/visibility", h.BulkVisibility)
 			r.Post("/products/bulk/supplier", h.BulkSupplier)
