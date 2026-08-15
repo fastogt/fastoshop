@@ -91,3 +91,33 @@ func TestCSVMissingColumnIsAnError(t *testing.T) {
 		t.Fatalf("%+v %d errors", items, c.FetchErrors())
 	}
 }
+
+// A price list writes nesting inside one cell, and that is data, not a guess.
+// A slash between digits is a size, not a level.
+func TestCSVCategoryCell(t *testing.T) {
+	cases := map[string]string{
+		"Текстиль > Спальня": "Текстиль/Спальня",
+		"Текстиль/Спальня":   "Текстиль/Спальня",
+		"Текстиль | Спальня": "Текстиль/Спальня",
+		"КПБ 1,5/2 сп":       "КПБ 1,5-2 сп",
+		"Хвойные растения":   "Хвойные растения",
+		"":                   "",
+	}
+	for in, want := range cases {
+		if got := cellCategory(in); got != want {
+			t.Errorf("cellCategory(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// The column has been in the template since day one and was quietly dropped.
+func TestCSVReadsCategory(t *testing.T) {
+	c := &CSV{Data: []byte("sku;title;price;category\nA-1;Чайник;100;Посуда > Чайники\n")}
+	items, err := c.Fetch()
+	if err != nil || len(items) != 1 {
+		t.Fatalf("fetch: %v %+v", err, items)
+	}
+	if items[0].Category != "Посуда/Чайники" {
+		t.Errorf("category = %q", items[0].Category)
+	}
+}

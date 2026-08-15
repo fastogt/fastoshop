@@ -115,6 +115,10 @@ func run(cfg *config.Config) error {
 	r.Use(middleware.RealIP) //nolint:staticcheck // behind a trusted nginx reverse proxy
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.Recoverer)
+	// Must be here, not only on the storefront router: /admin* is registered for
+	// GET alone, and chi answers 405 to a HEAD of any page before the mounted
+	// storefront gets a say.
+	r.Use(storefront.HeadAsGet)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/setup", h.SetupStatus)

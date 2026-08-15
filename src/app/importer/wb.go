@@ -81,6 +81,8 @@ type wbCardsResponse struct {
 		VendorCode  string `json:"vendorCode"`
 		Title       string `json:"title"`
 		Description string `json:"description"`
+		SubjectID   int64  `json:"subjectID"`
+		SubjectName string `json:"subjectName"`
 		Photos      []struct {
 			Big string `json:"big"`
 		} `json:"photos"`
@@ -208,6 +210,43 @@ func (w *WB) priceBySize() (map[int64]int64, map[int64]int64) {
 	return byNm, bySize
 }
 
+type wbSubjectsResponse struct {
+	Data []struct {
+		SubjectID   int64  `json:"subjectID"`
+		SubjectName string `json:"subjectName"`
+		ParentID    int64  `json:"parentID"`
+		ParentName  string `json:"parentName"`
+	} `json:"data"`
+}
+
+// kWBSubjectsPageSize — the directory method's ceiling per request.
+const kWBSubjectsPageSize = 1000
+
+// subjectParents maps a card's subject onto its parent, so a WB catalogue gets
+// two levels ("Дом/Посуда") instead of one. The directory is a few thousand
+// entries, downloaded once per import; a card carries only subjectName, and one
+// level is a worse landing page than two. A failure leaves the parent empty and
+// the import goes on: categories are worth less than the goods.
+func (w *WB) subjectParents() map[int64]string {
+	parents := map[int64]string{}
+	for offset := 0; offset < 20*kWBSubjectsPageSize; offset += kWBSubjectsPageSize {
+		var out wbSubjectsResponse
+		url := fmt.Sprintf("%s/content/v2/object/all?limit=%d&offset=%d",
+			w.content(), kWBSubjectsPageSize, offset)
+		if err := w.do("GET", url, nil, &out); err != nil {
+			log.Warnf("import wb: subjects: %v", err)
+			return parents
+		}
+		for _, s := range out.Data {
+			parents[s.SubjectID] = s.ParentName
+		}
+		if len(out.Data) < kWBSubjectsPageSize {
+			break
+		}
+	}
+	return parents
+}
+
 // Fetch expands a WB card into a product per size: we have one price and one
 // stock per product with no variants in the model, while on WB the FBS stock
 // lives exactly on the size.
@@ -228,6 +267,7 @@ func (w *WB) Fetch() ([]Item, error) {
 		}
 	}
 	stockByBarcode := w.stocks(barcodes)
+	subjectParents := w.subjectParents()
 
 	items := make([]Item, 0, len(c.Cards))
 	for _, card := range c.Cards {
@@ -235,10 +275,11 @@ func (w *WB) Fetch() ([]Item, error) {
 		for _, ph := range card.Photos {
 			urls = append(urls, ph.Big)
 		}
+		category := CategoryPath(subjectParents[card.SubjectID], card.SubjectName)
 		if len(card.Sizes) == 0 {
 			items = append(items, Item{
 				SKU: card.VendorCode, Title: card.Title, Description: card.Description,
-				Price: priceByNm[card.NmID], ImageURLs: urls,
+				Price: priceByNm[card.NmID], ImageURLs: urls, Category: category,
 			})
 			continue
 		}
@@ -267,6 +308,7 @@ func (w *WB) Fetch() ([]Item, error) {
 			items = append(items, Item{
 				SKU: sku, Title: title, Description: card.Description,
 				Price: price, Stock: stockByBarcode[barcode], ImageURLs: urls,
+				Category: category,
 			})
 		}
 	}

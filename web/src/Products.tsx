@@ -96,6 +96,10 @@ const kText = {
   labelPrice: { ru: "Цена, {sign}", en: "Price, {sign}" },
   labelStock: { ru: "Остаток", en: "In stock" },
   labelCategory: { ru: "Категория", en: "Category" },
+  categoryHint: {
+    ru: "Косая черта задаёт вложенность: «Посуда/Кастрюли» — это страница «Кастрюли» внутри «Посуды». У каждого уровня своя страница на витрине.",
+    en: 'A slash makes a level: "Cookware/Pots" is a Pots page inside Cookware. Every level gets a page of its own on the storefront.',
+  },
   labelDescription: { ru: "Описание", en: "Description" },
   descriptionPlaceholder: {
     ru: "Что это, из чего сделано, кому подойдёт — этот текст читают и покупатели, и поисковики.",
@@ -452,7 +456,7 @@ export default function Products() {
                 <input
                   className="field"
                   list="product-categories"
-                  placeholder="kuhnya"
+                  placeholder="Посуда/Кастрюли"
                   value={edit.category ?? ""}
                   onChange={(e) =>
                     setEdit({ ...edit, category: e.target.value })
@@ -463,6 +467,7 @@ export default function Products() {
                     <option key={c} value={c} />
                   ))}
                 </datalist>
+                <p className="hint mt-1">{t("categoryHint")}</p>
               </div>
               <div className="min-w-40 flex-1">
                 <label className="label">{t("labelSupplier")}</label>

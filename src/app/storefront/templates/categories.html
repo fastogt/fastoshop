@@ -1,0 +1,14 @@
+{{define "title"}}Категории — {{.Shop.ShopName}}{{end}}
+{{define "head"}}
+<meta name="description" content="Все категории магазина «{{.Shop.ShopName}}»: {{len .Categories}} разделов каталога.">
+<link rel="canonical" href="{{.Canonical}}">
+{{end}}
+{{define "content"}}
+<nav class="crumbs" aria-label="Хлебные крошки"><a href="/">Каталог</a> › Категории</nav>
+<h1>Категории</h1>
+{{/* Every node, not just the top level: this is how a crawler reaches a page
+     five levels down without walking the whole catalogue. */}}
+<ul class="cat-list">
+{{range .Categories}}<li><a href="{{.URL}}">{{.Name}}</a> <span class="oos">{{.Count}}</span></li>{{end}}
+</ul>
+{{end}}

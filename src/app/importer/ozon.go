@@ -57,6 +57,68 @@ type ozonProductIDRequest struct {
 	ProductID int64 `json:"product_id"`
 }
 
+type ozonCategoryTreeRequest struct {
+	Language string `json:"language"`
+}
+
+// ozonCategoryNode is one node of the Ozon taxonomy. A branch carries
+// description_category_id and a name, a leaf carries type_id and type_name —
+// the same structure all the way down, so one type reads the whole tree.
+type ozonCategoryNode struct {
+	CategoryID int64              `json:"description_category_id"`
+	Name       string             `json:"category_name"`
+	TypeID     int64              `json:"type_id"`
+	TypeName   string             `json:"type_name"`
+	Children   []ozonCategoryNode `json:"children"`
+}
+
+type ozonCategoryTreeResponse struct {
+	Result []ozonCategoryNode `json:"result"`
+}
+
+// ozonCategoryKey identifies a card's place in the taxonomy: the category alone
+// is not enough, two types under one category are different shelves.
+type ozonCategoryKey struct {
+	CategoryID int64
+	TypeID     int64
+}
+
+// categoryPaths downloads the taxonomy once per import and flattens it into
+// "Дом и сад/Кухня/Посуда для сервировки/Тарелки". One request for the whole
+// catalogue, not one per card. A failure is not fatal: the products are worth
+// more than their categories, so the import goes on without them.
+func (o *Ozon) categoryPaths() map[ozonCategoryKey]string {
+	var resp ozonCategoryTreeResponse
+	if err := o.post("/v1/description-category/tree",
+		ozonCategoryTreeRequest{Language: "RU"}, &resp); err != nil {
+		log.Warnf("ozon: category tree: %v", err)
+		return nil
+	}
+	paths := map[ozonCategoryKey]string{}
+	var walk func(nodes []ozonCategoryNode, parents []string, categoryID int64)
+	walk = func(nodes []ozonCategoryNode, parents []string, categoryID int64) {
+		for _, n := range nodes {
+			id := categoryID
+			if n.CategoryID != 0 {
+				id = n.CategoryID
+			}
+			name := n.Name
+			if name == "" {
+				name = n.TypeName
+			}
+			// A fresh slice per node: append onto the parent's backing array and
+			// siblings overwrite each other's last segment.
+			path := append(append([]string{}, parents...), name)
+			if n.TypeID != 0 {
+				paths[ozonCategoryKey{CategoryID: id, TypeID: n.TypeID}] = CategoryPath(path...)
+			}
+			walk(n.Children, path, id)
+		}
+	}
+	walk(resp.Result, nil, 0)
+	return paths
+}
+
 type ozonStocksFilter struct {
 	Visibility string `json:"visibility"`
 }
@@ -136,14 +198,17 @@ func (o *Ozon) Fetch() ([]Item, error) {
 			Name    string `json:"name"`
 			// marketing_price was retired by Ozon on 12.11.2025 and now comes
 			// back empty: reading it imported every catalogue at price 0.
-			Price  string   `json:"price"`
-			Images []string `json:"images"`
+			Price      string   `json:"price"`
+			Images     []string `json:"images"`
+			CategoryID int64    `json:"description_category_id"`
+			TypeID     int64    `json:"type_id"`
 		} `json:"items"`
 	}
 	if err := o.post("/v3/product/info/list", ozonProductIDsRequest{ProductID: ids}, &info); err != nil {
 		return nil, err
 	}
 	stockByID := o.stocks()
+	categories := o.categoryPaths()
 	items := make([]Item, 0, len(info.Items))
 	for _, it := range info.Items {
 		price, _ := strconv.ParseFloat(strings.TrimSpace(it.Price), 64)
@@ -156,6 +221,7 @@ func (o *Ozon) Fetch() ([]Item, error) {
 		items = append(items, Item{
 			SKU: it.OfferID, Title: it.Name, Description: desc.Result.Description,
 			Price: int64(price * 100), Stock: stockByID[it.ID], ImageURLs: it.Images,
+			Category: categories[ozonCategoryKey{CategoryID: it.CategoryID, TypeID: it.TypeID}],
 		})
 	}
 	return items, nil

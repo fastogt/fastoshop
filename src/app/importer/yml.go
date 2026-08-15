@@ -25,8 +25,9 @@ type YML struct {
 	// MaxBytes — body size ceiling; 0 means kMaxFeedBytes.
 	MaxBytes int64
 
-	errors   int
-	currency string
+	errors     int
+	currency   string
+	categories map[string]ymlCategory
 }
 
 // ponytail: 100 MB is plenty (a live export of 24k products is 33 MB);
@@ -66,13 +67,80 @@ type ymlOffer struct {
 	Description string   `xml:"description"`
 	Price       string   `xml:"price"`
 	CurrencyID  string   `xml:"currencyId"`
+	CategoryID  string   `xml:"categoryId"`
 	Pictures    []string `xml:"picture"`
+}
+
+type ymlCategory struct {
+	ID       string `xml:"id,attr"`
+	ParentID string `xml:"parentId,attr"`
+	Name     string `xml:",chardata"`
+}
+
+// kMaxCategoryDepth stops a feed whose parentId points in a circle from walking
+// forever. Ten levels is deeper than any live catalogue.
+const kMaxCategoryDepth = 10
+
+// path walks up the parents and returns the category as a path from the root.
+// A missing id yields an empty string: a product with no category is normal,
+// a crashed import is not.
+func categoryPath(cats map[string]ymlCategory, id string) string {
+	var segments []string
+	for i := 0; i < kMaxCategoryDepth; i++ {
+		c, ok := cats[id]
+		if !ok {
+			break
+		}
+		segments = append([]string{c.Name}, segments...)
+		if c.ParentID == "" || c.ParentID == c.ID {
+			break
+		}
+		id = c.ParentID
+	}
+	return CategoryPath(segments...)
+}
+
+// trimCommonRoot drops the segments every product shares. A feed's tree starts
+// at the site's own root — "Главная / Каталог товаров / …" in a Bitrix export —
+// and a level that holds the whole catalogue tells a buyer and a search engine
+// nothing. The leaf always survives: a shop selling one category must keep it.
+func trimCommonRoot(items []Item) {
+	var common []string
+	first := true
+	for _, it := range items {
+		if it.Category == "" {
+			continue
+		}
+		segments := strings.Split(it.Category, kCategorySep)
+		if first {
+			common, first = segments, false
+			continue
+		}
+		n := 0
+		for n < len(common) && n < len(segments) && common[n] == segments[n] {
+			n++
+		}
+		common = common[:n]
+		if len(common) == 0 {
+			return
+		}
+	}
+	for i, it := range items {
+		if it.Category == "" {
+			continue
+		}
+		segments := strings.Split(it.Category, kCategorySep)
+		if drop := min(len(common), len(segments)-1); drop > 0 {
+			items[i].Category = strings.Join(segments[drop:], kCategorySep)
+		}
+	}
 }
 
 // each downloads the feed and yields offers one at a time. Parsing is streamed:
 // exports run to tens of megabytes, and xml.Unmarshal would hold both the
 // document and the tree in memory.
 func (y *YML) each(fn func(o *ymlOffer)) error {
+	y.categories = map[string]ymlCategory{}
 	if !strings.HasPrefix(y.URL, "http://") && !strings.HasPrefix(y.URL, "https://") {
 		return &i18n.KeyError{Key: i18n.KeyYMLBadURL}
 	}
@@ -105,7 +173,23 @@ func (y *YML) each(fn func(o *ymlOffer)) error {
 			return &i18n.KeyError{Key: i18n.KeyYMLBadXML}
 		}
 		se, ok := tok.(xml.StartElement)
-		if !ok || se.Name.Local != "offer" {
+		if !ok {
+			continue
+		}
+		// <categories> comes before <offers> in the format, so by the time the
+		// first offer arrives the tree is complete. Only the map is kept in
+		// memory — hundreds of nodes against tens of megabytes of offers.
+		if se.Name.Local == "category" {
+			var c ymlCategory
+			if err := dec.DecodeElement(&c, &se); err != nil {
+				log.Warnf("yml: category: %v", err)
+				continue
+			}
+			c.Name = strings.TrimSpace(c.Name)
+			y.categories[c.ID] = c
+			continue
+		}
+		if se.Name.Local != "offer" {
 			continue
 		}
 		var o ymlOffer
@@ -170,10 +254,12 @@ func (y *YML) Fetch() ([]Item, error) {
 			Price:       int64(math.Round(v * 100)),
 			Stock:       y.DefaultStock,
 			ImageURLs:   o.Pictures,
+			Category:    categoryPath(y.categories, strings.TrimSpace(o.CategoryID)),
 		})
 	})
 	if err != nil {
 		return nil, err
 	}
+	trimCommonRoot(items)
 	return items, nil
 }

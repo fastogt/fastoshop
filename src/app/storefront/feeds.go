@@ -91,7 +91,7 @@ type gmcFeed struct {
 // photos in one query, and the shop currency with the same RUB fallback the
 // price sign uses — s.shop() can return settings with an empty currency.
 func (s *Storefront) feedData() ([]database.Product, map[int64][]string, string, error) {
-	products, err := s.db.ListVisibleProductsPage("", "", -1, 0)
+	products, err := s.db.ListVisibleProductsPage(database.CatalogFilter{}, -1, 0)
 	if err != nil {
 		return nil, nil, "", err
 	}

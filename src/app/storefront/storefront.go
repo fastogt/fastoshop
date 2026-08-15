@@ -31,6 +31,10 @@ type Storefront struct {
 	product *template.Template
 	cart    *template.Template
 	info    *template.Template
+	// Named with a suffix: the handlers are Category and Categories, and a field
+	// may not share a name with a method.
+	categoryTpl   *template.Template
+	categoriesTpl *template.Template
 	// OnStockChange wakes the marketplace sync after an order deducts stock. A
 	// field rather than a constructor argument: the link is one-way and optional.
 	OnStockChange func()
@@ -46,19 +50,25 @@ func New(db *database.Database, baseURL, uploadsDir string) *Storefront {
 	base := template.Must(template.ParseFS(templatesFS, "templates/base.html"))
 	return &Storefront{
 		db: db, baseURL: strings.TrimRight(baseURL, "/"), uploads: uploadsDir,
-		index:   template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/index.html")),
-		product: template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/product.html")),
-		cart:    template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/cart.html")),
-		info:    template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/info.html")),
+		index:         template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/index.html")),
+		product:       template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/product.html")),
+		cart:          template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/cart.html")),
+		info:          template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/info.html")),
+		categoryTpl:   template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/category.html")),
+		categoriesTpl: template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/categories.html")),
 	}
 }
 
-// headAsGet lets HEAD reach handlers registered as GET. chi answers 405
+// HeadAsGet lets HEAD reach handlers registered as GET. chi answers 405
 // otherwise, and HEAD is what monitoring, link checkers and some crawlers use to
 // see whether a page is alive — a storefront that refuses it looks broken from
 // the outside. The body is dropped by net/http itself: the server still sees the
 // original HEAD request and suppresses it.
-func headAsGet(next http.Handler) http.Handler {
+//
+// Exported because it has to sit on the outermost router: a method-specific
+// route registered there (/admin*) makes chi answer 405 before this router is
+// ever reached, and the storefront's own copy never runs.
+func HeadAsGet(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
 			probe := r.Clone(r.Context())
@@ -72,11 +82,13 @@ func headAsGet(next http.Handler) http.Handler {
 
 func (s *Storefront) Router() http.Handler {
 	r := chi.NewRouter()
-	r.Use(headAsGet)
+	r.Use(HeadAsGet)
 	r.Get("/", s.Index)
 	r.Get("/p/{slug}", s.Product)
 	r.Get("/cart", s.Cart)
 	r.Get("/info", s.Info)
+	r.Get("/c", s.Categories)
+	r.Get("/c/*", s.Category)
 	r.Post("/cart/add", s.CartAdd)
 	r.Post("/cart/update", s.CartUpdate)
 	r.Post("/cart/order", s.CartOrder)
@@ -164,6 +176,32 @@ type cardVM struct {
 	PriceStr string
 }
 
+// categoryVM is a node of the catalogue tree as the page shows it: the leaf
+// name for the eye, the full path for the address, the count for the buyer.
+type categoryVM struct {
+	Name  string
+	URL   string
+	Count int
+}
+
+// filterVM is one link of the sorting and stock strip. Filters are links, not a
+// form with JavaScript: the server renders the result, and the state lives in
+// the address, so a filtered listing can be sent to someone in a message.
+type filterVM struct {
+	Name   string
+	URL    string
+	Active bool
+}
+
+// crumbVM is one step of the breadcrumbs, from the catalogue root to the page.
+// Position is counted here rather than in the template: BreadcrumbList numbers
+// its items from one, and html/template has no arithmetic.
+type crumbVM struct {
+	Name     string
+	URL      string
+	Position int
+}
+
 // imageVM — ready-made image addresses: relative for <img>, absolute for
 // og:image and JSON-LD.
 type imageVM struct {
@@ -187,35 +225,72 @@ type pageVM struct {
 	Query           string
 	FoundStr        string
 	CategoryURL     string
-	Page            int
-	Pages           int
-	PrevURL         string
-	NextURL         string
-	Ordered         bool
-	Cart            []cartRowVM
-	TotalStr        string
-	CartCount       int
-	Dropped         bool
-	SoldOut         string
+	Category        string
+	Crumbs          []crumbVM
+	// CrumbsEnd is the position the product itself takes in BreadcrumbList,
+	// after every category above it.
+	CrumbsEnd  int
+	Children   []categoryVM
+	Categories []categoryVM
+	Filters    []filterVM
+	Page       int
+	Pages      int
+	PrevURL    string
+	NextURL    string
+	Ordered    bool
+	Cart       []cartRowVM
+	TotalStr   string
+	CartCount  int
+	Dropped    bool
+	SoldOut    string
 }
 
-// catalogURL is the catalogue page address with the category preserved. The
-// first page never carries ?page=, so one set of products has exactly one URL.
-func catalogURL(category string, page int, query string) string {
-	q := url.Values{}
-	if category != "" {
-		q.Set("category", category)
+// categoryURL is the address of a node of the tree: every segment of the path
+// transliterated, joined back with slashes. A category is a page of its own —
+// the landing page for "купить X" — not a query parameter on the catalogue.
+func categoryURL(path string) string {
+	if path == "" {
+		return "/"
 	}
-	if query != "" {
-		q.Set("q", query)
+	segments := strings.Split(path, database.CategorySep)
+	for i, seg := range segments {
+		segments[i] = database.Slugify(seg)
+	}
+	return "/c/" + strings.Join(segments, "/")
+}
+
+// catalogURL is the catalogue page address with everything the buyer chose kept
+// in it: the category in the path, the search and the filters in the query. The
+// first page never carries ?page=, so one set of products has exactly one URL.
+func catalogURL(f database.CatalogFilter, page int) string {
+	q := url.Values{}
+	if f.Query != "" {
+		q.Set("q", f.Query)
+	}
+	if f.Sort != "" {
+		q.Set("sort", f.Sort)
+	}
+	if f.Desc {
+		q.Set("desc", "1")
+	}
+	if f.InStock {
+		q.Set("instock", "1")
 	}
 	if page > 1 {
 		q.Set("page", strconv.Itoa(page))
 	}
+	base := categoryURL(f.Category)
 	if len(q) == 0 {
-		return "/"
+		return base
 	}
-	return "/?" + q.Encode()
+	return base + "?" + q.Encode()
+}
+
+// canonicalURL is the address without the filters. Sorting and "in stock" show
+// the same goods in another order — one page for a search engine, several for a
+// buyer — so every variant points at the plain one.
+func canonicalURL(category string, page int) string {
+	return catalogURL(database.CatalogFilter{Category: category}, page)
 }
 
 // foundStr — «нашёлся 1 товар» / «2 товара» / «5 товаров». Pluralization lives
@@ -233,7 +308,129 @@ func foundStr(n int) string {
 }
 
 func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
-	category := r.URL.Query().Get("category")
+	// ?category= is where categories lived before they had pages of their own.
+	// The links are in the wild — in the index, in bookmarks — so they move
+	// permanently instead of dying.
+	if old := r.URL.Query().Get("category"); old != "" {
+		http.Redirect(w, r, categoryURL(old), http.StatusMovedPermanently)
+		return
+	}
+	s.listing(w, r, "", s.index)
+}
+
+// Category is the landing page of a node of the tree: the page a search for
+// "купить КПБ евро оптом" should arrive at. It renders the node's own products
+// and everything below it, so a parent is never an empty page.
+func (s *Storefront) Category(w http.ResponseWriter, r *http.Request) {
+	nodes, err := s.db.VisibleCategories()
+	if err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	want := strings.Trim(chi.URLParam(r, "*"), "/")
+	for _, n := range nodes {
+		if strings.TrimPrefix(categoryURL(n.Path), "/c/") == want {
+			s.listing(w, r, n.Path, s.categoryTpl)
+			return
+		}
+	}
+	// An unknown or emptied category is a 404, not an empty listing: a soft 404
+	// keeps the address in the index and spends the crawl budget on nothing.
+	http.NotFound(w, r)
+}
+
+// Categories is the index of the tree — one page linking to every node. Without
+// it a crawler reaching the home page finds only the top level, and the deeper
+// landing pages stay invisible.
+func (s *Storefront) Categories(w http.ResponseWriter, r *http.Request) {
+	nodes, err := s.db.VisibleCategories()
+	if err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	if len(nodes) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL, CSS: template.CSS(styleCSS),
+		CartCount: cartCount(r), Canonical: s.baseURL + "/c",
+		Categories: categoryVMs(nodes)}
+	if err := s.categoriesTpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Errorf("render categories: %v", err)
+	}
+}
+
+func categoryVMs(nodes []database.CategoryNode) []categoryVM {
+	out := make([]categoryVM, 0, len(nodes))
+	for _, n := range nodes {
+		segments := strings.Split(n.Path, database.CategorySep)
+		out = append(out, categoryVM{Name: segments[len(segments)-1],
+			URL: categoryURL(n.Path), Count: n.Count})
+	}
+	return out
+}
+
+// children returns the nodes one level below path — the links that let a buyer
+// and a crawler walk down the tree.
+func children(nodes []database.CategoryNode, path string) []categoryVM {
+	prefix := path + database.CategorySep
+	depth := 1
+	if path != "" {
+		depth = len(strings.Split(path, database.CategorySep)) + 1
+	}
+	var out []database.CategoryNode
+	for _, n := range nodes {
+		if path != "" && !strings.HasPrefix(n.Path, prefix) {
+			continue
+		}
+		if len(strings.Split(n.Path, database.CategorySep)) == depth {
+			out = append(out, n)
+		}
+	}
+	return categoryVMs(out)
+}
+
+func crumbs(path string) []crumbVM {
+	segments := strings.Split(path, database.CategorySep)
+	out := make([]crumbVM, 0, len(segments))
+	for i, seg := range segments {
+		out = append(out, crumbVM{Name: seg,
+			URL:      categoryURL(strings.Join(segments[:i+1], database.CategorySep)),
+			Position: i + 2, // 1 is the catalogue root
+		})
+	}
+	return out
+}
+
+// filterLinks renders the strip a buyer clicks: the shop's own order, price up
+// and down, and "in stock" as a toggle. Clicking a filter drops the page number
+// — page 7 of another ordering shows goods the buyer never asked for.
+func filterLinks(f database.CatalogFilter) []filterVM {
+	sorts := []struct {
+		name string
+		sort string
+		desc bool
+	}{
+		{"по умолчанию", "", false},
+		{"сначала дешёвые", "price", false},
+		{"сначала дорогие", "price", true},
+		{"по названию", "title", false},
+	}
+	out := make([]filterVM, 0, len(sorts)+1)
+	for _, s := range sorts {
+		v := f
+		v.Sort, v.Desc = s.sort, s.desc
+		out = append(out, filterVM{Name: s.name, URL: catalogURL(v, 1),
+			Active: f.Sort == s.sort && f.Desc == s.desc})
+	}
+	stock := f
+	stock.InStock = !f.InStock
+	out = append(out, filterVM{Name: "только в наличии", URL: catalogURL(stock, 1),
+		Active: f.InStock})
+	return out
+}
+
+func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category string, tpl *template.Template) {
 	// The buyer's search. A shop the size of a marketplace catalogue cannot be
 	// browsed page by page, and the storefront has no JavaScript to search with —
 	// so it is a plain GET form and a server-rendered result.
@@ -241,6 +438,9 @@ func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
 	if len([]rune(query)) > kMaxQueryRunes {
 		query = string([]rune(query)[:kMaxQueryRunes])
 	}
+	filter := database.CatalogFilter{Category: category, Query: query,
+		Sort: r.URL.Query().Get("sort"), Desc: r.URL.Query().Get("desc") == "1",
+		InStock: r.URL.Query().Get("instock") == "1"}
 	page := 1
 	if raw := r.URL.Query().Get("page"); raw != "" {
 		n, err := strconv.Atoi(raw)
@@ -250,12 +450,12 @@ func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if n == 1 {
-			http.Redirect(w, r, catalogURL(category, 1, query), http.StatusMovedPermanently)
+			http.Redirect(w, r, catalogURL(filter, 1), http.StatusMovedPermanently)
 			return
 		}
 		page = n
 	}
-	total, err := s.db.CountVisibleProducts(category, query)
+	total, err := s.db.CountVisibleProducts(filter)
 	if err != nil {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
@@ -265,7 +465,7 @@ func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	products, err := s.db.ListVisibleProductsPage(category, query,
+	products, err := s.db.ListVisibleProductsPage(filter,
 		kCatalogPageSize, (page-1)*kCatalogPageSize)
 	if err != nil {
 		http.Error(w, "db error", http.StatusInternalServerError)
@@ -281,8 +481,19 @@ func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
 	}
 	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL,
 		CSS: template.CSS(styleCSS), Products: cards, CartCount: cartCount(r),
-		Canonical: s.baseURL + catalogURL(category, page, ""), Page: page, Pages: pages,
-		Query: query}
+		Canonical: s.baseURL + canonicalURL(category, page), Page: page, Pages: pages,
+		Query: query, FoundStr: foundStr(total)}
+	data.Filters = filterLinks(filter)
+	// The tree: children to walk down into, crumbs to walk back up. Read once
+	// here — the home page needs the top level, a category needs its own level.
+	if nodes, err := s.db.VisibleCategories(); err == nil {
+		data.Children = children(nodes, category)
+	}
+	if category != "" {
+		segments := strings.Split(category, database.CategorySep)
+		data.Category = segments[len(segments)-1]
+		data.Crumbs = crumbs(category)
+	}
 	// A result page is thin, endless and duplicates the catalogue: search belongs
 	// out of the index. noindex,follow rather than robots.txt — a page blocked
 	// from crawling is a page whose noindex is never read.
@@ -292,18 +503,18 @@ func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
 		// On an empty result the counter stays silent: below there is already a
 		// message with the query itself and a link back to the catalogue, and two
 		// identical phrases in a row are noise.
-		if total > 0 {
-			data.FoundStr = foundStr(total)
+		if total == 0 {
+			data.FoundStr = ""
 		}
 	}
 	if page > 1 {
-		data.PrevURL = catalogURL(category, page-1, query)
+		data.PrevURL = catalogURL(filter, page-1)
 	}
 	if page < pages {
-		data.NextURL = catalogURL(category, page+1, query)
+		data.NextURL = catalogURL(filter, page+1)
 	}
-	if err := s.index.ExecuteTemplate(w, "base", data); err != nil {
-		log.Errorf("render index: %v", err)
+	if err := tpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Errorf("render listing: %v", err)
 	}
 }
 
@@ -325,7 +536,11 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL,
 		CSS: template.CSS(styleCSS), P: p, Images: imgs,
 		PriceStr: priceStr(p.Price), MetaDescription: desc,
-		CartCount: cartCount(r), CategoryURL: catalogURL(p.Category, 1, "")}
+		CartCount: cartCount(r), CategoryURL: categoryURL(p.Category)}
+	if p.Category != "" {
+		data.Crumbs = crumbs(p.Category)
+		data.CrumbsEnd = len(data.Crumbs) + 2
+	}
 	if err := s.product.ExecuteTemplate(w, "base", data); err != nil {
 		log.Errorf("render product: %v", err)
 	}
@@ -361,7 +576,7 @@ type sitemapSet struct {
 }
 
 func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
-	products, err := s.db.ListVisibleProductsPage("", "", -1, 0)
+	products, err := s.db.ListVisibleProductsPage(database.CatalogFilter{}, -1, 0)
 	if err != nil {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
@@ -370,6 +585,15 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 		URLs: []sitemapURL{{Loc: s.baseURL + "/"}}}
 	if s.shop().Terms != "" {
 		set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/info"})
+	}
+	// Category pages are the landing pages of the shop: a crawler that never
+	// sees them in the map indexes cards and nothing to hold them together.
+	if nodes, err := s.db.VisibleCategories(); err == nil && len(nodes) > 0 {
+		set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/c"})
+		for _, n := range nodes {
+			set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + categoryURL(n.Path),
+				LastMod: n.LastMod})
+		}
 	}
 	for _, p := range products {
 		set.URLs = append(set.URLs, sitemapURL{

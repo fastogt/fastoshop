@@ -29,9 +29,9 @@
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   "itemListElement": [
-    {"@type": "ListItem", "position": 1, "name": "Каталог", "item": "{{.BaseURL}}/"},
-    {"@type": "ListItem", "position": 2, "name": {{.P.Category}}, "item": "{{.BaseURL}}{{.CategoryURL}}"},
-    {"@type": "ListItem", "position": 3, "name": {{.P.Title}}}
+    {"@type": "ListItem", "position": 1, "name": "Каталог", "item": "{{.BaseURL}}/"}{{range .Crumbs}},
+    {"@type": "ListItem", "position": {{.Position}}, "name": {{.Name}}, "item": "{{$.BaseURL}}{{.URL}}"}{{end}},
+    {"@type": "ListItem", "position": {{.CrumbsEnd}}, "name": {{.P.Title}}}
   ]
 }
 </script>
@@ -40,7 +40,7 @@
 {{define "content"}}
 <nav class="crumbs" aria-label="Хлебные крошки">
   <a href="/">Каталог</a>
-  {{if .P.Category}} › <a href="{{.CategoryURL}}">{{.P.Category}}</a>{{end}}
+  {{range .Crumbs}} › <a href="{{.URL}}">{{.Name}}</a>{{end}}
 </nav>
 <article class="product">
   <div class="gallery">

@@ -1,0 +1,28 @@
+{{define "title"}}{{if .Query}}{{.Query}} — поиск{{else}}{{.Category}} — купить в {{.Shop.ShopName}}{{end}}{{end}}
+{{define "head"}}
+<meta name="description" content="{{.Category}} — {{.FoundStr}} в магазине «{{.Shop.ShopName}}»: цены, наличие, доставка.">
+{{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">{{end}}
+{{/* The path a buyer walked, spelled out for the search engine: the snippet
+     shows it instead of a bare address. */}}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Каталог", "item": "{{.BaseURL}}/"}{{range .Crumbs}},
+    {"@type": "ListItem", "position": {{.Position}}, "name": {{.Name}}, "item": "{{$.BaseURL}}{{.URL}}"}{{end}}
+  ]
+}
+</script>
+{{end}}
+{{define "content"}}
+<nav class="crumbs" aria-label="Хлебные крошки">
+  <a href="/">Каталог</a>
+  {{range .Crumbs}} › <a href="{{.URL}}">{{.Name}}</a>{{end}}
+</nav>
+<h1>{{.Category}}</h1>
+<p class="found">{{.FoundStr}}</p>
+{{template "children" .}}
+{{template "filters" .}}
+{{template "grid" .}}
+{{end}}

@@ -82,7 +82,7 @@ func dbSize(path string) int64 {
 
 func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
 	products, _ := h.db.CountProducts("", database.AnySupplier)
-	visible, _ := h.db.CountVisibleProducts("", "")
+	visible, _ := h.db.CountVisibleProducts(database.CatalogFilter{})
 	orders, _ := h.db.CountOrders("")
 	ordersNew, _ := h.db.CountOrders("new")
 

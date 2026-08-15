@@ -3,6 +3,7 @@ package importer
 import (
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -18,6 +19,28 @@ type Item struct {
 	Price       int64 // minor units
 	Stock       int
 	ImageURLs   []string
+	// Category is a path from the root down, segments joined by "/". A source
+	// with a tree (YML, Ozon, a price list cell written as "Textile > Bedroom")
+	// fills every segment; one without (a WB subject) fills a single one.
+	Category string
+}
+
+// kCategorySep separates path segments. A slash inside a category name would
+// invent a level that is not there, so CategoryPath replaces it.
+const kCategorySep = "/"
+
+// CategoryPath builds the stored path: empty segments disappear, a slash inside
+// a name turns into a dash, and the whole thing is joined by one separator.
+// Every source goes through here, so what a path is gets decided in one place.
+func CategoryPath(segments ...string) string {
+	out := make([]string, 0, len(segments))
+	for _, s := range segments {
+		s = strings.TrimSpace(strings.ReplaceAll(s, kCategorySep, "-"))
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return strings.Join(out, kCategorySep)
 }
 
 // Source is a one-off catalogue source (Ozon, WB). Not a Channel: read-only.
@@ -147,7 +170,7 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 		p := &database.Product{SKU: it.SKU, Title: it.Title,
 			Description: it.Description, Price: int64(math.Round(float64(it.Price) * coefficient)),
 			SourcePrice: it.Price, Stock: max(it.Stock, 0),
-			Supplier: supplier}
+			Category: it.Category, Supplier: supplier}
 		if err := db.CreateProduct(p); err != nil {
 			log.Warnf("import %s: create %q: %v", src.Name(), it.Title, err)
 			res.Errors++
@@ -188,12 +211,21 @@ func merge(db *database.Database, old database.Product, it Item, coefficient flo
 	if !old.PriceManual {
 		price = int64(math.Round(float64(it.Price) * coefficient))
 	}
-	if old.SourcePrice == it.Price && old.Stock == max(it.Stock, 0) && old.Price == price {
+	// A category the owner already set is theirs; an empty one gets filled, so a
+	// catalogue imported before categories existed picks them up on the next run
+	// instead of needing a wipe.
+	category := old.Category
+	if category == "" {
+		category = it.Category
+	}
+	if old.SourcePrice == it.Price && old.Stock == max(it.Stock, 0) &&
+		old.Price == price && old.Category == category {
 		return false, nil
 	}
 	old.SourcePrice = it.Price
 	old.Stock = max(it.Stock, 0)
 	old.Price = price
+	old.Category = category
 	return true, db.UpdateProduct(&old)
 }
 

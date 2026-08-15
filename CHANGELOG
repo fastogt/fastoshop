@@ -1,3 +1,12 @@
+1.12.0 / August 15, 2026
+[Alexandr Topilski]
+- A page for every category: /c/tekstil/spalnya/kpb-evro with its own title, description, breadcrumbs and listing. A search for "купить КПБ евро оптом" lands on a page about that, not on the catalogue with a query parameter; the old ?category= address redirects to the new one permanently
+- Categories now arrive with the catalogue. Every source fills them: the tree of a YML feed, the Ozon taxonomy (one request per import, not one per card), the WB subject directory, and a price-list cell written as "Текстиль > Спальня". Until now the column existed and no importer ever wrote to it — a shop of 20,000 products had one category page, empty
+- A category is a path, so a parent shows everything below it: "Текстиль" lists the goods of "Текстиль/Спальня/КПБ", which gives the shop landing pages for broad searches as well as narrow ones
+- Category pages and the category index are in the sitemap, each with its own lastmod
+- Filters for the buyer, still without a line of JavaScript: sort by price or name, "in stock only". The state lives in the address, so a filtered list can be sent to someone; every variant points a canonical at the plain page, so search engines see one page and not five
+- HEAD returned 405 for every storefront page: a GET-only route on the outer router answered before the storefront could. Monitoring, link checkers and some crawlers saw a shop that looked broken
+
 1.11.0 / August 14, 2026
 [Alexandr Topilski]
 - Legal details for the shop: a free-form block in the Profile that goes into the footer of every storefront page and into schema.org/Organization markup, so search engines and buyers can see whom they are dealing with

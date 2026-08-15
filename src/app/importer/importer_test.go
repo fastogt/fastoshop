@@ -356,3 +356,128 @@ func TestYMLFeedCurrency(t *testing.T) {
 		t.Fatalf("%v %+v", err, p)
 	}
 }
+
+// A YML feed carries the shop's tree, and it is the tree that turns a catalogue
+// into landing pages. The synthetic root every Bitrix export starts with —
+// "Главная / Каталог товаров" — is not a category and must not become one.
+const kYMLTreeFeed = `<?xml version="1.0" encoding="UTF-8"?>
+<yml_catalog><shop><categories>
+<category id="1">Главная</category>
+<category id="2" parentId="1">Каталог товаров</category>
+<category id="10" parentId="2">Текстиль</category>
+<category id="11" parentId="10">Спальня</category>
+<category id="12" parentId="11">КПБ Евро</category>
+<category id="20" parentId="2">Посуда</category>
+</categories><offers>
+<offer id="1" available="true">
+  <name>КПБ сатин</name><price>100</price><vendorCode>A-1</vendorCode><categoryId>12</categoryId>
+</offer>
+<offer id="2" available="true">
+  <name>Кастрюля</name><price>200</price><vendorCode>A-2</vendorCode><categoryId>20</categoryId>
+</offer>
+<offer id="3" available="true">
+  <name>Без категории</name><price>300</price><vendorCode>A-3</vendorCode><categoryId>999</categoryId>
+</offer>
+</offers></shop></yml_catalog>`
+
+func TestYMLCategoryTree(t *testing.T) {
+	srv := ymlServer(t, kYMLTreeFeed)
+	defer srv.Close()
+
+	items, err := (&YML{URL: srv.URL + "/feed.xml"}).Fetch()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, it := range items {
+		got[it.SKU] = it.Category
+	}
+	want := map[string]string{
+		"A-1": "Текстиль/Спальня/КПБ Евро",
+		"A-2": "Посуда",
+		"A-3": "", // an unknown categoryId is a product without a category, not a crash
+	}
+	for sku, w := range want {
+		if got[sku] != w {
+			t.Errorf("%s: category = %q, want %q", sku, got[sku], w)
+		}
+	}
+}
+
+// The common root is only dropped while something else remains: a shop selling
+// one category must keep it.
+func TestTrimCommonRootKeepsTheLeaf(t *testing.T) {
+	items := []Item{{Category: "Посуда"}, {Category: "Посуда"}}
+	trimCommonRoot(items)
+	if items[0].Category != "Посуда" {
+		t.Errorf("the only category was trimmed away: %q", items[0].Category)
+	}
+}
+
+// The Ozon taxonomy is one request per import, not one per card, and it gives a
+// full path down to the type — the same shape as a YML tree.
+func TestOzonCategoryTree(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v3/product/list", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"result":{"items":[{"product_id":11,"offer_id":"SKU-1"}],"total":1}}`))
+	})
+	mux.HandleFunc("/v3/product/info/list", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"items":[{"id":11,"offer_id":"SKU-1","name":"Тарелка",
+			"price":"300.00","description_category_id":17028922,"type_id":93080}]}`))
+	})
+	mux.HandleFunc("/v4/product/info/stocks", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"items":[],"total":0}`))
+	})
+	mux.HandleFunc("/v1/product/info/description", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"result":{"description":""}}`))
+	})
+	tree := `{"result":[{"description_category_id":1,"category_name":"Дом и сад","children":[
+		{"description_category_id":17028922,"category_name":"Посуда для сервировки","children":[
+			{"type_id":93080,"type_name":"Тарелка"}]}]}]}`
+	var treeCalls int
+	mux.HandleFunc("/v1/description-category/tree", func(w http.ResponseWriter, r *http.Request) {
+		treeCalls++
+		_, _ = w.Write([]byte(tree))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	items, err := (&Ozon{ClientID: "cid", APIKey: "key", BaseURL: srv.URL}).Fetch()
+	if err != nil || len(items) != 1 {
+		t.Fatalf("fetch: %v %+v", err, items)
+	}
+	if want := "Дом и сад/Посуда для сервировки/Тарелка"; items[0].Category != want {
+		t.Errorf("category = %q, want %q", items[0].Category, want)
+	}
+	if treeCalls != 1 {
+		t.Errorf("taxonomy fetched %d times, want once per import", treeCalls)
+	}
+}
+
+// A taxonomy that fails to load costs the categories, not the import: the goods
+// are worth more than their shelves.
+func TestOzonSurvivesTaxonomyFailure(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v3/product/list", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"result":{"items":[{"product_id":11,"offer_id":"SKU-1"}],"total":1}}`))
+	})
+	mux.HandleFunc("/v3/product/info/list", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"items":[{"id":11,"offer_id":"SKU-1","name":"Тарелка","price":"300.00"}]}`))
+	})
+	mux.HandleFunc("/v4/product/info/stocks", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"items":[],"total":0}`))
+	})
+	mux.HandleFunc("/v1/product/info/description", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"result":{"description":""}}`))
+	})
+	mux.HandleFunc("/v1/description-category/tree", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	items, err := (&Ozon{ClientID: "cid", APIKey: "key", BaseURL: srv.URL}).Fetch()
+	if err != nil || len(items) != 1 || items[0].Category != "" {
+		t.Fatalf("fetch: %v %+v", err, items)
+	}
+}

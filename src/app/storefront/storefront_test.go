@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/media"
 )
@@ -852,7 +854,7 @@ func TestProductBreadcrumbsAndGallery(t *testing.T) {
 
 	body := get(t, h, "/p/krasnyj-chajnik")
 	for _, want := range []string{
-		`class="crumbs"`, `href="/?category=kitchen"`, `"@type": "BreadcrumbList"`,
+		`class="crumbs"`, `href="/c/kitchen"`, `"@type": "BreadcrumbList"`,
 		`id="photo-0"`, `href="#photo-1"`, `class="thumbs"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -1068,5 +1070,141 @@ func TestInfoPage(t *testing.T) {
 	}
 	if !strings.Contains(get(t, h, "/sitemap.xml"), "https://shop.example.com/info") {
 		t.Error("sitemap does not list /info")
+	}
+}
+
+// A category is the landing page of the shop: a search for "купить КПБ евро"
+// must arrive at a page with its own heading and only its own goods, not at the
+// catalogue with a query parameter.
+func TestCategoryPages(t *testing.T) {
+	d, h := setup(t)
+	seed := []struct{ title, category string }{
+		{"КПБ Евро сатин", "Текстиль/Спальня/КПБ"},
+		{"КПБ 1,5 спальный", "Текстиль/Спальня/КПБ"},
+		{"Подушка перьевая", "Текстиль/Спальня/Подушки"},
+		{"Сковорода чугунная", "Посуда"},
+	}
+	for _, s := range seed {
+		if err := d.CreateProduct(&database.Product{Title: s.title, Price: 1000,
+			Stock: 5, Category: s.category}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	leaf := get(t, h, "/c/tekstil/spalnya/kpb")
+	if !strings.Contains(leaf, "<h1>КПБ</h1>") {
+		t.Error("leaf page has no heading of its own")
+	}
+	if strings.Contains(leaf, "Сковорода") || strings.Contains(leaf, "Подушка") {
+		t.Error("leaf page shows goods from another category")
+	}
+	if !strings.Contains(leaf, `href="/c/tekstil/spalnya"`) {
+		t.Error("breadcrumbs do not lead back up the tree")
+	}
+
+	// A parent must never be an empty page: its goods live in its children.
+	parent := get(t, h, "/c/tekstil")
+	for _, want := range []string{"КПБ Евро сатин", "Подушка перьевая",
+		`href="/c/tekstil/spalnya"`} {
+		if !strings.Contains(parent, want) {
+			t.Errorf("parent page missing %q", want)
+		}
+	}
+
+	// Two categories that render the same title or description are two pages
+	// competing for one query — the bug this whole feature exists to fix.
+	other := get(t, h, "/c/posuda")
+	if title(leaf) == title(other) {
+		t.Errorf("two categories share one title: %q", title(leaf))
+	}
+	if description(leaf) == description(other) {
+		t.Errorf("two categories share one description: %q", description(leaf))
+	}
+	if !strings.Contains(leaf, `<link rel="canonical" href="https://shop.example.com/c/tekstil/spalnya/kpb">`) {
+		t.Error("category page has no canonical of its own")
+	}
+
+	// The old parameter form is in the index and in bookmarks.
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/?category=Посуда", nil))
+	if w.Code != http.StatusMovedPermanently || w.Header().Get("Location") != "/c/posuda" {
+		t.Errorf("?category= = %d %q, want 301 /c/posuda", w.Code, w.Header().Get("Location"))
+	}
+
+	for _, path := range []string{"/c/net-takoj", "/c/tekstil/spalnya/kpb?page=99"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != http.StatusNotFound {
+			t.Errorf("GET %s = %d, want 404", path, w.Code)
+		}
+	}
+
+	sitemap := get(t, h, "/sitemap.xml")
+	for _, want := range []string{"/c</loc>", "/c/tekstil</loc>", "/c/tekstil/spalnya/kpb</loc>"} {
+		if !strings.Contains(sitemap, want) {
+			t.Errorf("sitemap missing %q", want)
+		}
+	}
+	if !strings.Contains(get(t, h, "/c"), `href="/c/posuda"`) {
+		t.Error("the category index does not list the categories")
+	}
+}
+
+func title(body string) string {
+	_, after, _ := strings.Cut(body, "<title>")
+	out, _, _ := strings.Cut(after, "</title>")
+	return out
+}
+
+func description(body string) string {
+	_, after, _ := strings.Cut(body, `<meta name="description" content="`)
+	out, _, _ := strings.Cut(after, `">`)
+	return out
+}
+
+// Sorting and "in stock" are links, not JavaScript, and every variant points at
+// the plain page: the same goods in another order are one page for a crawler.
+func TestCatalogFilters(t *testing.T) {
+	d, h := setup(t)
+	_ = d.CreateProduct(&database.Product{Title: "Дешёвый ковш", Price: 100, Stock: 3})
+	_ = d.CreateProduct(&database.Product{Title: "Дорогая кастрюля", Price: 900000, Stock: 0})
+
+	cheapFirst := get(t, h, "/?sort=price")
+	if strings.Index(cheapFirst, "Дешёвый ковш") > strings.Index(cheapFirst, "Дорогая кастрюля") {
+		t.Error("?sort=price did not put the cheap one first")
+	}
+	dearFirst := get(t, h, "/?sort=price&desc=1")
+	if strings.Index(dearFirst, "Дорогая кастрюля") > strings.Index(dearFirst, "Дешёвый ковш") {
+		t.Error("?sort=price&desc=1 did not put the dear one first")
+	}
+	inStock := get(t, h, "/?instock=1")
+	if strings.Contains(inStock, "Дорогая кастрюля") {
+		t.Error("?instock=1 shows a product that is out of stock")
+	}
+	if !strings.Contains(cheapFirst, `<link rel="canonical" href="https://shop.example.com/">`) {
+		t.Error("a sorted page must point at the plain one")
+	}
+	if strings.Contains(cheapFirst, "<script>") {
+		t.Error("storefront must stay JS-free")
+	}
+}
+
+// HEAD must survive the outer router. A method-specific route registered there
+// (/admin* is GET-only) makes chi answer 405 to a HEAD of any page before the
+// mounted storefront runs its own middleware — monitoring and link checkers
+// then see a shop that looks broken.
+func TestHeadThroughOuterRouter(t *testing.T) {
+	_, sf := setup(t)
+	r := chi.NewRouter()
+	r.Use(HeadAsGet)
+	r.Get("/admin*", func(http.ResponseWriter, *http.Request) {})
+	r.Mount("/", sf)
+
+	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/sitemap.xml"} {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest("HEAD", path, nil))
+		if w.Code != http.StatusOK {
+			t.Errorf("HEAD %s = %d, want 200", path, w.Code)
+		}
 	}
 }

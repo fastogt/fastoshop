@@ -129,7 +129,7 @@ func (c *CSV) parse() {
 		item := Item{
 			SKU: get(row, "sku"), Title: get(row, "title"),
 			Description: get(row, "description"), Price: price,
-			Stock: max(stock, 0),
+			Stock: max(stock, 0), Category: cellCategory(get(row, "category")),
 		}
 		if imgs := get(row, "images"); imgs != "" {
 			for _, u := range strings.Split(imgs, "|") {
@@ -140,6 +140,37 @@ func (c *CSV) parse() {
 		}
 		c.rows = append(c.rows, item)
 	}
+}
+
+// cellCategory reads the category the way price lists write it. Half of them
+// spell nesting inside one cell — "Текстиль > Спальня", sometimes with a slash
+// or a pipe — and that is data, not a guess. A cell with no separator is a
+// single level, which is what a spreadsheet usually holds.
+func cellCategory(raw string) string {
+	runes := []rune(raw)
+	var segments []string
+	start := 0
+	for i, r := range runes {
+		switch r {
+		case '>', '|':
+		case '/', '\\':
+			// A slash between digits is a size, not a level: "КПБ 1,5/2 сп" is one
+			// category, "Текстиль/Спальня" is two.
+			if i > 0 && i+1 < len(runes) &&
+				isDigitish(runes[i-1]) && isDigitish(runes[i+1]) {
+				continue
+			}
+		default:
+			continue
+		}
+		segments = append(segments, string(runes[start:i]))
+		start = i + 1
+	}
+	return CategoryPath(append(segments, string(runes[start:]))...)
+}
+
+func isDigitish(r rune) bool {
+	return r >= '0' && r <= '9' || r == ',' || r == '.'
 }
 
 // parseMoney accepts both decimal separators and ignores spaces used as

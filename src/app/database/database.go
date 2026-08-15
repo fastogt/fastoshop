@@ -92,6 +92,9 @@ func (d *Database) migrate() error {
 	-- without the index that is a full table scan 60 times per render (measured
 	-- on 20 000 photos).
 	CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id);
+	-- Every category page filters by this column, and a catalogue has hundreds
+	-- of them.
+	CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 	CREATE TABLE IF NOT EXISTS orders (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
 		name       TEXT NOT NULL,

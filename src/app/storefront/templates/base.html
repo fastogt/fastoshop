@@ -1,3 +1,50 @@
+{{/* The card grid and the subcategory links live here because the home page and
+     a category page are the same listing with a different heading. */}}
+{{define "grid"}}
+{{if .Products}}
+<ul class="grid">
+{{range .Products}}
+  <li><a href="/p/{{.Slug}}">
+    {{if .ImageURL}}<img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy" width="400" height="400">
+    {{else}}<img class="nophoto" src="/nophoto.svg" alt="" loading="lazy" width="400" height="400">{{end}}
+    <div class="body">
+      <h2>{{.Title}}</h2>
+      {{if le .Stock 0}}<span class="badge">Нет в наличии</span>{{end}}
+      <p class="price">{{.PriceStr}} {{$.Shop.Sign}}</p>
+    </div>
+  </a></li>
+{{end}}
+</ul>
+{{if gt .Pages 1}}
+<nav class="pager">
+  {{if .PrevURL}}<a href="{{.PrevURL}}" rel="prev">← Назад</a>{{end}}
+  <span class="oos">Страница {{.Page}} из {{.Pages}}</span>
+  {{if .NextURL}}<a href="{{.NextURL}}" rel="next">Дальше →</a>{{end}}
+</nav>
+{{end}}
+{{else if .Query}}
+<p class="empty">По запросу «{{.Query}}» ничего не нашлось. <a href="/">Весь каталог</a></p>
+{{else}}
+<p class="empty">Товары скоро появятся.</p>
+{{end}}
+{{end}}
+
+{{define "filters"}}
+{{if .Products}}
+<nav class="filters" aria-label="Сортировка и фильтры">
+{{range .Filters}}<a href="{{.URL}}"{{if .Active}} class="on" aria-current="true"{{end}} rel="nofollow">{{.Name}}</a>{{end}}
+</nav>
+{{end}}
+{{end}}
+
+{{define "children"}}
+{{if .Children}}
+<nav class="cats" aria-label="Категории">
+{{range .Children}}<a href="{{.URL}}">{{.Name}} <span class="oos">{{.Count}}</span></a>{{end}}
+</nav>
+{{end}}
+{{end}}
+
 {{define "base"}}<!DOCTYPE html>
 <html lang="{{.Shop.Lang}}">
 <head>
