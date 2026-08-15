@@ -16,11 +16,18 @@
     <td><a href="/p/{{.Slug}}">{{.Title}}</a></td>
     <td class="unit">{{.PriceStr}} {{$.Shop.Sign}}</td>
     <td class="qty-cell">
+      {{/* Минус, число, плюс и крестик — привычный набор из любого магазина.
+           Скрытая кнопка «set» стоит первой, потому что Enter в поле количества
+           нажимает первую кнопку формы: без неё ввод числа уменьшал бы его. */}}
       <form method="post" action="/cart/update" class="qty">
         <input type="hidden" name="slug" value="{{.Slug}}">
+        <button type="submit" name="action" value="set" hidden></button>
+        <button type="submit" name="action" value="dec" aria-label="Меньше">−</button>
         <label for="qty-{{.Slug}}" hidden>Количество</label>
-        <input id="qty-{{.Slug}}" name="qty" type="number" value="{{.Qty}}" min="0" max="{{.Stock}}">
-        <button type="submit">Обновить</button>
+        <input id="qty-{{.Slug}}" name="qty" type="number" value="{{.Qty}}" min="1" max="{{.Stock}}">
+        <button type="submit" name="action" value="inc" aria-label="Больше">+</button>
+        <button type="submit" name="action" value="remove" class="remove"
+                aria-label="Удалить из корзины" title="Удалить из корзины">×</button>
       </form>
     </td>
     <td class="line">{{.LineStr}} {{$.Shop.Sign}}</td>

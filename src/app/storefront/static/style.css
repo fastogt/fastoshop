@@ -328,6 +328,18 @@ form.qty button:hover { background: var(--accent-soft); }
 .cats a:hover { border-color: var(--accent); }
 
 /* Текст категории — то, ради чего магазин раньше держал отдельный лендинг. */
+.qty { display: flex; align-items: center; gap: 4px; }
+.qty button {
+  min-width: 32px;
+  padding: 6px 8px;
+  font-size: 16px;
+  line-height: 1;
+}
+.qty input { width: 60px; text-align: center; }
+/* Крестик — не кнопка действия, а тихое «убрать»: цветом отличается от «+». */
+.qty .remove { background: none; border: 1px solid var(--line); color: var(--muted); }
+.qty .remove:hover { border-color: var(--accent); color: var(--accent); }
+
 .cat-text { white-space: pre-line; max-width: 70ch; line-height: 1.6; margin-block: 12px 20px; }
 
 /* Фильтры — ссылки: состояние живёт в адресе, JS на витрине по-прежнему нет. */

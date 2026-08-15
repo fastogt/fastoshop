@@ -1347,3 +1347,52 @@ func TestOrderContacts(t *testing.T) {
 		t.Fatalf("orders = %+v", orders)
 	}
 }
+
+// A cart is where a shop loses the sale it already had, so its controls must be
+// obvious: minus, plus and a cross, not "type 0 to delete".
+func TestCartRowControls(t *testing.T) {
+	d, h := setup(t)
+	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
+
+	add := httptest.NewRequest("POST", "/cart/add",
+		strings.NewReader("slug="+p.Slug+"&qty=2"))
+	add.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, add)
+	cookies := w.Result().Cookies()
+
+	update := func(form string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("POST", "/cart/update", strings.NewReader(form))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		out := httptest.NewRecorder()
+		h.ServeHTTP(out, req)
+		cookies = out.Result().Cookies()
+		return out
+	}
+	cartBody := func() string {
+		req := httptest.NewRequest("GET", "/cart", nil)
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		out := httptest.NewRecorder()
+		h.ServeHTTP(out, req)
+		return out.Body.String()
+	}
+
+	if body := cartBody(); !strings.Contains(body, `value="remove"`) ||
+		!strings.Contains(body, `value="inc"`) || !strings.Contains(body, `value="dec"`) {
+		t.Error("the cart row has no minus, plus and remove controls")
+	}
+
+	update("slug=" + p.Slug + "&action=inc&qty=2")
+	if !strings.Contains(cartBody(), "Красный чайник") {
+		t.Fatal("the product left the cart on plus")
+	}
+	update("slug=" + p.Slug + "&action=remove&qty=3")
+	if strings.Contains(cartBody(), "Красный чайник") {
+		t.Error("the cross did not remove the row")
+	}
+}

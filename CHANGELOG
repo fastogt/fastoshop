@@ -6,6 +6,7 @@
 - A hidden section and everything below it disappears from the catalogue, the category index and the sitemap
 - Two names that would produce one storefront address are refused with a message instead of one page quietly replacing the other
 - A buyer leaves a phone or an email, whichever they prefer: the checkout asks for both and refuses only when neither is filled — an order nobody can be reached about is a lost sale that looks like a sale. An email also gets the buyer a confirmation letter, so a shop that took an order no longer answers with silence
+- The cart row got the controls every shop has: minus, plus and a cross. Until now it had an "Update" button and deleting a line meant typing a zero into the quantity — a rule nobody guesses, in the one place where a shop loses a sale it already had
 - Orders can be deleted, by an explicit list of rows and with a confirmation that says what disappears. Stock is not returned by a delete — an order that still holds goods should be cancelled first. The email is in the admin list and in the CSV journal
 - A text of your own on a category page: it shows above the goods and becomes the page description for search engines, instead of the same generated sentence on every page
 - The category field in the product dialog took a quarter of a line and cut the path off; it now has a row of its own

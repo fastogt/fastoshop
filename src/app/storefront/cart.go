@@ -199,6 +199,9 @@ func (s *Storefront) CartAdd(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/cart", http.StatusSeeOther)
 }
 
+// CartUpdate handles the four things a row can do: less, more, a typed number
+// and remove. Buttons rather than "type 0 to delete": nobody guesses that, and
+// a cart is where a shop loses the sale it already had.
 func (s *Storefront) CartUpdate(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimSpace(r.FormValue("slug"))
 	qty, _ := strconv.Atoi(r.FormValue("qty"))
@@ -206,10 +209,21 @@ func (s *Storefront) CartUpdate(w http.ResponseWriter, r *http.Request) {
 	out := make([]cartLine, 0, len(lines))
 	for _, l := range lines {
 		if l.Slug == slug {
-			if qty < 1 {
+			switch r.FormValue("action") {
+			case "remove":
+				continue
+			case "inc":
+				l.Qty++
+			case "dec":
+				l.Qty--
+			default:
+				l.Qty = qty
+			}
+			// Down to nothing is the same as removing the row — reached by the
+			// minus button, and still by a typed zero for anyone who tries.
+			if l.Qty < 1 {
 				continue
 			}
-			l.Qty = qty
 		}
 		out = append(out, l)
 	}
