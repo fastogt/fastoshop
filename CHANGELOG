@@ -1,5 +1,7 @@
 1.13.0 / August 15, 2026
 [Alexandr Topilski]
+- A "Draft" button in the category editor: the shop assembles a starting text out of what it already knows — what the category holds, how many items, the price range in your currency and your own delivery terms. Nothing is invented and nothing is published; it lands in the box to be rewritten. An empty box is the reason category texts never get written
+- Deleting a category text is its own button and its own endpoint, instead of hiding behind "save an empty field"
 - A text of your own on a category page, written in the new Categories tab: it shows above the goods and becomes the page description for search engines. A listing plus a paragraph is the landing page shops keep a separate site section for; without it every category page describes itself with the same generated sentence
 - The Categories tab lists the whole tree with the number of goods in each node and shows at a glance which ones are still without a text
 

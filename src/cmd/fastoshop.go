@@ -137,6 +137,8 @@ func run(cfg *config.Config) error {
 			r.Get("/products/categories", h.Categories)
 			r.Get("/categories", h.CategoryList)
 			r.Put("/categories/text", h.SetCategoryText)
+			r.Get("/categories/draft", h.CategoryDraft)
+			r.Delete("/categories/text", h.DeleteCategoryText)
 			r.Post("/products/bulk/stock", h.BulkStock)
 			r.Post("/products/bulk/visibility", h.BulkVisibility)
 			r.Post("/products/bulk/supplier", h.BulkSupplier)

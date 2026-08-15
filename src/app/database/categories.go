@@ -57,3 +57,57 @@ func (d *Database) CategoryTexts() (map[string]string, error) {
 	}
 	return out, rows.Err()
 }
+
+// priceAt returns the price of the n-th product by price — the cheap way to a
+// percentile when the rows are already indexed.
+func (d *Database) priceAt(where string, args []any, offset int) int64 {
+	var price int64
+	_ = d.db.QueryRow(`SELECT price FROM products`+where+` ORDER BY price LIMIT 1 OFFSET ?`,
+		append(append([]any{}, args...), offset)...).Scan(&price)
+	return price
+}
+
+// CategorySample is what a category looks like from the outside: how many goods
+// it holds, what they cost and a few of their names. Enough to write the first
+// draft of a page about it without inventing anything.
+type CategorySample struct {
+	Count    int
+	MinPrice int64
+	MaxPrice int64
+	Titles   []string
+	Children []string
+}
+
+// SampleCategory reads the node and everything below it in one pass.
+func (d *Database) SampleCategory(path string) (*CategorySample, error) {
+	where, args := productWhere(path, "", supplierAny, true)
+	out := &CategorySample{}
+	if err := d.db.QueryRow(`SELECT COUNT(*) FROM products`+where, args...).
+		Scan(&out.Count); err != nil {
+		return nil, err
+	}
+	if out.Count == 0 {
+		return out, nil
+	}
+	// Percentiles, not MIN and MAX: a wholesale catalogue always holds one
+	// 17-kopeck cap and one 4590-rouble wardrobe, and "prices from 0.17 to 4590"
+	// describes nothing. The tenth and ninetieth are the goods the buyer sees.
+	out.MinPrice = d.priceAt(where, args, out.Count/10)
+	out.MaxPrice = d.priceAt(where, args, out.Count*9/10)
+	// The most expensive first: the cheap end of a wholesale catalogue is
+	// packaging and oddments, and a draft should name the goods, not the tape.
+	rows, err := d.db.Query(`SELECT title FROM products`+where+
+		` ORDER BY price DESC LIMIT 40`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var title string
+		if err := rows.Scan(&title); err != nil {
+			return nil, err
+		}
+		out.Titles = append(out.Titles, title)
+	}
+	return out, rows.Err()
+}

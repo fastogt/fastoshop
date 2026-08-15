@@ -22,6 +22,13 @@ const kText = {
     en: "What is sold here, who it suits, what makes it different — in your own words. The first sentences become the page description for search engines; line breaks are kept. An empty field means no block.",
   },
   save: { ru: "Сохранить", en: "Save" },
+  draft: { ru: "Черновик", en: "Draft" },
+  draftHint: {
+    ru: "Соберём заготовку из ваших же данных: что в категории, сколько позиций, разброс цен и условия доставки из профиля. Ничего не публикуется — правьте под себя и сохраняйте.",
+    en: "We assemble a starting text from your own data: what is in the category, how many items, the price range and the delivery terms from your profile. Nothing is published — edit it and save.",
+  },
+  remove: { ru: "Удалить текст", en: "Delete text" },
+  draftFailed: { ru: "Черновик не собрался", en: "Could not build a draft" },
   saveFailed: { ru: "Не сохранилось", en: "Could not save" },
   empty: {
     ru: "Категорий пока нет. Они приезжают с импортом или ставятся в карточке товара.",
@@ -51,6 +58,27 @@ export default function Categories() {
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
+
+  const draft = async () => {
+    if (!edit) return;
+    try {
+      const res = await api.categoryDraft(edit.path);
+      setBody(res.body);
+    } catch (e) {
+      setMsg(apiError(e) ?? t("draftFailed"));
+    }
+  };
+
+  const remove = async () => {
+    if (!edit) return;
+    try {
+      await api.deleteCategoryText(edit.path);
+      setEdit(null);
+      await reload();
+    } catch (e) {
+      setMsg(apiError(e) ?? t("saveFailed"));
+    }
+  };
 
   const save = async () => {
     if (!edit) return;
@@ -136,9 +164,22 @@ export default function Categories() {
           title={`${t("edit")}: ${edit.path}`}
           onClose={() => setEdit(null)}
           footer={
-            <button className="btn" onClick={() => void save()}>
-              {t("save")}
-            </button>
+            <div className="flex w-full items-center gap-3">
+              <button className="btn-ghost" onClick={() => void draft()}>
+                {t("draft")}
+              </button>
+              {edit.body && (
+                <button
+                  className="btn-ghost text-red-600"
+                  onClick={() => void remove()}
+                >
+                  {t("remove")}
+                </button>
+              )}
+              <button className="btn ml-auto" onClick={() => void save()}>
+                {t("save")}
+              </button>
+            </div>
           }
         >
           <textarea
@@ -148,6 +189,7 @@ export default function Categories() {
             onChange={(e) => setBody(e.target.value)}
           />
           <p className="hint mt-1">{t("bodyHint")}</p>
+          <p className="hint mt-1">{t("draftHint")}</p>
           {msg && <p className="mt-2 text-red-600">{msg}</p>}
         </Modal>
       )}

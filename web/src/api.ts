@@ -329,6 +329,14 @@ export const api = {
       .then(data<{ categories: CategoryNode[]; total: number }>),
   setCategoryText: (path: string, body: string) =>
     http.put("/categories/text", { path, body }).then(data<{ status: string }>),
+  deleteCategoryText: (path: string) =>
+    http
+      .delete("/categories/text", { params: { path } })
+      .then(data<{ status: string }>),
+  categoryDraft: (path: string) =>
+    http
+      .get("/categories/draft", { params: { path } })
+      .then(data<{ body: string }>),
   deleteImage: (productId: number, imageId: number) =>
     http.delete(`/products/${productId}/images/${imageId}`).then(data<Product>),
   orders: (page = 1, per = 50, sort?: string, dir?: string) =>
