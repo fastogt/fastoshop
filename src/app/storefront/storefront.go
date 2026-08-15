@@ -246,7 +246,10 @@ type pageVM struct {
 	TotalStr   string
 	CartCount  int
 	Dropped    bool
-	SoldOut    string
+	// NoContact — the buyer left neither a phone nor an email, so the order was
+	// not created: an order nobody can be reached about is not an order.
+	NoContact bool
+	SoldOut   string
 }
 
 // categoryURL is the address of a node of the tree: every segment of the path

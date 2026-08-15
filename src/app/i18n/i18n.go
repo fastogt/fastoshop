@@ -53,6 +53,10 @@ const (
 	KeyYMLTooBig           = "yml_too_big"
 	KeyYMLBadXML           = "yml_bad_xml"
 
+	KeyOrderEmail          = "order_email"
+	KeyOrderConfirmSubject = "order_confirm_subject"
+	KeyOrderConfirmBody    = "order_confirm_body"
+
 	KeyCategoryNoName    = "category_no_name"
 	KeyCategoryExists    = "category_exists"
 	KeyCategorySlugTaken = "category_slug_taken"
@@ -77,6 +81,14 @@ var kMessages = map[string][2]string{
 	KeyOrderName:       {"Имя", "Name"},
 	KeyOrderPhone:      {"Телефон", "Phone"},
 	KeyOrderComment:    {"Комментарий", "Comment"},
+	KeyOrderEmail:      {"Почта", "Email"},
+	// %s — the shop name.
+	KeyOrderConfirmSubject: {"Ваш заказ в «%s»", "Your order at %s"},
+	// %d — the order number.
+	KeyOrderConfirmBody: {
+		"Спасибо! Мы получили ваш заказ №%d и свяжемся с вами для подтверждения.",
+		"Thank you! We have received your order #%d and will contact you to confirm it.",
+	},
 	KeyOzonBadCurrency: {
 		"валюта должна быть RUB или BYN", "currency must be RUB or BYN",
 	},

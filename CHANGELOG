@@ -5,6 +5,8 @@
 - Deleting a section is not deleting what stands on it: the products and the subcategories move up to the parent, and a root section's goods simply lose their category
 - A hidden section and everything below it disappears from the catalogue, the category index and the sitemap
 - Two names that would produce one storefront address are refused with a message instead of one page quietly replacing the other
+- A buyer leaves a phone or an email, whichever they prefer: the checkout asks for both and refuses only when neither is filled — an order nobody can be reached about is a lost sale that looks like a sale. An email also gets the buyer a confirmation letter, so a shop that took an order no longer answers with silence
+- Orders can be deleted, by an explicit list of rows and with a confirmation that says what disappears. Stock is not returned by a delete — an order that still holds goods should be cancelled first. The email is in the admin list and in the CSV journal
 - A text of your own on a category page: it shows above the goods and becomes the page description for search engines, instead of the same generated sentence on every page
 - The category field in the product dialog took a quarter of a line and cut the path off; it now has a row of its own
 

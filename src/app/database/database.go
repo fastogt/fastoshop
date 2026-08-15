@@ -114,7 +114,11 @@ func (d *Database) migrate() error {
 	CREATE TABLE IF NOT EXISTS orders (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
 		name       TEXT NOT NULL,
+		-- One of the two is enough to reach the buyer, and which one is theirs to
+		-- choose: a phone is how a Russian shop confirms an order, an email is
+		-- what a buyer who does not want to be called leaves instead.
 		phone      TEXT NOT NULL,
+		email      TEXT NOT NULL DEFAULT '',
 		comment    TEXT NOT NULL DEFAULT '',
 		items_json TEXT NOT NULL,
 		status     TEXT NOT NULL DEFAULT 'new', -- new|done|cancelled

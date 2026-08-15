@@ -220,9 +220,17 @@ func (s *Storefront) CartUpdate(w http.ResponseWriter, r *http.Request) {
 func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	phone := strings.TrimSpace(r.FormValue("phone"))
+	email := strings.TrimSpace(r.FormValue("email"))
 	rows, total, _ := s.resolveCart(readCart(r))
-	if name == "" || phone == "" || len(rows) == 0 {
+	if name == "" || len(rows) == 0 {
 		http.Redirect(w, r, "/cart", http.StatusSeeOther)
+		return
+	}
+	// One of the two is enough, but not neither: an order nobody can be reached
+	// about is a lost sale that looks like a sale.
+	if phone == "" && email == "" {
+		rows, total, _ := s.resolveCart(readCart(r))
+		s.renderCart(w, rows, total, pageVM{NoContact: true})
 		return
 	}
 	items := make([]orderItemJSON, 0, len(rows))
@@ -243,7 +251,7 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	shop := s.shop()
 	sign := shop.Sign()
 	raw, _ := json.Marshal(items)
-	o := &database.Order{Name: name, Phone: phone,
+	o := &database.Order{Name: name, Phone: phone, Email: email,
 		Comment: strings.TrimSpace(r.FormValue("comment")), ItemsJSON: string(raw)}
 	if err := s.db.CreateOrderWithStock(o, stock); err != nil {
 		var oos *database.OutOfStockError
@@ -260,10 +268,11 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	// language — unlike the storefront around it, which speaks the language of
 	// the products.
 	lang := shop.Lang
-	body := fmt.Sprintf("%s%s: %s %s\n\n%s: %s\n%s: %s\n%s: %s\n\n%s/admin",
+	body := fmt.Sprintf("%s%s: %s %s\n\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n\n%s/admin",
 		summary.String(), i18n.T(lang, i18n.KeyOrderTotal), priceStr(total), sign,
 		i18n.T(lang, i18n.KeyOrderName), name,
 		i18n.T(lang, i18n.KeyOrderPhone), phone,
+		i18n.T(lang, i18n.KeyOrderEmail), email,
 		i18n.T(lang, i18n.KeyOrderComment), o.Comment, s.baseURL)
 	subject := fmt.Sprintf(i18n.T(lang, i18n.KeyNewOrderSubject), o.ID)
 	// A failed email must not fail the order: async, errors only to the log.
@@ -274,6 +283,19 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := mail.Send(st, subject, body); err != nil {
 			log.Warnf("order mail: %v", err)
+		}
+		// The buyer gets their copy when they left an address: a shop that takes
+		// an order and says nothing looks like a shop that lost it.
+		if email == "" {
+			return
+		}
+		confirmation := fmt.Sprintf("%s\n\n%s%s: %s %s\n\n%s",
+			fmt.Sprintf(i18n.T(lang, i18n.KeyOrderConfirmBody), o.ID),
+			summary.String(), i18n.T(lang, i18n.KeyOrderTotal), priceStr(total), sign,
+			s.baseURL)
+		if err := mail.SendTo(st, email, fmt.Sprintf(
+			i18n.T(lang, i18n.KeyOrderConfirmSubject), st.ShopName), confirmation); err != nil {
+			log.Warnf("order confirmation: %v", err)
 		}
 	}()
 	http.Redirect(w, r, "/cart?ordered=1", http.StatusSeeOther)

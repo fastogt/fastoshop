@@ -1298,3 +1298,52 @@ func TestCategoryRenameAndHide(t *testing.T) {
 		}
 	}
 }
+
+// A buyer leaves a phone or an email, whichever they prefer — but not neither:
+// an order nobody can be reached about is a lost sale that looks like a sale.
+func TestOrderContacts(t *testing.T) {
+	d, h := setup(t)
+	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
+
+	order := func(form string) *httptest.ResponseRecorder {
+		add := httptest.NewRequest("POST", "/cart/add",
+			strings.NewReader("slug="+p.Slug+"&qty=1"))
+		add.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, add)
+		req := httptest.NewRequest("POST", "/cart/order", strings.NewReader(form))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		for _, c := range w.Result().Cookies() {
+			req.AddCookie(c)
+		}
+		out := httptest.NewRecorder()
+		h.ServeHTTP(out, req)
+		return out
+	}
+
+	// Neither contact: the cart comes back with a message, no order is created.
+	w := order("name=Иван")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Оставьте телефон или почту") {
+		t.Errorf("no contacts = %d, want the cart with a notice", w.Code)
+	}
+	if orders, _ := d.ListOrders(); len(orders) != 0 {
+		t.Fatalf("an order without contacts was created: %+v", orders)
+	}
+
+	// Email alone is enough.
+	if w := order("name=Иван&email=ivan@example.com"); w.Code != http.StatusSeeOther {
+		t.Fatalf("email-only order = %d, want 303", w.Code)
+	}
+	orders, _ := d.ListOrders()
+	if len(orders) != 1 || orders[0].Email != "ivan@example.com" || orders[0].Phone != "" {
+		t.Fatalf("order = %+v", orders)
+	}
+
+	// And so is a phone alone, as before.
+	if w := order("name=Пётр&phone=%2B79990000000"); w.Code != http.StatusSeeOther {
+		t.Fatalf("phone-only order = %d, want 303", w.Code)
+	}
+	if orders, _ := d.ListOrders(); len(orders) != 2 {
+		t.Fatalf("orders = %+v", orders)
+	}
+}

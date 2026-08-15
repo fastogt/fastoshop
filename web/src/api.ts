@@ -51,6 +51,7 @@ export interface Order {
   id: number;
   name: string;
   phone: string;
+  email: string;
   comment: string;
   items_json: string;
   status: string;
@@ -353,6 +354,8 @@ export const api = {
       .then(data<{ orders: Order[]; total: number; pages: number }>),
   setOrderStatus: (id: number, status: string) =>
     http.put(`/orders/${id}/status`, { status }),
+  bulkDeleteOrders: (ids: number[]) =>
+    http.post("/orders/bulk/delete", { ids }).then(data<{ deleted: number }>),
   bulkOrderStatus: (ids: number[], status: string) =>
     http.post("/orders/bulk/status", { ids, status }).then(
       data<{

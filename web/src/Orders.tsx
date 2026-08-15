@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, apiError, type Order } from "./api";
 import { useLang, useT } from "./i18n";
 import DataTable, { type Sort } from "./DataTable";
-import { IconCheck, IconUndo, IconX } from "./Icons";
+import { IconCheck, IconTrash, IconUndo, IconX } from "./Icons";
 import { useSign } from "./shop";
 
 const kStatusTitles = {
@@ -33,6 +33,12 @@ const kText = {
     en: "Could not change the status",
   },
   markDone: { ru: "Отметить выполненными", en: "Mark as completed" },
+  bulkDelete: { ru: "Удалить", en: "Delete" },
+  confirmDelete: {
+    ru: "Удалить заказы (%d)? Данные покупателя и состав заказа исчезнут навсегда. Остатки не вернутся — для этого отмените заказ.",
+    en: "Delete %d order(s)? The buyer's details and the contents disappear for good. Stock is not returned — cancel the order for that.",
+  },
+  deleted: { ru: "Удалено: %d", en: "Deleted: %d" },
   markCancelled: { ru: "Отменить", en: "Cancel" },
   markNew: { ru: "Вернуть в работу", en: "Reopen" },
   bulkDone: { ru: "Изменено заказов: {n}", en: "Orders changed: {n}" },
@@ -73,6 +79,18 @@ export default function Orders() {
 
   // Status changes move stock, so each order goes in its own transaction: a
   // failure on one must not roll back the others and must not pass silently.
+  const remove = async (ids: number[]) => {
+    if (!window.confirm(t("confirmDelete").replace("%d", String(ids.length))))
+      return;
+    try {
+      const r = await api.bulkDeleteOrders(ids);
+      setBulkMsg(t("deleted").replace("%d", String(r.deleted)));
+      await reload();
+    } catch {
+      setBulkMsg(t("statusFailed"));
+    }
+  };
+
   const bulkStatus = async (ids: number[], status: string) => {
     setBulkMsg("");
     try {
@@ -148,9 +166,16 @@ export default function Orders() {
             render: (o) => (
               <>
                 <div className="font-medium">{o.name}</div>
-                <a className="text-brand" href={`tel:${o.phone}`}>
-                  {o.phone}
-                </a>
+                {o.phone && (
+                  <a className="text-brand block" href={`tel:${o.phone}`}>
+                    {o.phone}
+                  </a>
+                )}
+                {o.email && (
+                  <a className="text-brand block" href={`mailto:${o.email}`}>
+                    {o.email}
+                  </a>
+                )}
                 {o.comment && <div className="hint mt-1">{o.comment}</div>}
               </>
             ),
@@ -222,6 +247,13 @@ export default function Orders() {
             icon: <IconUndo />,
             idsOnly: true,
             onClick: (sel) => bulkStatus(sel.ids, "new"),
+          },
+          {
+            label: t("bulkDelete"),
+            icon: <IconTrash />,
+            danger: true,
+            idsOnly: true,
+            onClick: (sel) => void remove(sel.ids),
           },
           {
             label: t("markCancelled"),

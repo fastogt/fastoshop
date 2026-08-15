@@ -5,6 +5,7 @@
 {{define "content"}}
 <h1>Корзина</h1>
 {{if .Ordered}}<p class="notice good ok">Спасибо! Заказ принят, мы свяжемся с вами по телефону.</p>{{end}}
+{{if .NoContact}}<p class="notice oos">Оставьте телефон или почту — иначе мы не сможем подтвердить заказ.</p>{{end}}
 {{if .SoldOut}}<p class="notice oos">Пока вы оформляли заказ, «{{.SoldOut}}» закончился — мы убрали его из корзины. Заказ не оформлен, проверьте состав и подтвердите ещё раз.</p>{{end}}
 {{if .Dropped}}<p class="notice oos">Часть товаров закончилась и была убрана из корзины.</p>{{end}}
 {{if .Cart}}
@@ -37,7 +38,12 @@
     </div>
     <div>
       <label for="phone">Телефон</label>
-      <input id="phone" name="phone" type="tel" placeholder="+7 999 000-00-00" required>
+      <input id="phone" name="phone" type="tel" placeholder="+7 999 000-00-00">
+    </div>
+    <div>
+      <label for="email">Почта</label>
+      <input id="email" name="email" type="email" placeholder="ivan@example.com">
+      <p class="oos">Телефон или почта — что-то одно обязательно. На почту пришлём подтверждение заказа.</p>
     </div>
     <div>
       <label for="comment">Комментарий</label>

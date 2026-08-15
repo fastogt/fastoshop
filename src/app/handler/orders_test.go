@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/csv"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -50,7 +51,7 @@ func TestOrdersAndSettings(t *testing.T) {
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/orders.csv", nil))
 	csv := w.Body.String()
-	if !strings.HasPrefix(csv, "id,date,name,phone,items,total,status") ||
+	if !strings.HasPrefix(csv, "id,date,name,phone,email,items,total,status") ||
 		!strings.Contains(csv, "Иван") {
 		t.Fatalf("csv: %s", csv)
 	}
@@ -99,10 +100,44 @@ func TestExportOrdersCSVSafety(t *testing.T) {
 	if !strings.HasPrefix(row[2], "'=") {
 		t.Fatalf("formula injection not neutralised: %q", row[2])
 	}
-	if row[4] != "ПАРСИНГ НЕ УДАЛСЯ" {
-		t.Fatalf("broken items must be flagged: %q", row[4])
+	if row[5] != "ПАРСИНГ НЕ УДАЛСЯ" {
+		t.Fatalf("broken items must be flagged: %q", row[5])
 	}
-	if row[5] != "" {
-		t.Fatalf("total must be blank, not a fake number: %q", row[5])
+	if row[6] != "" {
+		t.Fatalf("total must be blank, not a fake number: %q", row[6])
+	}
+}
+
+// An order carries a person's name and phone, so the owner must be able to
+// erase it — and only by an explicit list: "delete everything the filter
+// matches" is how a shop loses its journal in one click.
+func TestBulkDeleteOrders(t *testing.T) {
+	h := newTestHandler(t)
+	_ = h.db.CreateOrder(&database.Order{Name: "Иван", Phone: "+7999",
+		ItemsJSON: `[{"sku":"T-1","title":"Чайник","price":100,"qty":1}]`})
+	_ = h.db.CreateOrder(&database.Order{Name: "Пётр", Email: "p@example.com",
+		ItemsJSON: `[{"sku":"T-2","title":"Ковш","price":100,"qty":1}]`})
+	before, err := h.db.ListOrders()
+	if err != nil || len(before) == 0 {
+		t.Fatalf("seed: %v %d", err, len(before))
+	}
+
+	w := httptest.NewRecorder()
+	h.BulkDeleteOrders(w, httptest.NewRequest("POST", "/api/orders/bulk/delete",
+		strings.NewReader(fmt.Sprintf(`{"ids":[%d]}`, before[0].ID))))
+	if w.Code != http.StatusOK {
+		t.Fatalf("delete = %d: %s", w.Code, w.Body.String())
+	}
+	after, _ := h.db.ListOrders()
+	if len(after) != len(before)-1 {
+		t.Errorf("orders after delete: %d, want %d", len(after), len(before)-1)
+	}
+
+	// An empty list is a mistake, not a request to delete everything.
+	w = httptest.NewRecorder()
+	h.BulkDeleteOrders(w, httptest.NewRequest("POST", "/api/orders/bulk/delete",
+		strings.NewReader(`{"ids":[]}`)))
+	if w.Code == http.StatusOK {
+		t.Error("an empty selection must not be accepted")
 	}
 }

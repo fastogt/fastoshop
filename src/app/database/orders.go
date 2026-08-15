@@ -6,9 +6,12 @@ import (
 )
 
 type Order struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	Phone     string    `json:"phone"`
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Phone string `json:"phone"`
+	// Email is the second way to reach the buyer; at least one of the two is
+	// always filled.
+	Email     string    `json:"email"`
 	Comment   string    `json:"comment"`
 	ItemsJSON string    `json:"items_json"`
 	Status    string    `json:"status"`
@@ -20,8 +23,8 @@ type Order struct {
 // CreateOrderWithStock; this exists so tests can produce that legacy state.
 func (d *Database) CreateOrder(o *Order) error {
 	res, err := d.db.Exec(
-		`INSERT INTO orders (name, phone, comment, items_json) VALUES (?, ?, ?, ?)`,
-		o.Name, o.Phone, o.Comment, o.ItemsJSON)
+		`INSERT INTO orders (name, phone, email, comment, items_json) VALUES (?, ?, ?, ?, ?)`,
+		o.Name, o.Phone, o.Email, o.Comment, o.ItemsJSON)
 	if err != nil {
 		return err
 	}
@@ -98,12 +101,12 @@ func (d *Database) ListOrdersPage(status, sort string, desc bool, limit, offset 
 		args = append(args, status)
 	}
 	args = append(args, limit, offset)
-	return d.scanOrders(`SELECT id, name, phone, comment, items_json, status, created_at
+	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, created_at
 		 FROM orders`+where+orderBy(kOrderSortable, sort, desc)+` LIMIT ? OFFSET ?`, args...)
 }
 
 func (d *Database) ListOrders() ([]Order, error) {
-	return d.scanOrders(`SELECT id, name, phone, comment, items_json, status, created_at
+	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, created_at
 		 FROM orders ORDER BY created_at DESC, id DESC`)
 }
 
@@ -116,11 +119,29 @@ func (d *Database) scanOrders(query string, args ...any) ([]Order, error) {
 	var out []Order
 	for rows.Next() {
 		var o Order
-		if err := rows.Scan(&o.ID, &o.Name, &o.Phone, &o.Comment, &o.ItemsJSON,
+		if err := rows.Scan(&o.ID, &o.Name, &o.Phone, &o.Email, &o.Comment, &o.ItemsJSON,
 			&o.Status, &o.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, o)
 	}
 	return out, rows.Err()
+}
+
+// DeleteOrders removes orders for good, with their items. An order carries a
+// buyer's name, phone and address of sorts, and the owner must be able to erase
+// it — for a mistaken order, for a test one, and because a person may ask them
+// to. Stock is not returned: a delete is not a cancellation, and an order that
+// still holds goods should be cancelled first.
+func (d *Database) DeleteOrders(ids []int64) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	placeholders, args := inClause(ids)
+	res, err := d.db.Exec(`DELETE FROM orders WHERE id IN (`+placeholders+`)`, args...)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
 }

@@ -51,6 +51,12 @@ func sender(s *database.Settings) string {
 // (Yandex 360 / VK WorkSpace), hence tls.Dial rather than smtp.SendMail (the
 // latter only speaks STARTTLS).
 func Send(s *database.Settings, subject, body string) error {
+	return SendTo(s, s.OwnerEmail, subject, body)
+}
+
+// SendTo is the same letter to anyone: the owner gets the order, the buyer gets
+// their confirmation, and both go out through the shop's own SMTP.
+func SendTo(s *database.Settings, to, subject, body string) error {
 	if s.SMTPHost == "" {
 		return fmt.Errorf("smtp not configured")
 	}
@@ -70,7 +76,7 @@ func Send(s *database.Settings, subject, body string) error {
 	if err := c.Mail(sender(s)); err != nil {
 		return err
 	}
-	if err := c.Rcpt(s.OwnerEmail); err != nil {
+	if err := c.Rcpt(to); err != nil {
 		return err
 	}
 	wc, err := c.Data()
@@ -78,7 +84,7 @@ func Send(s *database.Settings, subject, body string) error {
 		return err
 	}
 	if _, err := wc.Write(buildMessage(
-		fromHeader(s.ShopName, sender(s)), s.OwnerEmail, subject, body)); err != nil {
+		fromHeader(s.ShopName, sender(s)), to, subject, body)); err != nil {
 		return err
 	}
 	if err := wc.Close(); err != nil {

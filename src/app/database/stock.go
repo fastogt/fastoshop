@@ -96,8 +96,8 @@ func (d *Database) CreateOrderWithStock(o *Order, items []OrderItem) error {
 	var id int64
 	err := d.withTx(func(tx *sql.Tx) error {
 		res, err := tx.Exec(
-			`INSERT INTO orders (name, phone, comment, items_json, stock_applied)
-			 VALUES (?, ?, ?, ?, 1)`, o.Name, o.Phone, o.Comment, o.ItemsJSON)
+			`INSERT INTO orders (name, phone, email, comment, items_json, stock_applied)
+			 VALUES (?, ?, ?, ?, ?, 1)`, o.Name, o.Phone, o.Email, o.Comment, o.ItemsJSON)
 		if err != nil {
 			return err
 		}

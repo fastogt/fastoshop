@@ -96,6 +96,36 @@ func (h *Handler) SetOrderStatus(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, okStatusResponse(req))
 }
 
+type bulkIDsRequest struct {
+	IDs []int64 `json:"ids"`
+}
+
+type deletedResponse struct {
+	Deleted int `json:"deleted"`
+}
+
+// BulkDeleteOrders erases orders for good. Only by an explicit list of ids —
+// deleting "everything the filter matches" is how a shop loses its journal in
+// one click. Stock is not returned: a delete is not a cancellation, and an
+// order that still holds goods should be cancelled first.
+func (h *Handler) BulkDeleteOrders(w http.ResponseWriter, r *http.Request) {
+	var req bulkIDsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeBadRequest(w, "bad json")
+		return
+	}
+	if len(req.IDs) == 0 {
+		writeBadRequest(w, h.msg(i18n.KeyNothingSelected))
+		return
+	}
+	n, err := h.db.DeleteOrders(req.IDs)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeOK(w, deletedResponse{Deleted: n})
+}
+
 type bulkStatusRequest struct {
 	IDs    []int64 `json:"ids"`
 	Status string  `json:"status"`
@@ -173,7 +203,7 @@ func (h *Handler) ExportOrdersCSV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="orders.csv"`)
 	cw := csv.NewWriter(w)
-	_ = cw.Write([]string{"id", "date", "name", "phone", "items", "total", "status"})
+	_ = cw.Write([]string{"id", "date", "name", "phone", "email", "items", "total", "status"})
 	for _, o := range list {
 		var items []orderItem
 		var total int64
@@ -191,7 +221,7 @@ func (h *Handler) ExportOrdersCSV(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = cw.Write([]string{
 			fmt.Sprintf("%d", o.ID), o.CreatedAt.Format("2006-01-02 15:04"),
-			csvSafe(o.Name), csvSafe(o.Phone), csvSafe(desc),
+			csvSafe(o.Name), csvSafe(o.Phone), csvSafe(o.Email), csvSafe(desc),
 			totalCell, o.Status,
 		})
 	}
