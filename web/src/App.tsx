@@ -86,18 +86,26 @@ export default function App() {
   }, [invite]);
 
   if (screen === "loading") return null;
-  if (screen === "setup") return <Setup onDone={() => setScreen("app")} />;
+  // enter() and not setScreen: the shop's currency and the owner's language come
+  // from the server, and until they are loaded the admin shows roubles and the
+  // browser's language. Reaching the app through a login used to skip that.
+  const enter = () => {
+    loadShop();
+    setScreen("app");
+  };
+
+  if (screen === "setup") return <Setup onDone={enter} />;
   if (screen === "invite")
     return (
       <Invite
         token={invite}
         onDone={() => {
           window.history.replaceState({}, "", "/admin/");
-          setScreen("app");
+          enter();
         }}
       />
     );
-  if (screen === "login") return <Login onDone={() => setScreen("app")} />;
+  if (screen === "login") return <Login onDone={enter} />;
 
   const logout = () => {
     api.logout().finally(() => setScreen("login"));
