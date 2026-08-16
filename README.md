@@ -4,201 +4,114 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev)
 
-**Второй канал продаж рядом с маркетплейсом: заказы из поиска, без комиссии, с контактом покупателя.**
+**A second sales channel next to the marketplace: orders from search, no commission, and the buyer's contact stays with you.**
 
-FastoShop, self-hosted магазин для продавца, который уже торгует на WB, Ozon, Avito или Kufar. Площадку он не заменяет: там остаётся всё как было. Рядом появляется канал, про который в гонке за маркетплейсами забыли, **поиск**. Люди по-прежнему ищут товар в Яндексе и Google, и в этом канале нет комиссии с продажи, а покупатель приходит к вам с именем и телефоном, а не остаётся клиентом площадки.
+*[Русская версия](README.ru.md) — the original documentation, kept in full.*
 
-По сути это кабинет продавца как на маркетплейсе, товары, заказы, остатки, только магазин работает на **вашем домене и вашем VPS**: за программу денег нет, комиссии с продаж нет, и нет чужой платформы, которая в любой момент поменяет правила.
+FastoShop is a self-hosted online store for a seller who already trades on Wildberries, Ozon, Avito or Kufar. It does not replace the marketplace: everything there stays as it is. What it adds is the channel everybody forgot about while chasing marketplaces — **search**. People still look for goods in Google and Yandex, that channel takes no cut of a sale, and the buyer arrives with a name and a phone number instead of remaining the platform's customer.
 
-> **Не хотите заниматься сервером?** [fastoshop.by](https://fastoshop.by), поставим и будем следить: домен, сертификат, бэкапы, обновления, поддержка и перенос каталога из любого прайса за 75 BYN (2 700 ₽) в месяц. Это наш платный хостинг; сам FastoShop был и остаётся бесплатным, ставьте на свой VPS и никому ничего не должны.
+It is a seller's back office much like the one on a marketplace — products, orders, stock — except the shop runs on **your domain and your VPS**: no fee for the software, no commission on sales, and no third-party platform that can change the rules overnight.
 
-## Как это выглядит
+## What it looks like
 
-| Витрина (то, что видят покупатели и поисковики) | Карточка товара |
+| Storefront (what shoppers and search engines see) | Product page |
 |---|---|
-| ![Каталог](docs/screenshots/storefront.png) | ![Товар](docs/screenshots/product.png) |
+| ![Catalogue](docs/screenshots/storefront.png) | ![Product](docs/screenshots/product.png) |
 
-| Корзина, несколько товаров одной заявкой, без единой строчки JavaScript | |
+| Products in the admin | Catalogue import from Ozon/WB |
 |---|---|
-| ![Корзина](docs/screenshots/cart.png) | |
+| ![Admin](docs/screenshots/admin-products.png) | ![Import](docs/screenshots/admin-import.png) |
 
-| Товары в админке | Перенос каталога с Ozon/WB |
-|---|---|
-| ![Админка](docs/screenshots/admin-products.png) | ![Импорт](docs/screenshots/admin-import.png) |
+## The two things that matter
 
-С телефона, половина покупателей приходит именно так:
+### The storefront ships no JavaScript
 
-<p>
-  <img src="docs/screenshots/mobile-catalog.png" alt="Каталог на телефоне" width="250">
-  <img src="docs/screenshots/mobile-product.png" alt="Карточка товара на телефоне" width="250">
-  <img src="docs/screenshots/mobile-cart.png" alt="Корзина на телефоне" width="250">
-</p>
+The public side is rendered on the server with `html/template`. We send no framework, no hydration, no bundle: a catalogue page weighs about **16 KB gzipped** and paints immediately. That is not an aesthetic choice, it is mobile ranking.
 
-## Два главных отличия
+Out of the box: `schema.org/Product` markup, a sitemap with `lastmod`, canonical URLs, Open Graph, transliterated slugs, and a landing page for every category. Sorting and an "in stock only" filter are plain links — the state lives in the URL and every variant points its canonical at the clean page, so a search engine sees one page instead of five.
 
-### 🚚 Каталог наполняется сам, а не забивается руками
+Categories arrive with the catalogue: a feed that says `Kitchen > Kettles` becomes a tree. On a live shop one supplier price list produced **570 category pages** instead of a single catalogue.
 
-У вас уже есть карточки на Wildberries, Ozon, Avito или Kufar, заводить их заново не нужно:
+### The catalogue fills itself
 
-- **Импорт каталога из WB, Ozon, YML-выгрузки или своего CSV** — вставьте API-ключ из кабинета продавца или просто ссылку на стандартную выгрузку вашего сайта (Битрикс/InSales/Тильда), и карточки с фото, ценами и остатками переезжают в FastoShop. Фото подключаются по ссылкам из источника, поэтому импорт даже 20 000 товаров занимает секунды; когда захотите перестать зависеть от чужого сервера, «Заполнить → Забрать фото к себе» в Товарах скачает их на ваш диск, показывая прогресс.
-- **Поставщик обновил прайс, видно, что изменилось** — загрузка идёт в группу поставщика («Ромашка», «Оптбаза»), и перед записью показывается дифф: что завезли, что сняли, где резко выросла цена. Группы не мешают друг другу: фид одного поставщика не тронет товары другого и заведённые вами вручную.
-- **Двусторонняя синхронизация остатков с Ozon** — отметили товары, которые продаёте на площадке, и продажа где угодно уменьшает остаток везде: заказ на витрине за секунды уезжает в кабинет, продажа на Ozon списывает остаток магазина. На площадку едет только отмеченное, а цена там своя, процентом или лестницей наценки. Работаем по схеме **FBS** (товар на вашем складе): остатками управляет магазин. Товары на складе Ozon (FBO) не синхронизируются, их остаток знает только площадка. Без сторонних коннекторов и второй подписки.
+You already have product cards somewhere, and typing them in again is how a shop never launches. Import takes what you have:
 
-- **Синхронизация с Wildberries** — то же самое для ВБ, со своими правилами площадки. Товары связываются с карточками по артикулу продавца, штрихкод и nmID читаются из самой карточки: в прайсе их нет и быть не должно. Остаток уходит по штрихкоду, цена по карточке, а ответ о ценах приходит задачей и позже, поэтому в админке видно состояние «в пути». Если у размеров одной карточки разные цены, мы не отправляем ничего и говорим об этом: ВБ принимает одну цену на карточку, и выбирать за владельца нельзя. Есть переключатель тестового контура, чтобы подключиться и проверить связку, ничего не задев.
+- **Ozon or Wildberries seller account** — an API key from the cabinet, and the cards, photos, prices and stock move over.
+- **A YML feed** of an existing site (Bitrix, InSales, Tilda) — just the URL.
+- **The supplier's own Excel price list.** A real price list is not a tidy table: a logo on top, columns called "Наименование" and "Цена, руб.", half the cells missing, and **photos pasted inside the cells**. Columns are found by their headers, the header row by its content, and pictures come out of the drawing anchors with the rows they belong to. Measured on a live 143 MB file: **23,699 products with 23,647 photos in five seconds**, using only `archive/zip` and `encoding/xml`.
+- **A CSV template** for those who would rather fill one in.
 
-Маркетплейс остаётся вашим каналом продаж, просто перестаёт быть единственным.
+Photos are stored as links to the source at import time — 20,000 products would otherwise mean 60,000 synchronous downloads. "Bring the photos in" pulls them onto your own disk later, in the background, with progress and a stop button.
 
-### 🔍 SEO как главный приоритет, а не галочка
+## Marketplace sync
 
-Поиск, тот самый забытый канал, ради которого всё и затевается, поэтому витрина спроектирована под поисковики с первой строчки кода:
+Two-way stock sync with **Ozon** and **Wildberries** over FBS (goods on your own warehouse). Tick the products you also sell on a platform and the stock becomes one number: an order on the storefront reaches the cabinet in seconds, a sale on the platform lowers the shop's stock. The platform price is separate — a flat percentage or a markup ladder, because on a 30-rouble item a percentage does not cover the platform's fee.
 
-- **Server-rendered HTML, ноль JavaScript** на публичных страницах. Яндекс и Google получают готовую страницу, ничего не нужно исполнять. Мгновенный LCP.
-- **JSON-LD `schema.org/Product`** на каждой карточке, цена и наличие прямо в сниппете поисковой выдачи.
-- **Поиск по магазину без JavaScript** — строка в шапке витрины, результаты рендерит сервер, ищется и по названию, и по артикулу. Страницы результатов закрыты от индексации (`noindex,follow`), чтобы не разменивать краулинговый бюджет на бесконечные выдачи.
-- **Страница под каждую категорию** — `/c/tekstil/spalnya/kpb-evro` со своим заголовком, описанием и хлебными крошками: запрос «купить КПБ евро оптом» ведёт на посадочную страницу, а не на общий каталог. Дерево приезжает из источника само, из YML-фида, таксономии Ozon, справочника предметов WB или ячейки прайса вида «Текстиль > Спальня». На каталоге «Петровского» это 570 посадочных страниц вместо одной.
-- **Разделы, ваши**: вкладка «Категории» это дерево слева и форма справа, как в любой каталожной админке. Создать раздел (хоть пустой), переименовать, перенести под другого родителя, задать порядок, скрыть с витрины, удалить. Переименование уносит товары и всю ветку с собой, а старый адрес отдаёт 301, наведение порядка не обнуляет накопленные позиции. Удаление раздела поднимает товары к родителю, а не стирает их.
-- **Свой текст на странице категории** — пара абзацев над списком товаров превращает листинг в посадочную страницу, а первые предложения уезжают в описание страницы для поисковика вместо сгенерированной фразы.
-- **Покупателю, фильтры без JavaScript**: сортировка по цене и названию, «только в наличии». Состояние живёт в адресе, поэтому отфильтрованный список можно отправить в мессенджере, а поисковик видит одну страницу: варианты сортировки указывают canonical на чистую.
-- **sitemap.xml с lastmod** — генерируется из базы автоматически, изменение цены ускоряет переобход.
-- ЧПУ-слаги с транслитерацией, canonical, Open Graph, meta description, всё из коробки, без плагинов и настройки.
+Each channel is its own vertical slice (`app/ozon`, `app/wb`) with its own tables, because the platforms only look alike: Ozon sets stock by `offer_id` and answers per item, Wildberries sets it by the size's barcode, prices by card, and reports the result as a task later.
 
-## Остальное
+## Everything else
 
-- 📦 **Товары** — рабочая таблица на 20 000 позиций: выбор строк, массовая простановка остатка, скрытие с витрины и перенос между поставщиками, сортировка и постраничный вывод до 500 строк. Правка открывается диалогом поверх списка, фото добавляются и удаляются. Админка для нетехнарей: у каждого поля с ключами/паролями, инструкция «где это взять» и кнопка «Проверить».
-- 🖼 **Фото, к себе, одной кнопкой** — «Заполнить» над таблицей забирает картинки импортированных товаров с сервера поставщика на ваш диск. Идёт в фоне: видно полосу с числом скачанного, у строк крутится кружок, страницу можно закрыть, а работу, остановить. Что не скачалось, остаётся ссылкой, повторный запуск добирает только его.
-- 📄 **Реквизиты и страница «Доставка и оплата»** — заполняются в Профиле обычным текстом: реквизиты встают в подвал всех страниц и в разметку `Organization`, условия доставки, оплаты и возврата открываются отдельной страницей `/info` со ссылкой в подвале и попадают в sitemap. Без опубликованных условий магазин не берут в товарную выдачу ни Яндекс, ни Google.
-- 🎨 **Свой логотип** — загружается в Профиле, встаёт в шапку витрины и в иконку вкладки браузера; без него магазин представлен своим названием.
-- 🛒 **Корзина и заказы без онлайн-оплаты** — покупатель складывает несколько товаров в корзину и оформляет одной заявкой: имя и телефон или почта, можно и то, и другое. Вам мгновенно приходит письмо, покупателю с почтой, подтверждение заказа, сделку закрываете по телефону. Заказы, та же таблица с поиском по страницам, сменой статуса пачкой и удалением отмеченных. В корзине привычные «−», «+» и крестик. Корзина живёт в обычной cookie, на витрине по-прежнему ноль JavaScript. Онлайн-оплата (ЮKassa + чеки 54-ФЗ), в roadmap.
-- 📊 **Выгрузка продаж** — CSV-журнал заказов за период для бухгалтера и налоговой.
-- 📈 **Проверено на 20 000+ товаров** — импорт за секунды, страница каталога ~30 КБ, постраничная админка с поиском. Малому продавцу, с большим запасом, среднему каталогу, тоже по силам.
-- ⏳ **Долгие дела не держат браузер** — импорт и скачивание фото уходят в фон, а прогресс приезжает в админку живым потоком (SSE). Одновременно идёт одна задача: пока она работает, вторую не запустить.
-- ⚙️ **Установка одной командой** — `apt install ./fastoshop.deb`, открыть `/admin`, создать аккаунт в браузере. Один Go-бинарь, SQLite, systemd, шаблон nginx в комплекте.
+- **Products** — a working table for 20,000 rows: row selection, bulk stock, hiding from the storefront, moving between suppliers, server-side sorting and paging.
+- **Cart and orders without online payment** — the buyer leaves a name and a phone or an email, you get a letter, the deal is closed by phone. The cart lives in a cookie; still no JavaScript on the storefront.
+- **Legal details and a delivery page** — plain text in the profile becomes the footer of every page, `Organization` markup and a `/info` page. Neither Yandex nor Google admits a shop to shopping results without published terms.
+- **Long jobs do not hold the browser** — import and photo downloads run in the background, progress streams to the admin over SSE, one job at a time.
+- **Admin in Russian and English**; the storefront speaks the shop's own language.
+- **Sales export** — a CSV order journal for the accountant.
 
-## Сравнение
-
-| | SaaS-конструкторы (InSales, Tilda, deal.by) | DIY (OpenCart, WooCommerce) | Только маркетплейс (Avito/Kufar) | FastoShop |
-|---|---|---|---|---|
-| Свой домен и данные | ❌ аренда | ✅ | ❌ | ✅ |
-| Установка без разработчика | ✅ | ❌ | ✅ | ✅ |
-| Платежи | 2–4 тыс ₽/мес всегда | только хостинг | комиссия с продаж | только VPS (~500 ₽/мес) |
-| Импорт карточек с WB/Ozon/YML | ❌ | ❌ | — | ✅ |
-| Синхронизация остатков с площадками | платный модуль | ❌ | — | ✅ Ozon и Wildberries |
-
-## Быстрый старт
+## Quick start
 
 ```bash
-# На свежем Debian/Ubuntu VPS:
+# On a fresh Debian/Ubuntu VPS:
 sudo apt install ./fastoshop_<version>_amd64.deb
 sudo nano /etc/fastoshop.conf        # base_url: https://shop.example.com
 sudo systemctl enable --now fastoshop
-# заменить DOMAIN_PLACEHOLDER на свой домен, затем:
+# replace DOMAIN_PLACEHOLDER with your domain, then:
 sudo cp /usr/share/fastoshop/nginx-fastoshop.conf.template /etc/nginx/sites-enabled/fastoshop
 sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d shop.example.com
 ```
 
-Открыть `https://shop.example.com/admin` — визард создаст аккаунт владельца (email + пароль). Всё остальное (название магазина, почта для уведомлений, импорт с WB/Ozon), опционально, настраивается потом в Профиле.
-
-Если домен уже публичный, визард лучше не оставлять открытым: `sudo fastoshop -create-owner you@example.com` заводит владельца сразу и печатает сгенерированный пароль, после этого визард недоступен.
-
-**Забыли пароль?** `sudo fastoshop -reset-password` — напечатает новый и разлогинит все сессии. Почта для этого не нужна.
-
-Вместо TCP-порта можно слушать unix-сокет: `host: "/run/fastoshop.sock"` в конфиге и `proxy_pass http://unix:/run/fastoshop.sock:;` в nginx (двоеточие в конце, часть синтаксиса). Так сервис вообще не виден по сети.
-
-## Подключение к поисковикам и аналитике
-
-Разметка, sitemap и ЧПУ работают сразу, настраивать нечего. Остаётся сказать поисковику, что сайт существует, и подключить счётчик, если хочется видеть трафик.
-
-### Поисковики
-
-Заведите сайт в [Яндекс.Вебмастере](https://webmaster.yandex.ru/) и [Google Search Console](https://search.google.com/search-console) и подтвердите права **TXT-записью в DNS** — способ доступен в обоих кабинетах, работает для домена целиком вместе с поддоменами и ничего не требует от магазина. Настроек в админке для этого нет и не нужно.
-
-После подтверждения отправьте в оба кабинета карту сайта — `https://ваш-домен/sitemap.xml`. Она генерируется из базы и сама обновляет `lastmod`, так что смена цены ускоряет переобход.
-
-### Счётчики
-
-Два поля в **Профиле → «Счётчики»**, оба можно оставить пустыми:
-
-| Поле | Где взять |
-|---|---|
-| Яндекс.Метрика | [metrika.yandex.ru](https://metrika.yandex.ru/) → создать счётчик → номер вида `98765432` |
-| Google Analytics | [analytics.google.com](https://analytics.google.com/) → поток данных → идентификатор вида `G-XXXXXXXXXX` |
-
-Вставляется **только номер**, не весь сниппет: код витрина соберёт сама и поставит на все страницы, каталог, карточки товара и корзину. Пока поля пустые, на витрине нет ни одного `<script>`.
-
-## Архитектура
-
-```
-┌────────────────────────── fastoshop (один Go-бинарь) ──────────────────────────────┐
-│                                                                                    │
-│  /            SEO-витрина, html/template, ноль JS                                 │
-│  /p/{slug}    карточка товара: JSON-LD, OG, форма заказа
-│  /c/{путь}    посадочная страница категории: свой title, крошки, фильтры                           │
-│  /info        доставка, оплата, возврат, текстом из Профиля
-│  /sitemap.xml /robots.txt                                                          │
-│  /admin       React SPA (только владелец)                                          │
-│  /api         JSON API для админки                                                 │
-│                                                                                    │
-│  SQLite ──── товары, заказы, остатки: единственный источник правды                 │
-│                                                                                    │
-│  вкладки каналов: Ozon, Wildberries; в работе Kufar / Avito                       │
-└────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Витрина** — Go-шаблоны на сервере: публичные страницы не тянут JavaScript вообще.
-- **Каналы** — отдельная вкладка на площадку, у каждой свои правила; падение маркетплейса никогда не задевает сайт и заказы.
-- **Single-tenant by design** — один VPS, один магазин, один владелец. Нет мультиарендного кода, нечему течь между клиентами.
-
-## Разработка
+Open `https://shop.example.com/admin` and the wizard creates the owner account. On a domain that is already public, create the owner from the console instead and the wizard closes itself:
 
 ```bash
-# Бэкенд (Go 1.25+)
-cd src && go test ./... && go run ./cmd/fastoshop.go -config ../config/fastoshop.conf
-
-# Админка (React + Vite + Tailwind)
-cd web && npm install && npm run dev      # проксирует /api на :9097
-
-# Пакет
-make package-deb                          # требуется nfpm
+sudo fastoshop -create-owner you@example.com   # prints a generated password
+sudo fastoshop -reset-password                 # forgot it? no mail server needed
 ```
 
-Структура:
+Instead of a TCP port the service can listen on a unix socket (`host: "/run/fastoshop.sock"`), and then it is not reachable over the network at all.
+
+## What it does not do
+
+- Online payments and fiscal receipts (planned).
+- Product variants: size and colour are separate products for now.
+- FBO stock — goods on the platform's own warehouse are counted by the platform.
+- Multi-tenancy: one installation is one shop and one owner, deliberately.
+- A mobile app. The storefront is responsive; there will be no app.
+
+## Architecture
+
+Go 1.25 with chi and SQLite on the server, React 19 with Vite and Tailwind for the admin. Eight direct dependencies, no framework. Everything ships as one binary plus a database file, which is also the whole backup: copy the file and the uploads directory and the shop moves to another machine.
 
 ```
-src/app/config/       yaml-конфиг
-src/app/database/     SQLite: схема, запросы
-src/app/handler/      /api хендлеры (админка)
-src/app/storefront/   публичные страницы, sitemap, корзина, пагинация каталога
-src/app/importer/     импорт каталога: Ozon, WB, YML-выгрузка
-src/app/ozon/         вкладка Ozon: подключение кабинета и связывание товаров
-src/app/wb/           вкладка Wildberries: то же самое для WB Seller API
-web/                  админ-SPA
-packaging/            systemd unit, шаблон nginx, deb-скрипты
+src/app/storefront/   server-rendered storefront, zero JavaScript
+src/app/handler/      admin API
+src/app/importer/     catalogue import: Ozon, WB, YML, CSV, XLSX
+src/app/ozon/         Ozon channel
+src/app/wb/           Wildberries channel
+src/app/database/     SQLite, one file per shop
+web/                  admin SPA
 ```
 
-## Roadmap
+## Development
 
-- [x] Вкладка Ozon: подключение, связывание, двусторонняя синхронизация остатков
-- [x] Своя цена на Ozon, отдельная от цены витрины (в том числе в BYN для ozon.by)
-- [x] Скрытие товара с витрины: пропадает из каталога, из sitemap и не открывается по прямой ссылке
-- [x] Публикация в Ozon по выбору товаров: на площадку едет отмеченное, а не весь каталог
-- [x] Коэффициент цены при импорте и лестница наценки для канала
-- [x] Админка на двух языках (ru/en); витрина, на языке товаров
-- [x] Вкладка Wildberries: подключение, связывание по артикулу, публикация, цены и остатки, журнал продаж
-- [ ] Вкладка Kufar/Avito
-- [x] Повторная загрузка фида: слияние по группам поставщиков и дифф изменений перед импортом
-- [x] Импорт из своего CSV по шаблону (понимает файлы русского Excel) и кнопка «Обновить из фида»
-- [x] Импорт прайса поставщика в XLSX: колонки по заголовкам, фотографии из ячеек
-- [x] Массовые действия в таблице товаров и заказов: остаток, видимость, группа, статус
-- [ ] Варианты товара (размер, цвет)
-- [ ] Онлайн-оплата (ЮKassa) + фискализация (54-ФЗ)
+```bash
+cd src && go build ./... && go test ./... && golangci-lint run ./...
+cd web && npx tsc -b && npm run lint && npm run build
+make build && make package-deb
+```
 
-## Участие в проекте
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for how to add a channel or an import source.
 
-PR приветствуются, как добавить свой маркетплейс или источник импорта, описано в [CONTRIBUTING.md](CONTRIBUTING.md). Вопросы и баги, в [Issues](https://github.com/fastogt/fastoshop/issues). Об уязвимостях пишите приватно на **support@fastocloud.com**, не открывая публичный issue.
+## License
 
-## Лицензия
-
-AGPL-3.0 © [FastoCloud](https://fastocloud.com)
-
-Что это значит на практике: **поставили магазин себе, обязательств нет никаких**, пользуйтесь и меняйте под себя. Обязательство появляется, только если вы предлагаете fastoshop как услугу другим людям: тогда ваши доработки нужно опубликовать под той же лицензией. Продавать товары через свой магазин, это не «предлагать fastoshop как услугу».
+[AGPL-3.0](LICENSE). Run it yourself and pay nothing. Hosting and support are available at [fastoshop.by](https://fastoshop.by) for those who would rather not administer a server.
