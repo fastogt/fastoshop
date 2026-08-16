@@ -251,6 +251,79 @@ func (d *Database) migrate() error {
 	CREATE TABLE IF NOT EXISTS ozon_cursor (
 		id           INTEGER PRIMARY KEY CHECK (id = 1),
 		orders_since DATETIME NOT NULL
+	);
+	CREATE TABLE IF NOT EXISTS wb_settings (
+		id           INTEGER PRIMARY KEY CHECK (id = 1),
+		-- One token for every WB API; there is no Client-Id counterpart.
+		token        TEXT NOT NULL DEFAULT '',
+		warehouse_id TEXT NOT NULL DEFAULT '',
+		enabled      INTEGER NOT NULL DEFAULT 0,
+		-- 1 = talk to the sandbox hosts. A column and not a build flag: one owner,
+		-- one binary, and moving to production must not need a redeploy.
+		sandbox      INTEGER NOT NULL DEFAULT 0
+	);
+	-- No currency column: a Wildberries seller account settles in roubles only.
+
+	-- Deliberately without an FK on products, same reason as ozon_links.
+	CREATE TABLE IF NOT EXISTS wb_links (
+		product_id   INTEGER PRIMARY KEY,
+		-- Two platform keys, because WB splits them: stock hangs off the size's
+		-- barcode, price off the card. Both come from the card list at link time;
+		-- our own catalogue never carries a barcode.
+		nm_id        INTEGER NOT NULL,
+		barcode      TEXT NOT NULL,
+		vendor_code  TEXT NOT NULL DEFAULT '',
+		price        INTEGER NOT NULL DEFAULT 0,
+		stock_pushed INTEGER NOT NULL DEFAULT -1,
+		price_pushed INTEGER NOT NULL DEFAULT -1,
+		-- What the running upload task carries. The price API is asynchronous, so
+		-- "sent" and "accepted" are two different facts and need two columns:
+		-- price_pushed only moves when the task reports success.
+		price_sent   INTEGER NOT NULL DEFAULT -1,
+		price_task   TEXT NOT NULL DEFAULT '',
+		stock_error  TEXT NOT NULL DEFAULT '',
+		price_error  TEXT NOT NULL DEFAULT '',
+		retry_at     DATETIME
+	);
+	-- Two products on one barcode would push two levels into one slot every pass.
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_wb_links_barcode ON wb_links(barcode);
+	-- Deliberately not unique: every size of a card shares its nmID.
+	CREATE INDEX IF NOT EXISTS idx_wb_links_nm ON wb_links(nm_id);
+
+	-- Upload tasks in flight. Exists for created_at alone: without it a task that
+	-- never resolves pins its rows forever, with no way to tell lost from pending.
+	CREATE TABLE IF NOT EXISTS wb_price_tasks (
+		upload_id  TEXT PRIMARY KEY,
+		created_at DATETIME NOT NULL
+	);
+
+	-- Flat, unlike ozon_orders: a WB assembly task IS one item, so a second table
+	-- and a join would exist to hold exactly one row.
+	CREATE TABLE IF NOT EXISTS wb_orders (
+		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		-- The assembly task id. Idempotency rests on UNIQUE, like the Ozon ledger.
+		-- Not rid: one rid can produce several tasks, and keying on it loses sales.
+		order_id   INTEGER NOT NULL UNIQUE,
+		status     TEXT NOT NULL,
+		product_id INTEGER,
+		barcode    TEXT NOT NULL,
+		article    TEXT NOT NULL DEFAULT '',
+		nm_id      INTEGER NOT NULL DEFAULT 0,
+		qty        INTEGER NOT NULL DEFAULT 1,
+		oversold   INTEGER NOT NULL DEFAULT 0,
+		created_at DATETIME NOT NULL
+	);
+	-- The status refresh reads open rows on every pass.
+	CREATE INDEX IF NOT EXISTS idx_wb_orders_status ON wb_orders(status);
+
+	CREATE TABLE IF NOT EXISTS wb_price_rules (
+		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		up_to      INTEGER NOT NULL,
+		multiplier REAL NOT NULL
+	);
+	CREATE TABLE IF NOT EXISTS wb_cursor (
+		id           INTEGER PRIMARY KEY CHECK (id = 1),
+		orders_since DATETIME NOT NULL
 	);`)
 	return err
 }

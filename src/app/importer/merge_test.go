@@ -33,7 +33,7 @@ func TestMergeUpdatesPriceAndStockOnly(t *testing.T) {
 	src := &feed{name: "yml", items: []Item{
 		{SKU: "A", Title: "Чайник", Description: "из фида", Price: 10000, Stock: 5},
 	}}
-	if _, err := Run(src, d, "Ромашка", 2, nil); err != nil {
+	if _, err := Run(src, d, "Ромашка", 2, "", nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -47,7 +47,7 @@ func TestMergeUpdatesPriceAndStockOnly(t *testing.T) {
 	src.items = []Item{
 		{SKU: "A", Title: "Чайник", Description: "из фида", Price: 12000, Stock: 3},
 	}
-	res, err := Run(src, d, "Ромашка", 2, nil)
+	res, err := Run(src, d, "Ромашка", 2, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestMergeUpdatesPriceAndStockOnly(t *testing.T) {
 func TestMergeKeepsManualPrice(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{{SKU: "A", Title: "Кружка", Price: 10000, Stock: 1}}}
-	if _, err := Run(src, d, "Ромашка", 1, nil); err != nil {
+	if _, err := Run(src, d, "Ромашка", 1, "", nil); err != nil {
 		t.Fatal(err)
 	}
 	p, _ := d.GetVisibleProductBySlug("kruzhka")
@@ -78,7 +78,7 @@ func TestMergeKeepsManualPrice(t *testing.T) {
 	}
 
 	src.items = []Item{{SKU: "A", Title: "Кружка", Price: 20000, Stock: 1}}
-	if _, err := Run(src, d, "Ромашка", 1, nil); err != nil {
+	if _, err := Run(src, d, "Ромашка", 1, "", nil); err != nil {
 		t.Fatal(err)
 	}
 	got, _ := d.GetProduct(p.ID)
@@ -98,7 +98,7 @@ func TestMergeZeroesMissingWithoutDeleting(t *testing.T) {
 		{SKU: "A", Title: "Чайник", Price: 10000, Stock: 5},
 		{SKU: "B", Title: "Кружка", Price: 20000, Stock: 7},
 	}}
-	if _, err := Run(src, d, "Ромашка", 1, nil); err != nil {
+	if _, err := Run(src, d, "Ромашка", 1, "", nil); err != nil {
 		t.Fatal(err)
 	}
 	gone, _ := d.GetVisibleProductBySlug("kruzhka")
@@ -107,7 +107,7 @@ func TestMergeZeroesMissingWithoutDeleting(t *testing.T) {
 	}
 
 	src.items = src.items[:1]
-	res, err := Run(src, d, "Ромашка", 1, nil)
+	res, err := Run(src, d, "Ромашка", 1, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,11 +131,11 @@ func TestMergeZeroesMissingWithoutDeleting(t *testing.T) {
 func TestMergeEmptyFeedDoesNotWipeShop(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{{SKU: "A", Title: "Чайник", Price: 10000, Stock: 5}}}
-	if _, err := Run(src, d, "Ромашка", 1, nil); err != nil {
+	if _, err := Run(src, d, "Ромашка", 1, "", nil); err != nil {
 		t.Fatal(err)
 	}
 	src.items = nil
-	res, err := Run(src, d, "Ромашка", 1, nil)
+	res, err := Run(src, d, "Ромашка", 1, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,10 +152,10 @@ func TestMergeEmptyFeedDoesNotWipeShop(t *testing.T) {
 func TestMergeSameFeedIsNoop(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{{SKU: "A", Title: "Чайник", Price: 10000, Stock: 5}}}
-	if _, err := Run(src, d, "Ромашка", 1, nil); err != nil {
+	if _, err := Run(src, d, "Ромашка", 1, "", nil); err != nil {
 		t.Fatal(err)
 	}
-	res, err := Run(src, d, "Ромашка", 1, nil)
+	res, err := Run(src, d, "Ромашка", 1, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

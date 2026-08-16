@@ -23,6 +23,7 @@ import (
 	"github.com/fastogt/fastoshop/app/ozon"
 	"github.com/fastogt/fastoshop/app/storefront"
 	"github.com/fastogt/fastoshop/app/version"
+	"github.com/fastogt/fastoshop/app/wb"
 )
 
 func expandHome(p string) string {
@@ -108,8 +109,16 @@ func run(cfg *config.Config) error {
 	defer stopSync()
 	ozonWorker := ozon.NewWorker(db)
 	go ozonWorker.Run(syncCtx)
-	h.OnStockChange = ozonWorker.StockChanged
-	sf.OnStockChange = ozonWorker.StockChanged
+	wbWorker := wb.NewWorker(db)
+	go wbWorker.Run(syncCtx)
+	// One signal, every channel: a sale on the storefront changes a level both
+	// platforms hold, and a channel that is not configured wakes to an empty pass.
+	stockChanged := func() {
+		ozonWorker.StockChanged()
+		wbWorker.StockChanged()
+	}
+	h.OnStockChange = stockChanged
+	sf.OnStockChange = stockChanged
 
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP) //nolint:staticcheck // behind a trusted nginx reverse proxy
@@ -167,6 +176,7 @@ func run(cfg *config.Config) error {
 			r.Post("/import/check", h.ImportCheck)
 			r.Post("/import/run", h.ImportRun)
 			r.Mount("/ozon", ozon.NewHandlers(db, ozonWorker).Routes())
+			r.Mount("/wb", wb.NewHandlers(db, wbWorker).Routes())
 		})
 	})
 

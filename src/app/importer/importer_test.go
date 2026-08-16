@@ -48,7 +48,7 @@ func TestOzonImport(t *testing.T) {
 	if err != nil || n != 1 {
 		t.Fatalf("count: %v %d", err, n)
 	}
-	res, err := Run(imp, d, "Ромашка", 1, nil)
+	res, err := Run(imp, d, "Ромашка", 1, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestOzonImport(t *testing.T) {
 		t.Fatalf("images: %+v", imgs)
 	}
 	// A repeat import — dedup by SKU.
-	res, _ = Run(imp, d, "Ромашка", 1, nil)
+	res, _ = Run(imp, d, "Ромашка", 1, "", nil)
 	if res.Imported != 0 || res.Skipped != 1 {
 		t.Fatalf("dedup: %+v", res)
 	}
@@ -128,7 +128,7 @@ func TestWBImportSizes(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &WB{Token: "tok", ContentURL: srv.URL, PricesURL: srv.URL, MarketplaceURL: srv.URL}
-	res, err := Run(imp, d, "Ромашка", 1, nil)
+	res, err := Run(imp, d, "Ромашка", 1, "", nil)
 	if err != nil || res.Imported != 3 {
 		t.Fatalf("%v %+v", err, res)
 	}
@@ -192,7 +192,7 @@ func TestWBImportSingleSize(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &WB{Token: "tok", ContentURL: srv.URL, PricesURL: srv.URL, MarketplaceURL: srv.URL}
-	res, err := Run(imp, d, "Ромашка", 1, nil)
+	res, err := Run(imp, d, "Ромашка", 1, "", nil)
 	if err != nil || res.Imported != 1 {
 		t.Fatalf("%v %+v", err, res)
 	}
@@ -253,7 +253,7 @@ func TestYMLImport(t *testing.T) {
 	if err != nil || n != 4 {
 		t.Fatalf("count: %v %d", err, n)
 	}
-	res, err := Run(imp, d, "Ромашка", 1, nil)
+	res, err := Run(imp, d, "Ромашка", 1, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,7 +283,7 @@ func TestYMLImport(t *testing.T) {
 		t.Fatal("BYN не должен был импортироваться")
 	}
 
-	res, _ = Run(imp, d, "Ромашка", 1, nil)
+	res, _ = Run(imp, d, "Ромашка", 1, "", nil)
 	if res.Imported != 0 || res.Skipped != 3 {
 		t.Fatalf("dedup: %+v", res)
 	}
@@ -341,7 +341,7 @@ func TestYMLFeedCurrency(t *testing.T) {
 	}
 
 	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 1}
-	res, err := Run(imp, d, "Ромашка", 1, nil)
+	res, err := Run(imp, d, "Ромашка", 1, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

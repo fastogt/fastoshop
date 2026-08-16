@@ -2,6 +2,137 @@ import axios from "axios";
 
 const http = axios.create({ baseURL: "/api" });
 
+// Wildberries. Types are not shared with Ozon: the row shapes differ — stock
+// hangs off a barcode, price off a card, and an upload is accepted before it is
+// applied.
+export interface WBStockError {
+  product_id: number;
+  barcode: string;
+  stock: number;
+  pushed: number;
+  error: string;
+  retry_at: string | null;
+}
+
+export interface WBPriceError {
+  product_id: number;
+  nm_id: number;
+  price: number;
+  pushed: number;
+  error: string;
+  retry_at: string | null;
+}
+
+export interface WBSettings {
+  enabled: boolean;
+  token_set: boolean;
+  sandbox: boolean;
+  warehouse_id: string;
+  linked: number;
+  unlinked: number;
+  pending: number;
+  failed: number;
+  stock_errors: WBStockError[];
+  price_pending: number;
+  price_in_flight: number;
+  price_failed: number;
+  price_errors: WBPriceError[];
+  orders_total: number;
+  orders_oversold: number;
+  orders_unresolved: number;
+  poll_error: string;
+}
+
+// Money in kopecks, like everywhere else in the admin.
+export interface WBLink {
+  product_id: number;
+  nm_id: number;
+  barcode: string;
+  vendor_code: string;
+  title: string;
+  sku: string;
+  stock: number;
+  shop_price: number;
+  price: number;
+  stock_pushed: number;
+  price_pushed: number;
+  in_flight: boolean;
+  stock_error: string;
+  price_error: string;
+}
+
+export interface WBLinkPage {
+  links: WBLink[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface WBOrder {
+  order_id: number;
+  status: string;
+  product_id: number | null;
+  title: string;
+  barcode: string;
+  article: string;
+  nm_id: number;
+  qty: number;
+  oversold: boolean;
+  created_at: string;
+}
+
+export interface WBOrderPage {
+  orders: WBOrder[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface WBCandidate {
+  product_id: number;
+  sku: string;
+  title: string;
+  stock: number;
+  price: number;
+  hidden: boolean;
+  published: boolean;
+}
+
+export interface WBCandidatePage {
+  products: WBCandidate[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface WBUnlinkedProduct {
+  id: number;
+  title: string;
+  sku: string;
+  reason: string;
+}
+
+export interface WBPublishResult {
+  published: number;
+  no_card: WBUnlinkedProduct[];
+}
+
+export interface WBUnpublishResult {
+  unpublished: number;
+  failed: WBUnlinkedProduct[];
+}
+
+export interface WBLinkResult {
+  linked: number;
+  unlinked_products: WBUnlinkedProduct[];
+  unlinked_cards: { nm_id: number; vendor_code: string }[];
+}
+
+export interface WBWarehouse {
+  id: string;
+  name: string;
+}
+
 // apiError digs the server's message out of the gofastogt error envelope;
 // undefined when the failure never reached the server (network, timeout).
 export const apiError = (e: unknown): string | undefined =>
@@ -435,5 +566,48 @@ export const api = {
   ozonFillPrices: (markupBp: number) =>
     http
       .post("/ozon/price/fill", { markup_bp: markupBp })
+      .then(data<{ filled: number }>),
+  wbSettings: () => http.get("/wb/settings").then(data<WBSettings>),
+  saveWBSettings: (s: Record<string, unknown>) =>
+    http.put("/wb/settings", s).then(data<WBSettings>),
+  wbCheck: () =>
+    http
+      .post("/wb/check")
+      .then(data<{ total: number; legal_name: string; trade_mark: string }>),
+  wbLink: () => http.post("/wb/link").then(data<WBLinkResult>),
+  wbWarehouses: () =>
+    http
+      .post("/wb/warehouses")
+      .then(data<{ warehouses: WBWarehouse[] }>)
+      .then((r) => r.warehouses),
+  wbPush: () =>
+    http.post("/wb/push").then(data<{ pushed: number; failed: number }>),
+  wbOrders: (page: number) =>
+    http.get(`/wb/orders?page=${page}`).then(data<WBOrderPage>),
+  wbLinks: (page: number) =>
+    http.get(`/wb/links?page=${page}`).then(data<WBLinkPage>),
+  wbCandidates: (page: number, q: string) =>
+    http
+      .get(`/wb/candidates`, { params: { page, q } })
+      .then(data<WBCandidatePage>),
+  wbPublish: (ids: number[]) =>
+    http.post("/wb/publish", { product_ids: ids }).then(data<WBPublishResult>),
+  wbUnpublish: (ids: number[]) =>
+    http
+      .post("/wb/unpublish", { product_ids: ids })
+      .then(data<WBUnpublishResult>),
+  wbSetPrice: (productId: number, price: number) =>
+    http.put(`/wb/price/${productId}`, { price }),
+  wbPriceRules: () =>
+    http.get("/wb/price/rules").then(data<{ rules: OzonPriceRule[] }>),
+  wbSetPriceRules: (rules: OzonPriceRule[]) =>
+    http
+      .put("/wb/price/rules", { rules })
+      .then(data<{ rules: OzonPriceRule[] }>),
+  wbFillByRules: () =>
+    http.post("/wb/price/fill-by-rules").then(data<{ filled: number }>),
+  wbFillPrices: (markupBp: number) =>
+    http
+      .post("/wb/price/fill", { markup_bp: markupBp })
       .then(data<{ filled: number }>),
 };

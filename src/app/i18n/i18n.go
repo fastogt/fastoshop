@@ -43,6 +43,19 @@ const (
 	KeyOzonNothingSelected = "ozon_nothing_selected"
 	KeyBadCoefficient      = "bad_coefficient"
 	KeyOzonBadRules        = "ozon_bad_rules"
+	KeyWBNoToken           = "wb_no_token"
+	KeyWBNegativePrice     = "wb_negative_price"
+	KeyWBNegativeMarkup    = "wb_negative_markup"
+	KeyWBNotLinked         = "wb_not_linked"
+	KeyWBBadWarehouse      = "wb_bad_warehouse"
+	KeyWBPushBusy          = "wb_push_busy"
+	KeyWBNoAnswer          = "wb_no_answer"
+	KeyWBUnknownReply      = "wb_unknown_reply"
+	KeyWBNothingSelected   = "wb_nothing_selected"
+	KeyWBBadRules          = "wb_bad_rules"
+	KeyWBPriceConflict     = "wb_price_conflict"
+	KeyWBPriceTaskStuck    = "wb_price_task_stuck"
+	KeyWBAmbiguousCard     = "wb_ambiguous_card"
 	KeySupplierRequired    = "supplier_required"
 	KeyBadStock            = "bad_stock"
 	KeyNothingSelected     = "nothing_selected"
@@ -128,6 +141,52 @@ var kMessages = map[string][2]string{
 	KeyOzonBadRules: {
 		"проверьте лестницу наценки: множители больше нуля и ровно одна строка «и выше»",
 		"check the markup ladder: multipliers above zero and exactly one \"and above\" row",
+	},
+	KeyWBNoToken: {
+		"сначала сохраните токен Wildberries", "save the Wildberries token first",
+	},
+	KeyWBNegativePrice: {
+		"цена не может быть отрицательной", "the price cannot be negative",
+	},
+	KeyWBNegativeMarkup: {
+		"наценка не может быть отрицательной", "the markup cannot be negative",
+	},
+	KeyWBNotLinked: {
+		"товар не связан с карточкой Wildberries",
+		"the product is not linked to a Wildberries card",
+	},
+	KeyWBBadWarehouse: {
+		"номер склада Wildberries должен быть числом",
+		"the Wildberries warehouse id must be a number",
+	},
+	KeyWBPushBusy: {
+		"отправка в Wildberries уже идёт", "a push to Wildberries is already running",
+	},
+	KeyWBNoAnswer: {
+		"Wildberries не ответил по этому штрихкоду",
+		"Wildberries did not answer for this barcode",
+	},
+	KeyWBUnknownReply: {
+		"неизвестный ответ Wildberries", "unrecognised Wildberries reply",
+	},
+	KeyWBNothingSelected: {
+		"не выбрано ни одного товара", "no products selected",
+	},
+	KeyWBBadRules: {
+		"проверьте лестницу наценки: множители больше нуля и ровно одна строка «и выше»",
+		"check the markup ladder: multipliers above zero and exactly one \"and above\" row",
+	},
+	KeyWBPriceConflict: {
+		"у размеров одной карточки разные цены, а Wildberries принимает одну цену на карточку",
+		"the sizes of one card want different prices, and Wildberries takes one price per card",
+	},
+	KeyWBPriceTaskStuck: {
+		"Wildberries не сообщил результат загрузки цен, попробуем ещё раз",
+		"Wildberries never reported the price upload, we will try again",
+	},
+	KeyWBAmbiguousCard: {
+		"карточка с несколькими размерами: укажите штрихкод нужного размера в артикуле",
+		"a card with several sizes: put the barcode of the right size in the article",
 	},
 	KeyBadStock: {
 		"остаток не может быть отрицательным", "stock cannot be negative",

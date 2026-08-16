@@ -18,8 +18,8 @@ const kGuide: Record<Src, Phrase> = {
     en: "Wildberries account → Settings → API access → “Create token”, tick the “Content” and “Prices and discounts” scopes. Copy the token.",
   },
   csv: {
-    ru: "Свой файл по нашему шаблону: скачайте, заполните в Excel и сохраните как CSV. Русский Excel сохраняет в кодировке Windows и с точкой с запятой — это нормально, мы поймём.",
-    en: "Your own file from our template: download it, fill it in a spreadsheet and save as CSV. Russian Excel saves in a legacy encoding with semicolons — that is fine, we handle it.",
+    ru: "Файл: прайс поставщика в Excel или таблица по нашему шаблону. XLSX разбираем как есть, вместе с фотографиями внутри ячеек: колонки ищем по заголовкам, а сам заголовок — по содержимому, поэтому логотип и контакты сверху не мешают. CSV из русского Excel в кодировке Windows и с точкой с запятой тоже поймём.",
+    en: "A file: a supplier price list in Excel, or a table from our template. XLSX is read as it is, pictures inside cells included: columns are found by their headers and the header row by its content, so a logo and contacts on top are no obstacle. CSV from Russian Excel, legacy encoding and semicolons, works too.",
   },
   yml: {
     ru: "Стандартная выгрузка Битрикс/InSales/Тильды для Яндекс.Маркета — ссылка на XML. Ключи и доступы не нужны.",
@@ -31,7 +31,7 @@ const kLabel: Record<Src, Phrase> = {
   ozon: { ru: "Ozon", en: "Ozon" },
   wb: { ru: "Wildberries", en: "Wildberries" },
   yml: { ru: "Ссылка на выгрузку (YML)", en: "Feed link (YML)" },
-  csv: { ru: "Файл CSV", en: "CSV file" },
+  csv: { ru: "Файл Excel или CSV", en: "Excel or CSV file" },
 };
 
 const kText = {
@@ -307,7 +307,7 @@ export default function Import() {
             <label className="label">{t("fileLabel")}</label>
             <input
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               className="text-sm"
               onChange={async (e) => {
                 const f = e.target.files?.[0];

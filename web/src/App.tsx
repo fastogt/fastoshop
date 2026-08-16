@@ -12,6 +12,7 @@ import Profile from "./Profile";
 import Stats from "./Stats";
 import Import from "./Import";
 import Ozon from "./Ozon";
+import WB from "./WB";
 
 type Screen = "loading" | "setup" | "invite" | "login" | "app";
 type Tab =
@@ -21,6 +22,7 @@ type Tab =
   | "profile"
   | "import"
   | "ozon"
+  | "wb"
   | "stats";
 
 const kText = {
@@ -29,6 +31,7 @@ const kText = {
   orders: { ru: "Заказы", en: "Orders" },
   import: { ru: "Импорт", en: "Import" },
   ozon: { ru: "Ozon", en: "Ozon" },
+  wb: { ru: "Wildberries", en: "Wildberries" },
   stats: { ru: "Статистика", en: "Stats" },
   profile: { ru: "Профиль", en: "Profile" },
   openShop: { ru: "Открыть магазин ↗", en: "Open shop ↗" },
@@ -45,6 +48,7 @@ const kTabs: Tab[] = [
   "orders",
   "import",
   "ozon",
+  "wb",
   "stats",
   "profile",
 ];
@@ -149,6 +153,7 @@ export default function App() {
         {tab === "profile" && <Profile />}
         {tab === "import" && <Import />}
         {tab === "ozon" && <Ozon />}
+        {tab === "wb" && <WB />}
         {tab === "stats" && <Stats />}
       </main>
       {/* AGPL §13: whoever is offered the shop as a service must have access to

@@ -18,6 +18,10 @@ type Item struct {
 	Price       int64 // minor units
 	Stock       int
 	ImageURLs   []string
+	// ImageBlobs are pictures that came inside the file itself (a photo pasted
+	// into a price list cell). They have no URL to keep, so they are written to
+	// our uploads at import time instead of being fetched later.
+	ImageBlobs [][]byte
 	// Category is a path from the root down, segments joined by "/". A source
 	// with a tree (YML, Ozon, a price list cell written as "Textile > Bedroom")
 	// fills every segment; one without (a WB subject) fills a single one.
@@ -95,8 +99,10 @@ var kHTTP = &http.Client{Timeout: 60 * time.Second}
 // one feed must never reprice or zero out another's.
 // onProgress may be nil. It reports the stage and how far along it is, so the
 // admin can show a bar instead of a spinner that says nothing for two minutes.
+// uploadsDir is where pictures that came inside the source file are written; a
+// source without them never touches it.
 func Run(src Source, db *database.Database, supplier string, coefficient float64,
-	onProgress func(stage string, done, total int)) (*Result, error) {
+	uploadsDir string, onProgress func(stage string, done, total int)) (*Result, error) {
 	progress := func(stage string, done, total int) {
 		if onProgress != nil {
 			onProgress(stage, done, total)
@@ -171,6 +177,16 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 		// want to, with "Download photos" in the products table.
 		for _, u := range it.ImageURLs {
 			_ = db.AddImage(p.ID, u)
+		}
+		// A picture from inside the file has no link to fall back on, so it is
+		// written now or lost.
+		for _, blob := range it.ImageBlobs {
+			name, err := SaveBlob(p.ID, blob, uploadsDir)
+			if err != nil {
+				log.Warnf("import %s: image for %q: %v", src.Name(), it.Title, err)
+				continue
+			}
+			_ = db.AddImage(p.ID, name)
 		}
 		res.Imported++
 	}

@@ -1,3 +1,18 @@
+1.14.0 / August 16, 2026
+[Alexandr Topilski]
+- Import reads a supplier's own Excel price list, not only our CSV template. Columns are found by their headers and the header row by its content, so the logo, the phone number and three empty rows a price list opens with are no obstacle. Checked on a live 143 MB file: 23 699 products in five seconds
+- Pictures pasted into the cells come out with their rows and are written straight to the shop's uploads. A photo inside a spreadsheet has no link to fall back on, so it is saved now or lost, and asking an owner to extract twenty thousand of them by hand is the same as saying no
+- One file field, two formats: a spreadsheet is recognised by its own bytes, so there is no second radio button to think about
+- The Wildberries tab, a channel of its own next to Ozon: connect the account, link products to cards by the seller's article, publish and unpublish by selection, set a platform price flat or by the markup ladder, sync stock and prices, and read the log of sales the platform made. Nothing is shared with Ozon except the ladder arithmetic — a channel is a vertical slice, and the differences below are why
+- Linking reads both platform keys off the card: stock is set per barcode, price per nmID. Our own catalogue never carries a barcode, and it never has to — a price list from Excel or a YML feed links by article exactly as it does on Ozon
+- A card with several sizes has several barcodes and one article, so which size a product means is not knowable. Those are reported as unlinked instead of guessed at, and only a catalogue imported from Wildberries itself (whose articles carry the size) links straight through
+- Prices on Wildberries are accepted as an upload task and confirmed later, so "sent" and "accepted" are two different facts: the tab shows how many prices are in flight, a confirmed task becomes the new baseline, and a task the platform never answers releases its products after an hour instead of pinning them forever
+- Sizes of one card that want different prices push nothing at all and say why. Wildberries takes one price per card, and picking one size's number would quietly reprice the others
+- A sandbox switch in the settings: the tab talks to the Wildberries test hosts with a test token, so the connection can be proven without touching real goods, orders or balance
+- The platform's own message is truncated and the token is stripped out of it before it reaches a log or the database: an API that echoes a request back would otherwise carry the key into our files
+- Consecutive calls are spaced out. Wildberries meters per method, and a burst costs a 429 that lasts far longer than the pause
+- Errors now carry the time of the next attempt. A failure with no "and then what" reads as if the sync had given up
+
 1.13.2 / August 16, 2026
 [Alexandr Topilski]
 - A photo still hosted on the supplier's server is marked with a warning badge, in the product list and in the product dialog alike. Imported photos are links, and a link dies with whoever holds it; until now nothing on the screen told the owner which pictures they do not actually own a copy of
