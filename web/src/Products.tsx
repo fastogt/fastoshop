@@ -112,6 +112,18 @@ const kText = {
     ru: "JPEG, PNG или WebP, до 10 МБ. Первое фото попадает в поисковую выдачу и в карточку канала.",
     en: "JPEG, PNG or WebP, up to 10 MB. The first photo is what search results and the channel card show.",
   },
+  noPhoto: {
+    ru: "Фотографии нет. На витрине товар показывается заглушкой.",
+    en: "No photo. The storefront shows a stub for this product.",
+  },
+  remoteHint: {
+    ru: "Фото лежит на сервере поставщика, у нас его нет. Отметьте товары и нажмите «Заполнить», чтобы забрать фотографии к себе.",
+    en: "The photo sits on the supplier’s server, we have no copy. Tick the products and press “Fill in” to bring the photos in.",
+  },
+  remotePhoto: {
+    ru: "Фото лежит на чужом сервере. Закроют его — витрина останется без картинки. «Забрать фото к себе» скачает его к нам.",
+    en: "This photo lives on someone else’s server. The day it goes, the storefront loses the picture. “Bring the photos in” downloads it to us.",
+  },
   labelSupplier: { ru: "Поставщик (группа)", en: "Supplier (group)" },
   supplierPlaceholder: { ru: "без поставщика", en: "no supplier" },
   fieldsHint: {
@@ -148,6 +160,8 @@ const kText = {
 // keeps a link to the marketplace photo instead of downloading it.
 const imageURL = (path: string) =>
   path.startsWith("http") ? path : `/uploads/${path}`;
+
+const isRemote = (path: string) => path.startsWith("http");
 
 export default function Products() {
   const [list, setList] = useState<Product[]>([]);
@@ -362,6 +376,14 @@ export default function Products() {
         <div>
           <h1 className="text-xl font-bold">{t("heading")}</h1>
           <p className="hint mt-1">{t("rowHint")}</p>
+          {list.some((p) => p.images?.[0] && isRemote(p.images[0].path)) && (
+            <p className="hint mt-1">
+              <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 align-text-bottom text-[10px] leading-none font-bold text-white">
+                !
+              </span>
+              {t("remoteHint")}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <input
@@ -511,6 +533,14 @@ export default function Products() {
                         alt=""
                         className="border-line h-20 w-20 rounded-lg border object-cover"
                       />
+                      {isRemote(im.path) && (
+                        <span
+                          title={t("remotePhoto")}
+                          className="absolute -top-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white"
+                        >
+                          !
+                        </span>
+                      )}
                       <button
                         title={t("removePhoto")}
                         className="border-line absolute -top-2 -right-2 hidden h-6 w-6 cursor-pointer rounded-full border bg-white text-sm text-red-600 group-hover:block"
@@ -570,20 +600,37 @@ export default function Products() {
             sortable: true,
             render: (p) => (
               <div className="flex items-center gap-3">
-                {p.images?.[0] && (
-                  <span className="relative inline-block h-10 w-10 shrink-0">
+                <span className="relative inline-block h-10 w-10 shrink-0">
+                  {p.images?.[0] ? (
                     <img
                       src={imageURL(p.images[0].path)}
                       alt=""
                       className="h-10 w-10 rounded object-cover"
                     />
-                    {inFlight.has(p.id) && (
-                      <span className="absolute inset-0 flex items-center justify-center rounded bg-white/70">
-                        <span className="border-brand h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
-                      </span>
-                    )}
-                  </span>
-                )}
+                  ) : (
+                    // The storefront's own stub, so the admin and the shop agree
+                    // on what a product without a picture looks like.
+                    <img
+                      src="/nophoto.svg"
+                      alt=""
+                      title={t("noPhoto")}
+                      className="border-line h-10 w-10 rounded border object-contain opacity-60"
+                    />
+                  )}
+                  {p.images?.[0] && isRemote(p.images[0].path) && (
+                    <span
+                      title={t("remotePhoto")}
+                      className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] leading-none font-bold text-white"
+                    >
+                      !
+                    </span>
+                  )}
+                  {inFlight.has(p.id) && (
+                    <span className="absolute inset-0 flex items-center justify-center rounded bg-white/70">
+                      <span className="border-brand h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
+                    </span>
+                  )}
+                </span>
                 <span className="font-medium">{p.title}</span>
                 {p.hidden && (
                   <span className="text-muted border-line rounded border px-2 py-0.5 text-xs">

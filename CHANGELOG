@@ -1,3 +1,9 @@
+1.13.2 / August 16, 2026
+[Alexandr Topilski]
+- A photo still hosted on the supplier's server is marked with a warning badge, in the product list and in the product dialog alike. Imported photos are links, and a link dies with whoever holds it; until now nothing on the screen told the owner which pictures they do not actually own a copy of
+- A product with no photo shows the storefront's own "no photo" stub in the admin list instead of a blank gap, so the column stays a column and the owner sees what a shopper would see
+- The badge explains itself: as soon as one is on screen, a line above the table says what it means and that "Fill in" is what brings the photos in. A mark nobody can decode is a decoration
+
 1.13.1 / August 15, 2026
 [Alexandr Topilski]
 - The import screen says out loud whose photos and descriptions a feed carries, and asks the owner to confirm they may use them before the button works. It arrives with an Excel price list and a marketplace account just as it does with a feed, and it is also what makes the import an instruction from the owner rather than something we did to their shop
