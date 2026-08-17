@@ -3,6 +3,7 @@ package storefront
 import (
 	"encoding/xml"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/fastogt/fastoshop/app/database"
@@ -29,8 +30,9 @@ type ymlCurrency struct {
 }
 
 type ymlCategory struct {
-	ID   int    `xml:"id,attr"`
-	Name string `xml:",chardata"`
+	ID       int    `xml:"id,attr"`
+	ParentID int    `xml:"parentId,attr,omitempty"`
+	Name     string `xml:",chardata"`
 }
 
 type ymlOffer struct {
@@ -143,14 +145,33 @@ func (s *Storefront) YML(w http.ResponseWriter, r *http.Request) {
 	}
 	catIDs := make(map[string]int, len(cats))
 	categories := make([]ymlCategory, 0, len(cats)+1)
-	for i, c := range cats {
-		catIDs[c] = i + 1
-		categories = append(categories, ymlCategory{ID: i + 1, Name: c})
+	// A segment per element, tied by parentId. Naming one element after the whole
+	// path is what a flat list forces, and it costs the tree twice: Yandex reads
+	// a shop of one level, and our own import — a feed of ours is a valid import
+	// source — rebuilds the path as a single name with the separator rewritten,
+	// so a copied catalogue lands beside the tree instead of inside it.
+	var ensure func(path string) int
+	ensure = func(path string) int {
+		if id, ok := catIDs[path]; ok {
+			return id
+		}
+		parent, name := 0, path
+		if i := strings.LastIndex(path, database.CategorySep); i >= 0 {
+			parent = ensure(path[:i])
+			name = path[i+len(database.CategorySep):]
+		}
+		id := len(catIDs) + 1
+		catIDs[path] = id
+		categories = append(categories, ymlCategory{ID: id, ParentID: parent, Name: name})
+		return id
+	}
+	for _, c := range cats {
+		ensure(c)
 	}
 	catchAll := 0
 	for _, p := range products {
 		if p.Category == "" {
-			catchAll = len(cats) + 1
+			catchAll = len(catIDs) + 1
 			categories = append(categories, ymlCategory{ID: catchAll, Name: kFeedCatchAllCategory})
 			break
 		}

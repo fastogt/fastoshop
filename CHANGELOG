@@ -1,3 +1,10 @@
+1.15.1 / August 17, 2026
+[Alexandr Topilski]
+- The feed gives the category tree as a tree: an element per segment tied by parentId, instead of one flat element named after the whole path. Yandex was reading a shop one level deep, and a catalogue copied between two instances of the shop landed beside the tree rather than inside it, as five new sections with the separator rewritten as a dash
+- The catalogue fits a photo into its tile instead of cropping it. A marketplace card is a finished layout — the volume, the piece count and "gift wrapped" are printed on the image — and a square crop cut off exactly those lines
+- A product description now runs the full width under both columns. Held inside the buy-box column it stretched that column alone, so a product with one photo showed half a page of nothing where the gallery ended
+- The scrollbar under the main photo is gone; the gallery is paged by its thumbnails and by a finger
+
 1.15.0 / August 17, 2026
 [Alexandr Topilski]
 - The shop's own feed now states how many of each product are left, and import reads it. Copying a catalogue from one instance of the shop into another used to spread a single made-up number over everything, because the feed standard carries availability as a flag and no quantity at all: a product with one left and a product with twenty arrived identical, which is an oversell waiting for a buyer. A feed from anywhere else states no quantity and behaves exactly as before

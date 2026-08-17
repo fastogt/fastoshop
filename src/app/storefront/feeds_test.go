@@ -72,6 +72,33 @@ func TestFeedsCatalog(t *testing.T) {
 
 // A hidden product must leave the feeds together with the pages: a feed offer
 // pointing at a 404 gets the whole feed flagged by the provider.
+// A nested path becomes an element per segment tied by parentId. Named after
+// the whole path in one flat element, the tree is lost twice over: Yandex reads
+// a shop of one level, and our own importer — a feed of ours is a valid import
+// source — rebuilds that name as a single category with the separator rewritten.
+func TestFeedsCategoryTree(t *testing.T) {
+	d, h := setup(t)
+	p := &database.Product{Title: "Кружка", SKU: "MG-1", Price: 2329, Stock: 2,
+		Category: "Посуда/Посуда для напитков/Кружки, чашки"}
+	if err := d.CreateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+	yml := get(t, h, "/yml.xml")
+	for _, want := range []string{
+		`<category id="2">Посуда</category>`,
+		`<category id="3" parentId="2">Посуда для напитков</category>`,
+		`<category id="4" parentId="3">Кружки, чашки</category>`,
+	} {
+		if !strings.Contains(yml, want) {
+			t.Errorf("yml missing %q\n%s", want, yml)
+		}
+	}
+	// The root of the tree carries no parent at all rather than parentId="0".
+	if strings.Contains(yml, `parentId="0"`) {
+		t.Error("a root category must not claim parent 0")
+	}
+}
+
 func TestFeedsHideHiddenProduct(t *testing.T) {
 	d, h := setup(t)
 	p := &database.Product{Title: "Тайный чайник", Price: 1000, Stock: 5}

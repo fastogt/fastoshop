@@ -87,12 +87,16 @@
         {{if .Shop.ShopPhone}}<li>Вопросы: <a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a></li>{{end}}
       </ul>
     </div>
-    {{if .P.Description}}
-    <div class="desc">
-      <h3>Описание</h3>
-      {{.P.Description}}
-    </div>
-    {{end}}
   </div>
+  {{/* Full width, below both columns: a description belongs to the product, not
+       to the buy box. Kept inside the right column it stretched that column
+       alone, and a product with one photo showed half a page of nothing where
+       the gallery had ended. */}}
+  {{if .P.Description}}
+  <div class="desc">
+    <h3>Описание</h3>
+    {{.P.Description}}
+  </div>
+  {{end}}
 </article>
 {{end}}
