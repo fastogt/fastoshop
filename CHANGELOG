@@ -1,3 +1,7 @@
+1.14.2 / August 17, 2026
+[Alexandr Topilski]
+- The Wildberries sandbox no longer waits out a DNS timeout on every check: there is no common-api-sandbox host at all, so the test contour skips the seller-info call instead of falling back to production with a token that does not belong there. Found the first time a real test token was plugged in
+
 1.14.1 / August 16, 2026
 [Alexandr Topilski]
 - The admin showed roubles and the browser's language until the page was reloaded: the shop's own currency and the owner's language were fetched on a session that already existed, and reaching the admin through the login form skipped that. A Belarusian shop priced its goods in the wrong money for the whole first visit

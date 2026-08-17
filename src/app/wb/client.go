@@ -33,11 +33,16 @@ var kProd = Hosts{
 // kSandbox is the test contour. A test token only reaches these hosts and only
 // sees generated data, so the owner can wire the tab up without touching a live
 // catalogue. https://dev.wildberries.ru/
+//
+// Common is deliberately empty: there is no common-api-sandbox host, the name
+// does not even resolve. Checked against a live test token on 2026-08-17. The
+// seller name is a nicety on the check screen, so its absence costs nothing —
+// but a request to a host that does not exist costs a DNS timeout every time.
 var kSandbox = Hosts{
 	Content:     "https://content-api-sandbox.wildberries.ru",
 	Prices:      "https://discounts-prices-api-sandbox.wildberries.ru",
 	Marketplace: "https://marketplace-api-sandbox.wildberries.ru",
-	Common:      "https://common-api-sandbox.wildberries.ru",
+	Common:      "",
 }
 
 // kCardsLimit is what /content/v2/get/cards/list takes per page.
@@ -157,6 +162,9 @@ func (c *Client) safe(text string) string {
 	return text
 }
 
+// errNoSellerInfo marks a contour that does not publish seller details at all.
+var errNoSellerInfo = errors.New("wb: no seller-info endpoint in this contour")
+
 // APIError is a refused answer from the cabinet. Body is kept so callers that
 // know the shape of a particular refusal (the per-barcode 409 of a stock push)
 // can read it instead of parsing the message.
@@ -263,6 +271,12 @@ type SellerInfo struct {
 }
 
 func (c *Client) SellerInfo() (*SellerInfo, error) {
+	// Hosts set with an empty Common means "this contour has no such host" — the
+	// sandbox is exactly that case. Falling back to production would send a test
+	// token where it does not belong and wait out a refusal for nothing.
+	if c.Hosts != (Hosts{}) && c.Hosts.Common == "" {
+		return nil, errNoSellerInfo
+	}
 	var out SellerInfo
 	if err := c.do("GET", c.common()+"/api/v1/seller-info", nil, &out); err != nil {
 		return nil, err
