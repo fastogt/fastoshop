@@ -44,6 +44,11 @@ type ymlOffer struct {
 	CategoryID  int      `xml:"categoryId"`
 	Pictures    []string `xml:"picture"`
 	Description string   `xml:"description,omitempty"`
+	// Not part of the YML standard, which carries availability as a flag and no
+	// quantity at all. Yandex ignores elements it does not know, and our own
+	// importer reads this one — without it a shop copied from another instance
+	// arrives with one made-up stock level for the whole catalogue.
+	Count int `xml:"count"`
 }
 
 type ymlShop struct {
@@ -169,6 +174,7 @@ func (s *Storefront) YML(w http.ResponseWriter, r *http.Request) {
 			URL: s.baseURL + "/p/" + p.Slug, Price: priceStr(p.Price),
 			CurrencyID: currency, CategoryID: catID,
 			Pictures: s.feedPictures(p.ID, images), Description: p.Description,
+			Count: p.Stock,
 		})
 	}
 	writeFeed(w, catalog)

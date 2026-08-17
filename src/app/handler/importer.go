@@ -169,12 +169,10 @@ func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// Remembered so the "recompute" button knows what the catalogue was built
-	// with, without asking the owner to retype it.
-	if err := h.db.SetPriceCoefficient(coefficient); err != nil {
-		writeInternalError(w, err)
-		return
-	}
+	// Not remembered: a run's coefficient belongs to that run. A shop that takes
+	// catalogues from several suppliers converts one of them from another
+	// currency, and storing that number as the shop's would reprice everybody
+	// else's goods on their next import.
 	supplier := strings.TrimSpace(req.Supplier)
 	if supplier == "" {
 		writeBadRequest(w, h.msg(i18n.KeySupplierRequired))

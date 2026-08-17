@@ -38,6 +38,9 @@ func TestFeedsCatalog(t *testing.T) {
 		"<picture>https://cdn.example.org/tea.jpg</picture>",
 		"<price>2500.00</price>",
 		"<currencyId>RUB</currencyId>",
+		// Outside the standard, and the reason a shop copied from another
+		// instance no longer arrives with one invented stock level.
+		"<count>3</count>",
 		`available="true"`,
 		`available="false"`,
 		"<categoryId>2</categoryId>",

@@ -1,3 +1,8 @@
+1.15.0 / August 17, 2026
+[Alexandr Topilski]
+- The shop's own feed now states how many of each product are left, and import reads it. Copying a catalogue from one instance of the shop into another used to spread a single made-up number over everything, because the feed standard carries availability as a flag and no quantity at all: a product with one left and a product with twenty arrived identical, which is an oversell waiting for a buyer. A feed from anywhere else states no quantity and behaves exactly as before
+- An import no longer keeps its coefficient as the shop's own. A shop that takes catalogues from several suppliers converts one of them out of another currency, and that number, remembered, repriced every other supplier's goods on their next import — by a factor of twenty-eight in the case that found it
+
 1.14.2 / August 17, 2026
 [Alexandr Topilski]
 - The Wildberries sandbox no longer waits out a DNS timeout on every check: there is no common-api-sandbox host at all, so the test contour skips the seller-info call instead of falling back to production with a token that does not belong there. Found the first time a real test token was plugged in

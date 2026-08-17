@@ -289,6 +289,40 @@ func TestYMLImport(t *testing.T) {
 	}
 }
 
+// A feed of ours states a quantity per offer; a feed from anywhere else does not.
+// Both arrive through the same source, so one catalogue must be able to hold the
+// counted and the uncounted at once.
+func TestYMLCount(t *testing.T) {
+	const feed = `<?xml version="1.0" encoding="UTF-8"?>
+<yml_catalog><shop><offers>
+<offer id="1" available="true">
+  <name>Кружка</name><price>23.29</price><vendorCode>MG-1</vendorCode><count>13</count>
+</offer>
+<offer id="2" available="true">
+  <name>Графин</name><price>31.40</price><vendorCode>GR-1</vendorCode><count>0</count>
+</offer>
+<offer id="3" available="true">
+  <name>Ковш</name><price>12.00</price><vendorCode>KV-1</vendorCode>
+</offer>
+</offers></shop></yml_catalog>`
+	srv := ymlServer(t, feed)
+	defer srv.Close()
+
+	items, err := (&YML{URL: srv.URL + "/feed.xml", DefaultStock: 7}).Fetch()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []int{13, 0, 7}
+	if len(items) != len(want) {
+		t.Fatalf("items: %+v", items)
+	}
+	for i, w := range want {
+		if items[i].Stock != w {
+			t.Fatalf("%s: stock %d, want %d", items[i].SKU, items[i].Stock, w)
+		}
+	}
+}
+
 func TestYMLTooBig(t *testing.T) {
 	srv := ymlServer(t, kYMLFeed)
 	defer srv.Close()

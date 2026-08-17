@@ -19,8 +19,9 @@ import (
 // of Bitrix, InSales, Tilda. A keyless source: the seller gives a link to the XML.
 type YML struct {
 	URL string
-	// DefaultStock — YML carries no quantity, only an availability flag,
-	// so the seller sets the stock as one number for the whole catalogue.
+	// DefaultStock — the standard carries no quantity, only an availability flag,
+	// so the seller sets the stock as one number for the whole catalogue. Used
+	// for offers that state no count of their own.
 	DefaultStock int
 	// MaxBytes — body size ceiling; 0 means kMaxFeedBytes.
 	MaxBytes int64
@@ -69,6 +70,9 @@ type ymlOffer struct {
 	CurrencyID  string   `xml:"currencyId"`
 	CategoryID  string   `xml:"categoryId"`
 	Pictures    []string `xml:"picture"`
+	// Outside the standard: only a shop of ours puts a quantity in a feed. An
+	// empty element keeps the old behaviour for everyone else.
+	Count string `xml:"count"`
 }
 
 type ymlCategory struct {
@@ -215,6 +219,16 @@ func (y *YML) Count() (int, error) {
 	return n, nil
 }
 
+// stock prefers the feed's own number over the one the seller typed: a feed that
+// states a quantity per offer — ours does — carries the truth, and spreading one
+// number over the whole catalogue oversells everything that has less.
+func (y *YML) stock(o *ymlOffer) int {
+	if n, err := strconv.Atoi(strings.TrimSpace(o.Count)); err == nil && n >= 0 {
+		return n
+	}
+	return y.DefaultStock
+}
+
 func (y *YML) Fetch() ([]Item, error) {
 	y.errors = 0
 	y.currency = ""
@@ -252,7 +266,7 @@ func (y *YML) Fetch() ([]Item, error) {
 			Title:       strings.TrimSpace(o.Name),
 			Description: strings.TrimSpace(o.Description),
 			Price:       int64(math.Round(v * 100)),
-			Stock:       y.DefaultStock,
+			Stock:       y.stock(o),
 			ImageURLs:   o.Pictures,
 			Category:    categoryPath(y.categories, strings.TrimSpace(o.CategoryID)),
 		})
