@@ -1,3 +1,7 @@
+1.24.1 / August 18, 2026
+[Alexandr Topilski]
+- "Recompute prices" failed on a single markup band — the plain-percentage case the new Prices block writes by default — with an internal error, because CASE with no WHEN is a syntax error in SQLite. Caught within minutes of v1.24.0 going live on abs.fastoshop.by; no price had moved, the UPDATE never ran
+
 1.24.0 / August 18, 2026
 [Alexandr Topilski]
 - Prices are two fields now, not three numbers spread over two tabs under the same name. Products has a "Prices" block: a cost rate that turns a supplier's price into the shop's money, and a markup percentage on top — the ladder that used to be the only way to set a markup is still there, folded behind "A different markup for cheap and dear goods", for the sieve-and-steamer case where one percentage cannot serve both. A line under the fields spells out a real row's own chain: cost, times the rate, times the markup, equals the shelf price
