@@ -61,4 +61,27 @@ func TestShopPriceLadder(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("a ladder with no open band must be refused: %d", w.Code)
 	}
+
+	// A single open band is the "one markup percent" case from the Products
+	// screen — the common case, and the one a CASE with no WHEN broke.
+	w = httptest.NewRecorder()
+	h.SetPriceRules(w, httptest.NewRequest("PUT", "/api/products/price-rules", strings.NewReader(
+		`{"rules":[{"up_to":0,"multiplier":1.3}]}`)))
+	if w.Code != http.StatusOK {
+		t.Fatalf("save single band: %d %s", w.Code, w.Body.String())
+	}
+	w = httptest.NewRecorder()
+	h.RecomputePrices(w, httptest.NewRequest("POST", "/api/products/recompute-prices",
+		strings.NewReader(`{"coefficient":1}`)))
+	if w.Code != http.StatusOK {
+		t.Fatalf("recompute single band: %d %s", w.Code, w.Body.String())
+	}
+	got, _ = h.db.GetProduct(cheap.ID)
+	if got.Price != 1300 {
+		t.Fatalf("single band cheap: %d, want 1300", got.Price)
+	}
+	got, _ = h.db.GetProduct(dear.ID)
+	if got.Price != 39000 {
+		t.Fatalf("single band dear: %d, want 39000", got.Price)
+	}
 }

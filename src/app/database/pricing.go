@@ -65,7 +65,12 @@ func (d *Database) RecomputePrices(c float64, rules []PriceRule) (int, error) {
 
 	expr := "source_price * ?"
 	args := []any{c}
-	if len(rules) > 0 {
+	// A single band is the plain "percent" case from the Products screen: the
+	// ladder has one row, "and above", and CASE with no WHEN is a syntax error.
+	if len(rules) == 1 {
+		expr = "(source_price * ?) * ?"
+		args = []any{c, rules[0].Multiplier}
+	} else if len(rules) > 1 {
 		var sb strings.Builder
 		sb.WriteString("(source_price * ?) * CASE")
 		args = []any{c}
