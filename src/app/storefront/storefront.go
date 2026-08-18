@@ -97,6 +97,7 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/gmc.xml", s.GMC)
 	r.Get("/robots.txt", s.Robots)
 	r.Get("/favicon.svg", s.Favicon)
+	r.Get("/favicon.ico", s.FaviconICO)
 	r.Get("/nophoto.svg", s.NoPhoto)
 	return r
 }

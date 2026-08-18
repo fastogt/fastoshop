@@ -1,7 +1,6 @@
 package importer
 
 import (
-	"math"
 	"net/http"
 	"time"
 
@@ -101,6 +100,13 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 			onProgress(stage, done, total)
 		}
 	}
+	// The shop's markup ladder is read once per import: it belongs to the shop,
+	// not to the feed, and re-reading it per product would be twenty thousand
+	// queries to answer the same question.
+	rules, err := db.ShopPriceRules()
+	if err != nil {
+		return nil, err
+	}
 	progress(StageFetch, 0, 0)
 	items, err := src.Fetch()
 	if err != nil {
@@ -135,7 +141,7 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 				res.Skipped++
 				continue
 			}
-			changed, err := merge(db, old, it, coefficient)
+			changed, err := merge(db, old, it, coefficient, rules)
 			if err != nil {
 				log.Warnf("import %s: update %q: %v", src.Name(), it.Title, err)
 				res.Errors++
@@ -155,7 +161,7 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 			continue
 		}
 		p := &database.Product{SKU: it.SKU, Title: it.Title,
-			Description: it.Description, Price: int64(math.Round(float64(it.Price) * coefficient)),
+			Description: it.Description, Price: database.ShelfPrice(rules, it.Price, coefficient),
 			SourcePrice: it.Price, Stock: max(it.Stock, 0),
 			Category: it.Category, Supplier: supplier}
 		if err := db.CreateProduct(p); err != nil {
@@ -203,10 +209,11 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 // alone what the owner owns: the title, the description and the photos are
 // their SEO work, and a weekly feed must not undo it. A price the owner typed
 // keeps its manual mark and its value.
-func merge(db *database.Database, old database.Product, it Item, coefficient float64) (bool, error) {
+func merge(db *database.Database, old database.Product, it Item, coefficient float64,
+	rules []database.PriceRule) (bool, error) {
 	price := old.Price
 	if !old.PriceManual {
-		price = int64(math.Round(float64(it.Price) * coefficient))
+		price = database.ShelfPrice(rules, it.Price, coefficient)
 	}
 	// A category the owner already set is theirs; an empty one gets filled, so a
 	// catalogue imported before categories existed picks them up on the next run

@@ -70,7 +70,7 @@ func TestArticleOwnedByAnotherGroupIsAConflict(t *testing.T) {
 
 	// And in the preview it is also a conflict, not a new arrival.
 	existing, _ := d.ListProducts()
-	dif := Compare(src.items, existing, "Ромашка", 1)
+	dif := Compare(src.items, existing, "Ромашка", 1, nil)
 	if dif.Conflicts != 1 || dif.New != 0 || dif.Gone != 0 {
 		t.Fatalf("diff: %+v", dif)
 	}

@@ -388,7 +388,7 @@ export interface OzonUnpublishResult {
   failed: { id: number; title: string; sku: string }[];
 }
 
-export interface OzonPriceRule {
+export interface PriceRule {
   up_to: number;
   multiplier: number;
 }
@@ -578,12 +578,16 @@ export const api = {
       .then(data<OzonUnpublishResult>),
   ozonSetPrice: (productId: number, price: number) =>
     http.put(`/ozon/price/${productId}`, { price }),
-  ozonPriceRules: () =>
-    http.get("/ozon/price/rules").then(data<{ rules: OzonPriceRule[] }>),
-  ozonSetPriceRules: (rules: OzonPriceRule[]) =>
+  priceRules: () =>
+    http.get("/products/price-rules").then(data<{ rules: PriceRule[] }>),
+  setPriceRules: (rules: PriceRule[]) =>
     http
-      .put("/ozon/price/rules", { rules })
-      .then(data<{ rules: OzonPriceRule[] }>),
+      .put("/products/price-rules", { rules })
+      .then(data<{ rules: PriceRule[] }>),
+  ozonPriceRules: () =>
+    http.get("/ozon/price/rules").then(data<{ rules: PriceRule[] }>),
+  ozonSetPriceRules: (rules: PriceRule[]) =>
+    http.put("/ozon/price/rules", { rules }).then(data<{ rules: PriceRule[] }>),
   ozonFillByRules: () =>
     http.post("/ozon/price/fill-by-rules").then(data<{ filled: number }>),
   ozonFillPrices: (markupBp: number) =>
@@ -622,11 +626,9 @@ export const api = {
   wbSetPrice: (productId: number, price: number) =>
     http.put(`/wb/price/${productId}`, { price }),
   wbPriceRules: () =>
-    http.get("/wb/price/rules").then(data<{ rules: OzonPriceRule[] }>),
-  wbSetPriceRules: (rules: OzonPriceRule[]) =>
-    http
-      .put("/wb/price/rules", { rules })
-      .then(data<{ rules: OzonPriceRule[] }>),
+    http.get("/wb/price/rules").then(data<{ rules: PriceRule[] }>),
+  wbSetPriceRules: (rules: PriceRule[]) =>
+    http.put("/wb/price/rules", { rules }).then(data<{ rules: PriceRule[] }>),
   wbFillByRules: () =>
     http.post("/wb/price/fill-by-rules").then(data<{ filled: number }>),
   wbFillPrices: (markupBp: number) =>

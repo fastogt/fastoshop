@@ -19,6 +19,21 @@ const kFaviconAccent = "#b4532a"
 //
 // ponytail: a real logo upload is the obvious next step; until a seller asks,
 // the initial is what a shop with no designer would have anyway.
+// FaviconICO answers the address every crawler asks for before it has read a
+// line of the page. Google looks for the tab icon here as well as in the head,
+// and a 404 leaves the shop with a globe next to its snippet while the
+// competition shows its own mark. A redirect, not a copy: the icon itself is
+// either the owner's logo or the letter drawn below, and one of them must not
+// silently drift from the other.
+func (s *Storefront) FaviconICO(w http.ResponseWriter, r *http.Request) {
+	target := "/favicon.svg"
+	if logo := s.shop().Logo; logo != "" {
+		target = "/uploads/" + logo
+	}
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	http.Redirect(w, r, target, http.StatusMovedPermanently)
+}
+
 func (s *Storefront) Favicon(w http.ResponseWriter, r *http.Request) {
 	letter := "?"
 	for _, ch := range s.shop().ShopName {

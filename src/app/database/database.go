@@ -242,6 +242,16 @@ func (d *Database) migrate() error {
 	-- percentage does not cover the platform's fee, so resellers price by
 	-- multiples instead. up_to is the exclusive upper bound of the band in
 	-- kopecks; 0 means "and everything above".
+	-- The shop's own markup ladder, applied to the cost the coefficient produces.
+	-- One multiplier over a whole catalogue lies at both ends: on a 7-rouble
+	-- sieve it leaves nothing, and on a steamer it prices the shop above the
+	-- brand's own store. Bands are in the shop's currency, so the owner sets
+	-- them in the money they sell in.
+	CREATE TABLE IF NOT EXISTS shop_price_rules (
+		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		up_to      INTEGER NOT NULL,
+		multiplier REAL NOT NULL
+	);
 	CREATE TABLE IF NOT EXISTS ozon_price_rules (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
 		up_to      INTEGER NOT NULL,

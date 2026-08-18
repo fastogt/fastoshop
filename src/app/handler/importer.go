@@ -127,7 +127,12 @@ func (h *Handler) ImportCheck(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	diff := importer.Compare(items, existing, strings.TrimSpace(req.Supplier), coefficient)
+	rules, err := h.db.ShopPriceRules()
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	diff := importer.Compare(items, existing, strings.TrimSpace(req.Supplier), coefficient, rules)
 	diff.Currency = importer.FeedCurrency(src)
 	writeOK(w, diff)
 }

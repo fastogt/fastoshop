@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api, apiError, type ImportDiff } from "./api";
-import { toRubles } from "./money";
+import { api, apiError, type ImportDiff, type PriceRule } from "./api";
+import { toMinor, toRubles } from "./money";
 import { useT, type Phrase } from "./i18n";
 import { useJob } from "./useJob";
 import JobBar from "./JobBar";
@@ -65,6 +65,21 @@ const kText = {
     en: "For rights holders",
   },
   recompute: { ru: "Пересчитать цены", en: "Recompute prices" },
+  ladder: { ru: "Наценка по цене", en: "Markup by price" },
+  ladderHint: {
+    ru: "Один множитель на весь каталог врёт на краях: на товаре за 7 рублей он не оставляет ничего, на товаре за 300 выносит цену выше магазина самого бренда. Задайте полосы: до какой закупочной цены какой множитель. Последняя строка «и выше» обязательна. Пустая лестница — как раньше: цена равна закупке с коэффициентом.",
+    en: 'A single multiplier over a whole catalogue lies at both ends: on a 7-rouble item it leaves nothing, on a 300-rouble one it prices the shop above the brand\'s own store. Set bands: up to which cost which multiplier. The final "and above" row is required. An empty ladder behaves as before — the price is the cost with the coefficient.',
+  },
+  bandUpTo: { ru: "до", en: "up to" },
+  bandAbove: { ru: "и выше", en: "and above" },
+  bandMultiplier: { ru: "множитель", en: "multiplier" },
+  addBand: { ru: "Добавить полосу", en: "Add a band" },
+  removeBand: { ru: "Удалить", en: "Remove" },
+  saveLadder: { ru: "Сохранить наценку", en: "Save the markup" },
+  ladderSaved: {
+    ru: "Наценка сохранена. Цены пока не изменились — нажмите «Пересчитать цены».",
+    en: 'Markup saved. No price has moved yet — press "Recompute prices".',
+  },
   recomputeSection: { ru: "Пересчёт цен", en: "Price recompute" },
   recomputeHint: {
     ru: "Курс изменился — поставьте новый коэффициент и пересчитайте. Считаем от цены источника, поэтому повторный пересчёт не накапливает ошибку. Цены, которые вы правили руками, не трогаем.",
@@ -168,6 +183,8 @@ export default function Import() {
     null,
   );
   const [suppliers, setSuppliers] = useState<string[]>([]);
+  const [rules, setRules] = useState<PriceRule[]>([]);
+  const [ladderMsg, setLadderMsg] = useState("");
   const [diff, setDiff] = useState<ImportDiff | null>(null);
   const [currency, setCurrency] = useState("RUB");
   const [recomputeMsg, setRecomputeMsg] = useState("");
@@ -210,6 +227,7 @@ export default function Import() {
 
   useEffect(() => {
     api.settings().then((s) => setCurrency(s.currency));
+    api.priceRules().then((r) => setRules(r.rules));
     api.importSuppliers().then((r) => setSuppliers(r.suppliers));
     api.importFeed().then((f) => {
       if (f.url) setFeed(f);
@@ -609,6 +627,102 @@ export default function Import() {
           <h2 className="font-bold">{t("recomputeSection")}</h2>
           <p className="hint">{t("recomputeHint")}</p>
         </div>
+        <div className="border-line flex flex-col gap-3 border-t pt-4">
+          <div>
+            <h3 className="font-semibold">{t("ladder")}</h3>
+            <p className="hint">{t("ladderHint")}</p>
+          </div>
+          {rules.map((rule, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="hint w-10">{t("bandUpTo")}</span>
+              {rule.up_to === 0 ? (
+                <span className="w-28 font-semibold">{t("bandAbove")}</span>
+              ) : (
+                <input
+                  className="field w-28"
+                  inputMode="decimal"
+                  value={toRubles(rule.up_to)}
+                  onChange={(e) =>
+                    setRules(
+                      rules.map((x, j) =>
+                        j === i ? { ...x, up_to: toMinor(e.target.value) } : x,
+                      ),
+                    )
+                  }
+                />
+              )}
+              <span className="hint">{t("bandMultiplier")}</span>
+              <input
+                className="field w-20"
+                inputMode="decimal"
+                value={String(rule.multiplier)}
+                onChange={(e) =>
+                  setRules(
+                    rules.map((x, j) =>
+                      j === i
+                        ? {
+                            ...x,
+                            multiplier:
+                              Number(e.target.value.replace(",", ".")) || 0,
+                          }
+                        : x,
+                    ),
+                  )
+                }
+              />
+              <button
+                className="text-muted cursor-pointer text-sm hover:text-red-600"
+                onClick={() => setRules(rules.filter((_, j) => j !== i))}
+              >
+                {t("removeBand")}
+              </button>
+            </div>
+          ))}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              className="btn-ghost"
+              onClick={() =>
+                setRules([
+                  ...rules.filter((r) => r.up_to !== 0),
+                  { up_to: 5000, multiplier: 1.5 },
+                  ...(rules.some((r) => r.up_to === 0)
+                    ? rules.filter((r) => r.up_to === 0)
+                    : [{ up_to: 0, multiplier: 1.15 }]),
+                ])
+              }
+            >
+              {t("addBand")}
+            </button>
+            <button
+              className="btn-ghost"
+              disabled={busy}
+              onClick={async () => {
+                setLadderMsg("");
+                try {
+                  const r = await api.setPriceRules(rules);
+                  setRules(r.rules);
+                  setLadderMsg(t("ladderSaved"));
+                } catch (e) {
+                  setLadderMsg(`${t("errorPrefix")}${apiError(e) ?? ""}`);
+                }
+              }}
+            >
+              {t("saveLadder")}
+            </button>
+            {ladderMsg && (
+              <span
+                className={
+                  ladderMsg.startsWith(t("errorPrefix"))
+                    ? "text-red-600"
+                    : "text-green-700"
+                }
+              >
+                {ladderMsg}
+              </span>
+            )}
+          </div>
+        </div>
+
         <div className="flex items-center gap-3">
           <button className="btn-ghost" disabled={busy} onClick={recompute}>
             {t("recompute")}

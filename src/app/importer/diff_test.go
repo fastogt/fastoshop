@@ -15,7 +15,7 @@ func shopProduct(sku string, sourcePrice int64) database.Product {
 // On an empty shop the whole feed is new arrivals, and nothing has gone.
 func TestDiffFirstImport(t *testing.T) {
 	items := []Item{{SKU: "A", Title: "Чайник", Price: 10000}}
-	d := Compare(items, nil, "П", 0.5)
+	d := Compare(items, nil, "П", 0.5, nil)
 	if d.New != 1 || d.Gone != 0 || d.Unchanged != 0 {
 		t.Fatalf("%+v", d)
 	}
@@ -29,7 +29,7 @@ func TestDiffFirstImport(t *testing.T) {
 func TestDiffSameFeedIsQuiet(t *testing.T) {
 	items := []Item{{SKU: "A", Price: 10000}, {SKU: "B", Price: 20000}}
 	existing := []database.Product{shopProduct("A", 10000), shopProduct("B", 20000)}
-	d := Compare(items, existing, "П", 1)
+	d := Compare(items, existing, "П", 1, nil)
 	if d.Unchanged != 2 || d.New != 0 || d.Gone != 0 || d.PriceUp != 0 || d.PriceDown != 0 {
 		t.Fatalf("%+v", d)
 	}
@@ -49,7 +49,7 @@ func TestDiffClassifiesChanges(t *testing.T) {
 		shopProduct("UP", 10000), shopProduct("DOWN", 10000),
 		shopProduct("SAME", 10000), shopProduct("GONE", 10000),
 	}
-	d := Compare(items, existing, "П", 1)
+	d := Compare(items, existing, "П", 1, nil)
 	if d.New != 1 || d.Gone != 1 || d.PriceUp != 1 || d.PriceDown != 1 || d.Unchanged != 1 {
 		t.Fatalf("%+v", d)
 	}
@@ -70,7 +70,7 @@ func TestDiffClassifiesChanges(t *testing.T) {
 func TestDiffZeroSourcePriceHasNoPercent(t *testing.T) {
 	items := []Item{{SKU: "OLD", Price: 50000}, {SKU: "REAL", Price: 11000}}
 	existing := []database.Product{shopProduct("OLD", 0), shopProduct("REAL", 10000)}
-	d := Compare(items, existing, "П", 1)
+	d := Compare(items, existing, "П", 1, nil)
 	if d.PriceChanges[0].SKU != "REAL" {
 		t.Fatalf("zero base pushed out a real change: %+v", d.PriceChanges)
 	}
@@ -89,7 +89,7 @@ func TestDiffCountsSurviveTruncation(t *testing.T) {
 		items = append(items, Item{SKU: sku, Price: int64(20000 + i)})
 		existing = append(existing, shopProduct(sku, 10000))
 	}
-	d := Compare(items, existing, "П", 1)
+	d := Compare(items, existing, "П", 1, nil)
 	if d.PriceUp != 120 {
 		t.Fatalf("price-up counter: %d", d.PriceUp)
 	}

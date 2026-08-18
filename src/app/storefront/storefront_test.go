@@ -1440,3 +1440,27 @@ func TestPriceIsNeverCached(t *testing.T) {
 		t.Fatal("no lastmod for a changed product")
 	}
 }
+
+// Crawlers ask for /favicon.ico before they read the page, and Google puts that
+// icon next to the snippet. A 404 there is why a shop shows a globe while its
+// competitors show their own mark.
+func TestFaviconICO(t *testing.T) {
+	d, h := setup(t)
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/favicon.ico", nil))
+	if w.Code != http.StatusMovedPermanently || w.Header().Get("Location") != "/favicon.svg" {
+		t.Fatalf("without a logo: %d → %q", w.Code, w.Header().Get("Location"))
+	}
+
+	// With a logo uploaded the same address must lead to it, not to the letter.
+	if err := d.UpdateSettings(&database.Settings{ShopName: "Лавка", Logo: "logo-x.png",
+		Currency: database.ShopCurrencyBYN}); err != nil {
+		t.Fatal(err)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/favicon.ico", nil))
+	if loc := w.Header().Get("Location"); loc != "/uploads/logo-x.png" {
+		t.Fatalf("with a logo: %q", loc)
+	}
+}

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   api,
   apiError,
-  type OzonPriceRule,
+  type PriceRule,
   type WBCandidate,
   type WBLink,
   type WBOrder,
@@ -186,7 +186,7 @@ export default function WB() {
   const [candSearch, setCandSearch] = useState("");
   const [candQuery, setCandQuery] = useState("");
 
-  const [rules, setRules] = useState<OzonPriceRule[]>([]);
+  const [rules, setRules] = useState<PriceRule[]>([]);
   const [markup, setMarkup] = useState("");
   const [noCard, setNoCard] = useState<WBUnlinkedProduct[]>([]);
   const [zeroFailed, setZeroFailed] = useState<WBUnlinkedProduct[]>([]);

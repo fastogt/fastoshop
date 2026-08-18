@@ -8,7 +8,7 @@ import {
   type OzonWarehouse,
   type OzonOrderPage,
   type OzonCandidatePage,
-  type OzonPriceRule,
+  type PriceRule,
   type OzonCandidate,
   type OzonLink,
   type OzonOrder,
@@ -263,7 +263,7 @@ export default function Ozon() {
   // and the row shows what is stored.
   const [priceDraft, setPriceDraft] = useState<Record<number, string>>({});
   const [markup, setMarkup] = useState("25");
-  const [rules, setRules] = useState<OzonPriceRule[]>([]);
+  const [rules, setRules] = useState<PriceRule[]>([]);
   const [ladderMsg, setLadderMsg] = useState("");
   const [priceMsg, setPriceMsg] = useState("");
   const [candidates, setCandidates] = useState<OzonCandidatePage | null>(null);

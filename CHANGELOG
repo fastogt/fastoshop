@@ -5,6 +5,12 @@
 - Sizes in the admin read as sizes again: 32.4 MB, 3 GB, 152 KB. The browser's own compact notation turned a disk into "1,2 млрд Б" in Russian — arithmetically true and unreadable. KB, MB and GB are technical marks and stay in Latin in every language, as do CPU, RAM and HDD
 - A changed price needs nothing submitted to a search engine, and now a test says so: the storefront sends no caching headers for a page whose price can move, the markup carries the same number the shopper sees, and the sitemap dates the change so a crawler returns on its own
 
+1.22.0 / August 18, 2026
+[Alexandr Topilski]
+- The shop has a markup ladder of its own, on the Import tab beside the coefficient: up to which cost which multiplier. One number over a whole catalogue lies at both ends — on a 7-rouble sieve it leaves nothing, and on a 300-rouble steamer it prices the shop above the brand's own store. Both were measured against live competitors before this was written. The coefficient keeps its job, carrying the supplier's price into the shop's money; the ladder adds the margin on top, so the bands are set in the money the owner sells in
+- Saving the ladder moves no price. It applies where a price change belongs — under "Recompute prices" — and the import and its "Check" preview read the same rule, so what the preview promises is what the catalogue gets
+- /favicon.ico is answered. Crawlers ask for it before they read a line of the page, and Google puts that icon next to the snippet: a 404 there is why a shop shows a globe in the results while its competitors show their own mark
+
 1.20.2 / August 18, 2026
 [Alexandr Topilski]
 - The browser's own "broken image" glyph is gone for good: a picture that fails to load is covered by its own mask, which a loaded picture never shows. Moving the glyph out of the frame did not work — it is drawn inside the picture's box and ignores colour, font size and indentation alike

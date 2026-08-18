@@ -43,6 +43,7 @@ const (
 	KeyOzonNothingSelected = "ozon_nothing_selected"
 	KeyBadCoefficient      = "bad_coefficient"
 	KeyOzonBadRules        = "ozon_bad_rules"
+	KeyBadPriceRules       = "bad_price_rules"
 	KeyWBNoToken           = "wb_no_token"
 	KeyWBNegativePrice     = "wb_negative_price"
 	KeyWBNegativeMarkup    = "wb_negative_markup"
@@ -136,6 +137,10 @@ var kMessages = map[string][2]string{
 	},
 	KeyOzonNothingSelected: {
 		"не выбрано ни одного товара", "no products selected",
+	},
+	KeyBadPriceRules: {
+		"проверьте лестницу наценки: множители больше нуля и ровно одна строка «и выше»",
+		"check the markup ladder: multipliers above zero and exactly one \"and above\" row",
 	},
 	KeyOzonBadRules: {
 		"проверьте лестницу наценки: множители больше нуля и ровно одна строка «и выше»",
