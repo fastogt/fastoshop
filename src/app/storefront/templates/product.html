@@ -19,6 +19,8 @@
     "url": "{{.BaseURL}}/p/{{.P.Slug}}",
     "priceCurrency": "{{.Shop.Currency}}",
     "price": "{{.PriceStr}}",
+    "priceValidUntil": "{{.PriceValidUntil}}",
+    "itemCondition": "https://schema.org/NewCondition",
     "availability": "https://schema.org/{{if gt .P.Stock 0}}InStock{{else}}OutOfStock{{end}}"
   }
 }

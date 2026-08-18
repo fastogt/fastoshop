@@ -18,6 +18,7 @@ import (
 
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/media"
+	"time"
 )
 
 var kLDJSON = regexp.MustCompile(`(?s)<script type="application/ld\+json">.*?</script>`)
@@ -1462,5 +1463,35 @@ func TestFaviconICO(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/favicon.ico", nil))
 	if loc := w.Header().Get("Location"); loc != "/uploads/logo-x.png" {
 		t.Fatalf("with a logo: %q", loc)
+	}
+}
+
+// A price with no validity date is eventually dropped from the search snippet as
+// stale, and an offer with no condition is incomplete. Both are things the shop
+// actually knows — unlike a rating, which it must never invent.
+func TestOfferCarriesWhatWeKnow(t *testing.T) {
+	_, h := setup(t)
+	body := get(t, h, "/p/krasnyj-chajnik")
+	for _, want := range []string{
+		`"priceValidUntil": "`,
+		`"itemCondition": "https://schema.org/NewCondition"`,
+		`"availability": "https://schema.org/InStock"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %s", want)
+		}
+	}
+	// The date must be a real one, a month out, not a zero value.
+	m := regexp.MustCompile(`"priceValidUntil": "(\d{4}-\d{2}-\d{2})"`).FindStringSubmatch(body)
+	if m == nil {
+		t.Fatal("priceValidUntil is not a date")
+	}
+	when, err := time.Parse("2006-01-02", m[1])
+	if err != nil || !when.After(time.Now().AddDate(0, 0, 20)) {
+		t.Fatalf("priceValidUntil = %q", m[1])
+	}
+	// And nothing invents a rating: stars require reviews we do not have.
+	if strings.Contains(body, "aggregateRating") {
+		t.Fatal("a rating must never be marked up without real reviews")
 	}
 }

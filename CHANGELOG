@@ -1,3 +1,7 @@
+1.22.2 / August 18, 2026
+[Alexandr Topilski]
+- The offer in a product's markup now carries the two things the shop actually knows and search engines ask for: the condition of the goods and how long the price holds. Without a validity date a price is eventually treated as stale and dropped from the snippet, which is how a shop loses the line that made it worth clicking. Availability was already there — the stars next to a competitor's result are not markup we are missing but reviews we do not have, and inventing them costs the snippet outright
+
 1.22.1 / August 18, 2026
 [Alexandr Topilski]
 - The page behind a dialog is finally still. It was locked on the body, while the scrollbar belongs to the root — so the list kept scrolling under the card and the window carried two scrollbars side by side

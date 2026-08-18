@@ -15,6 +15,7 @@ import (
 
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/media"
+	"time"
 )
 
 //go:embed templates/*.html
@@ -213,13 +214,18 @@ type imageVM struct {
 // pageVM is the template data. One struct for both pages: a typed model
 // instead of map[string]any (project rule: no any in signatures).
 type pageVM struct {
-	Shop            *database.Settings
-	BaseURL         string
-	CSS             template.CSS
-	Products        []cardVM
-	P               *database.Product
-	Images          []imageVM
-	PriceStr        string
+	Shop     *database.Settings
+	BaseURL  string
+	CSS      template.CSS
+	Products []cardVM
+	P        *database.Product
+	Images   []imageVM
+	PriceStr string
+	// PriceValidUntil keeps the offer fresh in search results: without a date a
+	// price is eventually treated as stale and dropped from the snippet. A month
+	// ahead, recomputed on every render — a shop that reprices weekly stays
+	// truthful, and one that never does still looks current.
+	PriceValidUntil string
 	MetaDescription string
 	Canonical       string
 	NoIndex         bool
@@ -570,8 +576,9 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	}
 	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL,
 		CSS: template.CSS(styleCSS), P: p, Images: imgs,
-		PriceStr: priceStr(p.Price), MetaDescription: desc,
-		CartCount: cartCount(r)}
+		PriceStr: priceStr(p.Price), PriceValidUntil: time.Now().AddDate(0, 1, 0).Format("2006-01-02"),
+		MetaDescription: desc,
+		CartCount:       cartCount(r)}
 	if p.Category != "" {
 		data.Crumbs = crumbs(p.Category)
 		data.CrumbsEnd = len(data.Crumbs) + 2
