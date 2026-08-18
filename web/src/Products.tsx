@@ -213,7 +213,6 @@ export default function Products() {
   // to sit on the Import tab, a tab away from anything they change.
   const [rate, setRate] = useState("1");
   const [rules, setRules] = useState<PriceRule[]>([]);
-  const [bandsOpen, setBandsOpen] = useState(false);
   const [priceMsg, setPriceMsg] = useState("");
   const [priceRub, setPriceRub] = useState("0");
   // null = the stock field was never touched. Sending it means re-declaring the
@@ -382,7 +381,6 @@ export default function Products() {
     api.priceRules().then((r) => {
       setRate(String(r.coefficient || 1));
       setRules(r.rules);
-      setBandsOpen(r.rules.length > 1);
     });
   }, []);
 
@@ -406,6 +404,10 @@ export default function Products() {
   const recompute = async () => {
     setPriceMsg("");
     try {
+      // The server recomputes from the *stored* ladder, so what is on the
+      // screen is saved first — otherwise the button reprices the catalogue
+      // by numbers the owner just replaced and reports success.
+      await api.setPriceRules(rules);
       const r = await api.recomputePrices(Number(rate.replace(",", ".")) || 1);
       setPriceMsg(t("recomputed", { n: r.updated }));
       await reload();
@@ -421,10 +423,7 @@ export default function Products() {
       {/* Folded away: pricing is set once and then left alone, while the table
           below is the daily work. Open, it answers the one question the numbers
           in the price column raise — where they came from. */}
-      <details
-        className="card mb-5"
-        onToggle={(e) => setBandsOpen(e.currentTarget.open && rules.length > 1)}
-      >
+      <details className="card mb-5">
         <summary className="cursor-pointer font-bold">{t("pricing")}</summary>
         <p className="hint mt-2">{t("pricingHint")}</p>
 
@@ -476,25 +475,27 @@ export default function Products() {
           </p>
         ) : null}
 
-        <div className="mt-4">
-          <button
-            className="text-brand cursor-pointer text-sm underline"
-            onClick={() => {
-              const open = !bandsOpen;
-              setBandsOpen(open);
-              if (open && rules.length < 2) {
+        {/* The editor follows the data, not a toggle of its own: bands on
+            screen mean bands in the ladder, and deleting down to one row
+            brings the plain percent field back. A hidden multi-band ladder
+            would still be saved and still price the catalogue. */}
+        {rules.length <= 1 && (
+          <div className="mt-4">
+            <button
+              className="text-brand cursor-pointer text-sm underline"
+              onClick={() =>
                 setRules([
                   { up_to: 5000, multiplier: 1.5 },
                   ...(rules.length ? rules : [{ up_to: 0, multiplier: 1.3 }]),
-                ]);
+                ])
               }
-            }}
-          >
-            {t("bandsToggle")}
-          </button>
-        </div>
+            >
+              {t("bandsToggle")}
+            </button>
+          </div>
+        )}
 
-        {bandsOpen && (
+        {rules.length > 1 && (
           <div className="border-line mt-3 flex flex-col gap-2 border-t pt-3">
             <p className="hint max-w-2xl">{t("bandsHint")}</p>
             {rules.map((rule, i) => (

@@ -2,6 +2,51 @@ package database
 
 import "testing"
 
+// ShelfPrice and RecomputePrices are one formula in two languages, and the day
+// they round differently an import "Check" reports half the catalogue as
+// changed prices that never moved. The rate here lands many costs on exact
+// half-kopecks, where a rounding done per step and one done at the end part
+// ways.
+func TestShelfPriceMatchesRecompute(t *testing.T) {
+	d, err := OpenInMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = d.Close() }()
+	if err := d.CreateSettings(&Settings{OwnerEmail: "a@b.c", PasswordHash: "h"}); err != nil {
+		t.Fatal(err)
+	}
+
+	sources := []int64{1, 99, 5925, 7655, 46800, 132618, 139394, 212405, 390076}
+	var products []*Product
+	for _, s := range sources {
+		p := &Product{Title: "t", SourcePrice: s, Price: 1}
+		if err := d.CreateProduct(p); err != nil {
+			t.Fatal(err)
+		}
+		products = append(products, p)
+	}
+
+	const rate = 0.035869
+	for _, rules := range [][]PriceRule{
+		nil,
+		{{UpTo: 0, Multiplier: 1.3}},
+		{{UpTo: 5000, Multiplier: 1.5}, {UpTo: 0, Multiplier: 1.3}},
+	} {
+		if _, err := d.RecomputePrices(rate, rules); err != nil {
+			t.Fatal(err)
+		}
+		for i, p := range products {
+			got, _ := d.GetProduct(p.ID)
+			want := ShelfPrice(rules, sources[i], rate)
+			if got.Price != want {
+				t.Errorf("rules %v source %d: sql %d, go %d",
+					rules, sources[i], got.Price, want)
+			}
+		}
+	}
+}
+
 // Recalculation must start from the source price, not the current one:
 // otherwise batches brought in at different rates drift apart, and rounding
 // accumulates.
