@@ -1003,14 +1003,17 @@ func TestRequisites(t *testing.T) {
 	}
 }
 
-// A product without photos left a hole half a page tall next to the price. The
-// stub is served as a file, so a catalogue of sixty cards costs one request.
+// Every picture sits in a frame that carries the shop's "no photo" mark behind
+// it. A product without photos gets the mark instead of a hole half a page tall;
+// a product whose supplier stopped serving a link gets it too, without anything
+// being deleted — the link may work again tomorrow. The stub is served as a file,
+// so a catalogue of sixty cards costs one request for all of them.
 func TestNoPhotoPlaceholder(t *testing.T) {
 	d, h := setup(t)
 
 	for _, path := range []string{"/", "/p/krasnyj-chajnik"} {
-		if !strings.Contains(get(t, h, path), `src="/nophoto.svg"`) {
-			t.Errorf("%s: no placeholder for a product without photos", path)
+		if !strings.Contains(get(t, h, path), `class="frame`) {
+			t.Errorf("%s: no frame to carry the placeholder", path)
 		}
 	}
 
@@ -1028,8 +1031,10 @@ func TestNoPhotoPlaceholder(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"/", "/p/krasnyj-chajnik"} {
-		if strings.Contains(get(t, h, path), "/nophoto.svg") {
-			t.Errorf("%s: placeholder shown next to a real photo", path)
+		body := get(t, h, path)
+		if !strings.Contains(body, "https://cdn.example/x.jpg") ||
+			!strings.Contains(body, `class="frame`) {
+			t.Errorf("%s: a real photo must render inside the frame", path)
 		}
 	}
 }

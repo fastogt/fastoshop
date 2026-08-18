@@ -9,7 +9,6 @@ const kText = {
   products: { ru: "Товары", en: "Products" },
   photos: { ru: "Фото", en: "Photos" },
   thumbs: { ru: "Миниатюры", en: "Thumbnails" },
-  check: { ru: "Проверяем ссылки на фото", en: "Checking photo links" },
   stop: { ru: "Остановить", en: "Stop" },
   stopping: { ru: "Останавливаем…", en: "Stopping…" },
   waiting: { ru: "ждёт", en: "waiting" },

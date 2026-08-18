@@ -68,14 +68,15 @@ func TestLocalizeImages(t *testing.T) {
 		t.Fatalf("remote images: %v %+v", err, imgs)
 	}
 
-	ok, gone, failed := LocalizeImages(context.Background(), d, uploads, imgs, nil)
-	if ok != 1 || gone != 1 || failed != 2 {
-		t.Fatalf("ok=%d gone=%d failed=%d", ok, gone, failed)
+	ok, failed := LocalizeImages(context.Background(), d, uploads, imgs, nil)
+	if ok != 1 || failed != 3 {
+		t.Fatalf("ok=%d failed=%d", ok, failed)
 	}
 
 	got, _ := d.ListImages(id)
-	// The 404 lost its row; the temporary failures kept theirs.
-	if len(got) != 3 {
+	// Nothing is deleted: a 404 today is a working link tomorrow, and a photo
+	// that does not load shows the catalogue's own "no photo" mark anyway.
+	if len(got) != 4 {
 		t.Fatalf("images: %+v", got)
 	}
 	// Position order survives: the first photo is the card in search results.
@@ -89,11 +90,6 @@ func TestLocalizeImages(t *testing.T) {
 	// hotlinked picture beats no picture, and both come back.
 	if !strings.HasPrefix(got[1].Path, "http") || !strings.HasPrefix(got[2].Path, "http") {
 		t.Fatalf("failed downloads must stay links: %+v", got[1:])
-	}
-	for _, im := range got {
-		if strings.HasSuffix(im.Path, "/gone.jpg") {
-			t.Fatalf("a photo the supplier deleted must lose its row: %+v", got)
-		}
 	}
 	// An error page served as .jpg must not land on disk at all.
 	files, _ := os.ReadDir(uploads)
@@ -122,7 +118,7 @@ func TestLocalizeImagesStop(t *testing.T) {
 	imgs, _ := d.ListRemoteImages(database.Selection{All: true, Supplier: "Ромашка"})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	ok, _, failed := LocalizeImages(ctx, d, t.TempDir(), imgs, func(done int, _ []int64) {
+	ok, failed := LocalizeImages(ctx, d, t.TempDir(), imgs, func(done int, _ []int64) {
 		if done >= 10 {
 			cancel()
 		}

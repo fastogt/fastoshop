@@ -1,3 +1,8 @@
+1.20.0 / August 18, 2026
+[Alexandr Topilski]
+- A photo that fails to load now shows the shop's own "no photo" mark instead of the product's title sprawled across the tile — in the catalogue, on the product page and in the admin's list alike. The frame around every picture carries the mark, and a picture that loads covers it; the storefront does this without a line of JavaScript, which it still does not have
+- Nothing is deleted over a photo any more. A supplier's link that answers 404 today can answer perfectly tomorrow — their server comes back, and the shop shows the picture again by itself, with no row to restore. Yesterday's rule that dropped such rows, and the separate link-checking pass added hours ago, are both gone: the display was the problem, and the display is where it is solved
+
 1.19.0 / August 18, 2026
 [Alexandr Topilski]
 - "Check the photos": a pass that asks the supplier which of the hotlinked pictures are still there and drops the ones that are gone, downloading nothing. "Fill in photos" already did this, but on its way to copying every picture onto your disk — and a shop that has not agreed with its supplier about their materials still cannot afford a dead link, which the catalogue renders as the product title sprawled where the photo belongs. Measured on a live catalogue of 69 905 supplier links, about one in twenty five is dead

@@ -35,23 +35,10 @@ const kText = {
   },
   hiddenBadge: { ru: "скрыт", en: "hidden" },
   bulkFill: { ru: "Заполнить", en: "Fill in" },
-  bulkCheck: { ru: "Проверить фото", en: "Check the photos" },
-  checkPhotos: {
-    ru: "Проверить ссылки на фотографии",
-    en: "Check the photo links",
-  },
-  checkPhotosHint: {
-    ru: "Спросим у поставщика, на месте ли каждая фотография, и уберём те, которых больше нет: витрина покажет вместо них заглушку «нет фото». Ничего не скачиваем — фотографии остаются на его сервере.",
-    en: 'We ask the supplier whether each photo is still there and drop the ones that are gone, so the storefront shows its own "no photo" mark instead. Nothing is downloaded — the pictures stay on their server.',
-  },
-  checkStarted: {
-    ru: "Проверяем {n} ссылок. Прогресс — в полосе сверху.",
-    en: "Checking {n} links. Progress is in the bar above.",
-  },
   fillPhotos: { ru: "Забрать фото к себе", en: "Bring the photos in" },
   fillPhotosHint: {
-    ru: "Фото импортированных товаров лежат ссылками на сервер поставщика: закроет доступ — витрина останется без картинок. Скачаем их к себе и сделаем уменьшенные копии для плитки каталога — без них страница тянет полноразмерные снимки. Каталог на 24 тысячи товаров — это несколько гигабайт на диске и десятки минут работы; что не скачается, останется ссылкой.",
-    en: "Photos of imported products are links to the supplier's server: the day they close it, the storefront loses its pictures. This brings them onto our own disk and makes the small copies the catalogue grid needs — without them a page pulls full-size photos. A catalogue of 24 thousand products means several gigabytes and tens of minutes; anything that fails stays a link.",
+    ru: "Скачаем фотографии с сервера поставщика на наш и уменьшим их для каталога. Это займёт время и место на диске, зато магазин перестанет зависеть от чужого сервера.",
+    en: "We download the photos from the supplier's server to ours and shrink them for the catalogue. It takes time and disk space, but the shop stops depending on somebody else's server.",
   },
   fillNothing: {
     ru: "Нечего скачивать: у выбранных товаров фото уже свои",
@@ -59,8 +46,8 @@ const kText = {
   },
   fillStarted: { ru: "Качаем фото: {n}", en: "Downloading photos: {n}" },
   fillDone: {
-    ru: "Готово. Скачано: {ok}, удалено пропавших: {dropped}, осталось ссылками: {failed}",
-    en: "Done. Downloaded: {ok}, gone and removed: {dropped}, still links: {failed}",
+    ru: "Готово. Скачано: {ok}, осталось ссылками: {failed}",
+    en: "Done. Downloaded: {ok}, still links: {failed}",
   },
   allSuppliers: { ru: "Все поставщики", en: "All suppliers" },
   ownGoods: { ru: "Без поставщика", en: "No supplier" },
@@ -245,23 +232,14 @@ export default function Products() {
       setBulkMsg(
         t("fillDone", {
           ok: jobResult.current.ok,
-          dropped: jobResult.current.dropped,
           failed: jobResult.current.failed,
         }),
       );
     }
   });
-  const jobResult = useRef<{
-    ok: number;
-    dropped: number;
-    failed: number;
-  } | null>(null);
+  const jobResult = useRef<{ ok: number; failed: number } | null>(null);
   if (job && !job.running && job.result) {
-    jobResult.current = {
-      ok: job.result.imported,
-      dropped: job.result.dropped,
-      failed: job.result.errors,
-    };
+    jobResult.current = { ok: job.result.imported, failed: job.result.errors };
   }
   const inFlight = new Set(job?.running ? (job.in_flight ?? []) : []);
 
@@ -285,25 +263,6 @@ export default function Products() {
       });
       setBulkMsg(
         r.started ? t("fillStarted", { n: r.total }) : t("fillNothing"),
-      );
-    } catch {
-      setBulkMsg(t("bulkFailed"));
-    }
-  };
-
-  const runCheck = async (sel: Selection) => {
-    if (!window.confirm(`${t("checkPhotos")}\n\n${t("checkPhotosHint")}`))
-      return;
-    setBulkMsg("");
-    try {
-      const r = await api.bulkCheckPhotos({
-        ids: sel.ids,
-        all: sel.all,
-        q: query,
-        supplier: supplier ?? null,
-      });
-      setBulkMsg(
-        r.started ? t("checkStarted", { n: r.total }) : t("fillNothing"),
       );
     } catch {
       setBulkMsg(t("bulkFailed"));
@@ -605,6 +564,13 @@ export default function Products() {
                     <img
                       src={imageURL(p.images[0].path)}
                       alt=""
+                      // A supplier's link can stop answering and start again a
+                      // day later, so nothing is deleted over it: the row shows
+                      // the shop's own mark until the picture is back.
+                      onError={(e) => {
+                        e.currentTarget.src = "/nophoto.svg";
+                        e.currentTarget.classList.add("opacity-60");
+                      }}
                       className="h-10 w-10 rounded object-cover"
                     />
                   ) : (
@@ -714,11 +680,6 @@ export default function Products() {
             label: t("bulkFill"),
             icon: <IconDownload />,
             onClick: (sel) => void runFill(sel),
-          },
-          {
-            label: t("bulkCheck"),
-            icon: <IconDownload />,
-            onClick: (sel) => void runCheck(sel),
           },
           {
             label: t("bulkDelete"),

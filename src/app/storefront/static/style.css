@@ -142,8 +142,26 @@ main > h1 { margin-block: 28px 20px; }
 /* Fit, do not crop. A marketplace photo is a finished layout: the volume, the
    piece count and "gift wrapped" are printed on the image itself, and a square
    crop cut off exactly those lines. White padding, not the brand beige: the
-   margins must continue the photo's own background. */
-.grid img { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--surface); }
+   margins must continue the photo's own background.
+
+   The frame carries the "no photo" mark under the picture, and the picture is
+   transparent-text: a supplier's link that answers 404 today may answer 200
+   tomorrow, so nothing is deleted anywhere — the frame simply shows through
+   whatever failed to load, instead of the alt text sprawling across the tile.
+   object-fit: contain always covers the centre, so a photo that did load hides
+   the mark completely. Not a line of JavaScript, which the storefront does not
+   have. */
+.frame {
+  background: var(--surface) url(/nophoto.svg) center / 45% no-repeat;
+  aspect-ratio: 1;
+}
+.grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  color: transparent;
+  font-size: 0;
+}
 .grid .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 /* Titles arrive verbatim from the supplier's price list, sizes and fabric
    composition included: without a cap the tile turns into a wall of text and the
@@ -215,18 +233,24 @@ main > h1 { margin-block: 28px 20px; }
   scrollbar-width: none;
 }
 .slides::-webkit-scrollbar { display: none; }
-.slides img {
+.slides .slide {
   flex: 0 0 100%;
   scroll-snap-align: center;
   /* Height is capped: supplier photos can be vertical, and without a ceiling one
-     picture filled the whole screen and pushed the price below the fold. */
+     picture filled the whole screen and pushed the price below the fold. The
+     frame, not the picture, owns that height now — an image that fails to load
+     must leave a slide of the same size behind, showing the shop's mark. */
   height: min(58vh, 520px);
-  object-fit: contain;
+  aspect-ratio: auto;
   border-radius: var(--radius);
   border: 1px solid var(--line);
-  /* White, not the brand beige: the container is wider than a square photo, and
-     the side margins must continue the photo's white background, not frame it. */
-  background: var(--surface);
+}
+.slides img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  color: transparent;
+  font-size: 0;
 }
 
 /* The "no photo" placeholder is drawn entirely in SVG, so it must not be

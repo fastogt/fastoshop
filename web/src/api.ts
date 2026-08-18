@@ -268,9 +268,6 @@ export interface ImportResult {
   updated: number;
   skipped: number;
   zeroed: number;
-  // Photos whose source the supplier removed: the link was deleted, so the
-  // storefront shows its own placeholder instead of a broken picture.
-  dropped: number;
   conflicts: number;
   no_sku: number;
   duplicates: number;
@@ -471,10 +468,6 @@ export const api = {
       .then(data<{ updated: number }>),
   bulkSupplier: (body: Record<string, unknown>) =>
     http.post("/products/bulk/supplier", body).then(data<{ updated: number }>),
-  bulkCheckPhotos: (body: Record<string, unknown>) =>
-    http
-      .post("/products/bulk/check-photos", body)
-      .then(data<{ started: boolean; total: number }>),
   bulkFill: (body: Record<string, unknown>) =>
     http
       .post("/products/bulk/fill", body)
