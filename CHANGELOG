@@ -1,6 +1,7 @@
 1.20.1 / August 18, 2026
 [Alexandr Topilski]
 - The browser's own "broken image" glyph no longer shows in the corner of a tile whose photo did not load: the shop's mark now stands there alone
+- The thumbnails under a product's gallery carry the mark too. A strip of blank white squares told the owner nothing about which of the twelve photos is the missing one
 
 1.20.0 / August 18, 2026
 [Alexandr Topilski]

@@ -264,8 +264,24 @@ main > h1 { margin-block: 28px 20px; }
 .nophoto { object-fit: contain !important; background: var(--surface); }
 
 .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
-.thumbs a { display: block; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
-.thumbs img { display: block; width: 64px; height: 64px; object-fit: cover; background: var(--surface); }
+/* The thumbnail carries the mark the same way the big frame does: a strip of
+   white squares says nothing about which photo is missing. */
+.thumbs a {
+  display: block;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface) url(/nophoto.svg) center / 70% no-repeat;
+}
+.thumbs img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  color: transparent;
+  font-size: 0;
+  text-indent: -100vw;
+}
 .thumbs a:hover { border-color: var(--accent); }
 
 .buybox {
