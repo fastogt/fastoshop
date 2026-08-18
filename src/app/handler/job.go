@@ -16,6 +16,7 @@ import (
 const (
 	kJobImport = "import"
 	kJobFill   = "fill"
+	kJobCheck  = "check"
 )
 
 // Fill job stages: the download and its second half — a downloaded photo
@@ -24,6 +25,9 @@ const (
 const (
 	kStagePhotos = "photos"
 	kStageThumbs = "thumbs"
+	// The link check is its own stage: it asks the supplier whether a photo is
+	// still there and downloads nothing.
+	kStageCheck = "check"
 )
 
 // jobStage is one step of a job. A list, not a single stage, because a fill can

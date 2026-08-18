@@ -35,6 +35,19 @@ const kText = {
   },
   hiddenBadge: { ru: "скрыт", en: "hidden" },
   bulkFill: { ru: "Заполнить", en: "Fill in" },
+  bulkCheck: { ru: "Проверить фото", en: "Check the photos" },
+  checkPhotos: {
+    ru: "Проверить ссылки на фотографии",
+    en: "Check the photo links",
+  },
+  checkPhotosHint: {
+    ru: "Спросим у поставщика, на месте ли каждая фотография, и уберём те, которых больше нет: витрина покажет вместо них заглушку «нет фото». Ничего не скачиваем — фотографии остаются на его сервере.",
+    en: 'We ask the supplier whether each photo is still there and drop the ones that are gone, so the storefront shows its own "no photo" mark instead. Nothing is downloaded — the pictures stay on their server.',
+  },
+  checkStarted: {
+    ru: "Проверяем {n} ссылок. Прогресс — в полосе сверху.",
+    en: "Checking {n} links. Progress is in the bar above.",
+  },
   fillPhotos: { ru: "Забрать фото к себе", en: "Bring the photos in" },
   fillPhotosHint: {
     ru: "Фото импортированных товаров лежат ссылками на сервер поставщика: закроет доступ — витрина останется без картинок. Скачаем их к себе и сделаем уменьшенные копии для плитки каталога — без них страница тянет полноразмерные снимки. Каталог на 24 тысячи товаров — это несколько гигабайт на диске и десятки минут работы; что не скачается, останется ссылкой.",
@@ -272,6 +285,25 @@ export default function Products() {
       });
       setBulkMsg(
         r.started ? t("fillStarted", { n: r.total }) : t("fillNothing"),
+      );
+    } catch {
+      setBulkMsg(t("bulkFailed"));
+    }
+  };
+
+  const runCheck = async (sel: Selection) => {
+    if (!window.confirm(`${t("checkPhotos")}\n\n${t("checkPhotosHint")}`))
+      return;
+    setBulkMsg("");
+    try {
+      const r = await api.bulkCheckPhotos({
+        ids: sel.ids,
+        all: sel.all,
+        q: query,
+        supplier: supplier ?? null,
+      });
+      setBulkMsg(
+        r.started ? t("checkStarted", { n: r.total }) : t("fillNothing"),
       );
     } catch {
       setBulkMsg(t("bulkFailed"));
@@ -682,6 +714,11 @@ export default function Products() {
             label: t("bulkFill"),
             icon: <IconDownload />,
             onClick: (sel) => void runFill(sel),
+          },
+          {
+            label: t("bulkCheck"),
+            icon: <IconDownload />,
+            onClick: (sel) => void runCheck(sel),
           },
           {
             label: t("bulkDelete"),

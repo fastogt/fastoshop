@@ -201,3 +201,43 @@ func (h *Handler) BulkDelete(w http.ResponseWriter, r *http.Request) {
 	h.stockChanged()
 	writeOK(w, bulkResponse{Updated: n})
 }
+
+// BulkCheckPhotos asks the supplier which hotlinked photos are still there and
+// drops the rows for those that are gone. "Fill in photos" does this too, but on
+// its way to copying every picture onto our disk — and a catalogue that must
+// stay hotlinked still cannot afford a dead link, which the storefront renders
+// as the product title sprawled where the picture belongs.
+//
+//nolint:contextcheck // the job outlives the request, like the other bulk jobs
+func (h *Handler) BulkCheckPhotos(w http.ResponseWriter, r *http.Request) {
+	req, ok := decodeBulk(w, r)
+	if !ok {
+		return
+	}
+	if h.job.busy() {
+		writeBadRequest(w, h.msg(i18n.KeyJobBusy))
+		return
+	}
+	imgs, err := h.db.ListRemoteImages(h.selection(req))
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	if len(imgs) == 0 {
+		writeOK(w, startedResponse{})
+		return
+	}
+	ctx, ok := h.job.start(kJobCheck, []jobStage{{Task: kStageCheck, Total: len(imgs)}})
+	if !ok {
+		writeBadRequest(w, h.msg(i18n.KeyJobBusy))
+		return
+	}
+	go func() {
+		alive, gone, failed := importer.CheckImages(ctx, h.db, imgs, func(done int) {
+			h.job.progress(kStageCheck, done, len(imgs), nil)
+		})
+		log.Infof("check photos: %d alive, %d gone, %d unanswered", alive, gone, failed)
+		h.job.finish(&importer.Result{Imported: alive, Dropped: gone, Errors: failed}, nil)
+	}()
+	writeOK(w, startedResponse{Started: true, Total: len(imgs)})
+}

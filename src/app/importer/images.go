@@ -29,6 +29,25 @@ const kMaxImageBytes = 10 << 20
 // back to its own "no photo" placeholder.
 var ErrImageGone = errors.New("image gone")
 
+// imageStatusError reads a status the way both the download and the link check
+// must read it.
+//
+// 404 and 410 only: those two say the supplier removed the file, and the link
+// will never work again. A 403 is hotlink protection, a 429 is our own eight
+// workers, a 5xx is their bad hour — all of them come back, and a body served as
+// HTML under a 200 is caught by the content sniff rather than treated as a
+// death. Widening this list would erase live photos during somebody else's
+// outage, and there is no copy to restore them from.
+func imageStatusError(code int) error {
+	switch code {
+	case http.StatusOK:
+		return nil
+	case http.StatusNotFound, http.StatusGone:
+		return fmt.Errorf("http %d: %w", code, ErrImageGone)
+	}
+	return fmt.Errorf("http %d", code)
+}
+
 // ponytail: eight at a time is what turns 60 000 photos from a day into an
 // hour without looking like a crawl to the supplier. Make it a setting when
 // someone's host starts refusing us.
@@ -96,17 +115,8 @@ func fetchImage(im database.ProductImage, uploadsDir string) (string, error) {
 		return "", err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		// 404 and 410 only: those two say the supplier removed the file, and the
-		// link will never work again. A 403 is hotlink protection, a 429 is our
-		// own eight workers, a 5xx is their bad hour — all of them come back, and
-		// a body served as HTML under a 200 is caught below as a bad type rather
-		// than as a death. Widening this list would erase live photos during
-		// somebody else's outage, and there is no copy to restore them from.
-		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
-			return "", fmt.Errorf("http %d: %w", resp.StatusCode, ErrImageGone)
-		}
-		return "", fmt.Errorf("http %d", resp.StatusCode)
+	if err := imageStatusError(resp.StatusCode); err != nil {
+		return "", err
 	}
 	// One byte over the cap is enough to tell "too big" from "exactly at the cap".
 	data, err := io.ReadAll(io.LimitReader(resp.Body, kMaxImageBytes+1))

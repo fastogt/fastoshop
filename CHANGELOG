@@ -1,3 +1,8 @@
+1.19.0 / August 18, 2026
+[Alexandr Topilski]
+- "Check the photos": a pass that asks the supplier which of the hotlinked pictures are still there and drops the ones that are gone, downloading nothing. "Fill in photos" already did this, but on its way to copying every picture onto your disk — and a shop that has not agreed with its supplier about their materials still cannot afford a dead link, which the catalogue renders as the product title sprawled where the photo belongs. Measured on a live catalogue of 69 905 supplier links, about one in twenty five is dead
+- What counts as gone is decided in one place for both passes, so the download and the check can never disagree about which photo is a corpse
+
 1.18.0 / August 18, 2026
 [Alexandr Topilski]
 - An order opens as a card: article, product, unit price, quantity and line sum for every line, the buyer's comment in full, and their phone and email as links to call and write from. Until now the whole order was one joined line of titles, and the article and unit price — both kept in the order's own snapshot — never reached the screen
