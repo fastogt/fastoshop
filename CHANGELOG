@@ -1,3 +1,14 @@
+1.16.0 / August 18, 2026
+[Alexandr Topilski]
+- The Wildberries markup ladder got its "Remove" button back. Ozon has had one since the tab was written, and without it a band typed by mistake could only be undone by reloading the page
+- Dialogs are the browser's own now: Escape closes them, focus stays inside while they are open, and a screen reader announces them as dialogs. The admin's dialogs had none of that
+- Signing in and the first-run setup are real forms: the browser offers the saved password, Enter submits, and the email field is an email field on a phone keyboard
+- Confirming "Fill in photos" is one question instead of a dialog holding a single checkbox
+- Uploading a price list no longer walks the file byte by byte in the browser; a 143 MB spreadsheet is handed over by the platform instead
+- Disk and database sizes in the admin are formatted by the browser's own locale rules, so they read as they do everywhere else in the system
+- The shop's language is resolved in one place instead of three copies that had already begun to disagree
+- A token row lost a column nothing read: a one-time link is spent by deleting it, which is what made it one-time all along. Existing databases keep the column and are unaffected
+
 1.15.1 / August 17, 2026
 [Alexandr Topilski]
 - The feed gives the category tree as a tree: an element per segment tied by parentId, instead of one flat element named after the whole path. Yandex was reading a shop one level deep, and a catalogue copied between two instances of the shop landed beside the tree rather than inside it, as five new sections with the separator rewritten as a dash
