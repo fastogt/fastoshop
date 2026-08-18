@@ -51,7 +51,7 @@ func TestOrdersAndSettings(t *testing.T) {
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/orders.csv", nil))
 	csv := w.Body.String()
-	if !strings.HasPrefix(csv, "id,date,name,phone,email,items,total,status") ||
+	if !strings.HasPrefix(csv, "id,date,name,phone,email,comment,items,total,status") ||
 		!strings.Contains(csv, "Иван") {
 		t.Fatalf("csv: %s", csv)
 	}
@@ -100,11 +100,11 @@ func TestExportOrdersCSVSafety(t *testing.T) {
 	if !strings.HasPrefix(row[2], "'=") {
 		t.Fatalf("formula injection not neutralised: %q", row[2])
 	}
-	if row[5] != "ПАРСИНГ НЕ УДАЛСЯ" {
-		t.Fatalf("broken items must be flagged: %q", row[5])
+	if row[6] != "ПАРСИНГ НЕ УДАЛСЯ" {
+		t.Fatalf("broken items must be flagged: %q", row[6])
 	}
-	if row[6] != "" {
-		t.Fatalf("total must be blank, not a fake number: %q", row[6])
+	if row[7] != "" {
+		t.Fatalf("total must be blank, not a fake number: %q", row[7])
 	}
 }
 
@@ -139,5 +139,26 @@ func TestBulkDeleteOrders(t *testing.T) {
 		strings.NewReader(`{"ids":[]}`)))
 	if w.Code == http.StatusOK {
 		t.Error("an empty selection must not be accepted")
+	}
+}
+
+// The admin gets the snapshot already read: the browser must not receive the raw
+// blob and parse money out of it on its own.
+func TestListOrdersParsesSnapshot(t *testing.T) {
+	h := newTestHandler(t)
+	if err := h.db.CreateOrder(&database.Order{Name: "Светлана", Phone: "+375",
+		ItemsJSON: `[{"sku":"109227","title":"Сито","price":750,"qty":2}]`}); err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	h.ListOrders(w, httptest.NewRequest("GET", "/api/orders", nil))
+	body := w.Body.String()
+	for _, want := range []string{`"sku":"109227"`, `"price":750`, `"qty":2`, `"total":1500`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %s in %s", want, body)
+		}
+	}
+	if strings.Contains(body, "items_json") {
+		t.Fatalf("the raw snapshot must stay on the server: %s", body)
 	}
 }

@@ -11,9 +11,11 @@ type Order struct {
 	Phone string `json:"phone"`
 	// Email is the second way to reach the buyer; at least one of the two is
 	// always filled.
-	Email     string    `json:"email"`
-	Comment   string    `json:"comment"`
-	ItemsJSON string    `json:"items_json"`
+	Email   string `json:"email"`
+	Comment string `json:"comment"`
+	// The snapshot stays on the server: the admin receives it parsed, and the
+	// only reader of the raw text is the code that writes it.
+	ItemsJSON string    `json:"-"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 }

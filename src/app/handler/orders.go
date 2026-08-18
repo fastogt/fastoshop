@@ -12,11 +12,24 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
+// orderResponse carries the snapshot already parsed. The raw items_json stays in
+// the database and out of the wire: it is a legal record, not a payload, and
+// having the browser and the CSV each parse it their own way is how two numbers
+// for one order appear.
+type orderResponse struct {
+	database.Order
+	Items []orderItem `json:"items"`
+	Total int64       `json:"total"`
+	// Broken tells the admin the snapshot could not be read, so it shows the row
+	// as needing a human instead of quietly printing a zero.
+	Broken bool `json:"broken"`
+}
+
 type listOrdersResponse struct {
-	Orders []database.Order `json:"orders"`
-	Total  int              `json:"total"`
-	Page   int              `json:"page"`
-	Pages  int              `json:"pages"`
+	Orders []orderResponse `json:"orders"`
+	Total  int             `json:"total"`
+	Page   int             `json:"page"`
+	Pages  int             `json:"pages"`
 }
 
 const (
@@ -33,6 +46,19 @@ type orderItem struct {
 	Title string `json:"title"`
 	Price int64  `json:"price"`
 	Qty   int    `json:"qty"`
+}
+
+// orderLines reads the snapshot an order was placed with. One reader for the
+// screen and the accountant's CSV alike: two copies of this arithmetic would
+// disagree the day one of them is fixed.
+func orderLines(o database.Order) (items []orderItem, total int64, ok bool) {
+	if err := json.Unmarshal([]byte(o.ItemsJSON), &items); err != nil {
+		return nil, 0, false
+	}
+	for _, it := range items {
+		total += it.Price * int64(it.Qty)
+	}
+	return items, total, true
 }
 
 // ListOrders is paginated: a shop that sells keeps every order forever, and
@@ -64,10 +90,12 @@ func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	if list == nil {
-		list = []database.Order{}
+	orders := make([]orderResponse, 0, len(list))
+	for _, o := range list {
+		items, sum, ok := orderLines(o)
+		orders = append(orders, orderResponse{Order: o, Items: items, Total: sum, Broken: !ok})
 	}
-	writeOK(w, listOrdersResponse{Orders: list, Total: total, Page: page, Pages: pages})
+	writeOK(w, listOrdersResponse{Orders: orders, Total: total, Page: page, Pages: pages})
 }
 
 func (h *Handler) SetOrderStatus(w http.ResponseWriter, r *http.Request) {
@@ -203,26 +231,26 @@ func (h *Handler) ExportOrdersCSV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="orders.csv"`)
 	cw := csv.NewWriter(w)
-	_ = cw.Write([]string{"id", "date", "name", "phone", "email", "items", "total", "status"})
+	_ = cw.Write([]string{
+		"id", "date", "name", "phone", "email", "comment", "items", "total", "status",
+	})
 	for _, o := range list {
-		var items []orderItem
-		var total int64
+		items, total, ok := orderLines(o)
 		var desc, totalCell string
-		if err := json.Unmarshal([]byte(o.ItemsJSON), &items); err != nil {
+		if !ok {
 			// This is a tax journal: a broken row must not be shown as zero,
 			// or revenue is silently understated. Empty total = "count by hand".
 			desc = h.msg(i18n.KeyCSVParseFailed)
 		} else {
 			for _, it := range items {
-				total += it.Price * int64(it.Qty)
 				desc += fmt.Sprintf("%s x%d; ", it.Title, it.Qty)
 			}
 			totalCell = fmt.Sprintf("%.2f", float64(total)/100)
 		}
 		_ = cw.Write([]string{
 			fmt.Sprintf("%d", o.ID), o.CreatedAt.Format("2006-01-02 15:04"),
-			csvSafe(o.Name), csvSafe(o.Phone), csvSafe(o.Email), csvSafe(desc),
-			totalCell, o.Status,
+			csvSafe(o.Name), csvSafe(o.Phone), csvSafe(o.Email), csvSafe(o.Comment),
+			csvSafe(desc), totalCell, o.Status,
 		})
 	}
 	cw.Flush()

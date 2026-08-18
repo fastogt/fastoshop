@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, apiError, type Order } from "./api";
+import Modal from "./Modal";
 import { useLang, useT } from "./i18n";
 import { toRubles } from "./money";
 import DataTable, { type Sort } from "./DataTable";
@@ -24,6 +25,16 @@ const kText = {
     en: "No orders yet. They show up here as soon as someone checks out in the shop — and by email too, once mail is configured.",
   },
   thNumber: { ru: "#", en: "#" },
+  itemsCount: { ru: "{n} позиции · {q} шт", en: "{n} item(s) · {q} pcs" },
+  broken: { ru: "Состав не читается", en: "Contents unreadable" },
+  cardTitle: { ru: "Заказ №{n}", en: "Order #{n}" },
+  cardSku: { ru: "Артикул", en: "SKU" },
+  cardItem: { ru: "Товар", en: "Product" },
+  cardPrice: { ru: "Цена", en: "Price" },
+  cardQty: { ru: "Кол-во", en: "Qty" },
+  cardSum: { ru: "Сумма", en: "Sum" },
+  cardComment: { ru: "Комментарий покупателя", en: "Buyer's comment" },
+  cardClose: { ru: "Закрыть", en: "Close" },
   thDate: { ru: "Дата", en: "Date" },
   thCustomer: { ru: "Покупатель", en: "Customer" },
   thItems: { ru: "Состав", en: "Items" },
@@ -106,22 +117,7 @@ export default function Orders() {
     }
   };
 
-  const parseItems = (o: Order) => {
-    try {
-      const items = JSON.parse(o.items_json) as {
-        title: string;
-        qty: number;
-        price: number;
-      }[];
-      const sum = items.reduce((acc, i) => acc + i.price * i.qty, 0);
-      return {
-        text: items.map((i) => `${i.title} ×${i.qty}`).join(", "),
-        total: `${toRubles(sum)} ${sign}`,
-      };
-    } catch {
-      return { text: o.items_json, total: "—" };
-    }
-  };
+  const [card, setCard] = useState<Order | null>(null);
 
   return (
     <div className="flex flex-col gap-5">
@@ -159,11 +155,15 @@ export default function Orders() {
             key: "name",
             label: t("thCustomer"),
             sortable: true,
+            width: "220px",
             render: (o) => (
               <>
                 <div className="font-medium">{o.name}</div>
                 {o.phone && (
-                  <a className="text-brand block" href={`tel:${o.phone}`}>
+                  <a
+                    className="text-brand block whitespace-nowrap"
+                    href={`tel:${o.phone}`}
+                  >
                     {o.phone}
                   </a>
                 )}
@@ -172,21 +172,39 @@ export default function Orders() {
                     {o.email}
                   </a>
                 )}
-                {o.comment && <div className="hint mt-1">{o.comment}</div>}
+                {o.comment && (
+                  <div className="hint mt-1 line-clamp-1">💬 {o.comment}</div>
+                )}
               </>
             ),
           },
           {
             key: "items",
             label: t("thItems"),
-            render: (o) => parseItems(o).text,
+            // Two lines at most: a supplier's title runs to two hundred
+            // characters and would otherwise set the height of the whole row.
+            render: (o) =>
+              o.broken ? (
+                <span className="text-red-600">{t("broken")}</span>
+              ) : (
+                <>
+                  <div className="line-clamp-2">{o.items[0]?.title}</div>
+                  <div className="hint">
+                    {t("itemsCount", {
+                      n: o.items.length,
+                      q: o.items.reduce((acc, i) => acc + i.qty, 0),
+                    })}
+                  </div>
+                </>
+              ),
           },
           {
             key: "total",
             label: t("thTotal"),
+            width: "110px",
             render: (o) => (
               <span className="font-semibold whitespace-nowrap">
-                {parseItems(o).total}
+                {o.broken ? "—" : `${toRubles(o.total)} ${sign}`}
               </span>
             ),
           },
@@ -194,6 +212,7 @@ export default function Orders() {
             key: "status",
             label: t("thStatus"),
             sortable: true,
+            width: "150px",
             render: (o) => (
               <select
                 className="field py-1"
@@ -218,6 +237,7 @@ export default function Orders() {
         ]}
         rows={list}
         rowId={(o) => o.id}
+        onRowClick={setCard}
         total={total_}
         page={page}
         pageSize={per}
@@ -267,6 +287,87 @@ export default function Orders() {
       />
 
       {bulkMsg && <p className="text-green-700">{bulkMsg}</p>}
+
+      {/* The card is where the owner works the order before calling: the whole
+          composition with articles and unit prices, and the comment in full. */}
+      {card && (
+        <Modal
+          title={t("cardTitle", { n: card.id })}
+          onClose={() => setCard(null)}
+        >
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-x-6 gap-y-1">
+              <span className="text-muted">
+                {new Date(card.created_at).toLocaleString(lang)}
+              </span>
+              <span className="font-medium">{card.name}</span>
+              {card.phone && (
+                <a
+                  className="text-brand whitespace-nowrap"
+                  href={`tel:${card.phone}`}
+                >
+                  {card.phone}
+                </a>
+              )}
+              {card.email && (
+                <a className="text-brand" href={`mailto:${card.email}`}>
+                  {card.email}
+                </a>
+              )}
+            </div>
+
+            {card.comment && (
+              <div>
+                <div className="label">{t("cardComment")}</div>
+                <p className="whitespace-pre-line">{card.comment}</p>
+              </div>
+            )}
+
+            <table className="w-full text-sm">
+              <thead className="text-muted text-left">
+                <tr>
+                  <th className="py-1 pr-3 font-normal">{t("cardSku")}</th>
+                  <th className="py-1 pr-3 font-normal">{t("cardItem")}</th>
+                  <th className="py-1 pr-3 text-right font-normal">
+                    {t("cardPrice")}
+                  </th>
+                  <th className="py-1 pr-3 text-right font-normal">
+                    {t("cardQty")}
+                  </th>
+                  <th className="py-1 text-right font-normal">
+                    {t("cardSum")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {card.items.map((it, i) => (
+                  <tr key={`${it.sku}-${i}`} className="border-line border-t">
+                    <td className="py-2 pr-3 whitespace-nowrap">{it.sku}</td>
+                    <td className="py-2 pr-3">{it.title}</td>
+                    <td className="py-2 pr-3 text-right whitespace-nowrap">
+                      {toRubles(it.price)} {sign}
+                    </td>
+                    <td className="py-2 pr-3 text-right">{it.qty}</td>
+                    <td className="py-2 text-right whitespace-nowrap">
+                      {toRubles(it.price * it.qty)} {sign}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-line border-t font-semibold">
+                  <td className="py-2" colSpan={4}>
+                    {t("thTotal")}
+                  </td>
+                  <td className="py-2 text-right whitespace-nowrap">
+                    {toRubles(card.total)} {sign}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

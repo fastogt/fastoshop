@@ -178,13 +178,26 @@ export interface ProductsPage {
   pages: number;
 }
 
+// A line of the order as it was placed: the price is the one the buyer saw, not
+// today's.
+export interface OrderItem {
+  sku: string;
+  title: string;
+  price: number;
+  qty: number;
+}
+
 export interface Order {
   id: number;
   name: string;
   phone: string;
   email: string;
   comment: string;
-  items_json: string;
+  items: OrderItem[];
+  total: number;
+  // The stored snapshot could not be read: the row needs a human, and its total
+  // must not be printed as a zero.
+  broken: boolean;
   status: string;
   created_at: string;
 }

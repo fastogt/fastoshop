@@ -1,3 +1,11 @@
+1.18.0 / August 18, 2026
+[Alexandr Topilski]
+- An order opens as a card: article, product, unit price, quantity and line sum for every line, the buyer's comment in full, and their phone and email as links to call and write from. Until now the whole order was one joined line of titles, and the article and unit price — both kept in the order's own snapshot — never reached the screen
+- The order list stopped being set by the longest title in it. One supplier name of two hundred characters made a three-line row and pushed the total half a screen away from the goods it belonged to; a title now takes two lines at most and the rest is in the card
+- A phone number no longer breaks in the middle across two lines, and a buyer's comment is visible in the row instead of only in a tooltip nobody hovers over
+- The order total is counted by the shop, once. The browser and the accountant's CSV each parsed the stored snapshot their own way, which is how two numbers for one order appear; the raw snapshot now stays on the server, where it is the legal record it was meant to be
+- The CSV for the accountant gained the buyer's comment: delivery wishes and a convenient time to call were the one thing the export dropped
+
 1.17.0 / August 18, 2026
 [Alexandr Topilski]
 - The shop keeps a log file and hands it to its owner: Status → Expert mode shows its size, when it last moved, and opens it. Until now everything the background did — a photo that would not download, an order email that never left — went to the machine's journal, which the owner of a hosted shop has no way to read. The path is a config key (log_path), and the file is capped the way our other services cap theirs
