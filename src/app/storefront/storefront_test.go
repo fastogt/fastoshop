@@ -1402,3 +1402,41 @@ func TestCartRowControls(t *testing.T) {
 		t.Error("the cross did not remove the row")
 	}
 }
+
+// A price change must reach a shopper and a crawler without anyone submitting
+// anything: the page is built per request, so it may not be cached. The feed is
+// allowed an hour — the provider re-fetches it on its own schedule.
+func TestPriceIsNeverCached(t *testing.T) {
+	d, h := setup(t)
+	p, err := d.GetVisibleProductBySlug("krasnyj-chajnik")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, path := range []string{"/", "/p/krasnyj-chajnik"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if cc := w.Header().Get("Cache-Control"); cc != "" {
+			t.Errorf("%s must not be cached, got %q", path, cc)
+		}
+	}
+
+	// The same page, one price change later: no purge, no resubmission.
+	p.Price = 999900
+	if err := d.UpdateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+	body := get(t, h, "/p/krasnyj-chajnik")
+	if !strings.Contains(body, "9999.00") {
+		t.Fatal("the page still shows the old price")
+	}
+	// schema.org carries the same number, so the shopper and the search engine
+	// never see two different prices.
+	if strings.Count(body, "9999.00") < 2 {
+		t.Fatal("the markup disagrees with the page")
+	}
+	// And the sitemap says the page moved, which is what brings the crawler back.
+	if !strings.Contains(get(t, h, "/sitemap.xml"), "<lastmod>") {
+		t.Fatal("no lastmod for a changed product")
+	}
+}

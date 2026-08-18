@@ -1,3 +1,10 @@
+1.21.0 / August 18, 2026
+[Alexandr Topilski]
+- An order line shows the goods it sold: a photo, the article, and the title as a link to the product's own page. Checking what somebody actually ordered no longer means searching the catalogue by hand. Both the photo and the link are looked up when the order is opened, never stored — the order's snapshot must not age with the catalogue, and goods deleted since simply stop being a link
+- The order card reads like a card: the buyer under a heading with their phone and email as links, the comment in a block of its own, a line per item with its own sum, and the status right there, so an order can be closed without going back to the list
+- Sizes in the admin read as sizes again: 32.4 MB, 3 GB, 152 KB. The browser's own compact notation turned a disk into "1,2 млрд Б" in Russian — arithmetically true and unreadable. KB, MB and GB are technical marks and stay in Latin in every language, as do CPU, RAM and HDD
+- A changed price needs nothing submitted to a search engine, and now a test says so: the storefront sends no caching headers for a page whose price can move, the markup carries the same number the shopper sees, and the sitemap dates the change so a crawler returns on its own
+
 1.20.2 / August 18, 2026
 [Alexandr Topilski]
 - The browser's own "broken image" glyph is gone for good: a picture that fails to load is covered by its own mask, which a loaded picture never shows. Moving the glyph out of the frame did not work — it is drawn inside the picture's box and ignores colour, font size and indentation alike

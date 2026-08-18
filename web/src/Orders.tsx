@@ -4,6 +4,7 @@ import Modal from "./Modal";
 import { useLang, useT } from "./i18n";
 import { toRubles } from "./money";
 import DataTable, { type Sort } from "./DataTable";
+import { imageURL } from "./shop";
 import { IconCheck, IconTrash, IconUndo, IconX } from "./Icons";
 import { useSign } from "./shop";
 
@@ -34,6 +35,13 @@ const kText = {
   cardQty: { ru: "Кол-во", en: "Qty" },
   cardSum: { ru: "Сумма", en: "Sum" },
   cardComment: { ru: "Комментарий покупателя", en: "Buyer's comment" },
+  cardBuyer: { ru: "Покупатель", en: "Buyer" },
+  cardPlaced: { ru: "Оформлен", en: "Placed" },
+  cardGone: {
+    ru: "товара больше нет в каталоге",
+    en: "no longer in the catalogue",
+  },
+  cardOpen: { ru: "Открыть товар ↗", en: "Open the product ↗" },
   cardClose: { ru: "Закрыть", en: "Close" },
   thDate: { ru: "Дата", en: "Date" },
   thCustomer: { ru: "Покупатель", en: "Customer" },
@@ -295,76 +303,122 @@ export default function Orders() {
           title={t("cardTitle", { n: card.id })}
           onClose={() => setCard(null)}
         >
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-x-6 gap-y-1">
-              <span className="text-muted">
-                {new Date(card.created_at).toLocaleString(lang)}
-              </span>
-              <span className="font-medium">{card.name}</span>
-              {card.phone && (
-                <a
-                  className="text-brand whitespace-nowrap"
-                  href={`tel:${card.phone}`}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="label">{t("cardBuyer")}</div>
+                <div className="font-medium">{card.name}</div>
+                {card.phone && (
+                  <a
+                    className="text-brand block whitespace-nowrap"
+                    href={`tel:${card.phone}`}
+                  >
+                    {card.phone}
+                  </a>
+                )}
+                {card.email && (
+                  <a className="text-brand block" href={`mailto:${card.email}`}>
+                    {card.email}
+                  </a>
+                )}
+              </div>
+              <div className="text-right">
+                <div className="label">{t("cardPlaced")}</div>
+                <div>{new Date(card.created_at).toLocaleString(lang)}</div>
+                <select
+                  className="field mt-2 py-1"
+                  value={card.status}
+                  onChange={(e) => {
+                    const status = e.target.value;
+                    api
+                      .setOrderStatus(card.id, status)
+                      .then(() => setCard({ ...card, status }))
+                      .catch((err) =>
+                        alert(statusError(err, t("statusFailed"))),
+                      )
+                      .finally(reload);
+                  }}
                 >
-                  {card.phone}
-                </a>
-              )}
-              {card.email && (
-                <a className="text-brand" href={`mailto:${card.email}`}>
-                  {card.email}
-                </a>
-              )}
+                  {(
+                    Object.keys(kStatusTitles) as (keyof typeof kStatusTitles)[]
+                  ).map((v) => (
+                    <option key={v} value={v}>
+                      {t(v)}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {card.comment && (
-              <div>
+              <div className="bg-surface rounded p-3">
                 <div className="label">{t("cardComment")}</div>
                 <p className="whitespace-pre-line">{card.comment}</p>
               </div>
             )}
 
-            <table className="w-full text-sm">
-              <thead className="text-muted text-left">
-                <tr>
-                  <th className="py-1 pr-3 font-normal">{t("cardSku")}</th>
-                  <th className="py-1 pr-3 font-normal">{t("cardItem")}</th>
-                  <th className="py-1 pr-3 text-right font-normal">
-                    {t("cardPrice")}
-                  </th>
-                  <th className="py-1 pr-3 text-right font-normal">
-                    {t("cardQty")}
-                  </th>
-                  <th className="py-1 text-right font-normal">
-                    {t("cardSum")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {card.items.map((it, i) => (
-                  <tr key={`${it.sku}-${i}`} className="border-line border-t">
-                    <td className="py-2 pr-3 whitespace-nowrap">{it.sku}</td>
-                    <td className="py-2 pr-3">{it.title}</td>
-                    <td className="py-2 pr-3 text-right whitespace-nowrap">
-                      {toRubles(it.price)} {sign}
-                    </td>
-                    <td className="py-2 pr-3 text-right">{it.qty}</td>
-                    <td className="py-2 text-right whitespace-nowrap">
+            {/* A photo and a link to the page: the fastest way to check what was
+                ordered without leaving the order. Both are looked up when the
+                order is read, so goods deleted since are simply not links. */}
+            <div className="flex flex-col">
+              {card.items.map((it, i) => (
+                <div
+                  key={`${it.sku}-${i}`}
+                  className="border-line flex items-center gap-3 border-t py-3"
+                >
+                  {it.image ? (
+                    <img
+                      src={imageURL(it.image)}
+                      alt=""
+                      onError={(e) => {
+                        e.currentTarget.src = "/nophoto.svg";
+                        e.currentTarget.classList.add("opacity-60");
+                      }}
+                      className="border-line h-12 w-12 shrink-0 rounded border object-cover"
+                    />
+                  ) : (
+                    <img
+                      src="/nophoto.svg"
+                      alt=""
+                      className="border-line h-12 w-12 shrink-0 rounded border object-contain opacity-60"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    {it.slug ? (
+                      <a
+                        className="text-brand font-medium"
+                        href={`/p/${it.slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={t("cardOpen")}
+                      >
+                        {it.title}
+                      </a>
+                    ) : (
+                      <span className="font-medium">{it.title}</span>
+                    )}
+                    <div className="hint">
+                      {t("cardSku")}: {it.sku}
+                      {!it.slug && ` · ${t("cardGone")}`}
+                    </div>
+                  </div>
+                  <div className="text-right whitespace-nowrap">
+                    <div>
+                      {toRubles(it.price)} {sign} × {it.qty}
+                    </div>
+                    <div className="font-semibold">
                       {toRubles(it.price * it.qty)} {sign}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-line border-t font-semibold">
-                  <td className="py-2" colSpan={4}>
-                    {t("thTotal")}
-                  </td>
-                  <td className="py-2 text-right whitespace-nowrap">
-                    {toRubles(card.total)} {sign}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="border-line flex items-center justify-between border-t pt-3 text-lg font-bold">
+                <span>{t("thTotal")}</span>
+                <span className="whitespace-nowrap">
+                  {toRubles(card.total)} {sign}
+                </span>
+              </div>
+            </div>
           </div>
         </Modal>
       )}

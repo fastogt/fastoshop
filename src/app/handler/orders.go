@@ -46,6 +46,11 @@ type orderItem struct {
 	Title string `json:"title"`
 	Price int64  `json:"price"`
 	Qty   int    `json:"qty"`
+	// Slug and Image are looked up now, not stored: the snapshot must not age,
+	// but the owner opening an order wants to see what was bought. Both are
+	// empty for goods that no longer exist.
+	Slug  string `json:"slug"`
+	Image string `json:"image"`
 }
 
 // orderLines reads the snapshot an order was placed with. One reader for the
@@ -91,9 +96,27 @@ func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	orders := make([]orderResponse, 0, len(list))
+	var skus []string
 	for _, o := range list {
 		items, sum, ok := orderLines(o)
+		for _, it := range items {
+			skus = append(skus, it.SKU)
+		}
 		orders = append(orders, orderResponse{Order: o, Items: items, Total: sum, Broken: !ok})
+	}
+	// One query for the whole page: a lookup per line would be fifty round trips
+	// to draw one screen.
+	links, err := h.db.LinksBySKU(skus)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	for i := range orders {
+		for j := range orders[i].Items {
+			link := links[orders[i].Items[j].SKU]
+			orders[i].Items[j].Slug = link.Slug
+			orders[i].Items[j].Image = link.Image
+		}
 	}
 	writeOK(w, listOrdersResponse{Orders: orders, Total: total, Page: page, Pages: pages})
 }

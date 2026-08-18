@@ -12,7 +12,7 @@ import {
   IconDownload,
 } from "./Icons";
 import { useT } from "./i18n";
-import { useSign } from "./shop";
+import { imageURL, isRemoteImage, useSign } from "./shop";
 import { useJob } from "./useJob";
 import JobBar from "./JobBar";
 
@@ -154,12 +154,7 @@ const kText = {
   outOfStock: { ru: "нет", en: "none" },
 };
 
-// path is either a local file name or an absolute source URL: the importer
-// keeps a link to the marketplace photo instead of downloading it.
-const imageURL = (path: string) =>
-  path.startsWith("http") ? path : `/uploads/${path}`;
-
-const isRemote = (path: string) => path.startsWith("http");
+const isRemote = isRemoteImage;
 
 export default function Products() {
   const [list, setList] = useState<Product[]>([]);

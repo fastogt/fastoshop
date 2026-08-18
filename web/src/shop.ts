@@ -49,3 +49,10 @@ const useCurrency = () =>
   useSyncExternalStore(subscribe, getCurrency, getCurrency);
 
 export const useSign = () => signOf(useCurrency());
+
+// product_images.path is either a local file name or an absolute source URL:
+// the importer keeps a link to the supplier's photo instead of downloading it.
+export const imageURL = (path: string) =>
+  path.startsWith("http") ? path : `/uploads/${path}`;
+
+export const isRemoteImage = (path: string) => path.startsWith("http");

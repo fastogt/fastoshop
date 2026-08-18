@@ -335,3 +335,42 @@ func (d *Database) countProducts(category, q, supplier string, onlyVisible bool)
 	err := d.db.QueryRow(`SELECT COUNT(*) FROM products`+where, args...).Scan(&n)
 	return n, err
 }
+
+// ProductLink is what an order line needs to point at the goods it sold: the
+// storefront page and the picture that identifies them at a glance.
+type ProductLink struct {
+	Slug  string
+	Image string
+}
+
+// LinksBySKU maps the articles of an order's lines onto the products they refer
+// to. A missing article is simply absent from the map: the order's snapshot
+// outlives the product, and a line whose goods were deleted still has to render.
+func (d *Database) LinksBySKU(skus []string) (map[string]ProductLink, error) {
+	out := map[string]ProductLink{}
+	if len(skus) == 0 {
+		return out, nil
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(skus)), ",")
+	args := make([]any, len(skus))
+	for i, s := range skus {
+		args[i] = s
+	}
+	rows, err := d.db.Query(
+		`SELECT p.sku, p.slug, COALESCE((SELECT i.path FROM product_images i
+		     WHERE i.product_id = p.id ORDER BY i.position, i.id LIMIT 1), '')
+		 FROM products p WHERE p.sku IN (`+placeholders+`)`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var sku string
+		var link ProductLink
+		if err := rows.Scan(&sku, &link.Slug, &link.Image); err != nil {
+			return nil, err
+		}
+		out[sku] = link
+	}
+	return out, rows.Err()
+}

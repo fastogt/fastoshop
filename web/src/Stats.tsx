@@ -13,10 +13,10 @@ const kText = {
     ru: "Цифры сервера общие для всей машины: если на ней несколько магазинов, нагрузку они делят.",
     en: "Server numbers cover the whole machine: if it runs several shops, they share the load.",
   },
-  cpu: { ru: "Процессор", en: "CPU" },
+  cpu: { ru: "CPU", en: "CPU" },
   load: { ru: "Средняя нагрузка", en: "Load average" },
-  memory: { ru: "Память", en: "Memory" },
-  disk: { ru: "Диск", en: "Disk" },
+  memory: { ru: "RAM", en: "RAM" },
+  disk: { ru: "HDD", en: "HDD" },
   network: { ru: "Сеть", en: "Network" },
   uptime: { ru: "Аптайм", en: "Uptime" },
   os: { ru: "Система", en: "System" },
@@ -49,14 +49,20 @@ const kText = {
   },
 };
 
-const bytes = (n: number, lang: string): string =>
-  new Intl.NumberFormat(lang, {
-    notation: "compact",
-    style: "unit",
-    unit: "byte",
-    unitDisplay: "narrow",
-    maximumFractionDigits: 1,
-  }).format(n);
+// KB, MB, GB stay as they are in every language: they are technical marks, not
+// words. The locale's own compact notation turned a disk into "1,2 млрд Б",
+// which is arithmetically true and unreadable.
+const kUnits = ["B", "KB", "MB", "GB", "TB"];
+
+const bytes = (n: number, lang: string): string => {
+  let i = 0;
+  while (n >= 1024 && i < kUnits.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  const digits = i === 0 || n >= 100 ? 0 : 1;
+  return `${new Intl.NumberFormat(lang, { maximumFractionDigits: digits }).format(n)} ${kUnits[i]}`;
+};
 
 function duration(sec: number, lang: string): string {
   const d = Math.floor(sec / 86400);

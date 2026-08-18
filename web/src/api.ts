@@ -185,6 +185,9 @@ export interface OrderItem {
   title: string;
   price: number;
   qty: number;
+  // Looked up when the order is read, empty for goods that no longer exist.
+  slug: string;
+  image: string;
 }
 
 export interface Order {
