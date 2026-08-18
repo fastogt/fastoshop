@@ -12,7 +12,7 @@
   --shadow: 0 1px 2px rgba(28, 26, 23, 0.05), 0 8px 24px -12px rgba(28, 26, 23, 0.15);
 }
 
-/* Тёмная тема через системную настройку: на витрине нет JS, переключателя быть не может. */
+/* Dark theme via the system setting: the storefront has no JS, so there can be no toggle. */
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #17151300;
@@ -38,8 +38,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* height:auto обязателен: у <img> проставлены width/height (это убирает скачок
-   вёрстки при загрузке), и без него явная высота ломает aspect-ratio. */
+/* height:auto is mandatory: <img> tags carry width/height (that removes the
+   layout jump on load), and without it the explicit height breaks aspect-ratio. */
 img { max-width: 100%; height: auto; display: block; }
 a { color: var(--accent); }
 
@@ -65,9 +65,9 @@ header {
 
 header nav { display: flex; gap: 20px; align-items: center; }
 
-/* Поиск — обычная GET-форма: на витрине нет JavaScript, и искать он не мешает. */
-/* Грид, а не флекс: у грида колонки не переносятся в принципе, а флексом
-   кнопка упорно уезжала под поле отдельной строкой. */
+/* Search is a plain GET form: the storefront has no JavaScript, and none is needed to search. */
+/* Grid, not flex: grid columns never wrap at all, while with flex the button
+   kept sliding under the field onto its own row. */
 .search {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -116,7 +116,7 @@ h1 { font-size: 1.9rem; line-height: 1.2; letter-spacing: -0.02em; }
 h2 { font-size: 1.05rem; line-height: 1.35; }
 main > h1 { margin-block: 28px 20px; }
 
-/* Каталог */
+/* Catalogue */
 .grid {
   list-style: none;
   padding: 0;
@@ -145,9 +145,10 @@ main > h1 { margin-block: 28px 20px; }
    margins must continue the photo's own background. */
 .grid img { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--surface); }
 .grid .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-/* Названия приезжают из прайса поставщика целиком, вместе с размерами и
-   составом: без ограничения плитка превращается в стену текста, а цена уезжает
-   под сгиб. Полное название остаётся на странице товара — и в выдаче. */
+/* Titles arrive verbatim from the supplier's price list, sizes and fabric
+   composition included: without a cap the tile turns into a wall of text and the
+   price slides below the fold. The full title stays on the product page — and in
+   search results. */
 .grid h2 {
   font-weight: 600;
   display: -webkit-box;
@@ -185,7 +186,7 @@ main > h1 { margin-block: 28px 20px; }
 }
 .notice.good { background: rgba(31, 122, 69, 0.1); border-color: rgba(31, 122, 69, 0.25); }
 
-/* Карточка товара */
+/* Product card */
 .product {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
@@ -200,8 +201,8 @@ main > h1 { margin-block: 28px 20px; }
 
 .gallery { display: flex; flex-direction: column; gap: 12px; }
 
-/* Лента с привязкой прокрутки: фото листается пальцем на телефоне и колесом на
-   десктопе, миниатюры — обычные якоря. Ни строчки JavaScript. */
+/* Scroll-snap strip: photos swipe with a finger on the phone and the wheel on
+   desktop, thumbnails are plain anchors. Not a line of JavaScript. */
 .slides {
   display: flex;
   gap: 12px;
@@ -217,19 +218,19 @@ main > h1 { margin-block: 28px 20px; }
 .slides img {
   flex: 0 0 100%;
   scroll-snap-align: center;
-  /* Высота ограничена: фото поставщика бывают вертикальными, и без потолка одна
-     картинка занимала весь экран, а цена уезжала под сгиб. */
+  /* Height is capped: supplier photos can be vertical, and without a ceiling one
+     picture filled the whole screen and pushed the price below the fold. */
   height: min(58vh, 520px);
   object-fit: contain;
   border-radius: var(--radius);
   border: 1px solid var(--line);
-  /* Белое, а не фирменное бежевое: контейнер шире квадратного фото, и поля по
-     бокам должны продолжать белый фон снимка, а не окантовывать его. */
+  /* White, not the brand beige: the container is wider than a square photo, and
+     the side margins must continue the photo's white background, not frame it. */
   background: var(--surface);
 }
 
-/* Заглушка «нет фото» рисуется целиком в SVG, поэтому растягивать её кадром
-   нельзя — только вписывать. */
+/* The "no photo" placeholder is drawn entirely in SVG, so it must not be
+   stretched to the frame — only fitted into it. */
 .nophoto { object-fit: contain !important; background: var(--surface); }
 
 .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -255,7 +256,7 @@ main > h1 { margin-block: 28px 20px; }
 
 .trust { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--muted); }
 
-/* Формы */
+/* Forms */
 form { display: flex; flex-direction: column; gap: 10px; }
 label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
 
@@ -293,7 +294,7 @@ button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .qty-row .field { width: 96px; flex: none; }
 .qty-row button { flex: 1; }
 
-/* Корзина */
+/* Cart */
 .cart-table { width: 100%; border-collapse: collapse; margin-block: 20px; }
 .cart-table td { border-bottom: 1px solid var(--line); padding: 14px 8px; vertical-align: middle; }
 .cart-table img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
@@ -311,14 +312,14 @@ form.qty button:hover { background: var(--accent-soft); }
 
 .empty { text-align: center; padding: 56px 20px; color: var(--muted); }
 
-/* Строка результата: сколько нашлось и как выйти обратно в каталог. */
+/* Result line: how many items were found and how to get back to the catalogue. */
 .found { color: var(--muted); margin-top: -12px; }
 .found a { color: inherit; }
 
 .pager { display: flex; gap: 20px; align-items: center; justify-content: center; margin-block: 28px; font-weight: 600; }
 
-/* Реквизиты набираются переводами строк, как их пишет владелец: адрес и номера
-   на одной строке читаются как каша. */
+/* Contact details are typed with line breaks, the way the owner writes them: an
+   address and phone numbers on one line read as mush. */
 .requisites,
 .terms {
   white-space: pre-line;
@@ -327,7 +328,7 @@ form.qty button:hover { background: var(--accent-soft); }
 
 .terms { max-width: 60ch; margin-block: 20px; }
 
-/* Ссылки на подкатегории: горизонтальный список над сеткой товаров. */
+/* Subcategory links: a horizontal list above the product grid. */
 .cats { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px 24px; }
 .cats a {
   padding: 6px 12px;
@@ -337,7 +338,7 @@ form.qty button:hover { background: var(--accent-soft); }
 }
 .cats a:hover { border-color: var(--accent); }
 
-/* Текст категории — то, ради чего магазин раньше держал отдельный лендинг. */
+/* Category text — the thing the shop used to keep a separate landing page for. */
 .qty { display: flex; align-items: center; gap: 4px; }
 .qty button {
   min-width: 32px;
@@ -346,13 +347,13 @@ form.qty button:hover { background: var(--accent-soft); }
   line-height: 1;
 }
 .qty input { width: 60px; text-align: center; }
-/* Крестик — не кнопка действия, а тихое «убрать»: цветом отличается от «+». */
+/* The cross is not an action button but a quiet "remove": its colour sets it apart from "+". */
 .qty .remove { background: none; border: 1px solid var(--line); color: var(--muted); }
 .qty .remove:hover { border-color: var(--accent); color: var(--accent); }
 
 .cat-text { white-space: pre-line; max-width: 70ch; line-height: 1.6; margin-block: 12px 20px; }
 
-/* Фильтры — ссылки: состояние живёт в адресе, JS на витрине по-прежнему нет. */
+/* Filters are links: the state lives in the URL, the storefront still has no JS. */
 .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 12px 20px; font-size: 15px; }
 .filters a {
   padding: 5px 10px;
@@ -384,8 +385,8 @@ footer {
   h1 { font-size: 1.5rem; }
   .checkout { max-width: none; }
 
-  /* Таблица корзины на телефоне не помещается по ширине — раскладываем строку
-     в две колонки: слева название/цена/количество, справа сумма. */
+  /* The cart table does not fit a phone's width — lay each row out in two
+     columns: title/price/quantity on the left, the total on the right. */
   .cart-table, .cart-table tbody, .cart-table tr, .cart-table td { display: block; }
   .cart-table tr {
     display: grid;
@@ -402,8 +403,8 @@ footer {
   form.qty input { width: 64px; }
 }
 
-/* Логотип магазина: высота задана, ширина свободная — владелец грузит что
-   угодно, а шапка не должна прыгать. */
+/* Shop logo: the height is fixed, the width is free — the owner uploads
+   anything, and the header must not jump. */
 .logo-img {
   display: block;
   height: 36px;

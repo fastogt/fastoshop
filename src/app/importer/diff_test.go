@@ -20,7 +20,7 @@ func TestDiffFirstImport(t *testing.T) {
 		t.Fatalf("%+v", d)
 	}
 	if len(d.NewItems) != 1 || d.NewItems[0].Shelf != 5000 {
-		t.Fatalf("цена витрины в новинке: %+v", d.NewItems)
+		t.Fatalf("storefront price leaked into a new item: %+v", d.NewItems)
 	}
 }
 
@@ -34,7 +34,7 @@ func TestDiffSameFeedIsQuiet(t *testing.T) {
 		t.Fatalf("%+v", d)
 	}
 	if len(d.PriceChanges) != 0 {
-		t.Fatalf("изменения на ровном месте: %+v", d.PriceChanges)
+		t.Fatalf("changes out of nowhere: %+v", d.PriceChanges)
 	}
 }
 
@@ -54,14 +54,14 @@ func TestDiffClassifiesChanges(t *testing.T) {
 		t.Fatalf("%+v", d)
 	}
 	if d.GoneItems[0].SKU != "GONE" {
-		t.Fatalf("исчезнувший: %+v", d.GoneItems)
+		t.Fatalf("gone item: %+v", d.GoneItems)
 	}
 	// The biggest change comes first, regardless of sign.
 	if d.PriceChanges[0].SKU != "DOWN" || d.PriceChanges[0].Percent != -50 {
-		t.Fatalf("порядок изменений: %+v", d.PriceChanges)
+		t.Fatalf("change order: %+v", d.PriceChanges)
 	}
 	if d.PriceChanges[1].SKU != "UP" || d.PriceChanges[1].Percent != 20 {
-		t.Fatalf("порядок изменений: %+v", d.PriceChanges)
+		t.Fatalf("change order: %+v", d.PriceChanges)
 	}
 }
 
@@ -72,10 +72,10 @@ func TestDiffZeroSourcePriceHasNoPercent(t *testing.T) {
 	existing := []database.Product{shopProduct("OLD", 0), shopProduct("REAL", 10000)}
 	d := Compare(items, existing, "П", 1)
 	if d.PriceChanges[0].SKU != "REAL" {
-		t.Fatalf("нулевая база вытеснила реальное изменение: %+v", d.PriceChanges)
+		t.Fatalf("zero base pushed out a real change: %+v", d.PriceChanges)
 	}
 	if d.PriceChanges[1].Percent != 0 {
-		t.Fatalf("процент от нулевой базы: %+v", d.PriceChanges[1])
+		t.Fatalf("percentage over a zero base: %+v", d.PriceChanges[1])
 	}
 }
 
@@ -91,9 +91,9 @@ func TestDiffCountsSurviveTruncation(t *testing.T) {
 	}
 	d := Compare(items, existing, "П", 1)
 	if d.PriceUp != 120 {
-		t.Fatalf("счётчик подорожавших: %d", d.PriceUp)
+		t.Fatalf("price-up counter: %d", d.PriceUp)
 	}
 	if len(d.PriceChanges) != kListLimit {
-		t.Fatalf("список не обрезан: %d", len(d.PriceChanges))
+		t.Fatalf("list not truncated: %d", len(d.PriceChanges))
 	}
 }

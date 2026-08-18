@@ -139,11 +139,11 @@ type fillPricesResponse struct {
 }
 
 type priceRulesResponse struct {
-	Rules []database.OzonPriceRule `json:"rules"`
+	Rules []database.PriceRule `json:"rules"`
 }
 
 type priceRulesRequest struct {
-	Rules []database.OzonPriceRule `json:"rules"`
+	Rules []database.PriceRule `json:"rules"`
 }
 
 type checkResponse struct {
@@ -229,7 +229,7 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	lang := h.lang()
+	lang := h.db.Lang()
 	errs := make([]stockErrorRow, 0, len(bad))
 	for _, r := range bad {
 		errs = append(errs, stockErrorRow{ProductID: r.ProductID, OfferID: r.OfferID,
@@ -271,10 +271,7 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 // (Ozon reports them itself, duplicating would double the revenue in the tax
 // CSV), so this is the only place the owner sees them.
 func (h *Handlers) Orders(w http.ResponseWriter, r *http.Request) {
-	page, err := strconv.Atoi(r.URL.Query().Get("page"))
-	if err != nil || page < 1 {
-		page = 1
-	}
+	page := pageParam(r)
 	total, err := h.db.CountOzonOrders()
 	if err != nil {
 		writeInternalError(w, err)
@@ -335,20 +332,10 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	h.GetSettings(w, r)
 }
 
+func (h *Handlers) msg(key string) string { return i18n.T(h.db.Lang(), key) }
+
 // client builds a client on the saved keys. A false second value means there are
 // no keys and the answer to the owner has already been sent.
-// lang reports the owner's language. A broken settings row must not blank out
-// the error the owner needs to read, so it falls back to the default.
-func (h *Handlers) lang() string {
-	s, err := h.db.GetSettings()
-	if err != nil {
-		return i18n.LangRU
-	}
-	return s.Lang
-}
-
-func (h *Handlers) msg(key string) string { return i18n.T(h.lang(), key) }
-
 func (h *Handlers) client(w http.ResponseWriter) (*Client, bool) {
 	s, err := h.db.GetOzonSettings()
 	if err != nil {
@@ -491,10 +478,7 @@ func (h *Handlers) Push(w http.ResponseWriter, r *http.Request) {
 // the price the owner set for the platform. Paged, because a shop of 20 000
 // products would otherwise send its whole catalogue into the browser.
 func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
-	page, err := strconv.Atoi(r.URL.Query().Get("page"))
-	if err != nil || page < 1 {
-		page = 1
-	}
+	page := pageParam(r)
 	total, err := h.db.CountOzonLinkRows()
 	if err != nil {
 		writeInternalError(w, err)
@@ -505,7 +489,7 @@ func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	lang := h.lang()
+	lang := h.db.Lang()
 	res := ozonLinksResponse{
 		Links: make([]ozonLinkRow, 0, len(list)),
 		Total: total, Page: page, PageSize: kLinksPageSize,
@@ -582,7 +566,7 @@ func (h *Handlers) GetPriceRules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rules == nil {
-		rules = []database.OzonPriceRule{}
+		rules = []database.PriceRule{}
 	}
 	writeOK(w, priceRulesResponse{Rules: rules})
 }
@@ -613,4 +597,12 @@ func (h *Handlers) FillPricesByRules(w http.ResponseWriter, r *http.Request) {
 	}
 	h.worker.StockChanged()
 	writeOK(w, fillPricesResponse{Filled: n})
+}
+
+func pageParam(r *http.Request) int {
+	page, err := strconv.Atoi(r.URL.Query().Get("page"))
+	if err != nil || page < 1 {
+		return 1
+	}
+	return page
 }

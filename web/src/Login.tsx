@@ -18,11 +18,25 @@ export default function Login({ onDone }: { onDone: () => void }) {
   const [err, setErr] = useState("");
   const t = useT(kText);
 
+  const submit = () =>
+    api
+      .login(email, password)
+      .then(onDone)
+      .catch(() => setErr(t("failed")));
+
   return (
-    <div className="mx-auto mt-24 flex max-w-sm flex-col gap-3">
+    <form
+      className="mx-auto mt-24 flex max-w-sm flex-col gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
       <h1 className="text-xl font-bold">{t("title")}</h1>
       <input
         className="field"
+        type="email"
+        autoComplete="username"
         placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -36,17 +50,9 @@ export default function Login({ onDone }: { onDone: () => void }) {
         onChange={(e) => setPassword(e.target.value)}
       />
       {err && <p className="text-red-600">{err}</p>}
-      <button
-        className="btn"
-        onClick={() =>
-          api
-            .login(email, password)
-            .then(onDone)
-            .catch(() => setErr(t("failed")))
-        }
-      >
+      <button className="btn" type="submit">
         {t("submit")}
       </button>
-    </div>
+    </form>
   );
 }

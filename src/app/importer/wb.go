@@ -275,7 +275,7 @@ func (w *WB) Fetch() ([]Item, error) {
 		for _, ph := range card.Photos {
 			urls = append(urls, ph.Big)
 		}
-		category := CategoryPath(subjectParents[card.SubjectID], card.SubjectName)
+		category := database.CategoryPath(subjectParents[card.SubjectID], card.SubjectName)
 		if len(card.Sizes) == 0 {
 			items = append(items, Item{
 				SKU: card.VendorCode, Title: card.Title, Description: card.Description,

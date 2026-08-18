@@ -89,6 +89,49 @@ func TestSetupLoginFlow(t *testing.T) {
 // The session cookie must carry Secure where the connection is TLS (in prod —
 // via X-Forwarded-Proto from nginx) and not carry it on local plain http,
 // otherwise login is broken.
+func TestInvite(t *testing.T) {
+	d, err := database.OpenInMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	h := NewHandler(d, t.TempDir())
+	if _, err := d.CreateOwner("owner@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	tok, err := d.NewInviteToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	body := func(tok, pw string) string {
+		return fmt.Sprintf(`{"token":%q,"password":%q}`, tok, pw)
+	}
+	post := func(b string) int {
+		w := httptest.NewRecorder()
+		h.Invite(w, httptest.NewRequest("POST", "/api/invite", strings.NewReader(b)))
+		return w.Code
+	}
+
+	if code := post(body("deadbeef", "hunter2hunter")); code != http.StatusUnauthorized {
+		t.Errorf("wrong token accepted: %d", code)
+	}
+	if code := post(body(tok, "short")); code != http.StatusBadRequest {
+		t.Errorf("short password accepted: %d", code)
+	}
+	if code := post(body(tok, "hunter2hunter")); code != http.StatusOK {
+		t.Fatalf("invite rejected: %d", code)
+	}
+	if code := post(body(tok, "another-password")); code != http.StatusUnauthorized {
+		t.Errorf("token reusable: %d", code)
+	}
+
+	s, _ := d.GetSettings()
+	if bcrypt.CompareHashAndPassword([]byte(s.PasswordHash), []byte("hunter2hunter")) != nil {
+		t.Error("password not set by invite")
+	}
+}
+
 func TestSessionCookieSecureFlag(t *testing.T) {
 	h := newTestHandler(t)
 	w := httptest.NewRecorder()
@@ -234,50 +277,5 @@ func TestInternalErrorDoesNotLeakDetails(t *testing.T) {
 	}
 	if strings.Contains(w.Body.String(), "sql") || strings.Contains(w.Body.String(), "closed") {
 		t.Fatalf("internal details leaked: %s", w.Body.String())
-	}
-}
-
-// The invite replaces sending a password around: the link is one-time, a
-// foreign token doesn't fit, and after use even the correct one stops working.
-func TestInvite(t *testing.T) {
-	d, err := database.OpenInMemory()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = d.Close() })
-	h := NewHandler(d, t.TempDir())
-	if _, err := d.CreateOwner("owner@example.com"); err != nil {
-		t.Fatal(err)
-	}
-	tok, err := d.NewInviteToken()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	body := func(tok, pw string) string {
-		return fmt.Sprintf(`{"token":%q,"password":%q}`, tok, pw)
-	}
-	post := func(b string) int {
-		w := httptest.NewRecorder()
-		h.Invite(w, httptest.NewRequest("POST", "/api/invite", strings.NewReader(b)))
-		return w.Code
-	}
-
-	if code := post(body("deadbeef", "hunter2hunter")); code != http.StatusUnauthorized {
-		t.Errorf("wrong token accepted: %d", code)
-	}
-	if code := post(body(tok, "short")); code != http.StatusBadRequest {
-		t.Errorf("short password accepted: %d", code)
-	}
-	if code := post(body(tok, "hunter2hunter")); code != http.StatusOK {
-		t.Fatalf("invite rejected: %d", code)
-	}
-	if code := post(body(tok, "another-password")); code != http.StatusUnauthorized {
-		t.Errorf("token reusable: %d", code)
-	}
-
-	s, _ := d.GetSettings()
-	if bcrypt.CompareHashAndPassword([]byte(s.PasswordHash), []byte("hunter2hunter")) != nil {
-		t.Error("password not set by invite")
 	}
 }

@@ -66,7 +66,7 @@ func TestSettingsAndTokens(t *testing.T) {
 	if !d.ValidToken("tok1", "session") {
 		t.Fatal("token must be valid")
 	}
-	if d.ValidToken("tok1", "reset") {
+	if d.ValidToken("tok1", "invite") {
 		t.Fatal("wrong purpose accepted")
 	}
 	_ = d.CreateToken("old", "session", time.Now().Add(-time.Hour))

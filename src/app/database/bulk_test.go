@@ -33,12 +33,12 @@ func TestSetStockForWholeGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n != 2 {
-		t.Fatalf("обновлено строк: %d", n)
+		t.Fatalf("updated rows: %d", n)
 	}
 	for sku, want := range map[string]int{"R-1": 7, "R-2": 7, "O-1": 4, "M-1": 9} {
 		p, _ := d.GetProduct(ids[sku])
 		if p.Stock != want {
-			t.Errorf("%s: остаток %d, ждали %d", sku, p.Stock, want)
+			t.Errorf("%s: stock %d, want %d", sku, p.Stock, want)
 		}
 	}
 }
@@ -53,11 +53,11 @@ func TestBulkRespectsSearch(t *testing.T) {
 	}
 	p, _ := d.GetProduct(ids["R-1"])
 	if p.Stock != 5 {
-		t.Errorf("остаток: %d", p.Stock)
+		t.Errorf("stock: %d", p.Stock)
 	}
 	p, _ = d.GetProduct(ids["R-2"])
 	if p.Stock != 0 {
-		t.Errorf("задет товар вне поиска: %d", p.Stock)
+		t.Errorf("product outside the search touched: %d", p.Stock)
 	}
 }
 
@@ -71,7 +71,7 @@ func TestBulkEmptySelectionTouchesNothing(t *testing.T) {
 	}
 	p, _ := d.GetProduct(ids["M-1"])
 	if p.Stock != 9 {
-		t.Errorf("остаток изменился: %d", p.Stock)
+		t.Errorf("stock changed: %d", p.Stock)
 	}
 }
 
@@ -92,7 +92,7 @@ func TestBulkByIDs(t *testing.T) {
 func TestBulkRejectsNegativeStock(t *testing.T) {
 	d, _ := bulkDB(t)
 	if _, err := d.SetStockBulk(Selection{All: true, Supplier: AnySupplier}, -1); err == nil {
-		t.Error("отрицательный остаток принят")
+		t.Error("negative stock accepted")
 	}
 }
 
@@ -104,7 +104,7 @@ func TestBulkMoveBetweenSuppliers(t *testing.T) {
 	}
 	p, _ := d.GetProduct(ids["R-1"])
 	if p.Supplier != "Оптбаза" {
-		t.Errorf("группа: %q", p.Supplier)
+		t.Errorf("supplier: %q", p.Supplier)
 	}
 }
 
@@ -119,10 +119,10 @@ func TestBulkDeleteNeedsExplicitIDs(t *testing.T) {
 		t.Fatalf("%v %d", err, n)
 	}
 	if _, err := d.GetProduct(ids["O-1"]); err == nil {
-		t.Error("товар не удалён")
+		t.Error("product not deleted")
 	}
 	if _, err := d.GetProduct(ids["M-1"]); err != nil {
-		t.Error("удалено лишнее")
+		t.Error("extra product deleted")
 	}
 }
 
@@ -134,17 +134,17 @@ func TestSortingIsServerSide(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(asc) != 2 || asc[0].Price != 1000 || asc[1].Price != 2000 {
-		t.Fatalf("по возрастанию: %+v", asc)
+		t.Fatalf("ascending: %+v", asc)
 	}
 	desc, _ := d.ListProductsSorted("", AnySupplier, "price", true, 2, 0)
 	if desc[0].Price != 4000 {
-		t.Fatalf("по убыванию: %+v", desc)
+		t.Fatalf("descending: %+v", desc)
 	}
 	// An unknown column must not make it into the SQL.
 	if _, err := d.ListProductsSorted("", AnySupplier, "price; DROP TABLE products", false, 5, 0); err != nil {
-		t.Fatalf("инъекция в ORDER BY: %v", err)
+		t.Fatalf("injection in ORDER BY: %v", err)
 	}
 	if n, _ := d.CountProducts("", AnySupplier); n != 4 {
-		t.Fatalf("таблица пострадала: %d", n)
+		t.Fatalf("table damaged: %d", n)
 	}
 }

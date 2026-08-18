@@ -173,8 +173,8 @@ export default function Import() {
   const [recomputeMsg, setRecomputeMsg] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  // Подтверждение прав снимается после каждого импорта: следующая загрузка это
-  // следующее поручение владельца, а не продолжение прежнего.
+  // The rights confirmation resets after every import: the next upload is the
+  // owner's next assignment, not a continuation of the previous one.
   const [rightsOk, setRightsOk] = useState(false);
   const coef = Number(coefficient.replace(",", ".")) || 1;
   // Before "Check" we only know the feed currency for marketplaces: their
@@ -309,15 +309,15 @@ export default function Import() {
               type="file"
               accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               className="text-sm"
-              onChange={async (e) => {
+              onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (!f) return;
                 // Read as bytes, not text: the server detects the encoding,
                 // otherwise cp1251 turns into garbage already in the browser.
-                const buf = new Uint8Array(await f.arrayBuffer());
-                let bin = "";
-                for (const b of buf) bin += String.fromCharCode(b);
-                setFileB64(btoa(bin));
+                const r = new FileReader();
+                r.onload = () =>
+                  setFileB64((r.result as string).split(",")[1] ?? "");
+                r.readAsDataURL(f);
               }}
             />
           </div>

@@ -28,14 +28,4 @@ func (h *Handler) stockChanged() {
 	}
 }
 
-// lang reports the owner's language. A broken settings row must not swallow the
-// error text, so it falls back to the default rather than propagating.
-func (h *Handler) lang() string {
-	s, err := h.db.GetSettings()
-	if err != nil {
-		return i18n.LangRU
-	}
-	return s.Lang
-}
-
-func (h *Handler) msg(key string) string { return i18n.T(h.lang(), key) }
+func (h *Handler) msg(key string) string { return i18n.T(h.db.Lang(), key) }

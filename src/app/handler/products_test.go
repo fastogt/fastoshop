@@ -276,7 +276,7 @@ func TestUploadAndDeleteImage(t *testing.T) {
 	}
 	file := filepath.Join(h.uploadsDir, imgs[0].Path)
 	if _, err := os.Stat(file); err != nil {
-		t.Fatalf("файл не сохранён: %v", err)
+		t.Fatalf("file not saved: %v", err)
 	}
 
 	w = httptest.NewRecorder()
@@ -286,9 +286,9 @@ func TestUploadAndDeleteImage(t *testing.T) {
 		t.Fatalf("delete: %d %s", w.Code, w.Body.String())
 	}
 	if imgs, _ := h.db.ListImages(1); len(imgs) != 0 {
-		t.Fatalf("фото осталось: %+v", imgs)
+		t.Fatalf("photo remained: %+v", imgs)
 	}
 	if _, err := os.Stat(file); !os.IsNotExist(err) {
-		t.Error("файл остался на диске")
+		t.Error("file remained on disk")
 	}
 }

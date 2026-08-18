@@ -44,18 +44,18 @@ func TestLogoUploadReplaceDelete(t *testing.T) {
 
 	first := uploadLogo(t, h, "logo.png", []byte("\x89PNG\r\n\x1a\npixels"))
 	if first.Logo == "" {
-		t.Fatal("ответ на загрузку не содержит имя файла")
+		t.Fatal("upload response has no file name")
 	}
 	if _, err := os.Stat(filepath.Join(h.uploadsDir, first.Logo)); err != nil {
-		t.Fatalf("файл не сохранён: %v", err)
+		t.Fatalf("file not saved: %v", err)
 	}
 
 	second := uploadLogo(t, h, "other.png", []byte("\x89PNG\r\n\x1a\nother"))
 	if second.Logo == first.Logo {
-		t.Fatal("замена логотипа не поменяла имя файла")
+		t.Fatal("replacing the logo did not change the file name")
 	}
 	if _, err := os.Stat(filepath.Join(h.uploadsDir, first.Logo)); !os.IsNotExist(err) {
-		t.Fatal("старый файл не удалён при замене")
+		t.Fatal("old file not deleted on replacement")
 	}
 
 	w := httptest.NewRecorder()
@@ -65,9 +65,9 @@ func TestLogoUploadReplaceDelete(t *testing.T) {
 	}
 	s, err := h.db.GetSettings()
 	if err != nil || s.Logo != "" {
-		t.Fatalf("логотип не сброшен: %+v %v", s, err)
+		t.Fatalf("logo not cleared: %+v %v", s, err)
 	}
 	if _, err := os.Stat(filepath.Join(h.uploadsDir, second.Logo)); !os.IsNotExist(err) {
-		t.Fatal("файл не удалён")
+		t.Fatal("file not deleted")
 	}
 }

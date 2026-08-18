@@ -9,6 +9,8 @@ import (
 	"unicode/utf8"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/fastogt/fastoshop/app/database"
 )
 
 // CSV is the shop's own template: a fixed set of columns the owner fills in a
@@ -166,7 +168,7 @@ func cellCategory(raw string) string {
 		segments = append(segments, string(runes[start:i]))
 		start = i + 1
 	}
-	return CategoryPath(append(segments, string(runes[start:]))...)
+	return database.CategoryPath(append(segments, string(runes[start:]))...)
 }
 
 func isDigitish(r rune) bool {

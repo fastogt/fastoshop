@@ -42,8 +42,8 @@ const kText = {
   saveFailed: { ru: "Не сохранилось", en: "Could not save" },
   goods: { ru: "товаров", en: "products" },
   confirmDelete: {
-    ru: "Удалить «%s»? Товары (%d) и подкатегории переедут в раздел выше, старый адрес будет перенаправлен. Отменить это нельзя.",
-    en: 'Delete "%s"? Its products (%d) and subcategories move to the section above and the old address gets redirected. This cannot be undone.',
+    ru: "Удалить «{name}»? Товары ({n}) и подкатегории переедут в раздел выше, старый адрес будет перенаправлен. Отменить это нельзя.",
+    en: 'Delete "{name}"? Its products ({n}) and subcategories move to the section above and the old address gets redirected. This cannot be undone.',
   },
 };
 
@@ -179,9 +179,7 @@ export default function Categories() {
 
   const remove = async () => {
     if (!form) return;
-    const text = t("confirmDelete")
-      .replace("%s", leaf(form.path))
-      .replace("%d", String(form.count));
+    const text = t("confirmDelete", { name: leaf(form.path), n: form.count });
     if (!window.confirm(text)) return;
     try {
       await api.deleteCategory(form.path);

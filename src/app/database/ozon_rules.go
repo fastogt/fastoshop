@@ -1,109 +1,13 @@
 package database
 
-import (
-	"database/sql"
-)
-
-// OzonPriceRule is the shared ladder band; the alias keeps the channel's own
-// vocabulary in its handlers and JSON while the arithmetic lives in one place.
-type OzonPriceRule = PriceRule
-
-func (d *Database) OzonPriceRules() ([]OzonPriceRule, error) {
-	rows, err := d.db.Query(`SELECT up_to, multiplier FROM ozon_price_rules ORDER BY id`)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	var out []OzonPriceRule
-	for rows.Next() {
-		var r OzonPriceRule
-		if err := rows.Scan(&r.UpTo, &r.Multiplier); err != nil {
-			return nil, err
-		}
-		out = append(out, r)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	sortRules(out)
-	return out, nil
+func (d *Database) OzonPriceRules() ([]PriceRule, error) {
+	return d.priceRules("ozon_price_rules")
 }
 
-// SetOzonPriceRules replaces the whole ladder: editing bands one by one would
-// let the table pass through states that are not a valid ladder.
-func (d *Database) SetOzonPriceRules(rules []OzonPriceRule) error {
-	if err := ValidPriceRules(rules); err != nil {
-		return err
-	}
-	sortRules(rules)
-	return d.withTx(func(tx *sql.Tx) error {
-		if _, err := tx.Exec(`DELETE FROM ozon_price_rules`); err != nil {
-			return err
-		}
-		for _, r := range rules {
-			if _, err := tx.Exec(
-				`INSERT INTO ozon_price_rules (up_to, multiplier) VALUES (?, ?)`,
-				r.UpTo, r.Multiplier); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+func (d *Database) SetOzonPriceRules(rules []PriceRule) error {
+	return d.setPriceRules("ozon_price_rules", rules)
 }
 
-// FillOzonPricesByRules fills the platform price of published products that do
-// not have one yet. Prices the owner set are left alone, same as the flat
-// markup helper: the ladder is a starting point, not an override.
 func (d *Database) FillOzonPricesByRules() (int, error) {
-	rules, err := d.OzonPriceRules()
-	if err != nil {
-		return 0, err
-	}
-	if err := ValidPriceRules(rules); err != nil {
-		return 0, err
-	}
-	if len(rules) == 0 {
-		return 0, nil
-	}
-	rows, err := d.db.Query(
-		`SELECT l.product_id, p.price FROM ozon_links l
-		 JOIN products p ON p.id = l.product_id
-		 WHERE l.price = 0 AND l.offer_id != '' AND p.price > 0`)
-	if err != nil {
-		return 0, err
-	}
-	type target struct {
-		id    int64
-		price int64
-	}
-	var targets []target
-	for rows.Next() {
-		var t target
-		if err := rows.Scan(&t.id, &t.price); err != nil {
-			_ = rows.Close()
-			return 0, err
-		}
-		targets = append(targets, t)
-	}
-	_ = rows.Close()
-	if err := rows.Err(); err != nil {
-		return 0, err
-	}
-
-	n := 0
-	err = d.withTx(func(tx *sql.Tx) error {
-		for _, t := range targets {
-			price := ApplyRule(rules, t.price)
-			if price <= 0 {
-				continue
-			}
-			if _, err := tx.Exec(
-				`UPDATE ozon_links SET price=? WHERE product_id=?`, price, t.id); err != nil {
-				return err
-			}
-			n++
-		}
-		return nil
-	})
-	return n, err
+	return d.fillPricesByRules("ozon_price_rules", "ozon_links", "l.offer_id != ''")
 }

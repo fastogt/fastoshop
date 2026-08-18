@@ -6,7 +6,7 @@ import { useT } from "./i18n";
 // one deliberate difference: sorting is asked of the server. Sorting the loaded
 // page in the browser would order a hundred rows out of twenty thousand and call
 // it "sorted by price".
-export interface Column<T> {
+interface Column<T> {
   key: string;
   label: string;
   width?: string;
@@ -24,7 +24,7 @@ export interface Selection {
   all: boolean;
 }
 
-export interface BulkAction {
+interface BulkAction {
   label: string;
   // Icon plus label, never an icon alone: a bare pictogram on a button that
   // changes twenty thousand rows is a guess, and this bar deletes things.

@@ -245,7 +245,7 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	lang := h.lang()
+	lang := h.db.Lang()
 	errs := make([]stockErrorRow, 0, len(bad))
 	for _, row := range bad {
 		errs = append(errs, stockErrorRow{ProductID: row.ProductID, Barcode: row.Barcode,
@@ -306,17 +306,7 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	h.GetSettings(w, r)
 }
 
-// lang reports the owner's language. A broken settings row must not blank out
-// the error the owner needs to read, so it falls back to the default.
-func (h *Handlers) lang() string {
-	s, err := h.db.GetSettings()
-	if err != nil {
-		return i18n.LangRU
-	}
-	return s.Lang
-}
-
-func (h *Handlers) msg(key string) string { return i18n.T(h.lang(), key) }
+func (h *Handlers) msg(key string) string { return i18n.T(h.db.Lang(), key) }
 
 // client builds a client on the saved token. A false second value means there is
 // no token and the answer to the owner has already been sent.
@@ -491,7 +481,7 @@ func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	lang := h.lang()
+	lang := h.db.Lang()
 	res := wbLinksResponse{
 		Links: make([]wbLinkRow, 0, len(list)),
 		Total: total, Page: page, PageSize: kLinksPageSize,

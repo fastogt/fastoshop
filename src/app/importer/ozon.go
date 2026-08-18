@@ -110,7 +110,7 @@ func (o *Ozon) categoryPaths() map[ozonCategoryKey]string {
 			// siblings overwrite each other's last segment.
 			path := append(append([]string{}, parents...), name)
 			if n.TypeID != 0 {
-				paths[ozonCategoryKey{CategoryID: id, TypeID: n.TypeID}] = CategoryPath(path...)
+				paths[ozonCategoryKey{CategoryID: id, TypeID: n.TypeID}] = database.CategoryPath(path...)
 			}
 			walk(n.Children, path, id)
 		}

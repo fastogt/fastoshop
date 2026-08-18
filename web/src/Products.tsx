@@ -35,13 +35,11 @@ const kText = {
   },
   hiddenBadge: { ru: "скрыт", en: "hidden" },
   bulkFill: { ru: "Заполнить", en: "Fill in" },
-  fillTitle: { ru: "Что заполнить", en: "What to fill in" },
   fillPhotos: { ru: "Забрать фото к себе", en: "Bring the photos in" },
   fillPhotosHint: {
     ru: "Фото импортированных товаров лежат ссылками на сервер поставщика: закроет доступ — витрина останется без картинок. Скачаем их к себе и сделаем уменьшенные копии для плитки каталога — без них страница тянет полноразмерные снимки. Каталог на 24 тысячи товаров — это несколько гигабайт на диске и десятки минут работы; что не скачается, останется ссылкой.",
     en: "Photos of imported products are links to the supplier's server: the day they close it, the storefront loses its pictures. This brings them onto our own disk and makes the small copies the catalogue grid needs — without them a page pulls full-size photos. A catalogue of 24 thousand products means several gigabytes and tens of minutes; anything that fails stays a link.",
   },
-  fillRun: { ru: "Запустить", en: "Start" },
   fillNothing: {
     ru: "Нечего скачивать: у выбранных товаров фото уже свои",
     en: "Nothing to download: the selected products already have their own photos",
@@ -226,12 +224,6 @@ export default function Products() {
     setStock(null);
   };
 
-  // A bulk action applies either to the checked rows or to everything the
-  // current filter shows: 20,000 rows cannot be ticked by hand, so the filter
-  // itself is sent to the server.
-  const [fillSel, setFillSel] = useState<Selection | null>(null);
-  const [fillTasks, setFillTasks] = useState<string[]>(["photos"]);
-
   // One job per instance, so both the bar and the per-row spinners come from a
   // single state; when it finishes we re-read the page.
   const job = useJob(() => {
@@ -259,17 +251,15 @@ export default function Products() {
     return () => clearInterval(id);
   }, [job?.running, reload]);
 
-  const runFill = async (tasks: string[]) => {
-    if (!fillSel) return;
-    setFillSel(null);
+  const runFill = async (sel: Selection) => {
+    if (!window.confirm(`${t("fillPhotos")}\n\n${t("fillPhotosHint")}`)) return;
     setBulkMsg("");
     try {
       const r = await api.bulkFill({
-        ids: fillSel.ids,
-        all: fillSel.all,
+        ids: sel.ids,
+        all: sel.all,
         q: query,
         supplier: supplier ?? null,
-        tasks,
       });
       setBulkMsg(
         r.started ? t("fillStarted", { n: r.total }) : t("fillNothing"),
@@ -340,37 +330,6 @@ export default function Products() {
   return (
     <div>
       <JobBar job={job} />
-
-      {fillSel && (
-        <Modal
-          title={t("fillTitle")}
-          onClose={() => setFillSel(null)}
-          footer={
-            <button
-              className="btn"
-              disabled={fillTasks.length === 0}
-              onClick={() => void runFill(fillTasks)}
-            >
-              {t("fillRun")}
-            </button>
-          }
-        >
-          {/* One checkbox today, but a list: searching, translating and filling
-              descriptions is the same work over the same selection. */}
-          <label className="flex cursor-pointer items-start gap-3">
-            <input
-              type="checkbox"
-              className="mt-1"
-              checked={fillTasks.includes("photos")}
-              onChange={(e) => setFillTasks(e.target.checked ? ["photos"] : [])}
-            />
-            <span>
-              <span className="font-semibold">{t("fillPhotos")}</span>
-              <span className="hint mt-1 block">{t("fillPhotosHint")}</span>
-            </span>
-          </label>
-        </Modal>
-      )}
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -491,8 +450,8 @@ export default function Products() {
                 </datalist>
               </div>
             </div>
-            {/* Категория — путь, а пути длинные: своя строка во всю ширину,
-                а не четверть строки рядом с ценой. */}
+            {/* A category is a path, and paths are long: its own full-width row,
+                not a quarter of a row next to the price. */}
             <div>
               <label className="label">{t("labelCategory")}</label>
               <input
@@ -713,7 +672,7 @@ export default function Products() {
           {
             label: t("bulkFill"),
             icon: <IconDownload />,
-            onClick: (sel) => setFillSel(sel),
+            onClick: (sel) => void runFill(sel),
           },
           {
             label: t("bulkDelete"),

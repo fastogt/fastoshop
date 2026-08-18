@@ -41,7 +41,7 @@ func TestPublishOnlySelected(t *testing.T) {
 	}
 	links, _ := d.ListOzonLinksPage(1000, 0)
 	if len(links) != 1 || links[0].ProductID != idA {
-		t.Fatalf("в канал уехало лишнее: %+v", links)
+		t.Fatalf("extra rows went into the channel: %+v", links)
 	}
 }
 
@@ -71,7 +71,7 @@ func TestUnpublishZeroesStockFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := m.lastBatch(t); len(got) != 1 || got[0].Stock != 5 {
-		t.Fatalf("остаток не уехал: %+v", got)
+		t.Fatalf("stock not pushed: %+v", got)
 	}
 
 	got := decode[unpublishResponse](t, do(t, h, "POST", "/unpublish", string(body)))
@@ -79,10 +79,10 @@ func TestUnpublishZeroesStockFirst(t *testing.T) {
 		t.Fatalf("unpublish: %+v", got)
 	}
 	if last := m.lastBatch(t); len(last) != 1 || last[0].Stock != 0 {
-		t.Fatalf("перед отвязкой не отправлен ноль: %+v", last)
+		t.Fatalf("zero not sent before unlinking: %+v", last)
 	}
 	if links, _ := d.ListOzonLinksPage(1000, 0); len(links) != 0 {
-		t.Fatalf("связь осталась: %+v", links)
+		t.Fatalf("link remained: %+v", links)
 	}
 }
 
@@ -103,7 +103,7 @@ func TestUnpublishKeepsLinkWhenZeroRejected(t *testing.T) {
 		t.Fatalf("unpublish: %+v", got)
 	}
 	if links, _ := d.ListOzonLinksPage(1000, 0); len(links) != 1 {
-		t.Fatalf("связь потеряна при неудачном обнулении: %+v", links)
+		t.Fatalf("link lost on a failed zeroing: %+v", links)
 	}
 }
 
@@ -120,7 +120,7 @@ func TestUnpublishNeverPushedNeedsNoCall(t *testing.T) {
 		t.Fatalf("unpublish: %+v", got)
 	}
 	if len(m.sent()) != before {
-		t.Error("лишний вызов площадки для товара, который туда не уезжал")
+		t.Error("extra marketplace call for a product that was never pushed there")
 	}
 }
 
@@ -139,6 +139,6 @@ func TestCandidatesIncludeHidden(t *testing.T) {
 		t.Fatalf("candidates: %+v", got.Products)
 	}
 	if w := do(t, h, "GET", "/candidates?q=нет", ""); w.Code != http.StatusOK {
-		t.Fatalf("поиск: %d", w.Code)
+		t.Fatalf("search: %d", w.Code)
 	}
 }

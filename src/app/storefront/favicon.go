@@ -48,9 +48,7 @@ const kNoPhotoSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 40
 	`<rect width="400" height="400" fill="#f4f1ee"/>` +
 	`<g fill="none" stroke="#c9bfb6" stroke-width="10" stroke-linejoin="round">` +
 	`<rect x="120" y="150" width="160" height="120" rx="12"/>` +
-	`<path d="M170 150l14-22h32l14 22"/><circle cx="200" cy="212" r="34"/></g>` +
-	`<text x="200" y="320" fill="#9a8d82" font-family="system-ui,sans-serif" ` +
-	`font-size="26" text-anchor="middle">нет фото</text></svg>`
+	`<path d="M170 150l14-22h32l14 22"/><circle cx="200" cy="212" r="34"/></g></svg>`
 
 func (s *Storefront) NoPhoto(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/svg+xml")

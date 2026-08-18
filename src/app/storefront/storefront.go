@@ -224,7 +224,6 @@ type pageVM struct {
 	NoIndex         bool
 	Query           string
 	FoundStr        string
-	CategoryURL     string
 	Category        string
 	// CategoryText is the owner's own words above the listing, and the first
 	// sentences of it become the page description: generated text is the same on
@@ -571,7 +570,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL,
 		CSS: template.CSS(styleCSS), P: p, Images: imgs,
 		PriceStr: priceStr(p.Price), MetaDescription: desc,
-		CartCount: cartCount(r), CategoryURL: categoryURL(p.Category)}
+		CartCount: cartCount(r)}
 	if p.Category != "" {
 		data.Crumbs = crumbs(p.Category)
 		data.CrumbsEnd = len(data.Crumbs) + 2

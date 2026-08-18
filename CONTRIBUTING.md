@@ -1,71 +1,71 @@
-# Как участвовать
+# How to contribute
 
-Спасибо за интерес к fastoshop. Проект намеренно маленький: один Go-бинарь, SQLite, никаких фреймворков сверх необходимого. PR, который добавляет абстракцию «на будущее», скорее всего будет отклонён, а PR, который удаляет код, почти наверняка примут.
+Thank you for your interest in fastoshop. The project is deliberately small: one Go binary, SQLite, no frameworks beyond the necessary. A PR that adds an abstraction "for the future" will most likely be rejected, while a PR that deletes code will almost certainly be accepted.
 
-## Сборка и запуск
+## Build and run
 
-Нужны Go 1.25+ и Node 20+.
+You need Go 1.25+ and Node 20+.
 
 ```bash
 git clone git@github.com:fastogt/fastoshop.git && cd fastoshop
 
-cd src && go test ./... && cd ..          # бэкенд
-cd web && npm install && npm run build    # админка
+cd src && go test ./... && cd ..          # backend
+cd web && npm install && npm run build    # admin panel
 
-# запуск с временным конфигом
+# run with a temporary config
 printf 'settings:\n  host: "127.0.0.1:9097"\n  database: "/tmp/fastoshop.db"\n  base_url: "http://localhost:9097"\n' > /tmp/fastoshop.conf
 cd src && go run ./cmd/fastoshop.go -config /tmp/fastoshop.conf
 ```
 
-Витрина, http://localhost:9097, админка в деве — `cd web && npm run dev`, затем http://localhost:5173/admin/ (запросы `/api` проксируются на бэкенд).
+Storefront: http://localhost:9097. Admin panel in dev — `cd web && npm run dev`, then http://localhost:5173/admin/ (`/api` requests are proxied to the backend).
 
-## Перед PR
+## Before a PR
 
 ```bash
 cd src && go fmt ./... && go vet ./... && go test ./... && golangci-lint run ./...
 cd web && npx prettier --write src/ && npm run lint && npm run build
 ```
 
-CI гоняет ровно это. Изменения в поведении, с тестом; исправления багов, с тестом, который падает до фикса.
+CI runs exactly this. Behavior changes come with a test; bug fixes come with a test that fails before the fix.
 
-## Что важно не сломать
+## What must not be broken
 
-- **Витрина не должна тянуть JavaScript.** Публичные страницы рендерит `html/template`; SEO — главная ценность продукта. Любой `<script>` на витрине, любой внешний CDN или шрифт, это регрессия.
-- **JSON-LD, canonical, sitemap** покрыты тестами в `app/storefront`. Если тест мешает, почти наверняка неправ код, а не тест.
-- **Ответы API — только через `gofastogt`** (конверт `{"data": ...}`), payload, именованные структуры, никогда `map[string]any`.
-- **Секреты не уходят в ответ**: пароли и токены отдаются флагом `*_set`, не значением.
+- **The storefront must not pull in JavaScript.** Public pages are rendered by `html/template`; SEO is the product's main value. Any `<script>` on the storefront, any external CDN or font, is a regression.
+- **JSON-LD, canonical, sitemap** are covered by tests in `app/storefront`. If a test gets in the way, it is almost certainly the code that is wrong, not the test.
+- **API responses only through `gofastogt`** (the `{"data": ...}` envelope); payloads are named structs, never `map[string]any`.
+- **Secrets never go into a response**: passwords and tokens are returned as a `*_set` flag, not as the value.
 
-Полный список конвенций, в [CLAUDE.md](CLAUDE.md).
+The full list of conventions is in [CLAUDE.md](CLAUDE.md).
 
-## Добавить площадку (канал)
+## Adding a marketplace (channel)
 
-Каналы строятся вертикальными срезами: вкладка в админке + пакет `app/<площадка>` в Go + свои таблицы с префиксом площадки. Общего интерфейса нет намеренно, правила площадок различаются (у Ozon остаток на `offer_id`, у WB на штрихкоде размера, у Kufar/Avito остатков нет вовсе). Образец, пакет `app/ozon`; перед кодом нового канала обсудите дизайн в Issues.
+Channels are built as vertical slices: an admin tab + an `app/<platform>` package in Go + its own tables with the platform prefix. There is deliberately no shared interface — platform rules differ (Ozon sets stock by `offer_id`, WB by the size barcode, Kufar/Avito have no stock at all). The reference is the `app/ozon` package; before writing code for a new channel, discuss the design in Issues.
 
-## Добавить источник импорта
+## Adding an import source
 
-Разовый перенос каталога, интерфейс `Source` (`src/app/importer/`):
+A one-time catalog transfer, the `Source` interface (`src/app/importer/`):
 
 ```go
 type Source interface {
     Name() string
-    Count() (int, error)      // кнопка «Проверить»: сколько товаров нашли
+    Count() (int, error)      // the "Check" button: how many products were found
     Fetch() ([]Item, error)
 }
 ```
 
-Поля вида `BaseURL` оставляйте настраиваемыми, на них указывают моки в тестах. Цены везде хранятся в минорных единицах (копейках).
+Keep fields like `BaseURL` configurable — mocks in tests point at them. Prices are stored everywhere in minor units (kopecks).
 
-## Версии
+## Versions
 
-Версия живёт только в git-теге (`vMAJOR.MINOR.PATCH`), в исходниках её нет, номер подставляется при сборке. Правило: **PATCH** — исправление без смены поведения, **MINOR** — новая совместимая возможность (например, адаптер нового маркетплейса), **MAJOR** — апгрейд требует действий от владельца магазина (несовместимый конфиг, удалённый эндпоинт).
+The version lives only in the git tag (`vMAJOR.MINOR.PATCH`); it is not in the sources, the number is injected at build time. The rule: **PATCH** — a fix with no behavior change, **MINOR** — a new compatible capability (e.g. an adapter for a new marketplace), **MAJOR** — the upgrade requires action from the shop owner (an incompatible config, a removed endpoint).
 
-Изменили схему БД — это минимум MINOR. До первого стабильного релиза схема правится прямо в `CREATE TABLE` (живых баз нет); после него в описании релиза нужен готовый `ALTER TABLE` для копипасты, миграций нет, у обновившихся инстансов новая колонка сама не появится.
+Changed the DB schema — that is at minimum MINOR. Until the first stable release the schema is edited directly in `CREATE TABLE` (there are no live databases); after it, the release description needs a ready-to-paste `ALTER TABLE` — there are no migrations, and an upgraded instance will not grow the new column on its own.
 
-На правки документации, скриншотов, CI и тестов релиз не выпускается.
+No release is cut for edits to documentation, screenshots, CI, or tests.
 
-## Контакты
+## Contacts
 
-Вопросы и баги, через [Issues](https://github.com/fastogt/fastoshop/issues).
-Об уязвимостях пишите приватно: **support@fastocloud.com** — не открывайте публичный issue, пока проблема не закрыта.
+Questions and bugs — via [Issues](https://github.com/fastogt/fastoshop/issues).
+Report vulnerabilities privately: **support@fastocloud.com** — do not open a public issue until the problem is closed.
 
-Код принимается под лицензией AGPL-3.0.
+Code is accepted under the AGPL-3.0 license.

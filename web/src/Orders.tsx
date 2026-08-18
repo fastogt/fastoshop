@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, apiError, type Order } from "./api";
 import { useLang, useT } from "./i18n";
+import { toRubles } from "./money";
 import DataTable, { type Sort } from "./DataTable";
 import { IconCheck, IconTrash, IconUndo, IconX } from "./Icons";
 import { useSign } from "./shop";
@@ -35,10 +36,10 @@ const kText = {
   markDone: { ru: "Отметить выполненными", en: "Mark as completed" },
   bulkDelete: { ru: "Удалить", en: "Delete" },
   confirmDelete: {
-    ru: "Удалить заказы (%d)? Данные покупателя и состав заказа исчезнут навсегда. Остатки не вернутся — для этого отмените заказ.",
-    en: "Delete %d order(s)? The buyer's details and the contents disappear for good. Stock is not returned — cancel the order for that.",
+    ru: "Удалить заказы ({n})? Данные покупателя и состав заказа исчезнут навсегда. Остатки не вернутся — для этого отмените заказ.",
+    en: "Delete {n} order(s)? The buyer's details and the contents disappear for good. Stock is not returned — cancel the order for that.",
   },
-  deleted: { ru: "Удалено: %d", en: "Deleted: %d" },
+  deleted: { ru: "Удалено: {n}", en: "Deleted: {n}" },
   markCancelled: { ru: "Отменить", en: "Cancel" },
   markNew: { ru: "Вернуть в работу", en: "Reopen" },
   bulkDone: { ru: "Изменено заказов: {n}", en: "Orders changed: {n}" },
@@ -80,11 +81,10 @@ export default function Orders() {
   // Status changes move stock, so each order goes in its own transaction: a
   // failure on one must not roll back the others and must not pass silently.
   const remove = async (ids: number[]) => {
-    if (!window.confirm(t("confirmDelete").replace("%d", String(ids.length))))
-      return;
+    if (!window.confirm(t("confirmDelete", { n: ids.length }))) return;
     try {
       const r = await api.bulkDeleteOrders(ids);
-      setBulkMsg(t("deleted").replace("%d", String(r.deleted)));
+      setBulkMsg(t("deleted", { n: r.deleted }));
       await reload();
     } catch {
       setBulkMsg(t("statusFailed"));
@@ -106,24 +106,20 @@ export default function Orders() {
     }
   };
 
-  const items = (o: Order) => {
+  const parseItems = (o: Order) => {
     try {
-      return (JSON.parse(o.items_json) as { title: string; qty: number }[])
-        .map((i) => `${i.title} ×${i.qty}`)
-        .join(", ");
+      const items = JSON.parse(o.items_json) as {
+        title: string;
+        qty: number;
+        price: number;
+      }[];
+      const sum = items.reduce((acc, i) => acc + i.price * i.qty, 0);
+      return {
+        text: items.map((i) => `${i.title} ×${i.qty}`).join(", "),
+        total: `${toRubles(sum)} ${sign}`,
+      };
     } catch {
-      return o.items_json;
-    }
-  };
-
-  const total = (o: Order) => {
-    try {
-      const sum = (
-        JSON.parse(o.items_json) as { price: number; qty: number }[]
-      ).reduce((acc, i) => acc + i.price * i.qty, 0);
-      return `${(sum / 100).toFixed(2)} ${sign}`;
-    } catch {
-      return "—";
+      return { text: o.items_json, total: "—" };
     }
   };
 
@@ -180,13 +176,17 @@ export default function Orders() {
               </>
             ),
           },
-          { key: "items", label: t("thItems"), render: items },
+          {
+            key: "items",
+            label: t("thItems"),
+            render: (o) => parseItems(o).text,
+          },
           {
             key: "total",
             label: t("thTotal"),
             render: (o) => (
               <span className="font-semibold whitespace-nowrap">
-                {total(o)}
+                {parseItems(o).total}
               </span>
             ),
           },

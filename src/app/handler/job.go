@@ -18,22 +18,13 @@ const (
 	kJobFill   = "fill"
 )
 
-// Tasks the fill job can perform on a selection of products. The list is the
-// seam for what comes next — pulling a description or extra photos from the
-// supplier is the same shape of work over the same selection — so it travels as
-// a list from the very first task rather than being retrofitted later.
+// Fill job stages: the download and its second half — a downloaded photo
+// without its small copy would leave the catalogue as heavy as it was, which is
+// the whole reason for downloading it.
 const (
-	TaskPhotos = "photos"
+	kStagePhotos = "photos"
+	kStageThumbs = "thumbs"
 )
-
-// kStageThumbs is not a task the owner ticks: it is the second half of
-// "photos". A downloaded photo without its small copy would leave the catalogue
-// as heavy as it was, which is the whole reason for downloading it.
-const kStageThumbs = "thumbs"
-
-func validTask(t string) bool {
-	return t == TaskPhotos
-}
 
 // jobStage is one step of a job. A list, not a single stage, because a fill can
 // have several tasks ticked and each carries its own count — one flat "done of

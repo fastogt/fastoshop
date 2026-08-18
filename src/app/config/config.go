@@ -11,7 +11,6 @@ import (
 // configures (SMTP, shop) lives in the DB (the settings table), not here.
 type Settings struct {
 	Host     string `yaml:"host"`
-	LogPath  string `yaml:"log_path"`
 	LogLevel string `yaml:"log_level"`
 	Database string `yaml:"database"`
 	// BaseURL — the public storefront address (for sitemap, canonical, emails).

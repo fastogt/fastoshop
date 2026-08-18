@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-          # go.sum не коммитится (правило проекта), а кэш setup-go требует его хэш.
+          # go.sum is not committed (project rule), and setup-go's cache needs its hash.
           cache: false
       - uses: actions/setup-node@v4
         with:
@@ -26,9 +26,9 @@ jobs:
       - run: go test ./...
         working-directory: src
 
-      - run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+      - run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
 
-      # Версия пакета — из тега: v1.0.0 → 1.0.0
+      # Package version comes from the tag: v1.0.0 → 1.0.0
       - name: Build package
         run: |
           VERSION="${GITHUB_REF_NAME#v}"

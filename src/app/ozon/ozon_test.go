@@ -83,7 +83,7 @@ func TestSettingsRoundTrip(t *testing.T) {
 		t.Fatalf("save: %d %s", w.Code, w.Body.String())
 	}
 	if strings.Contains(w.Body.String(), `"key"`) {
-		t.Fatalf("api_key утёк в ответ: %s", w.Body.String())
+		t.Fatalf("api_key leaked into the response: %s", w.Body.String())
 	}
 	got = decode[settingsResponse](t, w)
 	if !got.APIKeySet || !got.Enabled || got.ClientID != "cid" || got.WarehouseID != "wh-1" {
@@ -128,7 +128,7 @@ func TestCheckAndLinkRefuseWithoutCredentials(t *testing.T) {
 			t.Fatalf("%s without creds: %d %s", path, w.Code, w.Body.String())
 		}
 		if !strings.Contains(w.Body.String(), "Client-Id") {
-			t.Fatalf("%s: сообщение должно быть человеческим: %s", path, w.Body.String())
+			t.Fatalf("%s: message must be human-readable: %s", path, w.Body.String())
 		}
 	}
 }

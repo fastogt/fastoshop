@@ -68,7 +68,7 @@ func (d *Database) MarkOzonPricePushed(productID, level int64) error {
 func (d *Database) MarkOzonPriceError(productID int64, msg string, retryAt time.Time) error {
 	_, err := d.db.Exec(
 		`UPDATE ozon_links SET price_error=?, retry_at=? WHERE product_id=?`,
-		msg, retryAt.UTC().Format("2006-01-02 15:04:05"), productID)
+		msg, retryAt.UTC().Format(kSQLiteTime), productID)
 	return err
 }
 

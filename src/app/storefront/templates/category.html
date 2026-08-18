@@ -16,10 +16,7 @@
 </script>
 {{end}}
 {{define "content"}}
-<nav class="crumbs" aria-label="Хлебные крошки">
-  <a href="/">Каталог</a>
-  {{range .Crumbs}} › <a href="{{.URL}}">{{.Name}}</a>{{end}}
-</nav>
+{{template "crumbs" .}}
 <h1>{{.Category}}</h1>
 <p class="found">{{.FoundStr}}</p>
 {{if .CategoryText}}<div class="cat-text">{{.CategoryText}}</div>{{end}}

@@ -15,10 +15,10 @@
     <td>{{if .ImageURL}}<a href="/p/{{.Slug}}"><img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy"></a>{{end}}</td>
     <td><a href="/p/{{.Slug}}">{{.Title}}</a></td>
     <td class="unit">{{.PriceStr}} {{$.Shop.Sign}}</td>
-    <td class="qty-cell">
-      {{/* Минус, число, плюс и крестик — привычный набор из любого магазина.
-           Скрытая кнопка «set» стоит первой, потому что Enter в поле количества
-           нажимает первую кнопку формы: без неё ввод числа уменьшал бы его. */}}
+    <td>
+      {{/* Minus, number, plus and a cross — the familiar set from any shop.
+           The hidden "set" button comes first because Enter in the quantity field
+           presses the form's first button: without it typing a number would decrement it. */}}
       <form method="post" action="/cart/update" class="qty">
         <input type="hidden" name="slug" value="{{.Slug}}">
         <button type="submit" name="action" value="set" hidden></button>

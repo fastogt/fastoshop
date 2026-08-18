@@ -31,18 +31,18 @@ func TestJobSlotIsSingle(t *testing.T) {
 	if idle := jobState(t, h); idle.Running {
 		t.Fatal("fresh handler reports a running job")
 	}
-	if _, ok := h.job.start(kJobFill, []jobStage{{Task: TaskPhotos, Total: 10}}); !ok {
+	if _, ok := h.job.start(kJobFill, []jobStage{{Task: kStagePhotos, Total: 10}}); !ok {
 		t.Fatal("could not claim a free slot")
 	}
 
 	w := httptest.NewRecorder()
 	h.BulkFill(w, httptest.NewRequest("POST", "/api/products/bulk/fill",
-		strings.NewReader(`{"all":true,"tasks":["photos"]}`)))
+		strings.NewReader(`{"all":true}`)))
 	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "задачи") {
 		t.Fatalf("busy slot: %d %s", w.Code, w.Body.String())
 	}
 
-	h.job.progress(TaskPhotos, 4, 10, []int64{7})
+	h.job.progress(kStagePhotos, 4, 10, []int64{7})
 	s := jobState(t, h)
 	if !s.Running || s.Kind != kJobFill || len(s.Stages) != 1 ||
 		s.Stages[0].Done != 4 || s.Stages[0].Total != 10 ||
@@ -90,7 +90,7 @@ func TestBulkFillNothingToDo(t *testing.T) {
 	h := newTestHandler(t)
 	w := httptest.NewRecorder()
 	h.BulkFill(w, httptest.NewRequest("POST", "/api/products/bulk/fill",
-		strings.NewReader(`{"all":true,"tasks":["photos"]}`)))
+		strings.NewReader(`{"all":true}`)))
 	if w.Code != http.StatusOK || strings.Contains(w.Body.String(), `"started":true`) {
 		t.Fatalf("%d %s", w.Code, w.Body.String())
 	}

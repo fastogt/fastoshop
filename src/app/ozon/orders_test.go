@@ -16,21 +16,21 @@ func TestPollAppliesPostingOnce(t *testing.T) {
 
 	pass(t, w)
 	if got := stockOf(t, d, a); got != 7 {
-		t.Fatalf("A: ожидали 7, получили %d", got)
+		t.Fatalf("A: want 7, got %d", got)
 	}
 	if got := stockOf(t, d, b); got != 3 {
-		t.Fatalf("B: ожидали 3, получили %d", got)
+		t.Fatalf("B: want 3, got %d", got)
 	}
 
 	// The same posting a second time — the ledger rejects it via UNIQUE.
 	pass(t, w)
 	if stockOf(t, d, a) != 7 || stockOf(t, d, b) != 3 {
-		t.Fatalf("повторное отправление сдвинуло остатки: A=%d B=%d",
+		t.Fatalf("repeated posting shifted stock: A=%d B=%d",
 			stockOf(t, d, a), stockOf(t, d, b))
 	}
 	total, oversold, unresolved, err := d.CountOzonOrderState()
 	if err != nil || total != 1 || oversold != 0 || unresolved != 0 {
-		t.Fatalf("счётчики: %v %d/%d/%d", err, total, oversold, unresolved)
+		t.Fatalf("counters: %v %d/%d/%d", err, total, oversold, unresolved)
 	}
 }
 
@@ -41,16 +41,16 @@ func TestPollOversellClampsAtZero(t *testing.T) {
 
 	pass(t, w)
 	if got := stockOf(t, d, id); got != 0 {
-		t.Fatalf("остаток ушёл в минус или не списался: %d", got)
+		t.Fatalf("stock went negative or was not deducted: %d", got)
 	}
 	orders, err := d.ListOzonOrdersPage(50, 0)
 	if err != nil || len(orders) != 1 {
-		t.Fatalf("заказ не записан: %v %+v", err, orders)
+		t.Fatalf("order not recorded: %v %+v", err, orders)
 	}
 	if !orders[0].Oversold {
-		t.Fatalf("оверселл не отмечен: %+v", orders[0])
+		t.Fatalf("oversell not flagged: %+v", orders[0])
 	}
-	t.Logf("оверселл: %s qty=%d остаток=%d",
+	t.Logf("oversell: %s qty=%d stock=%d",
 		orders[0].PostingNumber, orders[0].Items[0].Qty, stockOf(t, d, id))
 }
 
@@ -61,11 +61,11 @@ func TestPollUnresolvedOfferIsSurfaced(t *testing.T) {
 
 	pass(t, w)
 	if got := stockOf(t, d, id); got != 4 {
-		t.Fatalf("связанная позиция не списалась: %d", got)
+		t.Fatalf("linked item not deducted: %d", got)
 	}
 	orders, err := d.ListOzonOrdersPage(50, 0)
 	if err != nil || len(orders) != 1 || len(orders[0].Items) != 2 {
-		t.Fatalf("позиции: %v %+v", err, orders)
+		t.Fatalf("items: %v %+v", err, orders)
 	}
 	var unresolved *database.OzonOrderItem
 	for i := range orders[0].Items {
@@ -74,11 +74,11 @@ func TestPollUnresolvedOfferIsSurfaced(t *testing.T) {
 		}
 	}
 	if unresolved == nil || unresolved.OfferID != "НЕТ-ТАКОГО" || unresolved.Qty != 2 {
-		t.Fatalf("несопоставленная позиция потерялась: %+v", orders[0].Items)
+		t.Fatalf("unresolved item lost: %+v", orders[0].Items)
 	}
 	_, _, cnt, err := d.CountOzonOrderState()
 	if err != nil || cnt != 1 {
-		t.Fatalf("счётчик несопоставленных: %v %d", err, cnt)
+		t.Fatalf("unresolved counter: %v %d", err, cnt)
 	}
 }
 
@@ -88,13 +88,13 @@ func TestPollCancellationRestocksOnce(t *testing.T) {
 	m.setPostings(posting("0004-1", "awaiting_deliver", line("A", 2)))
 	pass(t, w)
 	if got := stockOf(t, d, id); got != 3 {
-		t.Fatalf("продажа не списалась: %d", got)
+		t.Fatalf("sale not deducted: %d", got)
 	}
 
 	m.setPostings(posting("0004-1", "cancelled", line("A", 2)))
 	pass(t, w)
 	if got := stockOf(t, d, id); got != 5 {
-		t.Fatalf("отмена не вернула товар: %d", got)
+		t.Fatalf("cancellation did not return stock: %d", got)
 	}
 
 	// Two more encounters of the same cancellation (including under a different
@@ -103,7 +103,7 @@ func TestPollCancellationRestocksOnce(t *testing.T) {
 	m.setPostings(posting("0004-1", "not_accepted", line("A", 2)))
 	pass(t, w)
 	if got := stockOf(t, d, id); got != 5 {
-		t.Fatalf("повторная отмена вернула товар второй раз: %d", got)
+		t.Fatalf("repeated cancellation returned stock twice: %d", got)
 	}
 }
 
@@ -114,17 +114,17 @@ func TestPollCancelledOnFirstSightDoesNotMoveStock(t *testing.T) {
 
 	pass(t, w)
 	if got := stockOf(t, d, id); got != 5 {
-		t.Fatalf("сразу отменённое отправление сдвинуло остаток: %d", got)
+		t.Fatalf("posting cancelled right away shifted stock: %d", got)
 	}
 	orders, err := d.ListOzonOrdersPage(50, 0)
 	if err != nil || len(orders) != 1 || orders[0].Status != database.OzonStatusCancelled {
-		t.Fatalf("отмена не записана: %v %+v", err, orders)
+		t.Fatalf("cancellation not recorded: %v %+v", err, orders)
 	}
 
 	// And the next encounter restocks nothing either.
 	pass(t, w)
 	if got := stockOf(t, d, id); got != 5 {
-		t.Fatalf("отменённое отправление вернуло несписанный товар: %d", got)
+		t.Fatalf("cancelled posting returned stock that was never deducted: %d", got)
 	}
 }
 
@@ -138,11 +138,11 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	m.postingsRaw = `{"result":{"postings":[{"status":"awaiting_deliver"}]}}`
 	m.mu.Unlock()
 	if _, _, err := w.Pass(); err == nil {
-		t.Fatal("неизвестный формат ответа должен быть ошибкой, а не тихим нулём")
+		t.Fatal("unknown response format must be an error, not a silent zero")
 	}
-	t.Logf("ошибка опроса видна во вкладке: %s", w.PollError())
+	t.Logf("poll error visible in the tab: %s", w.PollError())
 	if since, err := d.OzonOrdersSince(); err != nil || !since.IsZero() {
-		t.Fatalf("курсор сдвинулся после неудачи: %v %s", err, since)
+		t.Fatalf("cursor advanced after a failure: %v %s", err, since)
 	}
 
 	m.mu.Lock()
@@ -153,12 +153,12 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	pass(t, w)
 	since, err := d.OzonOrdersSince()
 	if err != nil || since.Before(before) {
-		t.Fatalf("курсор не сдвинулся: %v %s", err, since)
+		t.Fatalf("cursor did not advance: %v %s", err, since)
 	}
 	if w.PollError() != "" {
-		t.Fatalf("ошибка не снялась: %s", w.PollError())
+		t.Fatalf("error not cleared: %s", w.PollError())
 	}
-	t.Logf("курсор: %s", since.Format(time.RFC3339))
+	t.Logf("cursor: %s", since.Format(time.RFC3339))
 
 	// The next poll goes out with an overlap backwards — and the re-fetched
 	// posting passes through as a no-op.
@@ -169,12 +169,12 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	overlap := since.Sub(last)
-	t.Logf("нахлёст окна: %s", overlap)
+	t.Logf("window overlap: %s", overlap)
 	if overlap < kPollOverlap-time.Second || overlap > kPollOverlap+time.Second {
-		t.Fatalf("нахлёст %s не равен %s", overlap, kPollOverlap)
+		t.Fatalf("overlap %s is not %s", overlap, kPollOverlap)
 	}
 	if n, _ := d.CountOzonOrders(); n != 1 {
-		t.Fatalf("нахлёст создал дубль: %d", n)
+		t.Fatalf("overlap created a duplicate: %d", n)
 	}
 }
 
@@ -193,35 +193,35 @@ func TestFullCycle(t *testing.T) {
 	step := func(format string, args ...any) { t.Logf("· "+format, args...) }
 
 	got := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
-	step("первая отправка: pushed=%d, уровень на площадке %d",
+	step("first push: pushed=%d, marketplace level %d",
 		got.Pushed, m.lastBatch(t)[0].Stock)
 	if got.Pushed != 1 || m.lastBatch(t)[0].Stock != 10 {
-		t.Fatalf("первая отправка: %+v %+v", got, m.lastBatch(t))
+		t.Fatalf("first push: %+v %+v", got, m.lastBatch(t))
 	}
 
 	m.setPostings(posting("0007-1", "awaiting_deliver", line("A", 4)))
 	got = decode[pushResponse](t, do(t, h, "POST", "/push", ""))
-	step("после продажи 4 шт: наш остаток %d, отправлено %d, уровень на площадке %d",
+	step("after selling 4 pcs: our stock %d, pushed %d, marketplace level %d",
 		stockOf(t, d, id), got.Pushed, m.lastBatch(t)[0].Stock)
 	if stockOf(t, d, id) != 6 || got.Pushed != 1 || m.lastBatch(t)[0].Stock != 6 {
-		t.Fatalf("цикл не замкнулся: остаток=%d %+v %+v",
+		t.Fatalf("cycle did not close: stock=%d %+v %+v",
 			stockOf(t, d, id), got, m.lastBatch(t))
 	}
 
 	s := decode[settingsResponse](t, do(t, h, "GET", "/settings", ""))
-	step("вкладка: продаж %d, оверселл %d, несопоставленных %d, ошибка опроса %q",
+	step("tab: sales %d, oversold %d, unresolved %d, poll error %q",
 		s.OrdersTotal, s.OrdersOversold, s.OrdersUnresolved, s.PollError)
 	if s.OrdersTotal != 1 || s.OrdersOversold != 0 || s.PollError != "" {
-		t.Fatalf("статус вкладки: %+v", s)
+		t.Fatalf("tab status: %+v", s)
 	}
 
 	list := decode[ozonOrdersResponse](t, do(t, h, "GET", "/orders?page=1", ""))
-	step("журнал: %s (%s), позиция %q x%d",
+	step("log: %s (%s), item %q x%d",
 		list.Orders[0].PostingNumber, list.Orders[0].Status,
 		list.Orders[0].Items[0].Title, list.Orders[0].Items[0].Qty)
 	if list.Total != 1 || len(list.Orders) != 1 ||
 		list.Orders[0].Items[0].Title != "Товар A" {
-		t.Fatalf("журнал продаж: %+v", list)
+		t.Fatalf("sales log: %+v", list)
 	}
 }
 
@@ -238,15 +238,15 @@ func TestOrdersEndpointPaginates(t *testing.T) {
 	}
 	first := decode[ozonOrdersResponse](t, do(t, h, "GET", "/orders", ""))
 	if first.Total != kOrdersPageSize+3 || len(first.Orders) != kOrdersPageSize {
-		t.Fatalf("первая страница: total=%d len=%d", first.Total, len(first.Orders))
+		t.Fatalf("first page: total=%d len=%d", first.Total, len(first.Orders))
 	}
 	second := decode[ozonOrdersResponse](t, do(t, h, "GET", "/orders?page=2", ""))
 	if len(second.Orders) != 3 || second.Page != 2 {
-		t.Fatalf("вторая страница: %+v", second)
+		t.Fatalf("second page: %+v", second)
 	}
 	// Newest first: the first on page two is older than the last on page one.
 	if second.Orders[0].CreatedAt.After(first.Orders[len(first.Orders)-1].CreatedAt) {
-		t.Fatalf("порядок страниц сломан: %s vs %s",
+		t.Fatalf("page order broken: %s vs %s",
 			second.Orders[0].CreatedAt, first.Orders[len(first.Orders)-1].CreatedAt)
 	}
 }

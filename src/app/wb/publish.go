@@ -100,7 +100,7 @@ func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	links, missing := matchProducts(products, newCardIndex(cards))
-	lang := h.lang()
+	lang := h.db.Lang()
 	res := publishResponse{NoCard: []unlinkedProduct{}}
 	for _, m := range missing {
 		m.Reason = i18n.TIfKey(lang, m.Reason)
@@ -185,7 +185,7 @@ func (h *Handlers) zeroOut(w http.ResponseWriter, links []database.WBLinkState) 
 		return nil, err
 	}
 	failed := make(map[string]string)
-	lang := h.lang()
+	lang := h.db.Lang()
 	for len(links) > 0 {
 		n := min(kStockBatch, len(links))
 		batch := links[:n]

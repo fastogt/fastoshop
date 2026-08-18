@@ -12,14 +12,15 @@ export function useJob(onFinish?: () => void) {
   const wasRunning = useRef(false);
 
   useEffect(() => {
-    let es: EventSource | null = null;
-    try {
-      es = new EventSource("/api/job/stream");
-      es.onmessage = (e) => setJob(JSON.parse(e.data) as JobState);
-    } catch {
-      api.job().then(setJob);
-    }
-    return () => es?.close();
+    const es = new EventSource("/api/job/stream");
+    es.onmessage = (e) => setJob(JSON.parse(e.data) as JobState);
+    es.onerror = () => {
+      api
+        .job()
+        .then(setJob)
+        .catch(() => {});
+    };
+    return () => es.close();
   }, []);
 
   useEffect(() => {

@@ -266,7 +266,6 @@ func (c *Client) ListCards() ([]Card, error) {
 
 type SellerInfo struct {
 	Name      string `json:"name"`
-	Sid       string `json:"sid"`
 	TradeMark string `json:"tradeMark"`
 }
 

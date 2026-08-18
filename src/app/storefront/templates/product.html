@@ -38,10 +38,7 @@
 {{end}}
 {{end}}
 {{define "content"}}
-<nav class="crumbs" aria-label="Хлебные крошки">
-  <a href="/">Каталог</a>
-  {{range .Crumbs}} › <a href="{{.URL}}">{{.Name}}</a>{{end}}
-</nav>
+{{template "crumbs" .}}
 <article class="product">
   <div class="gallery">
     {{/* A scroll strip with snapping: a gallery without JavaScript. Photos used
@@ -60,7 +57,7 @@
     </div>
     {{end}}
   </div>
-  <div class="info">
+  <div>
     <h1>{{.P.Title}}</h1>
     {{if .P.SKU}}<p class="sku">Артикул: {{.P.SKU}}</p>{{end}}
     <div class="buybox">

@@ -73,25 +73,22 @@ func (d *Database) wbPriceRows(where string) ([]WBPriceRow, error) {
 // a task remembered without its rows would never be credited, and rows stamped
 // without a task would be stuck in flight forever.
 func (d *Database) MarkWBPriceSent(uploadID string, at time.Time, sent []WBPriceSent) error {
-	tx, err := d.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(
-		`INSERT INTO wb_price_tasks (upload_id, created_at) VALUES (?, ?)
-		 ON CONFLICT(upload_id) DO UPDATE SET created_at=excluded.created_at`,
-		uploadID, at.UTC().Format(kSQLiteTime)); err != nil {
-		return err
-	}
-	for _, s := range sent {
+	return d.withTx(func(tx *sql.Tx) error {
 		if _, err := tx.Exec(
-			`UPDATE wb_links SET price_task=?, price_sent=? WHERE product_id=?`,
-			uploadID, s.Sent, s.ProductID); err != nil {
+			`INSERT INTO wb_price_tasks (upload_id, created_at) VALUES (?, ?)
+			 ON CONFLICT(upload_id) DO UPDATE SET created_at=excluded.created_at`,
+			uploadID, at.UTC().Format(kSQLiteTime)); err != nil {
 			return err
 		}
-	}
-	return tx.Commit()
+		for _, s := range sent {
+			if _, err := tx.Exec(
+				`UPDATE wb_links SET price_task=?, price_sent=? WHERE product_id=?`,
+				uploadID, s.Sent, s.ProductID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (d *Database) WBPriceTasks() ([]WBPriceTask, error) {
@@ -115,21 +112,16 @@ func (d *Database) WBPriceTasks() ([]WBPriceTask, error) {
 // MarkWBPriceTaskDone credits what was sent: the platform confirmed the upload,
 // so price_sent becomes the new baseline the guard compares against.
 func (d *Database) MarkWBPriceTaskDone(uploadID string) error {
-	tx, err := d.db.Begin()
-	if err != nil {
+	return d.withTx(func(tx *sql.Tx) error {
+		if _, err := tx.Exec(
+			`UPDATE wb_links SET price_pushed=price_sent, price_task='', price_error='',
+			   retry_at=NULL
+			 WHERE price_task=?`, uploadID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(`DELETE FROM wb_price_tasks WHERE upload_id=?`, uploadID)
 		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(
-		`UPDATE wb_links SET price_pushed=price_sent, price_task='', price_error='',
-		   retry_at=NULL
-		 WHERE price_task=?`, uploadID); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`DELETE FROM wb_price_tasks WHERE upload_id=?`, uploadID); err != nil {
-		return err
-	}
-	return tx.Commit()
+	})
 }
 
 // MarkWBPriceTaskFailed releases the rows of a task the platform rejected.
@@ -138,27 +130,22 @@ func (d *Database) MarkWBPriceTaskDone(uploadID string) error {
 func (d *Database) MarkWBPriceTaskFailed(uploadID string, byNm map[int64]string,
 	fallback string, retryAt time.Time) error {
 	at := retryAt.UTC().Format(kSQLiteTime)
-	tx, err := d.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	for nm, msg := range byNm {
+	return d.withTx(func(tx *sql.Tx) error {
+		for nm, msg := range byNm {
+			if _, err := tx.Exec(
+				`UPDATE wb_links SET price_error=?, price_task='', retry_at=?
+				 WHERE price_task=? AND nm_id=?`, msg, at, uploadID, nm); err != nil {
+				return err
+			}
+		}
 		if _, err := tx.Exec(
 			`UPDATE wb_links SET price_error=?, price_task='', retry_at=?
-			 WHERE price_task=? AND nm_id=?`, msg, at, uploadID, nm); err != nil {
+			 WHERE price_task=?`, fallback, at, uploadID); err != nil {
 			return err
 		}
-	}
-	if _, err := tx.Exec(
-		`UPDATE wb_links SET price_error=?, price_task='', retry_at=?
-		 WHERE price_task=?`, fallback, at, uploadID); err != nil {
+		_, err := tx.Exec(`DELETE FROM wb_price_tasks WHERE upload_id=?`, uploadID)
 		return err
-	}
-	if _, err := tx.Exec(`DELETE FROM wb_price_tasks WHERE upload_id=?`, uploadID); err != nil {
-		return err
-	}
-	return tx.Commit()
+	})
 }
 
 // MarkWBCardError stamps every row of the given cards with one message. Price
@@ -166,19 +153,16 @@ func (d *Database) MarkWBPriceTaskFailed(uploadID string, byNm map[int64]string,
 // the price — belongs to all rows of that card at once.
 func (d *Database) MarkWBCardError(nmIDs []int64, msg string, retryAt time.Time) error {
 	at := retryAt.UTC().Format(kSQLiteTime)
-	tx, err := d.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	for _, nm := range nmIDs {
-		if _, err := tx.Exec(
-			`UPDATE wb_links SET price_error=?, retry_at=? WHERE nm_id=?`,
-			msg, at, nm); err != nil {
-			return err
+	return d.withTx(func(tx *sql.Tx) error {
+		for _, nm := range nmIDs {
+			if _, err := tx.Exec(
+				`UPDATE wb_links SET price_error=?, retry_at=? WHERE nm_id=?`,
+				msg, at, nm); err != nil {
+				return err
+			}
 		}
-	}
-	return tx.Commit()
+		return nil
+	})
 }
 
 func (d *Database) CountWBPriceState() (pending, inFlight, failed int, err error) {

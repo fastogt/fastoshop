@@ -28,13 +28,6 @@ type Item struct {
 	Category string
 }
 
-// kCategorySep separates path segments; the shape of a path is decided in
-// database.CategoryPath, which every source here goes through.
-const kCategorySep = database.CategorySep
-
-// CategoryPath is database.CategoryPath under the name the sources use.
-func CategoryPath(segments ...string) string { return database.CategoryPath(segments...) }
-
 // Source is a one-off catalogue source (Ozon, WB). Not a Channel: read-only.
 type Source interface {
 	Name() string

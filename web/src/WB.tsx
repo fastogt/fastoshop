@@ -99,6 +99,7 @@ const kText = {
   andAbove: { ru: "и выше", en: "and above" },
   multiplier: { ru: "множитель", en: "multiplier" },
   addBand: { ru: "Добавить строку", en: "Add a row" },
+  removeBand: { ru: "Удалить", en: "Remove" },
   saveLadder: { ru: "Сохранить лестницу", en: "Save the ladder" },
   applyLadder: { ru: "Заполнить по лестнице", en: "Fill by the ladder" },
   markup: { ru: "Наценка, %", en: "Markup, %" },
@@ -638,6 +639,12 @@ export default function WB() {
                     setRules(next);
                   }}
                 />
+                <button
+                  className="text-muted cursor-pointer text-sm hover:text-red-600"
+                  onClick={() => setRules(rules.filter((_, j) => j !== i))}
+                >
+                  {t("removeBand")}
+                </button>
               </div>
             ))}
           </div>

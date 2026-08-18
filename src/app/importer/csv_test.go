@@ -36,10 +36,10 @@ func TestCSVReadsRussianExcelFile(t *testing.T) {
 	}
 	it := items[0]
 	if it.Title != "Чайник эмалированный" || it.Description != "Объём 2 л" {
-		t.Errorf("кодировка не распознана: %+v", it)
+		t.Errorf("encoding not detected: %+v", it)
 	}
 	if it.Price != 250050 {
-		t.Errorf("цена с пробелом и запятой: %d", it.Price)
+		t.Errorf("price with space and comma: %d", it.Price)
 	}
 	if it.Stock != 7 || len(it.ImageURLs) != 2 {
 		t.Errorf("%+v", it)
@@ -57,7 +57,7 @@ func TestCSVReadsUTF8Template(t *testing.T) {
 		t.Fatalf("%+v", items[0])
 	}
 	if c.FetchErrors() != 0 {
-		t.Fatalf("ошибки на своём же шаблоне: %d errors", c.FetchErrors())
+		t.Fatalf("errors on our own template: %d errors", c.FetchErrors())
 	}
 }
 
@@ -76,7 +76,7 @@ func TestCSVBadRowIsCountedAndSkipped(t *testing.T) {
 	c := &CSV{Data: []byte("sku,title,price\nA,Первый,100\nB,Второй,дорого\nC,Третий,300\n")}
 	items, _ := c.Fetch()
 	if len(items) != 2 {
-		t.Fatalf("битая строка утащила соседей: %+v", items)
+		t.Fatalf("broken row dragged neighbours down: %+v", items)
 	}
 	if c.FetchErrors() != 1 {
 		t.Fatalf("%d errors", c.FetchErrors())

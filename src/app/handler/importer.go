@@ -119,7 +119,7 @@ func (h *Handler) ImportCheck(w http.ResponseWriter, r *http.Request) {
 	// items, and it keeps the whole "staged upload" machinery out of the product.
 	items, err := src.Fetch()
 	if err != nil {
-		writeBadRequest(w, i18n.Localize(h.lang(), err))
+		writeBadRequest(w, i18n.Localize(h.db.Lang(), err))
 		return
 	}
 	existing, err := h.db.ListProducts()
@@ -199,7 +199,7 @@ func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 		// The job stores plain text for the admin, so the owner's language is
 		// applied here, at the last point the error is still typed.
 		if err != nil {
-			err = errors.New(i18n.Localize(h.lang(), err))
+			err = errors.New(i18n.Localize(h.db.Lang(), err))
 		}
 		h.job.finish(res, err)
 	}()

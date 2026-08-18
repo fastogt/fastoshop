@@ -215,7 +215,7 @@ func (h *Handlers) zeroOut(w http.ResponseWriter, links []database.OzonLinkState
 				continue
 			}
 			if msg := res.Err(); msg != "" {
-				failed[l.OfferID] = i18n.TIfKey(h.lang(), msg)
+				failed[l.OfferID] = i18n.TIfKey(h.db.Lang(), msg)
 			}
 		}
 	}

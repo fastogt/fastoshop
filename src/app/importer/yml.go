@@ -101,7 +101,7 @@ func categoryPath(cats map[string]ymlCategory, id string) string {
 		}
 		id = c.ParentID
 	}
-	return CategoryPath(segments...)
+	return database.CategoryPath(segments...)
 }
 
 // trimCommonRoot drops the segments every product shares. A feed's tree starts
@@ -115,7 +115,7 @@ func trimCommonRoot(items []Item) {
 		if it.Category == "" {
 			continue
 		}
-		segments := strings.Split(it.Category, kCategorySep)
+		segments := strings.Split(it.Category, database.CategorySep)
 		if first {
 			common, first = segments, false
 			continue
@@ -133,9 +133,9 @@ func trimCommonRoot(items []Item) {
 		if it.Category == "" {
 			continue
 		}
-		segments := strings.Split(it.Category, kCategorySep)
+		segments := strings.Split(it.Category, database.CategorySep)
 		if drop := min(len(common), len(segments)-1); drop > 0 {
-			items[i].Category = strings.Join(segments[drop:], kCategorySep)
+			items[i].Category = strings.Join(segments[drop:], database.CategorySep)
 		}
 	}
 }

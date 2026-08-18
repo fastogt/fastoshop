@@ -1,73 +1,74 @@
 # CLAUDE.md — fastoshop
 
-Self-hosted магазин для одного ИП: SEO-витрина + импорт каталога с WB/Ozon + заказы-заявки. Open source (AGPL-3.0), репозиторий `git@github.com:fastogt/fastoshop.git`.
+Self-hosted shop for a single sole proprietor: SEO storefront + catalog import from WB/Ozon + request-style orders. Open source (AGPL-3.0), repository `git@github.com:fastogt/fastoshop.git`.
 
-## Стек
+## Stack
 
-Go 1.25 (`src/`, модуль `github.com/fastogt/fastoshop`), SQLite (mattn/go-sqlite3), chi v5, logrus, gofastogt; React 19 + Vite + Tailwind 4 + axios (`web/`, админка). Пакет — nfpm → dpkg, systemd, nginx.
+Go 1.25 (`src/`, module `github.com/fastogt/fastoshop`), SQLite (mattn/go-sqlite3), chi v5, logrus, gofastogt; React 19 + Vite + Tailwind 4 + axios (`web/`, admin panel). Packaging — nfpm → dpkg, systemd, nginx.
 
-## Архитектура
+## Architecture
 
-- **Витрина** (`app/storefront`) — server-rendered `html/template`, **ноль JavaScript**. SEO — приоритет №1: JSON-LD `schema.org/Product`, sitemap.xml с lastmod, canonical, OG, ЧПУ-слаги с транслитерацией. Ничего из этого нельзя ломать «ради удобства».
-- **Админка** (`web/`, отдаётся под `/admin`) — React SPA, закрыта сессией, `Disallow: /admin` в robots.
-- **API** (`app/handler`) — только для админки, префикс `/api`.
-- **Каналы — вертикальными срезами, не общей абстракцией.** Синхронизация с площадками строится отдельными вкладками админки (Ozon → Wildberries → Kufar/Avito): свой пакет в Go (`app/ozon`, `app/wb`), свои таблицы с префиксом площадки (`ozon_settings`, `ozon_links`), свои правила. Ядро (`products`, `orders`) о площадках не знает ничего. Общий интерфейс, если проявится, выводится из готовых вкладок, а не проектируется до них. После двух готовых вкладок общим оказалось ровно одно — арифметика лестницы наценок (`database/price_rules.go`); остальное разошлось: Ozon ставит остаток по `offer_id` и отвечает по каждой позиции сразу, ВБ — по штрихкоду размера, цену по `nmID`, а результат отдаёт задачей позже. Интерфейс, спроектированный по одному Ozon, на этом бы и сломался.
-- **Импорт** (`app/importer`) — разовое наполнение каталога из одного источника: Ozon/WB Seller API или YML-выгрузка по ссылке (Битрикс/InSales/Тильда). Чистая конвертация в нашу модель: идентификаторы площадок при импорте не сохраняются, связи устанавливаются позже на вкладке канала. Фото при импорте не скачиваются — хранится URL источника (`product_images.path` принимает и локальное имя, и абсолютный URL), иначе 20 000 карточек это 60 000 синхронных загрузок. Забрать их к себе — отдельное фоновое действие «Заполнить» в таблице товаров: оно подменяет `path`, а не вставляет новые строки, потому что позиция определяет главное фото.
-- **Масштаб**: проверено на 20 000 товаров — каталог постраничный (60 позиций), админка до 500 строк на странице с массовыми действиями, витрина держит страницу в ~30 КБ. SQLite с запасом; глубокий OFFSET ~55 мс — осознанный потолок.
-- **Single-tenant**: один VPS = один магазин = один владелец. Мультиарендности нет и не планируется.
+- **Storefront** (`app/storefront`) — server-rendered `html/template`, **zero JavaScript**. SEO is priority #1: JSON-LD `schema.org/Product`, sitemap.xml with lastmod, canonical, OG, human-readable slugs with transliteration. None of this may be broken "for convenience".
+- **Admin panel** (`web/`, served under `/admin`) — React SPA, protected by a session, `Disallow: /admin` in robots.
+- **API** (`app/handler`) — for the admin panel only, prefix `/api`.
+- **Channels are vertical slices, not a shared abstraction.** Marketplace sync is built as separate admin tabs (Ozon → Wildberries → Kufar/Avito): each has its own Go package (`app/ozon`, `app/wb`), its own tables with the platform prefix (`ozon_settings`, `ozon_links`), its own rules. The core (`products`, `orders`) knows nothing about platforms. A shared interface, if one ever emerges, is derived from finished tabs, not designed ahead of them. After two finished tabs, exactly one thing turned out to be shared — the markup-ladder arithmetic (`database/price_rules.go`); everything else diverged: Ozon sets stock by `offer_id` and answers per line item immediately, WB sets stock by the size barcode and price by `nmID`, and returns the result as a task later. An interface designed from Ozon alone would have broken exactly there.
+- **Import** (`app/importer`) — one-time catalog fill from a single source: Ozon/WB Seller API or a YML export by URL (Bitrix/InSales/Tilda). A pure conversion into our model: platform identifiers are not stored during import; links are established later on the channel tab. Photos are not downloaded during import — the source URL is stored (`product_images.path` accepts both a local name and an absolute URL), otherwise 20,000 cards would mean 60,000 synchronous downloads. Bringing them in-house is a separate background action, "Fill in", in the product table: it replaces `path` rather than inserting new rows, because position determines the main photo.
+- **Scale**: proven on 20,000 products — the catalog is paginated (60 items), the admin panel goes up to 500 rows per page with bulk actions, the storefront keeps a page at ~30 KB. SQLite has headroom; a deep OFFSET at ~55 ms is a deliberate ceiling.
+- **Single-tenant**: one VPS = one shop = one owner. There is no multi-tenancy and none is planned.
 
-## Обязательные правила
+## Mandatory rules
 
-- **HTTP-ответы только через gofastogt**: конверт `{"data": ...}` и ошибки собираются в одном месте — `app/httpjson` (`WriteOK` → `gofastogt.NewOkResponse`, `WriteBadRequest`/`WriteInternalError` → `errorgt.MakeErrorJson*`); пакеты хендлеров держат к ним локальные алиасы `writeOK`/`writeBadRequest`. Никаких `json.Marshal` + `w.Write` в хендлерах.
-- **Payload — именованные структуры**, никогда `map[string]any` / `interface{}`. Ответ на эндпоинт — своя структура рядом с хендлером (`listProductsResponse`, `settingsResponse`). Тела запросов к внешним API — тоже структуры.
-- **Секреты не уходят наружу**: пароли и токены в JSON-ответах отдаются как булев флаг `*_set`, никогда значением.
-- Ошибки: `fmt.Errorf("context: %w", err)`.
-- Приватные константы — префикс `k` (`kMaxUploadSize`, `kSessionTTL`).
-- Импорты: stdlib → external → internal, разделены пустой строкой.
-- **Языки: всё для разработчика — по-английски, всё для пользователя — через переводы.** Код-комментарии, Go-ошибки (`fmt.Errorf`), логи, `CHANGELOG` и release notes тега пишутся только на английском. Тексты, которые видит продавец в админке и покупатель на витрине, локализуются (ru, en) и **не хардкодятся ни в Go, ни в TSX** — ни на одном языке. Существующие русские строки переезжают в переводы при первом касании файла, массовый перевод отдельным коммитом не делается.
-- **Текст для пользователя сервер рендерит сам, на языке владельца.** Магазин single-tenant, владелец один, поэтому язык магазина (`settings.lang`) и есть язык пользователя. Сообщения живут в `app/i18n` под `k`-ключами, хендлер зовёт `h.msg(i18n.KeyXxx)`. Так же уходят письма владельцу, у которых клиента нет вовсе. Ошибки, которые сохраняются в БД, пишутся ключом и переводятся при чтении (`i18n.TIfKey`); текст, пришедший от площадки, не переводится — чужую ошибку мы не переписываем.
-- **Типы фронта проверяются только через `tsc -b`.** Конфиг ссылочный (`files: []` + `references`), поэтому привычный `tsc --noEmit` молча ничего не проверяет и всегда возвращает успех. `npm run build` типы проверяет.
-- **Категория — путь в одной колонке `products.category`** (`Текстиль/Спальня/КПБ Евро`), а не отдельная сущность с `parent_id`. Источник с деревом (YML, таксономия Ozon, справочник предметов WB) заполняет все сегменты, источник без него — один, и работает как раньше. Узел дерева показывает и своих потомков (`category=? OR category LIKE ?||'/%'`), поэтому у родителя есть посадочная страница под широкий запрос. Иерархию **не угадываем**: разложить плоские названия по уровням может только модель, а импорт обязан быть детерминированным и работать без ключей — это работа нашего инструмента онбординга, не магазина.
-- **Одна таблица на всю админку** — `web/src/DataTable.tsx`: выбор строк, панель массовых действий, номера страниц, размер страницы, сортировка. Сортировка и пагинация всегда серверные: сортировать загруженную страницу в браузере на 20 000 товарах — это обман. Новые списки берут этот компонент, свою разметку таблицы не пишем.
-- **Массовое действие принимает либо список id, либо фильтр** (`all` + `q` + `supplier`): чекбоксами 20 000 строк не отметить. Удаление — исключение, только по явному списку.
-- **Поля с ключами и логинами закрываются от автозаполнения** (`autoComplete="off"` / `"new-password"` и свой `name`). Браузер принимает пару «текст + пароль» за форму входа и подставляет пароль от админки — сохранение положило бы его в базу открытым текстом.
-- **Длинное дело — фоновая задача, а не долгий запрос.** Синхронный хендлер упирается в `proxy_read_timeout` nginx (по умолчанию 60 с), и это не гипотеза: импорт на 24 000 товаров ходил по самому краю. Запуск взводит задачу и отвечает сразу, прогресс уезжает в админку через `GET /api/job/stream` (SSE) с обязательным `X-Accel-Buffering: no` — иначе nginx придержит события до конца ответа, которого у потока нет. `GET /api/job` остаётся снимком на загрузку страницы. Задача на инстанс **одна**: владелец один, параллельных длинных дел у него не бывает, а два прохода по одним строкам подрались бы. У любой задачи есть отмена — без неё единственный способ остановить скачивание 60 000 фото это перезапуск сервиса.
-- **Прогресс — список стадий, а не одно число.** `stages: [{task, done, total, state}]`: у задачи может быть несколько шагов со своими счётчиками, и усреднять их в одну полосу — врать. Новый шаг добавляется строкой в списке задач и веткой в диспетчере, не новым эндпоинтом.
-- Комментарии объясняют **почему**, а не что. Осознанные упрощения помечаются `ponytail:` с указанием потолка и пути апгрейда.
+- **HTTP responses only through gofastogt**: the `{"data": ...}` envelope and errors are assembled in one place — `app/httpjson` (`WriteOK` → `gofastogt.NewOkResponse`, `WriteBadRequest`/`WriteInternalError` → `errorgt.MakeErrorJson*`); handler packages keep local aliases `writeOK`/`writeBadRequest` to them. No `json.Marshal` + `w.Write` in handlers.
+- **Payloads are named structs**, never `map[string]any` / `interface{}`. An endpoint's response is its own struct next to the handler (`listProductsResponse`, `settingsResponse`). Request bodies to external APIs are structs too.
+- **Secrets never leave the server**: passwords and tokens in JSON responses are returned as a boolean `*_set` flag, never as the value.
+- Errors: `fmt.Errorf("context: %w", err)`.
+- Private constants — `k` prefix (`kMaxUploadSize`, `kSessionTTL`).
+- Imports: stdlib → external → internal, separated by a blank line.
+- **Languages: everything for the developer is in English, everything for the user goes through translations.** Code comments, Go errors (`fmt.Errorf`), logs, the `CHANGELOG`, and tag release notes are written in English only. Texts the seller sees in the admin panel and the buyer sees on the storefront are localized (ru, en) and **never hardcoded in Go or TSX** — in any language. Existing Russian strings move into translations on the first touch of a file; a mass translation as a separate commit is not done.
+- **User-facing text is rendered by the server itself, in the owner's language.** The shop is single-tenant, there is one owner, so the shop language (`settings.lang`) is the user's language. Messages live in `app/i18n` under `k` keys; a handler calls `h.msg(i18n.KeyXxx)`. Emails to the owner, which have no client at all, go the same way. Errors that are stored in the DB are written as a key and translated on read (`i18n.TIfKey`); text that came from a platform is not translated — we do not rewrite someone else's error.
+- **Frontend types are checked only via `tsc -b`.** The config is reference-based (`files: []` + `references`), so the familiar `tsc --noEmit` silently checks nothing and always succeeds. `npm run build` does check types.
+- **A category is a path in a single column `products.category`** (`Текстиль/Спальня/КПБ Евро`), not a separate entity with `parent_id`. A source with a tree (YML, the Ozon taxonomy, the WB subject directory) fills all segments; a source without one fills a single segment and works as before. A tree node also shows its descendants (`category=? OR category LIKE ?||'/%'`), so a parent has a landing page for a broad query. The hierarchy is **not guessed**: only a model could sort flat names into levels, and import must be deterministic and work without keys — that is the job of our onboarding tool, not the shop.
+- **One table for the whole admin panel** — `web/src/DataTable.tsx`: row selection, bulk-action bar, page numbers, page size, sorting. Sorting and pagination are always server-side: sorting the loaded page in the browser on 20,000 products is a lie. New lists take this component; we do not write our own table markup.
+- **A bulk action accepts either a list of ids or a filter** (`all` + `q` + `supplier`): 20,000 rows cannot be ticked with checkboxes. Deletion is the exception — only by an explicit list.
+- **Fields with keys and logins are shielded from autofill** (`autoComplete="off"` / `"new-password"` and a custom `name`). The browser mistakes a "text + password" pair for a login form and fills in the admin password — saving would have put it in the database in plain text.
+- **A long job is a background task, not a long request.** A synchronous handler runs into nginx's `proxy_read_timeout` (60 s by default), and this is not a hypothesis: an import of 24,000 products ran right at the edge. Starting a job arms the task and responds immediately; progress reaches the admin panel via `GET /api/job/stream` (SSE) with a mandatory `X-Accel-Buffering: no` — otherwise nginx holds the events until the end of a response that a stream never has. `GET /api/job` remains a snapshot for page load. There is **one** task per instance: there is one owner, they never have parallel long jobs, and two passes over the same rows would fight each other. Every task has cancellation — without it, the only way to stop a 60,000-photo download is restarting the service.
+- **Progress is a list of stages, not a single number.** `stages: [{task, done, total, state}]`: a task may have several steps with their own counters, and averaging them into one bar is lying. A new step is added as a row in the task list and a branch in the dispatcher, not as a new endpoint.
+- **The CLI and its stdout have an external consumer — the private fastoshop-infra repo.** `fastoshopctl create` calls `fastoshop -invite-owner`, parses the `Invite (valid 24h): <url>` line with `sed`, and emails it — this is the platform's only onboarding path. The flags, `/api/invite`, and the output format look unused from inside this repository, but they must not break: before removing any flag or endpoint, or changing stdout, grep `fastoshop-infra/packaging/`.
+- Comments explain **why**, not what. Deliberate simplifications are marked `ponytail:` with the ceiling and the upgrade path stated.
 
-## Версии и релизы
+## Versions and releases
 
-Версия существует ровно в одном месте — **в git-теге**. В коде её нет: `VersionApp` подставляет линковщик (`LDFLAGS` в Makefile), пакет собирается из тега релизным workflow. Никогда не правьте номер версии в исходниках руками.
+The version exists in exactly one place — **the git tag**. It is not in the code: `VersionApp` is injected by the linker (`LDFLAGS` in the Makefile), and the package is built from the tag by the release workflow. Never edit a version number in the sources by hand.
 
-Формат — SemVer `vMAJOR.MINOR.PATCH`:
+Format — SemVer `vMAJOR.MINOR.PATCH`:
 
-| Инкремент | Когда | Примеры |
+| Increment | When | Examples |
 |---|---|---|
-| **PATCH** (`v1.0.1`) | Исправление без изменения поведения для владельца магазина | Починенная вёрстка, неверный расчёт, утечка в лог, отказ внешнего API обработан |
-| **MINOR** (`v1.1.0`) | Новая возможность, обратно совместимая | Новый адаптер канала, новый источник импорта, новое поле в админке, новый эндпоинт |
-| **MAJOR** (`v2.0.0`) | Апгрейд требует действий от владельца | Несовместимое изменение `/etc/fastoshop.conf`, удалённый эндпоинт или флаг CLI, изменение формата `items_json` |
+| **PATCH** (`v1.0.1`) | A fix with no behavior change for the shop owner | Fixed layout, a wrong calculation, a leak into a log, an external API failure handled |
+| **MINOR** (`v1.1.0`) | A new capability, backward compatible | A new channel adapter, a new import source, a new field in the admin panel, a new endpoint |
+| **MAJOR** (`v2.0.0`) | The upgrade requires action from the owner | An incompatible change to `/etc/fastoshop.conf`, a removed endpoint or CLI flag, a change to the `items_json` format |
 
-Релиз **не выпускается** на изменения, которые не доезжают до пользователя: правки README, скриншоты, CI, тесты, рефакторинг без смены поведения. Тег на такое — шум в списке релизов.
+A release is **not** cut for changes that never reach the user: README edits, screenshots, CI, tests, refactoring without a behavior change. A tag on such things is noise in the release list.
 
-**Схема БД.** Миграционного фреймворка нет, и до первого стабильного релиза он не нужен: схема правится прямо в `CREATE TABLE` в `database.go`, живых баз, которые надо догонять, ещё не существует. Изменение схемы — минимум **MINOR**.
+**DB schema.** There is no migration framework, and until the first stable release none is needed: the schema is edited directly in the `CREATE TABLE` statements in `database.go`; live databases that would need catching up do not exist yet. A schema change is at minimum **MINOR**.
 
-`ponytail:` после v1 колонки к `settings` добавляются списком `ALTER TABLE ADD COLUMN` с проверкой на duplicate column (так жил `addSettingsColumns` до релиза). Как только понадобится переименовать колонку, поменять тип или тронуть таблицу с данными — раннер на `PRAGMA user_version`: массив миграций, свежая база штампуется текущей версией сразу, старая догоняется по одной. Раньше времени не пишем.
+`ponytail:` after v1, columns are added to `settings` as a list of `ALTER TABLE ADD COLUMN` statements with a duplicate-column check (this is how `addSettingsColumns` lived before the release). As soon as we need to rename a column, change a type, or touch a table with data — a runner on `PRAGMA user_version`: an array of migrations, a fresh database is stamped with the current version immediately, an old one catches up one migration at a time. We do not write it ahead of time.
 
-Выпуск релиза: дописать блок в `CHANGELOG` (формат как в fastometa: `X.Y.Z / Month D, YYYY`, автор в квадратных скобках, список изменений), затем `git tag -a vX.Y.Z -F notes.md` и `git push origin vX.Y.Z` — дальше workflow `Release` сам соберёт `.deb`, проверит тесты и приложит пакет к релизу.
+Cutting a release: append a block to `CHANGELOG` (format as in fastometa: `X.Y.Z / Month D, YYYY`, author in square brackets, list of changes), then `git tag -a vX.Y.Z -F notes.md` and `git push origin vX.Y.Z` — from there the `Release` workflow builds the `.deb`, runs the tests, and attaches the package to the release.
 
-**Аннотация тега в описание релиза не попадает.** Workflow генерирует тело сам, одной строкой со ссылкой на сравнение версий. После сборки описание нужно выставить явно: `gh release edit vX.Y.Z --notes-file notes.md`. Дважды на этом обожглись: релиз висел без описания.
+**The tag annotation does not end up in the release description.** The workflow generates the body itself, as a single line with a version-comparison link. After the build, the description must be set explicitly: `gh release edit vX.Y.Z --notes-file notes.md`. We got burned by this twice: a release sat there with no description.
 
-## Команды
+## Commands
 
 ```bash
 cd src && go fmt ./... && go vet ./... && go test ./...
-cd src && golangci-lint run ./...     # v2, конфиг .golangci.yml
+cd src && golangci-lint run ./...     # v2, config .golangci.yml
 cd web && npx tsc -b && npm run lint && npm run build
 make build && make package-deb
 ```
 
-Перед коммитом: `go fmt` (Go), `prettier --write` (web). Коммиты и push — только по явной просьбе пользователя, без `Co-Authored-By`. `go.sum` и `web/package-lock.json` не коммитятся (в .gitignore).
+Before committing: `go fmt` (Go), `prettier --write` (web). Commits and push — only at the user's explicit request, without `Co-Authored-By`. `go.sum` and `web/package-lock.json` are not committed (in .gitignore).
 
-## Документы
+## Documents
 
-`README.md` — что за продукт и как поставить. `CONTRIBUTING.md` — сборка, проверки перед PR, как добавить свой канал или источник импорта. Спека и план разработки лежат в `docs/superpowers/` и намеренно не коммитятся (внутренняя кухня, не документация продукта).
+`README.md` — what the product is and how to install it. `CONTRIBUTING.md` — building, pre-PR checks, how to add your own channel or import source. The spec and the development plan live in `docs/superpowers/` and are deliberately not committed (internal kitchen, not product documentation).

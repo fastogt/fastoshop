@@ -33,16 +33,16 @@ func TestImportTouchesOnlyItsOwnGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	if res.Zeroed != 1 {
-		t.Fatalf("обнулять надо только своё: %+v", res)
+		t.Fatalf("only our own items should be zeroed: %+v", res)
 	}
 
 	got, _ := d.GetProduct(other.ID)
 	if got.Stock != 9 || got.Price != 5000 {
-		t.Errorf("товар второго поставщика пострадал: %+v", got)
+		t.Errorf("second supplier's product was harmed: %+v", got)
 	}
 	got, _ = d.GetProduct(mine.ID)
 	if got.Stock != 4 || got.Price != 7000 {
-		t.Errorf("собственный товар владельца пострадал: %+v", got)
+		t.Errorf("owner's own product was harmed: %+v", got)
 	}
 }
 
@@ -65,14 +65,14 @@ func TestArticleOwnedByAnotherGroupIsAConflict(t *testing.T) {
 	}
 	got, _ := d.GetProduct(mine.ID)
 	if got.Price != 9999 || got.Stock != 2 || got.Supplier != "Своё" {
-		t.Errorf("чужой фид перехватил товар: %+v", got)
+		t.Errorf("foreign feed hijacked the product: %+v", got)
 	}
 
 	// And in the preview it is also a conflict, not a new arrival.
 	existing, _ := d.ListProducts()
 	dif := Compare(src.items, existing, "Ромашка", 1)
 	if dif.Conflicts != 1 || dif.New != 0 || dif.Gone != 0 {
-		t.Fatalf("дифф: %+v", dif)
+		t.Fatalf("diff: %+v", dif)
 	}
 }
 
@@ -95,7 +95,7 @@ func TestImportSkipsUnusableRows(t *testing.T) {
 	}
 	neg, err := d.GetVisibleProductBySlug("minus-na-sklade")
 	if err != nil || neg.Stock != 0 {
-		t.Fatalf("отрицательный остаток: %v %+v", err, neg)
+		t.Fatalf("negative stock: %v %+v", err, neg)
 	}
 
 	// Re-uploading the same garbage creates nothing anew.
@@ -104,6 +104,6 @@ func TestImportSkipsUnusableRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	if res.Imported != 0 {
-		t.Fatalf("дубли при повторной загрузке: %+v", res)
+		t.Fatalf("duplicates on re-import: %+v", res)
 	}
 }

@@ -30,20 +30,20 @@ func TestApplyPriceCoefficient(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n != 1 {
-		t.Fatalf("пересчитано строк: %d, ждали 1", n)
+		t.Fatalf("recalculated rows: %d, want 1", n)
 	}
 
 	got, _ := d.GetProduct(imported.ID)
 	if got.Price != 5000 {
-		t.Errorf("импортированная цена: %d", got.Price)
+		t.Errorf("imported price: %d", got.Price)
 	}
 	got, _ = d.GetProduct(manual.ID)
 	if got.Price != 55555 {
-		t.Errorf("ручная цена затёрта: %d", got.Price)
+		t.Errorf("manual price overwritten: %d", got.Price)
 	}
 	got, _ = d.GetProduct(byHand.ID)
 	if got.Price != 700 {
-		t.Errorf("товар без источника тронут: %d", got.Price)
+		t.Errorf("product without a source touched: %d", got.Price)
 	}
 
 	// The second recalculation starts from the source, not the already reduced price.
@@ -52,17 +52,17 @@ func TestApplyPriceCoefficient(t *testing.T) {
 	}
 	got, _ = d.GetProduct(imported.ID)
 	if got.Price != 20000 {
-		t.Errorf("пересчёт пошёл от текущей цены: %d", got.Price)
+		t.Errorf("recalculation started from the current price: %d", got.Price)
 	}
 
 	if c, _ := d.PriceCoefficient(); c != 2 {
-		t.Errorf("коэффициент не сохранён: %v", c)
+		t.Errorf("coefficient not saved: %v", c)
 	}
 	// A typo in the field must not multiply the catalog by a hundred.
 	if _, err := d.ApplyPriceCoefficient(0); err == nil {
-		t.Error("нулевой коэффициент принят")
+		t.Error("zero coefficient accepted")
 	}
 	if _, err := d.ApplyPriceCoefficient(5000); err == nil {
-		t.Error("абсурдный коэффициент принят")
+		t.Error("absurd coefficient accepted")
 	}
 }

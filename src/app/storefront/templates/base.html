@@ -29,6 +29,13 @@
 {{end}}
 {{end}}
 
+{{define "crumbs"}}
+<nav class="crumbs" aria-label="Хлебные крошки">
+  <a href="/">Каталог</a>
+  {{range .Crumbs}} › <a href="{{.URL}}">{{.Name}}</a>{{end}}
+</nav>
+{{end}}
+
 {{define "filters"}}
 {{if .Products}}
 <nav class="filters" aria-label="Сортировка и фильтры">

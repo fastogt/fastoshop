@@ -277,10 +277,10 @@ func TestYMLImport(t *testing.T) {
 		t.Fatalf("%v %+v", err, kovsh)
 	}
 	if _, err := d.GetVisibleProductBySlug("snyatyj-s-prodazhi"); err == nil {
-		t.Fatal("available=false должен был отсеяться")
+		t.Fatal("available=false should have been filtered out")
 	}
 	if _, err := d.GetVisibleProductBySlug("kastryulya-minskaya"); err == nil {
-		t.Fatal("BYN не должен был импортироваться")
+		t.Fatal("BYN should not have been imported")
 	}
 
 	res, _ = Run(imp, d, "Ромашка", 1, "", nil)

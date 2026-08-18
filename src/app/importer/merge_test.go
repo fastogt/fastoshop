@@ -56,10 +56,10 @@ func TestMergeUpdatesPriceAndStockOnly(t *testing.T) {
 	}
 	got, _ := d.GetProduct(p.ID)
 	if got.SourcePrice != 12000 || got.Price != 24000 || got.Stock != 3 {
-		t.Errorf("цена и остаток не обновились: %+v", got)
+		t.Errorf("price and stock not updated: %+v", got)
 	}
 	if got.Title != "Чайник эмалированный 2 л" || got.Description != "Текст владельца" {
-		t.Errorf("фид затёр работу владельца: %+v", got)
+		t.Errorf("feed overwrote the owner's work: %+v", got)
 	}
 }
 
@@ -83,10 +83,10 @@ func TestMergeKeepsManualPrice(t *testing.T) {
 	}
 	got, _ := d.GetProduct(p.ID)
 	if got.Price != 77777 {
-		t.Errorf("ручная цена затёрта: %d", got.Price)
+		t.Errorf("manual price overwritten: %d", got.Price)
 	}
 	if got.SourcePrice != 20000 {
-		t.Errorf("цена источника не обновилась: %d", got.SourcePrice)
+		t.Errorf("source price not updated: %d", got.SourcePrice)
 	}
 }
 
@@ -116,14 +116,14 @@ func TestMergeZeroesMissingWithoutDeleting(t *testing.T) {
 	}
 	still, err := d.GetVisibleProductBySlug("kruzhka")
 	if err != nil {
-		t.Fatalf("товар удалён вместе со слагом: %v", err)
+		t.Fatalf("product deleted along with its slug: %v", err)
 	}
 	if still.Stock != 0 {
-		t.Errorf("остаток не обнулён: %d", still.Stock)
+		t.Errorf("stock not zeroed: %d", still.Stock)
 	}
 	links, _ := d.ListOzonLinksPage(1000, 0)
 	if len(links) != 1 || links[0].ProductID != gone.ID {
-		t.Errorf("связь с Ozon потеряна: %+v", links)
+		t.Errorf("Ozon link lost: %+v", links)
 	}
 }
 
@@ -140,11 +140,11 @@ func TestMergeEmptyFeedDoesNotWipeShop(t *testing.T) {
 		t.Fatal(err)
 	}
 	if res.Zeroed != 0 {
-		t.Fatalf("пустой фид обнулил каталог: %+v", res)
+		t.Fatalf("empty feed wiped the catalogue: %+v", res)
 	}
 	p, _ := d.GetVisibleProductBySlug("chajnik")
 	if p.Stock != 5 {
-		t.Errorf("остаток: %d", p.Stock)
+		t.Errorf("stock: %d", p.Stock)
 	}
 }
 

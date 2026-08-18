@@ -178,9 +178,8 @@ func (d *Database) migrate() error {
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,
-		purpose    TEXT NOT NULL, -- session|reset
-		expires_at DATETIME NOT NULL,
-		used       INTEGER NOT NULL DEFAULT 0
+		purpose    TEXT NOT NULL, -- session|invite
+		expires_at DATETIME NOT NULL
 	);
 	CREATE TABLE IF NOT EXISTS ozon_settings (
 		id           INTEGER PRIMARY KEY CHECK (id = 1),
@@ -313,9 +312,6 @@ func (d *Database) migrate() error {
 		oversold   INTEGER NOT NULL DEFAULT 0,
 		created_at DATETIME NOT NULL
 	);
-	-- The status refresh reads open rows on every pass.
-	CREATE INDEX IF NOT EXISTS idx_wb_orders_status ON wb_orders(status);
-
 	CREATE TABLE IF NOT EXISTS wb_price_rules (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
 		up_to      INTEGER NOT NULL,

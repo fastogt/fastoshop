@@ -49,7 +49,6 @@ const (
 	KeyWBNotLinked         = "wb_not_linked"
 	KeyWBBadWarehouse      = "wb_bad_warehouse"
 	KeyWBPushBusy          = "wb_push_busy"
-	KeyWBNoAnswer          = "wb_no_answer"
 	KeyWBUnknownReply      = "wb_unknown_reply"
 	KeyWBNothingSelected   = "wb_nothing_selected"
 	KeyWBBadRules          = "wb_bad_rules"
@@ -161,10 +160,6 @@ var kMessages = map[string][2]string{
 	},
 	KeyWBPushBusy: {
 		"отправка в Wildberries уже идёт", "a push to Wildberries is already running",
-	},
-	KeyWBNoAnswer: {
-		"Wildberries не ответил по этому штрихкоду",
-		"Wildberries did not answer for this barcode",
 	},
 	KeyWBUnknownReply: {
 		"неизвестный ответ Wildberries", "unrecognised Wildberries reply",

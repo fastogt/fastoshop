@@ -1,6 +1,7 @@
 package database
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -144,7 +145,7 @@ func TestDeclaredCategoryIsAdminOnly(t *testing.T) {
 		paths = append(paths, n.Path)
 	}
 	for _, want := range []string{"Мебель", "Мебель/Стулья"} {
-		if !contains(paths, want) {
+		if !slices.Contains(paths, want) {
 			t.Errorf("tree has no %q: %v", want, paths)
 		}
 	}
@@ -193,13 +194,4 @@ func TestCategoryPosition(t *testing.T) {
 	if tree[0].Path != "Посуда" {
 		t.Errorf("order = %q, %q; position must win over the name", tree[0].Path, tree[1].Path)
 	}
-}
-
-func contains(list []string, want string) bool {
-	for _, s := range list {
-		if s == want {
-			return true
-		}
-	}
-	return false
 }

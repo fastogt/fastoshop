@@ -26,10 +26,6 @@ type bulkRequest struct {
 	Stock       *int    `json:"stock"`
 	Hidden      *bool   `json:"hidden"`
 	NewSupplier *string `json:"new_supplier"`
-	// Tasks is what the fill dialog ticked. A list from the start: filling in a
-	// description or extra photos from the supplier is the same work over the
-	// same selection, and it should not need a second endpoint.
-	Tasks []string `json:"tasks"`
 }
 
 type bulkResponse struct {
@@ -116,11 +112,10 @@ type startedResponse struct {
 	Total   int  `json:"total"`
 }
 
-// BulkFill runs the ticked tasks over the selection in the background. Today the
-// only task pulls the supplier's photos onto our own disk — no feed and no keys
-// are involved, the URLs are already in product_images from the import, so a
-// catalogue brought in months ago is fixed by the same button as one imported a
-// minute ago.
+// BulkFill pulls the supplier's photos onto our own disk over the selection, in
+// the background — no feed and no keys are involved, the URLs are already in
+// product_images from the import, so a catalogue brought in months ago is fixed
+// by the same button as one imported a minute ago.
 //
 // r.Context() would cancel the download the moment the response is written.
 //
@@ -129,16 +124,6 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeBulk(w, r)
 	if !ok {
 		return
-	}
-	if len(req.Tasks) == 0 {
-		writeBadRequest(w, h.msg(i18n.KeyNothingSelected))
-		return
-	}
-	for _, t := range req.Tasks {
-		if !validTask(t) {
-			writeBadRequest(w, "unknown task: "+t)
-			return
-		}
 	}
 	// Checked before the query: a busy slot is the answer whether or not there
 	// turns out to be anything to do.
@@ -161,7 +146,7 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, ok := h.job.start(kJobFill, []jobStage{
-		{Task: TaskPhotos, Total: len(imgs)},
+		{Task: kStagePhotos, Total: len(imgs)},
 		// Total is what needs a thumbnail right now; the photos downloaded by
 		// the first stage make their own on the way in.
 		{Task: kStageThumbs, Total: len(missing)},
@@ -173,7 +158,7 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		okCount, failed := importer.LocalizeImages(ctx, h.db, h.uploadsDir, imgs,
 			func(done int, inFlight []int64) {
-				h.job.progress(TaskPhotos, done, len(imgs), inFlight)
+				h.job.progress(kStagePhotos, done, len(imgs), inFlight)
 			})
 		// Re-read the list: the download has just added files, and photos that
 		// failed to download have no thumbnail to make.

@@ -30,8 +30,8 @@ func TestLangDefaultsAndRoundTrip(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("set lang: %d %s", w.Code, w.Body.String())
 	}
-	if h.lang() != i18n.LangEN {
-		t.Fatalf("lang not stored: %q", h.lang())
+	if h.db.Lang() != i18n.LangEN {
+		t.Fatalf("lang not stored: %q", h.db.Lang())
 	}
 
 	// Reject an unknown language, otherwise messages silently fall back.

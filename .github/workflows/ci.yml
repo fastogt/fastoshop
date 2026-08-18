@@ -13,9 +13,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-          # go.sum не коммитится (правило проекта), а кэш setup-go требует его хэш.
+          # go.sum is not committed (project rule), and setup-go's cache needs its hash.
           cache: false
-      # go.sum отсутствует в репозитории, поэтому зависимости резолвятся на каждой сборке.
+      # go.sum is absent from the repository, so dependencies are resolved on every build.
       - run: go mod tidy
         working-directory: src
       - run: go build ./...
@@ -24,7 +24,7 @@ jobs:
         working-directory: src
       - run: go test ./...
         working-directory: src
-      # v7 — первая версия action, понимающая golangci-lint v2.
+      # v7 is the first version of the action that understands golangci-lint v2.
       - uses: golangci/golangci-lint-action@v7
         with:
           version: v2.12

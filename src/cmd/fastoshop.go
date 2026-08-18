@@ -60,29 +60,17 @@ func listen(addr string) (net.Listener, error) {
 	return ln, nil
 }
 
-func setupLogging(logPath, logLevel string) *os.File {
+func setupLogging(logLevel string) {
 	level, err := log.ParseLevel(logLevel)
 	if err != nil {
 		level = log.InfoLevel
 	}
 	log.SetLevel(level)
 	log.SetFormatter(&log.TextFormatter{TimestampFormat: "02/01/2006 15:04:05.000", FullTimestamp: true})
-	if logPath == "" {
-		return nil
-	}
-	f, err := os.OpenFile(expandHome(logPath), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		log.Warnf("log file: %v (logging to stderr)", err)
-		return nil
-	}
-	log.SetOutput(f)
-	return f
 }
 
 func run(cfg *config.Config) error {
-	if f := setupLogging(cfg.Settings.LogPath, cfg.Settings.LogLevel); f != nil {
-		defer func() { _ = f.Close() }()
-	}
+	setupLogging(cfg.Settings.LogLevel)
 	log.Printf("Starting %s %s", version.ProjectName, version.VersionApp)
 
 	dbPath := expandHome(cfg.Settings.Database)
@@ -239,11 +227,7 @@ func run(cfg *config.Config) error {
 	}
 }
 
-// resetPassword is the recovery path for when the owner forgot the password:
-// a self-hosted shop has no support desk, and SMTP is optional and usually
-// unconfigured exactly when it is needed most, so recovery lives in the
-// binary, not in an email.
-func resetPassword(cfg *config.Config) error {
+func withDB(cfg *config.Config, fn func(dbPath string, db *database.Database) error) error {
 	dbPath := expandHome(cfg.Settings.Database)
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		return fmt.Errorf("db dir: %w", err)
@@ -253,20 +237,29 @@ func resetPassword(cfg *config.Config) error {
 		return err
 	}
 	defer func() { _ = db.Close() }()
+	return fn(dbPath, db)
+}
 
-	s, err := db.GetSettings()
-	if err != nil {
-		return fmt.Errorf("no owner account yet — run -create-owner <email> instead")
-	}
-	pw, err := db.ResetOwnerPassword()
-	if err != nil {
-		return fmt.Errorf("reset password: %w", err)
-	}
-	// Print the database and owner before the password: on a server with
-	// several instances "wrong config" otherwise goes unnoticed.
-	fmt.Printf("Database: %s\nOwner: %s\nNew password: %s\nLog in at /admin with it, then change it under Profile.\n",
-		dbPath, s.OwnerEmail, pw)
-	return nil
+// resetPassword is the recovery path for when the owner forgot the password:
+// a self-hosted shop has no support desk, and SMTP is optional and usually
+// unconfigured exactly when it is needed most, so recovery lives in the
+// binary, not in an email.
+func resetPassword(cfg *config.Config) error {
+	return withDB(cfg, func(dbPath string, db *database.Database) error {
+		s, err := db.GetSettings()
+		if err != nil {
+			return fmt.Errorf("no owner account yet — run -create-owner <email> instead")
+		}
+		pw, err := db.ResetOwnerPassword()
+		if err != nil {
+			return fmt.Errorf("reset password: %w", err)
+		}
+		// Print the database and owner before the password: on a server with
+		// several instances "wrong config" otherwise goes unnoticed.
+		fmt.Printf("Database: %s\nOwner: %s\nNew password: %s\nLog in at /admin with it, then change it under Profile.\n",
+			dbPath, s.OwnerEmail, pw)
+		return nil
+	})
 }
 
 // inviteOwner creates the owner and prints a one-time link instead of a
@@ -276,49 +269,33 @@ func resetPassword(cfg *config.Config) error {
 // exist yet — so the link goes to stdout and provisioning delivers it
 // through its own channel.
 func inviteOwner(cfg *config.Config, email string) error {
-	dbPath := expandHome(cfg.Settings.Database)
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
-		return fmt.Errorf("db dir: %w", err)
-	}
-	db, err := database.Open(dbPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = db.Close() }()
-
-	if _, err := db.CreateOwner(email); err != nil {
-		return fmt.Errorf("create owner: %w", err)
-	}
-	tok, err := db.NewInviteToken()
-	if err != nil {
-		return fmt.Errorf("invite token: %w", err)
-	}
-	fmt.Printf("Database: %s\nOwner: %s\nInvite (valid 24h): %s/admin/?invite=%s\n",
-		dbPath, email, strings.TrimRight(cfg.Settings.BaseURL, "/"), tok)
-	return nil
+	return withDB(cfg, func(dbPath string, db *database.Database) error {
+		if _, err := db.CreateOwner(email); err != nil {
+			return fmt.Errorf("create owner: %w", err)
+		}
+		tok, err := db.NewInviteToken()
+		if err != nil {
+			return fmt.Errorf("invite token: %w", err)
+		}
+		fmt.Printf("Database: %s\nOwner: %s\nInvite (valid 24h): %s/admin/?invite=%s\n",
+			dbPath, email, strings.TrimRight(cfg.Settings.BaseURL, "/"), tok)
+		return nil
+	})
 }
 
 // createOwner creates the owner at provisioning time: until then a fresh
 // instance serves an open setup wizard on a public address, and whoever
 // opens it first becomes the owner.
 func createOwner(cfg *config.Config, email string) error {
-	dbPath := expandHome(cfg.Settings.Database)
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
-		return fmt.Errorf("db dir: %w", err)
-	}
-	db, err := database.Open(dbPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = db.Close() }()
-
-	pw, err := db.CreateOwner(email)
-	if err != nil {
-		return fmt.Errorf("create owner: %w", err)
-	}
-	fmt.Printf("Database: %s\nOwner: %s\nPassword: %s\nLog in at /admin with it, then change it under Profile.\n",
-		dbPath, email, pw)
-	return nil
+	return withDB(cfg, func(dbPath string, db *database.Database) error {
+		pw, err := db.CreateOwner(email)
+		if err != nil {
+			return fmt.Errorf("create owner: %w", err)
+		}
+		fmt.Printf("Database: %s\nOwner: %s\nPassword: %s\nLog in at /admin with it, then change it under Profile.\n",
+			dbPath, email, pw)
+		return nil
+	})
 }
 
 func main() {

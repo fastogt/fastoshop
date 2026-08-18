@@ -164,7 +164,7 @@ func (m *ozonMock) lastBatch(t *testing.T) []StockItem {
 	t.Helper()
 	all := m.sent()
 	if len(all) == 0 {
-		t.Fatal("кабинет не получил ни одного вызова")
+		t.Fatal("cabinet received no calls")
 	}
 	return all[len(all)-1]
 }
@@ -191,7 +191,7 @@ func (m *ozonMock) lastPriceBatch(t *testing.T) []PriceItem {
 	t.Helper()
 	all := m.sentPrices()
 	if len(all) == 0 {
-		t.Fatal("кабинет не получил ни одного вызова цен")
+		t.Fatal("cabinet received no price calls")
 	}
 	return all[len(all)-1]
 }
@@ -312,7 +312,7 @@ func waitIdle(t *testing.T, w *Worker) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatal("проход синка не завершился")
+	t.Fatal("sync pass did not finish")
 }
 
 // TestPushFollowsLevelBothWays: the defensive mode is gone, the sync is
@@ -324,40 +324,40 @@ func TestPushFollowsLevelBothWays(t *testing.T) {
 
 	// The first push is allowed at any level: it is what sets the baseline.
 	if pushed, failed := pass(t, w); pushed != 1 || failed != 0 {
-		t.Fatalf("первый проход: %d/%d", pushed, failed)
+		t.Fatalf("first pass: %d/%d", pushed, failed)
 	}
 	if got := m.lastBatch(t); len(got) != 1 || got[0].Stock != 5 ||
 		got[0].OfferID != "A" || got[0].WarehouseID != 77 {
-		t.Fatalf("первый батч: %+v", got)
+		t.Fatalf("first batch: %+v", got)
 	}
 
 	// The level did not change — there must be no call.
 	if pushed, _ := pass(t, w); pushed != 0 {
-		t.Fatalf("повтор того же уровня отправился")
+		t.Fatalf("same level pushed again")
 	}
 	if len(m.sent()) != 1 {
-		t.Fatalf("лишние вызовы: %+v", m.sent())
+		t.Fatalf("extra calls: %+v", m.sent())
 	}
 
 	// Downwards — travels.
 	setStock(t, d, id, 3)
 	if pushed, _ := pass(t, w); pushed != 1 {
-		t.Fatal("уменьшение остатка не уехало")
+		t.Fatal("stock decrease not pushed")
 	}
 	if got := m.lastBatch(t); got[0].Stock != 3 {
-		t.Fatalf("ожидали 3: %+v", got)
+		t.Fatalf("want 3: %+v", got)
 	}
 
 	// Upwards — travels too.
 	setStock(t, d, id, 7)
 	if pushed, _ := pass(t, w); pushed != 1 {
-		t.Fatal("увеличение остатка не уехало")
+		t.Fatal("stock increase not pushed")
 	}
 	if got := m.lastBatch(t); got[0].Stock != 7 {
-		t.Fatalf("ожидали 7: %+v", got)
+		t.Fatalf("want 7: %+v", got)
 	}
 	if len(m.sent()) != 3 {
-		t.Fatalf("лишние вызовы: %d", len(m.sent()))
+		t.Fatalf("extra calls: %d", len(m.sent()))
 	}
 }
 
@@ -367,19 +367,19 @@ func TestPushBatchesBy100(t *testing.T) {
 		seedLinked(t, d, fmt.Sprintf("SKU-%03d", i), 1)
 	}
 	if pushed, failed := pass(t, w); pushed != 250 || failed != 0 {
-		t.Fatalf("250 связей: %d/%d", pushed, failed)
+		t.Fatalf("250 links: %d/%d", pushed, failed)
 	}
 	sizes := []int{}
 	for _, b := range m.sent() {
 		sizes = append(sizes, len(b))
 		if len(b) > kBatchSize {
-			t.Fatalf("батч больше %d: %d", kBatchSize, len(b))
+			t.Fatalf("batch over %d: %d", kBatchSize, len(b))
 		}
 	}
 	if len(sizes) != 3 {
-		t.Fatalf("ожидали 3 вызова, получили %v", sizes)
+		t.Fatalf("want 3 calls, got %v", sizes)
 	}
-	t.Logf("батчи: %v", sizes)
+	t.Logf("batches: %v", sizes)
 }
 
 func TestPushPerItemErrorIsIsolated(t *testing.T) {
@@ -389,21 +389,21 @@ func TestPushPerItemErrorIsIsolated(t *testing.T) {
 	m.failOffer("B", "склад не найден")
 
 	if pushed, failed := pass(t, w); pushed != 1 || failed != 1 {
-		t.Fatalf("ожидали 1 принятую и 1 отклонённую: %d/%d", pushed, failed)
+		t.Fatalf("want 1 accepted and 1 rejected: %d/%d", pushed, failed)
 	}
 	bad, err := d.ListOzonStockErrors()
 	if err != nil || len(bad) != 1 || bad[0].OfferID != "B" ||
 		bad[0].Error != "склад не найден" {
-		t.Fatalf("ошибка не записалась: %v %+v", err, bad)
+		t.Fatalf("error not recorded: %v %+v", err, bad)
 	}
 
 	// A row in backoff does not make the next selection, and neither does the
 	// healthy one (its level is already pushed), so there are no more calls.
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
-		t.Fatalf("строка в бэкоффе повторилась сразу: %d/%d", pushed, failed)
+		t.Fatalf("row in backoff retried immediately: %d/%d", pushed, failed)
 	}
 	if len(m.sent()) != 1 {
-		t.Fatalf("лишние вызовы: %d", len(m.sent()))
+		t.Fatalf("extra calls: %d", len(m.sent()))
 	}
 
 	// The backoff has expired — retry, successfully this time.
@@ -416,10 +416,10 @@ func TestPushPerItemErrorIsIsolated(t *testing.T) {
 	delete(m.itemErr, "B")
 	m.mu.Unlock()
 	if pushed, failed := pass(t, w); pushed != 1 || failed != 0 {
-		t.Fatalf("повтор после бэкоффа: %d/%d", pushed, failed)
+		t.Fatalf("retry after backoff: %d/%d", pushed, failed)
 	}
 	if bad, _ := d.ListOzonStockErrors(); len(bad) != 0 {
-		t.Fatalf("ошибка не снялась: %+v", bad)
+		t.Fatalf("error not cleared: %+v", bad)
 	}
 }
 
@@ -450,7 +450,7 @@ func TestPushHonoursRetryAfter(t *testing.T) {
 	}
 	bad, err := d.ListOzonStockErrors()
 	if err != nil || len(bad) != 2 {
-		t.Fatalf("ошибки не записались: %v %+v", err, bad)
+		t.Fatalf("errors not recorded: %v %+v", err, bad)
 	}
 
 	raw, err := sql.Open("sqlite3", path)
@@ -481,21 +481,21 @@ func TestPushHonoursRetryAfter(t *testing.T) {
 		delay := parsed.Sub(before)
 		t.Logf("%s retry_at=%s (+%s)", offer, at, delay.Truncate(time.Second))
 		if delay < 110*time.Second || delay > 130*time.Second {
-			t.Fatalf("%s: Retry-After: 120 не учтён, отложено на %s", offer, delay)
+			t.Fatalf("%s: Retry-After: 120 ignored, deferred by %s", offer, delay)
 		}
 		seen++
 	}
 	if seen != 2 {
-		t.Fatalf("строк с retry_at: %d", seen)
+		t.Fatalf("rows with retry_at: %d", seen)
 	}
 
 	// Before the deadline we do not touch the platform.
 	m.failStatus(0, "")
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
-		t.Fatalf("проход внутри Retry-After не пустой: %d/%d", pushed, failed)
+		t.Fatalf("pass inside Retry-After not empty: %d/%d", pushed, failed)
 	}
 	if len(m.sent()) != 1 {
-		t.Fatalf("лишние вызовы внутри Retry-After: %d", len(m.sent()))
+		t.Fatalf("extra calls inside Retry-After: %d", len(m.sent()))
 	}
 }
 
@@ -508,18 +508,18 @@ func TestPushZeroForDeletedProduct(t *testing.T) {
 		t.Fatal(err)
 	}
 	if pushed, _ := pass(t, w); pushed != 1 {
-		t.Fatal("удалённый товар не обнулился на площадке")
+		t.Fatal("deleted product not zeroed on the marketplace")
 	}
 	if got := m.lastBatch(t); got[0].Stock != 0 {
-		t.Fatalf("ожидали ноль: %+v", got)
+		t.Fatalf("want zero: %+v", got)
 	}
 	// The zero is sent — after that the link stays quiet instead of sending a
 	// zero every tick.
 	if pushed, _ := pass(t, w); pushed != 0 {
-		t.Fatal("ноль отправляется повторно")
+		t.Fatal("zero pushed again")
 	}
 	if len(m.sent()) != 2 {
-		t.Fatalf("лишние вызовы: %d", len(m.sent()))
+		t.Fatalf("extra calls: %d", len(m.sent()))
 	}
 }
 
@@ -541,10 +541,10 @@ func TestWorkerWakesOnStockChange(t *testing.T) {
 	select {
 	case <-m.calls:
 	case <-time.After(2 * time.Second):
-		t.Fatal("воркер не проснулся по StockChanged")
+		t.Fatal("worker did not wake up on StockChanged")
 	}
 	if got := m.lastBatch(t); got[0].Stock != 5 {
-		t.Fatalf("первый батч: %+v", got)
+		t.Fatalf("first batch: %+v", got)
 	}
 
 	setStock(t, d, id, 2)
@@ -552,10 +552,10 @@ func TestWorkerWakesOnStockChange(t *testing.T) {
 	select {
 	case <-m.calls:
 	case <-time.After(2 * time.Second):
-		t.Fatal("воркер не проснулся на продажу")
+		t.Fatal("worker did not wake up on a sale")
 	}
 	if got := m.lastBatch(t); got[0].Stock != 2 {
-		t.Fatalf("второй батч: %+v", got)
+		t.Fatalf("second batch: %+v", got)
 	}
 }
 
@@ -577,7 +577,7 @@ func TestPassNoopWhenNotConfigured(t *testing.T) {
 		}
 	}
 	if len(m.sent()) != 0 {
-		t.Fatalf("недонастроенная интеграция сходила в кабинет: %+v", m.sent())
+		t.Fatalf("half-configured integration called the cabinet: %+v", m.sent())
 	}
 
 	// A non-numeric warehouse is not "quietly do nothing" but a clear error.
@@ -586,7 +586,7 @@ func TestPassNoopWhenNotConfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, _, err := w.Pass(); err == nil {
-		t.Fatal("нечисловой warehouse_id должен быть ошибкой")
+		t.Fatal("non-numeric warehouse_id must be an error")
 	}
 }
 
@@ -607,25 +607,25 @@ func TestPushEndpoint(t *testing.T) {
 	// The button drives the level both ways.
 	setStock(t, d, id, 9)
 	if got = decode[pushResponse](t, do(t, h, "POST", "/push", "")); got.Pushed != 1 {
-		t.Fatalf("кнопка не отправила рост остатка: %+v", got)
+		t.Fatalf("button did not push the stock increase: %+v", got)
 	}
 
 	s := decode[settingsResponse](t, do(t, h, "GET", "/settings", ""))
 	if s.Pending != 0 || s.Failed != 0 || len(s.StockErrors) != 0 {
-		t.Fatalf("статус после успешной отправки: %+v", s)
+		t.Fatalf("status after a successful push: %+v", s)
 	}
 
 	m.failOffer("A", "нет такого склада")
 	setStock(t, d, id, 1)
 	if got = decode[pushResponse](t, do(t, h, "POST", "/push", "")); got.Failed != 1 {
-		t.Fatalf("ошибка не доехала до кнопки: %+v", got)
+		t.Fatalf("error did not reach the button: %+v", got)
 	}
 	s = decode[settingsResponse](t, do(t, h, "GET", "/settings", ""))
 	if s.Failed != 1 || len(s.StockErrors) != 1 || s.StockErrors[0].Error != "нет такого склада" {
-		t.Fatalf("статус с ошибкой: %+v", s)
+		t.Fatalf("status with an error: %+v", s)
 	}
 	if s.Pending != 1 {
-		t.Fatalf("строка в бэкоффе должна оставаться в ожидании: %+v", s)
+		t.Fatalf("row in backoff must stay pending: %+v", s)
 	}
 }
 
@@ -638,7 +638,7 @@ func TestRetryAfterHeader(t *testing.T) {
 		"Wed, 21 Oct 2015 07:28:00 GMT": 0,
 	} {
 		if got := retryAfter(header); got != want {
-			t.Fatalf("retryAfter(%q) = %s, ожидали %s", header, got, want)
+			t.Fatalf("retryAfter(%q) = %s, want %s", header, got, want)
 		}
 	}
 }

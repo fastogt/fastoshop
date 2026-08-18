@@ -6,3 +6,4 @@ go.sum
 web/package-lock.json
 docs/superpowers/
 .env
+.claude

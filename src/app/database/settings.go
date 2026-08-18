@@ -54,9 +54,8 @@ type Settings struct {
 	Terms string `json:"terms"`
 	// Logo file name; empty means the shop is represented by its name.
 	Logo string `json:"logo"`
-	// Shop-wide currency: one shop sells in one country's money. Products carry
-	// a currency column too, but it is the shop setting that reaches buyers and
-	// search engines.
+	// Shop-wide currency: one shop sells in one country's money, and this is
+	// the setting that reaches buyers and search engines.
 	Currency string `json:"currency"`
 	// Owner's language. One shop has one owner, so this drives both the admin
 	// and the text the server renders for them (errors, emails).
@@ -69,9 +68,9 @@ type Settings struct {
 	// real mailbox, and both need the letter to come from the shop's address.
 	SMTPFrom     string `json:"smtp_from"`
 	SMTPPassword string `json:"-"`
-	// Analytics counters and search-console ownership tokens, as issued by the
-	// four cabinets. Stored raw: the shop only carries them to the page, and a
-	// format check here would break the day a provider changes its own.
+	// Analytics counter ids, as issued by the two providers. Stored raw: the
+	// shop only carries them to the page, and a format check here would break
+	// the day a provider changes its own.
 	GAMeasurementID  string `json:"ga_measurement_id"`
 	MetrikaCounterID string `json:"metrika_counter_id"`
 }
@@ -129,6 +128,16 @@ func (d *Database) UpdateSettings(s *Settings) error {
 	return err
 }
 
+// Lang returns the owner's language, falling back to the default: a broken
+// settings row must not blank out the message the owner needs to read.
+func (d *Database) Lang() string {
+	s, err := d.GetSettings()
+	if err != nil {
+		return i18n.LangRU
+	}
+	return s.Lang
+}
+
 func (d *Database) CreateToken(token, purpose string, expires time.Time) error {
 	_, err := d.db.Exec(
 		`INSERT INTO auth_tokens (token, purpose, expires_at) VALUES (?, ?, ?)`,
@@ -140,13 +149,13 @@ func (d *Database) ValidToken(token, purpose string) bool {
 	var n int
 	err := d.db.QueryRow(
 		`SELECT COUNT(*) FROM auth_tokens
-		 WHERE token=? AND purpose=? AND used=0 AND expires_at > CURRENT_TIMESTAMP`,
+		 WHERE token=? AND purpose=? AND expires_at > CURRENT_TIMESTAMP`,
 		token, purpose).Scan(&n)
 	return err == nil && n > 0
 }
 
 func (d *Database) UseToken(token string) error {
-	_, err := d.db.Exec(`UPDATE auth_tokens SET used=1 WHERE token=?`, token)
+	_, err := d.db.Exec(`DELETE FROM auth_tokens WHERE token=?`, token)
 	return err
 }
 
@@ -206,11 +215,6 @@ func generatePassword(n int) (string, error) {
 	return string(out), nil
 }
 
-// ResetOwnerPassword — the recovery path via the CLI (`fastoshop
-// -reset-password`): generates a new password, stores its bcrypt hash and
-// wipes all sessions in one sweep so a hijacked cookie does not survive the
-// change. Returns the plaintext password exactly once — it is stored nowhere
-// and never logged.
 // NewInviteToken — a one-time link for setting the password. Lives for a day:
 // it is forwarded by email, and an expired link is safer than a forgotten
 // working one.
@@ -235,6 +239,11 @@ func (d *Database) SetOwnerPassword(hash string) error {
 	return err
 }
 
+// ResetOwnerPassword — the recovery path via the CLI (`fastoshop
+// -reset-password`): generates a new password, stores its bcrypt hash and
+// wipes all sessions in one sweep so a hijacked cookie does not survive the
+// change. Returns the plaintext password exactly once — it is stored nowhere
+// and never logged.
 func (d *Database) ResetOwnerPassword() (string, error) {
 	pw, hash, err := generateCredentials()
 	if err != nil {

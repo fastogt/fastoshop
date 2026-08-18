@@ -32,7 +32,7 @@ func linkRow(t *testing.T, d *database.Database, id int64) database.OzonLinkRow 
 			return r
 		}
 	}
-	t.Fatalf("связи для товара %d нет", id)
+	t.Fatalf("no link for product %d", id)
 	return database.OzonLinkRow{}
 }
 
@@ -45,42 +45,42 @@ func TestPriceOptIn(t *testing.T) {
 	// price = 0 — the pass pushes the stock and stays away from the price.
 	pass(t, w)
 	if got := m.sentPrices(); len(got) != 0 {
-		t.Fatalf("неуправляемая цена уехала на площадку: %+v", got)
+		t.Fatalf("unmanaged price went to the marketplace: %+v", got)
 	}
 
 	setPrice(t, d, id, 100000)
 	if pushed, failed := pass(t, w); pushed != 1 || failed != 0 {
-		t.Fatalf("первая отправка цены: %d/%d", pushed, failed)
+		t.Fatalf("first price push: %d/%d", pushed, failed)
 	}
 	if got := m.lastPriceBatch(t); len(got) != 1 || got[0].OfferID != "A" ||
 		got[0].Price != "1000" || got[0].OldPrice != "0" || got[0].CurrencyCode != "RUB" {
-		t.Fatalf("батч цен: %+v", got)
+		t.Fatalf("price batch: %+v", got)
 	}
 
 	// The same value — no call.
 	if pushed, _ := pass(t, w); pushed != 0 {
-		t.Fatal("та же цена отправилась повторно")
+		t.Fatal("same price pushed again")
 	}
 	if len(m.sentPrices()) != 1 {
-		t.Fatalf("лишние вызовы цен: %+v", m.sentPrices())
+		t.Fatalf("extra price calls: %+v", m.sentPrices())
 	}
 
 	// Changed — travels again.
 	setPrice(t, d, id, 120000)
 	if pushed, _ := pass(t, w); pushed != 1 {
-		t.Fatal("новая цена не уехала")
+		t.Fatal("new price not pushed")
 	}
 	if got := m.lastPriceBatch(t); got[0].Price != "1200" {
-		t.Fatalf("ожидали 1200: %+v", got)
+		t.Fatalf("want 1200: %+v", got)
 	}
 
 	// Cleared — management stops, nothing else is sent.
 	setPrice(t, d, id, 0)
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
-		t.Fatalf("сброс цены что-то отправил: %d/%d", pushed, failed)
+		t.Fatalf("clearing the price pushed something: %d/%d", pushed, failed)
 	}
 	if len(m.sentPrices()) != 2 {
-		t.Fatalf("вызовы цен: %d", len(m.sentPrices()))
+		t.Fatalf("price calls: %d", len(m.sentPrices()))
 	}
 }
 
@@ -92,22 +92,22 @@ func TestPriceRoundsUpWithoutFlapping(t *testing.T) {
 	setPrice(t, d, id, 128850)
 
 	if pushed, _ := pass(t, w); pushed != 2 {
-		t.Fatal("остаток и цена должны уехать одним проходом")
+		t.Fatal("stock and price must go in one pass")
 	}
 	if got := m.lastPriceBatch(t); got[0].Price != "1289" {
-		t.Fatalf("округление вверх: %+v", got)
+		t.Fatalf("rounding up: %+v", got)
 	}
 	if r := linkRow(t, d, id); r.PricePushed != 128900 {
-		t.Fatalf("запомнили не отправленное значение: %d", r.PricePushed)
+		t.Fatalf("recorded a value that was not sent: %d", r.PricePushed)
 	}
 
 	for range 3 {
 		if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
-			t.Fatalf("цена дребезжит: %d/%d", pushed, failed)
+			t.Fatalf("price flapping: %d/%d", pushed, failed)
 		}
 	}
 	if len(m.sentPrices()) != 1 {
-		t.Fatalf("лишние вызовы цен: %d", len(m.sentPrices()))
+		t.Fatalf("extra price calls: %d", len(m.sentPrices()))
 	}
 }
 
@@ -118,19 +118,19 @@ func TestPriceBatchesBy1000(t *testing.T) {
 		setPrice(t, d, id, 100000)
 	}
 	if _, failed := pass(t, w); failed != 0 {
-		t.Fatalf("проход с ошибками: %d", failed)
+		t.Fatalf("pass with errors: %d", failed)
 	}
 	sizes := []int{}
 	for _, b := range m.sentPrices() {
 		sizes = append(sizes, len(b))
 		if len(b) > kPriceBatchSize {
-			t.Fatalf("батч цен больше %d: %d", kPriceBatchSize, len(b))
+			t.Fatalf("price batch over %d: %d", kPriceBatchSize, len(b))
 		}
 	}
 	if len(sizes) != 2 || sizes[0] != kPriceBatchSize || sizes[1] != 500 {
-		t.Fatalf("ожидали 1000+500, получили %v", sizes)
+		t.Fatalf("want 1000+500, got %v", sizes)
 	}
-	t.Logf("батчи цен: %v", sizes)
+	t.Logf("price batches: %v", sizes)
 }
 
 // TestPriceErrorsDoNotMixWithStock: two pushes share the row, so a complaint
@@ -143,25 +143,25 @@ func TestPriceErrorsDoNotMixWithStock(t *testing.T) {
 	m.failPriceOffer("A", "цену нельзя менять чаще раза в сутки")
 
 	if pushed, failed := pass(t, w); pushed != 2 || failed != 1 {
-		t.Fatalf("проход: %d/%d", pushed, failed)
+		t.Fatalf("pass: %d/%d", pushed, failed)
 	}
 	r := linkRow(t, d, id)
 	if r.PriceError != "цену нельзя менять чаще раза в сутки" || r.PricePushed != -1 {
-		t.Fatalf("ошибка цены не записалась: %+v", r)
+		t.Fatalf("price error not recorded: %+v", r)
 	}
 	if r.StockError != "" || r.StockPushed != 5 {
-		t.Fatalf("ошибка цены задела остаток: %+v", r)
+		t.Fatalf("price error affected stock: %+v", r)
 	}
 	if bad, _ := d.ListOzonStockErrors(); len(bad) != 0 {
-		t.Fatalf("остаток отмечен ошибкой: %+v", bad)
+		t.Fatalf("stock flagged with an error: %+v", bad)
 	}
 
 	// The row is in backoff — the pass leaves it alone.
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
-		t.Fatalf("строка в бэкоффе повторилась сразу: %d/%d", pushed, failed)
+		t.Fatalf("row in backoff retried immediately: %d/%d", pushed, failed)
 	}
 	if len(m.sentPrices()) != 1 {
-		t.Fatalf("лишние вызовы цен: %d", len(m.sentPrices()))
+		t.Fatalf("extra price calls: %d", len(m.sentPrices()))
 	}
 
 	// Now the platform rejects the stock. The price error must survive.
@@ -173,14 +173,14 @@ func TestPriceErrorsDoNotMixWithStock(t *testing.T) {
 	// One failure, not two: retry_at is shared, so the fresh stock backoff also
 	// postpones the price of the same row within this pass.
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 1 {
-		t.Fatalf("проход после отказа по остатку: %d/%d", pushed, failed)
+		t.Fatalf("pass after a stock rejection: %d/%d", pushed, failed)
 	}
 	r = linkRow(t, d, id)
 	if r.StockError != "склад не найден" {
-		t.Fatalf("ошибка остатка не записалась: %+v", r)
+		t.Fatalf("stock error not recorded: %+v", r)
 	}
 	if r.PriceError != "цену нельзя менять чаще раза в сутки" {
-		t.Fatalf("ошибка остатка затёрла ошибку цены: %+v", r)
+		t.Fatalf("stock error overwrote the price error: %+v", r)
 	}
 }
 
@@ -193,10 +193,10 @@ func TestPricesStopOnWholeStockCallFailure(t *testing.T) {
 	m.failStatus(http.StatusTooManyRequests, "120")
 
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 1 {
-		t.Fatalf("429 на остатках: %d/%d", pushed, failed)
+		t.Fatalf("429 on stocks: %d/%d", pushed, failed)
 	}
 	if got := m.sentPrices(); len(got) != 0 {
-		t.Fatalf("цены поехали в упавший кабинет: %+v", got)
+		t.Fatalf("prices went to a failing cabinet: %+v", got)
 	}
 }
 
@@ -209,14 +209,14 @@ func TestPriceCallFailureBacksOff(t *testing.T) {
 	m.failPriceStatus(http.StatusInternalServerError, "")
 
 	if pushed, failed := pass(t, w); pushed != 1 || failed != 1 {
-		t.Fatalf("остаток уехал, цена нет: %d/%d", pushed, failed)
+		t.Fatalf("stock pushed, price did not: %d/%d", pushed, failed)
 	}
 	if r := linkRow(t, d, id); r.PriceError == "" || r.PricePushed != -1 {
-		t.Fatalf("ошибка вызова не записалась: %+v", r)
+		t.Fatalf("call error not recorded: %+v", r)
 	}
 	m.failPriceStatus(0, "")
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
-		t.Fatalf("бэкофф не соблюдён: %d/%d", pushed, failed)
+		t.Fatalf("backoff not respected: %d/%d", pushed, failed)
 	}
 }
 
@@ -237,10 +237,10 @@ func TestPriceCurrencyBYN(t *testing.T) {
 	}
 
 	if pushed, failed := pass(t, w); pushed != 2 || failed != 0 {
-		t.Fatalf("проход: %d/%d", pushed, failed)
+		t.Fatalf("pass: %d/%d", pushed, failed)
 	}
 	if got := m.lastPriceBatch(t); len(got) != 1 || got[0].CurrencyCode != "BYN" {
-		t.Fatalf("валюта не дошла до площадки: %+v", got)
+		t.Fatalf("currency did not reach the marketplace: %+v", got)
 	}
 }
 
@@ -251,15 +251,15 @@ func TestSettingsCurrencyValidation(t *testing.T) {
 
 	w := do(t, h, "PUT", "/settings", `{"client_id":"cid","api_key":"key","currency":"USD"}`)
 	if w.Code != http.StatusBadRequest {
-		t.Fatalf("неверная валюта: %d %s", w.Code, w.Body.String())
+		t.Fatalf("invalid currency: %d %s", w.Code, w.Body.String())
 	}
 
 	w = do(t, h, "PUT", "/settings", `{"client_id":"cid","api_key":"key","currency":"BYN"}`)
 	if w.Code != http.StatusOK {
-		t.Fatalf("сохранение BYN: %d %s", w.Code, w.Body.String())
+		t.Fatalf("saving BYN: %d %s", w.Code, w.Body.String())
 	}
 	if got := decode[settingsResponse](t, w); got.Currency != "BYN" {
-		t.Fatalf("валюта не сохранилась: %+v", got)
+		t.Fatalf("currency not saved: %+v", got)
 	}
 }
 
@@ -277,7 +277,7 @@ func TestSettingsCurrencyDefaultRUB(t *testing.T) {
 		t.Fatal(err)
 	}
 	if s.Currency != database.OzonCurrencyRUB {
-		t.Fatalf("свежая база должна давать RUB по умолчанию: %q", s.Currency)
+		t.Fatalf("fresh database must default to RUB: %q", s.Currency)
 	}
 }
 
@@ -290,9 +290,9 @@ func TestPassOrder(t *testing.T) {
 
 	pass(t, w)
 	if got := m.callOrder(); !slices.Equal(got, []string{"postings", "stocks", "prices"}) {
-		t.Fatalf("порядок вызовов: %v", got)
+		t.Fatalf("call order: %v", got)
 	}
-	t.Logf("порядок вызовов: %v", m.callOrder())
+	t.Logf("call order: %v", m.callOrder())
 }
 
 func TestFillPricesOnlyEmpty(t *testing.T) {
@@ -315,27 +315,27 @@ func TestFillPricesOnlyEmpty(t *testing.T) {
 
 	got := decode[fillPricesResponse](t, do(t, h, "POST", "/price/fill", `{"markup_bp":2500}`))
 	if got.Filled != 1 {
-		t.Fatalf("заполнено: %+v", got)
+		t.Fatalf("filled: %+v", got)
 	}
 	// 999 * 1.25 = 1248.75 kopecks — rounded up, in the seller's favour.
 	if r := linkRow(t, d, filled); r.Price != 1249 {
-		t.Fatalf("наценка посчиталась неверно: %d", r.Price)
+		t.Fatalf("markup computed incorrectly: %d", r.Price)
 	}
 	if r := linkRow(t, d, kept); r.Price != 500000 {
-		t.Fatalf("заполнение затёрло выставленную цену: %d", r.Price)
+		t.Fatalf("fill overwrote a manually set price: %d", r.Price)
 	}
 	// A product with a zero shelf price has nothing to mark up.
 	if r := linkRow(t, d, zero); r.Price != 0 {
-		t.Fatalf("товар без цены получил цену: %d", r.Price)
+		t.Fatalf("product without a price got one: %d", r.Price)
 	}
 
 	// Second press changes nothing — everything is filled already.
 	got = decode[fillPricesResponse](t, do(t, h, "POST", "/price/fill", `{"markup_bp":2500}`))
 	if got.Filled != 0 {
-		t.Fatalf("повторное заполнение: %+v", got)
+		t.Fatalf("repeated fill: %+v", got)
 	}
 	if w := do(t, h, "POST", "/price/fill", `{"markup_bp":-1}`); w.Code != http.StatusBadRequest {
-		t.Fatalf("отрицательная наценка: %d", w.Code)
+		t.Fatalf("negative markup: %d", w.Code)
 	}
 }
 
@@ -345,25 +345,25 @@ func TestPriceEndpointValidation(t *testing.T) {
 	target := "/price/" + strconv.FormatInt(id, 10)
 
 	if w := do(t, h, "PUT", target, `{"price":128850}`); w.Code != http.StatusOK {
-		t.Fatalf("установка цены: %d %s", w.Code, w.Body.String())
+		t.Fatalf("setting the price: %d %s", w.Code, w.Body.String())
 	}
 	if r := linkRow(t, d, id); r.Price != 128850 {
-		t.Fatalf("цена не сохранилась: %+v", r)
+		t.Fatalf("price not saved: %+v", r)
 	}
 	if w := do(t, h, "PUT", target, `{"price":-1}`); w.Code != http.StatusBadRequest {
-		t.Fatalf("отрицательная цена: %d", w.Code)
+		t.Fatalf("negative price: %d", w.Code)
 	}
 	if w := do(t, h, "PUT", "/price/999999", `{"price":100}`); w.Code != http.StatusNotFound {
-		t.Fatalf("несвязанный товар: %d", w.Code)
+		t.Fatalf("unlinked product: %d", w.Code)
 	}
 	if w := do(t, h, "PUT", target, `{`); w.Code != http.StatusBadRequest {
-		t.Fatalf("битое тело: %d", w.Code)
+		t.Fatalf("malformed body: %d", w.Code)
 	}
 
 	links := decode[ozonLinksResponse](t, do(t, h, "GET", "/links", ""))
 	if links.Total != 1 || len(links.Links) != 1 || links.Links[0].Price != 128850 ||
 		links.Links[0].OfferID != "A" || links.PageSize != kLinksPageSize {
-		t.Fatalf("таблица связей: %+v", links)
+		t.Fatalf("links table: %+v", links)
 	}
 }
 
@@ -389,45 +389,45 @@ func TestSmokePriceSlice(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	t.Logf("связано 2 товара: A (витрина 1000.00 ₽), B (витрина 1288.50 ₽)")
+	t.Logf("linked 2 products: A (storefront 1000.00 ₽), B (storefront 1288.50 ₽)")
 
 	filled := decode[fillPricesResponse](t, do(t, h, "POST", "/price/fill", `{"markup_bp":2500}`))
-	t.Logf("заполнение +25%%: filled=%d", filled.Filled)
+	t.Logf("fill +25%%: filled=%d", filled.Filled)
 	for _, id := range []int64{a, b} {
 		r := linkRow(t, d, id)
-		t.Logf("  %s: цена на Ozon %s ₽", r.OfferID, decimal(r.Price))
+		t.Logf("  %s: Ozon price %s ₽", r.OfferID, decimal(r.Price))
 	}
 
 	res := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
-	t.Logf("проход: pushed=%d failed=%d, порядок вызовов %v",
+	t.Logf("pass: pushed=%d failed=%d, call order %v",
 		res.Pushed, res.Failed, m.callOrder())
 	for _, it := range m.lastPriceBatch(t) {
-		t.Logf("  кабинет получил %s: price=%q old_price=%q", it.OfferID, it.Price, it.OldPrice)
+		t.Logf("  cabinet received %s: price=%q old_price=%q", it.OfferID, it.Price, it.OldPrice)
 	}
 
 	res = decode[pushResponse](t, do(t, h, "POST", "/push", ""))
-	t.Logf("повторный проход: pushed=%d failed=%d, вызовов цен %d",
+	t.Logf("second pass: pushed=%d failed=%d, price calls %d",
 		res.Pushed, res.Failed, len(m.sentPrices()))
 
 	do(t, h, "PUT", "/price/"+strconv.FormatInt(a, 10), `{"price":149900}`)
 	m.failPriceOffer("B", "цена ниже минимальной")
 	res = decode[pushResponse](t, do(t, h, "POST", "/push", ""))
-	t.Logf("после правки цены A: pushed=%d failed=%d", res.Pushed, res.Failed)
+	t.Logf("after editing price A: pushed=%d failed=%d", res.Pushed, res.Failed)
 	for _, it := range m.lastPriceBatch(t) {
-		t.Logf("  кабинет получил %s: price=%q", it.OfferID, it.Price)
+		t.Logf("  cabinet received %s: price=%q", it.OfferID, it.Price)
 	}
 
 	setPrice(t, d, b, 200000)
 	res = decode[pushResponse](t, do(t, h, "POST", "/push", ""))
-	t.Logf("после отказа по B: pushed=%d failed=%d", res.Pushed, res.Failed)
+	t.Logf("after rejection on B: pushed=%d failed=%d", res.Pushed, res.Failed)
 	s := decode[settingsResponse](t, do(t, h, "GET", "/settings", ""))
-	t.Logf("вкладка: цены ждут %d, с ошибкой %d; остатки ждут %d, с ошибкой %d",
+	t.Logf("tab: prices pending %d, failed %d; stocks pending %d, failed %d",
 		s.PricePending, s.PriceFailed, s.Pending, s.Failed)
 	for _, e := range s.PriceErrors {
-		t.Logf("  ошибка цены %s: %s", e.OfferID, e.Error)
+		t.Logf("  price error %s: %s", e.OfferID, e.Error)
 	}
 	if len(s.StockErrors) != 0 {
-		t.Fatalf("ошибка цены задела остатки: %+v", s.StockErrors)
+		t.Fatalf("price error affected stocks: %+v", s.StockErrors)
 	}
 }
 
@@ -447,13 +447,13 @@ func TestPricesPushWithoutWarehouse(t *testing.T) {
 	setPrice(t, d, id, 100000)
 
 	if pushed, failed := pass(t, w); pushed != 1 || failed != 0 {
-		t.Fatalf("цена без склада: %d/%d", pushed, failed)
+		t.Fatalf("price without a warehouse: %d/%d", pushed, failed)
 	}
 	if got := m.lastPriceBatch(t); len(got) != 1 || got[0].OfferID != "A" {
-		t.Fatalf("батч цен: %+v", got)
+		t.Fatalf("price batch: %+v", got)
 	}
 	if got := m.sent(); len(got) != 0 {
-		t.Fatalf("остатки уехали без склада: %+v", got)
+		t.Fatalf("stocks pushed without a warehouse: %+v", got)
 	}
 }
 

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
-/* Те же токены, что и на витрине (src/app/storefront/static/style.css):
-   владелец переключается между админкой и своим магазином и не должен
-   чувствовать, что это два разных продукта. */
+/* Same tokens as the storefront (src/app/storefront/static/style.css): the
+   owner switches between the admin and their shop and must not feel these are
+   two different products. */
 @theme {
   --color-brand: #b4532a;
   --color-brand-hover: #9a4522;
@@ -16,6 +16,11 @@
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
+}
+
+/* The page behind a modal must not scroll away under the dialog. */
+body:has(dialog[open]) {
+  overflow: hidden;
 }
 
 @layer components {
@@ -34,13 +39,13 @@ body {
   .card {
     @apply border-line rounded-xl border bg-white p-5 shadow-sm;
   }
-  /* Общая ширина страницы: шапка и содержимое обязаны совпадать, иначе меню
-     висит по краю экрана, а таблица под ним — нет. */
+  /* Shared page width: the header and the content must line up, otherwise the
+     menu hugs the screen edge while the table below it does not. */
   .page {
     @apply mx-auto w-full max-w-[1600px] px-5;
   }
-  /* Формы и карточки читаются в узкой колонке: строка на весь монитор — это
-     полтора десятка сантиметров, глаз теряет начало следующей. */
+  /* Forms and cards read best in a narrow column: a line across the whole
+     monitor is a good fifteen centimetres, the eye loses the start of the next. */
   .form-page {
     @apply flex max-w-2xl flex-col gap-6;
   }

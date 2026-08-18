@@ -443,10 +443,10 @@ func TestCartCheckoutCreatesSingleOrder(t *testing.T) {
 		byTitle[it.Title] = it
 	}
 	if it := byTitle["Красный чайник"]; it.Price != 250000 || it.Qty != 2 {
-		t.Errorf("чайник: %+v", it)
+		t.Errorf("teapot: %+v", it)
 	}
 	if it := byTitle["Синий стакан"]; it.Price != 30000 || it.Qty != 3 {
-		t.Errorf("стакан: %+v", it)
+		t.Errorf("glass: %+v", it)
 	}
 	// The cookie is cleared — resubmitting does not create a second order.
 	if c.cookie != nil {
@@ -644,13 +644,13 @@ func TestStorefrontCurrencyBYN(t *testing.T) {
 
 	body := get(t, h, "/p/"+p.Slug)
 	if !strings.Contains(body, "25.00 Br") {
-		t.Error("карточка не показывает цену в BYN")
+		t.Error("product page does not show the price in BYN")
 	}
 	if !strings.Contains(body, `"priceCurrency": "BYN"`) {
-		t.Error("JSON-LD отдаёт не ту валюту")
+		t.Error("JSON-LD carries the wrong currency")
 	}
 	if strings.Contains(body, "₽") {
-		t.Error("на витрине остался знак рубля")
+		t.Error("ruble sign still on the storefront")
 	}
 }
 
@@ -664,7 +664,7 @@ func TestHiddenProductLeavesStorefront(t *testing.T) {
 		t.Fatal(err)
 	}
 	if body := get(t, h, "/"); !strings.Contains(body, "Тайный чайник") {
-		t.Fatal("товар не появился на витрине до скрытия")
+		t.Fatal("product did not appear on the storefront before hiding")
 	}
 
 	p.Hidden = true
@@ -673,15 +673,15 @@ func TestHiddenProductLeavesStorefront(t *testing.T) {
 	}
 
 	if body := get(t, h, "/"); strings.Contains(body, "Тайный чайник") {
-		t.Error("скрытый товар остался в каталоге")
+		t.Error("hidden product still in the catalog")
 	}
 	if body := get(t, h, "/sitemap.xml"); strings.Contains(body, p.Slug) {
-		t.Error("скрытый товар остался в sitemap")
+		t.Error("hidden product still in the sitemap")
 	}
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/p/"+p.Slug, nil))
 	if w.Code != http.StatusNotFound {
-		t.Errorf("страница скрытого товара: %d, ждали 404", w.Code)
+		t.Errorf("hidden product page: %d, want 404", w.Code)
 	}
 
 	// And it cannot be ordered around the storefront by knowing the slug.
@@ -691,7 +691,7 @@ func TestHiddenProductLeavesStorefront(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	h.ServeHTTP(w, r)
 	if len(w.Result().Cookies()) > 0 && strings.Contains(w.Result().Cookies()[0].Value, p.Slug) {
-		t.Error("скрытый товар попал в корзину по прямой ссылке")
+		t.Error("hidden product got into the cart via a direct link")
 	}
 }
 
@@ -723,14 +723,14 @@ func TestFaviconUsesShopInitial(t *testing.T) {
 	}
 	body := get(t, h, "/favicon.svg")
 	if !strings.Contains(body, ">Р<") {
-		t.Errorf("буква магазина не попала в иконку: %s", body)
+		t.Errorf("shop initial missing from the icon: %s", body)
 	}
 	if !strings.Contains(body, "<svg") {
-		t.Errorf("не svg: %s", body)
+		t.Errorf("not an svg: %s", body)
 	}
 	// And the page links to it, otherwise the browser keeps asking for favicon.ico.
 	if page := get(t, h, "/"); !strings.Contains(page, `href="/favicon.svg"`) {
-		t.Error("страница не ссылается на иконку")
+		t.Error("page does not link to the icon")
 	}
 }
 
@@ -747,7 +747,7 @@ func TestShopLogoReplacesName(t *testing.T) {
 	// Look for the tag itself, not the class: the class also appears in the inline CSS.
 	if page := get(t, h, "/"); !strings.Contains(page, "Лавка Ивана") ||
 		strings.Contains(page, `<img src="/uploads/`) {
-		t.Fatal("без логотипа в шапке должно быть название текстом")
+		t.Fatal("without a logo the header must show the name as text")
 	}
 
 	base.Logo = "logo-abc.png"
@@ -756,13 +756,13 @@ func TestShopLogoReplacesName(t *testing.T) {
 	}
 	page := get(t, h, "/")
 	if !strings.Contains(page, `src="/uploads/logo-abc.png"`) {
-		t.Error("логотип не попал в шапку")
+		t.Error("logo missing from the header")
 	}
 	if !strings.Contains(page, `alt="Лавка Ивана"`) {
-		t.Error("название не сохранилось в alt")
+		t.Error("name not preserved in alt")
 	}
 	if !strings.Contains(page, `<link rel="icon" href="/uploads/logo-abc.png">`) {
-		t.Error("логотип не стал иконкой вкладки")
+		t.Error("logo did not become the tab icon")
 	}
 }
 
@@ -951,8 +951,8 @@ func TestRequisites(t *testing.T) {
 	d, h := setup(t)
 
 	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
-		// Ищем разметку и блок, а не слово: класс .requisites живёт в инлайновом
-		// CSS на каждой странице и совпал бы всегда.
+		// Match the markup and the block, not the word: the .requisites class
+		// lives in the inline CSS on every page and would always match.
 		if body := get(t, h, path); strings.Contains(body, `"Organization"`) ||
 			strings.Contains(body, `class="requisites"`) {
 			t.Errorf("%s carries an Organization with no details filled in", path)
@@ -969,8 +969,9 @@ func TestRequisites(t *testing.T) {
 
 	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
 		body := get(t, h, path)
-		// Именно блок подвала, а не текст где угодно: те же реквизиты лежат в
-		// JSON-LD, и поиск по подстроке проходил бы с пустым подвалом.
+		// Specifically the footer block, not the text anywhere: the same
+		// requisites live in the JSON-LD, and a substring search would pass
+		// with an empty footer.
 		_, after, ok := strings.Cut(body, `<div class="requisites">`)
 		if !ok {
 			t.Fatalf("%s: no requisites block in the footer", path)

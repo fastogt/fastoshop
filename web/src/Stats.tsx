@@ -37,19 +37,14 @@ const kText = {
   free: { ru: "свободно", en: "free" },
 };
 
-function bytes(n: number, lang: string): string {
-  if (n <= 0) return "0";
-  const units =
-    lang === "ru"
-      ? ["Б", "КБ", "МБ", "ГБ", "ТБ"]
-      : ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.min(
-    Math.floor(Math.log(n) / Math.log(1024)),
-    units.length - 1,
-  );
-  const v = n / Math.pow(1024, i);
-  return `${v >= 100 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
-}
+const bytes = (n: number, lang: string): string =>
+  new Intl.NumberFormat(lang, {
+    notation: "compact",
+    style: "unit",
+    unit: "byte",
+    unitDisplay: "narrow",
+    maximumFractionDigits: 1,
+  }).format(n);
 
 function duration(sec: number, lang: string): string {
   const d = Math.floor(sec / 86400);
