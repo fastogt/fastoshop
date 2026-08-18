@@ -1,3 +1,7 @@
+1.20.1 / August 18, 2026
+[Alexandr Topilski]
+- The browser's own "broken image" glyph no longer shows in the corner of a tile whose photo did not load: the shop's mark now stands there alone
+
 1.20.0 / August 18, 2026
 [Alexandr Topilski]
 - A photo that fails to load now shows the shop's own "no photo" mark instead of the product's title sprawled across the tile — in the catalogue, on the product page and in the admin's list alike. The frame around every picture carries the mark, and a picture that loads covers it; the storefront does this without a line of JavaScript, which it still does not have

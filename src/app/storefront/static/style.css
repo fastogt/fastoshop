@@ -154,6 +154,10 @@ main > h1 { margin-block: 28px 20px; }
 .frame {
   background: var(--surface) url(/nophoto.svg) center / 45% no-repeat;
   aspect-ratio: 1;
+  /* The browser's own "broken image" glyph sits where the alt text would start,
+     and it is not text: colour and font-size do not touch it. The indent pushes
+     that whole line out of the frame, and the frame clips it. */
+  overflow: hidden;
 }
 .grid img {
   width: 100%;
@@ -161,6 +165,7 @@ main > h1 { margin-block: 28px 20px; }
   object-fit: contain;
   color: transparent;
   font-size: 0;
+  text-indent: -100vw;
 }
 .grid .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 /* Titles arrive verbatim from the supplier's price list, sizes and fabric
@@ -251,6 +256,7 @@ main > h1 { margin-block: 28px 20px; }
   object-fit: contain;
   color: transparent;
   font-size: 0;
+  text-indent: -100vw;
 }
 
 /* The "no photo" placeholder is drawn entirely in SVG, so it must not be
