@@ -18,7 +18,10 @@ body {
   color: var(--color-ink);
 }
 
-/* The page behind a modal must not scroll away under the dialog. */
+/* The page behind a modal must not scroll away under the dialog. Both elements,
+   not just body: the viewport's scrollbar belongs to the root, so locking body
+   alone left the list scrolling and the window carrying two scrollbars. */
+html:has(dialog[open]),
 body:has(dialog[open]) {
   overflow: hidden;
 }

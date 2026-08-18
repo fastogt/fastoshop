@@ -1,3 +1,8 @@
+1.22.1 / August 18, 2026
+[Alexandr Topilski]
+- The page behind a dialog is finally still. It was locked on the body, while the scrollbar belongs to the root — so the list kept scrolling under the card and the window carried two scrollbars side by side
+- A photo in the product dialog that fails to load shows the shop's mark, like everywhere else. The list had this already; the dialog, where the owner actually looks at the photos, did not
+
 1.22.0 / August 18, 2026
 [Alexandr Topilski]
 - The shop has a markup ladder of its own, on the Import tab beside the coefficient: up to which cost which multiplier. One number over a whole catalogue lies at both ends — on a 7-rouble sieve it leaves nothing, and on a 300-rouble steamer it prices the shop above the brand's own store. Both were measured against live competitors before this was written. The coefficient keeps its job, carrying the supplier's price into the shop's money; the ladder adds the margin on top, so the bands are set in the money the owner sells in

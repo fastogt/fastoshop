@@ -485,6 +485,13 @@ export default function Products() {
                       <img
                         src={imageURL(im.path)}
                         alt=""
+                        // Same rule as the list: a supplier's link that stops
+                        // answering shows the shop's mark, and starts working
+                        // again by itself the day the link does.
+                        onError={(e) => {
+                          e.currentTarget.src = "/nophoto.svg";
+                          e.currentTarget.classList.add("opacity-60");
+                        }}
                         className="border-line h-20 w-20 rounded-lg border object-cover"
                       />
                       {isRemote(im.path) && (
