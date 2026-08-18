@@ -29,6 +29,10 @@ func imageServer(t *testing.T) *httptest.Server {
 	mux.HandleFunc("/liar.jpg", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("<html><body>404</body></html>"))
 	})
+	// A supplier having a bad hour: the link must survive it.
+	mux.HandleFunc("/down.jpg", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv
@@ -55,21 +59,22 @@ func TestLocalizeImages(t *testing.T) {
 	uploads := t.TempDir()
 
 	id := seedProduct(t, d, "Тёрка", "Ромашка",
-		srv.URL+"/ok.png", srv.URL+"/gone.jpg", srv.URL+"/liar.jpg")
+		srv.URL+"/ok.png", srv.URL+"/down.jpg", srv.URL+"/liar.jpg", srv.URL+"/gone.jpg")
 	other := seedProduct(t, d, "Чайник", "Оптбаза", srv.URL+"/ok.png")
 
 	sel := database.Selection{All: true, Supplier: "Ромашка"}
 	imgs, err := d.ListRemoteImages(sel)
-	if err != nil || len(imgs) != 3 {
+	if err != nil || len(imgs) != 4 {
 		t.Fatalf("remote images: %v %+v", err, imgs)
 	}
 
-	ok, failed := LocalizeImages(context.Background(), d, uploads, imgs, nil)
-	if ok != 1 || failed != 2 {
-		t.Fatalf("ok=%d failed=%d", ok, failed)
+	ok, gone, failed := LocalizeImages(context.Background(), d, uploads, imgs, nil)
+	if ok != 1 || gone != 1 || failed != 2 {
+		t.Fatalf("ok=%d gone=%d failed=%d", ok, gone, failed)
 	}
 
 	got, _ := d.ListImages(id)
+	// The 404 lost its row; the temporary failures kept theirs.
 	if len(got) != 3 {
 		t.Fatalf("images: %+v", got)
 	}
@@ -80,9 +85,15 @@ func TestLocalizeImages(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(uploads, got[0].Path)); err != nil {
 		t.Fatalf("file not written: %v", err)
 	}
-	// What failed keeps its link — a hotlinked picture beats no picture.
+	// A bad hour at the supplier and a lying content type both keep the link — a
+	// hotlinked picture beats no picture, and both come back.
 	if !strings.HasPrefix(got[1].Path, "http") || !strings.HasPrefix(got[2].Path, "http") {
 		t.Fatalf("failed downloads must stay links: %+v", got[1:])
+	}
+	for _, im := range got {
+		if strings.HasSuffix(im.Path, "/gone.jpg") {
+			t.Fatalf("a photo the supplier deleted must lose its row: %+v", got)
+		}
 	}
 	// An error page served as .jpg must not land on disk at all.
 	files, _ := os.ReadDir(uploads)
@@ -111,7 +122,7 @@ func TestLocalizeImagesStop(t *testing.T) {
 	imgs, _ := d.ListRemoteImages(database.Selection{All: true, Supplier: "Ромашка"})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	ok, failed := LocalizeImages(ctx, d, t.TempDir(), imgs, func(done int, _ []int64) {
+	ok, _, failed := LocalizeImages(ctx, d, t.TempDir(), imgs, func(done int, _ []int64) {
 		if done >= 10 {
 			cancel()
 		}

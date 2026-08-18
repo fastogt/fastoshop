@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type Stats as StatsData } from "./api";
+import { api, type LogInfo, type Stats as StatsData } from "./api";
 import { useLang, useT } from "./i18n";
 
 const kText = {
@@ -35,6 +35,18 @@ const kText = {
     en: "Could not load the stats",
   },
   free: { ru: "свободно", en: "free" },
+  expert: { ru: "Экспертный режим", en: "Expert mode" },
+  expertHint: {
+    ru: "Журнал магазина: что делали фоновые задачи, какие фотографии не скачались, ушло ли письмо по заказу.",
+    en: "The shop's log: what the background jobs did, which photos failed to download, whether an order email went out.",
+  },
+  logOpen: { ru: "Открыть журнал", en: "Open the log" },
+  logSize: { ru: "Размер", en: "Size" },
+  logModified: { ru: "Последняя запись", en: "Last entry" },
+  logMissing: {
+    ru: "Журнал не ведётся: в конфигурации магазина не задан путь к файлу.",
+    en: "No log is kept: the shop's configuration names no file for it.",
+  },
 };
 
 const bytes = (n: number, lang: string): string =>
@@ -68,6 +80,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function Stats() {
   const [s, setS] = useState<StatsData | null>(null);
+  const [logs, setLogs] = useState<LogInfo | null>(null);
   const [err, setErr] = useState("");
   const t = useT(kText);
   const lang = useLang();
@@ -77,6 +90,11 @@ export default function Stats() {
       .stats()
       .then(setS)
       .catch(() => setErr(t("failed")));
+    // The log is its own request: a shop without one still shows its stats.
+    api
+      .logInfo()
+      .then(setLogs)
+      .catch(() => {});
     // Deliberately once per page load: the page itself says it is a snapshot.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -141,6 +159,32 @@ export default function Stats() {
           <Row label={t("virt")} value={`${srv.vsystem} / ${srv.vrole}`} />
         )}
       </section>
+
+      {/* Folded away on purpose: the log is for the day something looks wrong,
+          not for the daily glance the rest of this page is. */}
+      <details className="card">
+        <summary className="cursor-pointer font-bold">{t("expert")}</summary>
+        <p className="mt-2 text-sm text-gray-500">{t("expertHint")}</p>
+        {logs?.available ? (
+          <div className="mt-2 flex flex-col gap-1">
+            <Row label={t("logSize")} value={bytes(logs.size, lang)} />
+            <Row
+              label={t("logModified")}
+              value={new Date(logs.modified_at).toLocaleString(lang)}
+            />
+            <a
+              className="mt-2 underline"
+              href="/api/logs"
+              target="_blank"
+              rel="noopener"
+            >
+              {t("logOpen")}
+            </a>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-gray-500">{t("logMissing")}</p>
+        )}
+      </details>
     </div>
   );
 }

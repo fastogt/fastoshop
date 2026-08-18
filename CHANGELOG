@@ -1,3 +1,11 @@
+1.17.0 / August 18, 2026
+[Alexandr Topilski]
+- The shop keeps a log file and hands it to its owner: Status → Expert mode shows its size, when it last moved, and opens it. Until now everything the background did — a photo that would not download, an order email that never left — went to the machine's journal, which the owner of a hosted shop has no way to read. The path is a config key (log_path), and the file is capped the way our other services cap theirs
+- A photo the supplier has deleted is dropped instead of retried forever. An imported photo is a link, that link is the only copy, and a dead one made the catalogue render the product's title sprawling where the picture should be; without the row the storefront falls back to its own "no photo" mark. Measured on a live catalogue of 69 905 supplier links, about one in twenty five
+- Only 404 and 410 count as gone. A refusal to hotlink, a rate limit, a bad hour at the supplier and an error page served as a photo all keep the link and are tried again — a wider net would erase live photos during somebody else's outage, and there is nothing to restore them from
+- "Fill in photos" now reports three numbers: downloaded, gone, still links
+- The warning mark on a product now lights up when any of its photos is still on the supplier's server, not only the first one. A product with one photo of its own and two borrowed looked settled
+
 1.16.0 / August 18, 2026
 [Alexandr Topilski]
 - The Wildberries markup ladder got its "Remove" button back. Ozon has had one since the tab was written, and without it a band typed by mistake could only be undone by reloading the page

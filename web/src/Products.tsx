@@ -46,8 +46,8 @@ const kText = {
   },
   fillStarted: { ru: "Качаем фото: {n}", en: "Downloading photos: {n}" },
   fillDone: {
-    ru: "Готово. Скачано: {ok}, осталось ссылками: {failed}",
-    en: "Done. Downloaded: {ok}, still links: {failed}",
+    ru: "Готово. Скачано: {ok}, удалено пропавших: {dropped}, осталось ссылками: {failed}",
+    en: "Done. Downloaded: {ok}, gone and removed: {dropped}, still links: {failed}",
   },
   allSuppliers: { ru: "Все поставщики", en: "All suppliers" },
   ownGoods: { ru: "Без поставщика", en: "No supplier" },
@@ -232,14 +232,23 @@ export default function Products() {
       setBulkMsg(
         t("fillDone", {
           ok: jobResult.current.ok,
+          dropped: jobResult.current.dropped,
           failed: jobResult.current.failed,
         }),
       );
     }
   });
-  const jobResult = useRef<{ ok: number; failed: number } | null>(null);
+  const jobResult = useRef<{
+    ok: number;
+    dropped: number;
+    failed: number;
+  } | null>(null);
   if (job && !job.running && job.result) {
-    jobResult.current = { ok: job.result.imported, failed: job.result.errors };
+    jobResult.current = {
+      ok: job.result.imported,
+      dropped: job.result.dropped,
+      failed: job.result.errors,
+    };
   }
   const inFlight = new Set(job?.running ? (job.in_flight ?? []) : []);
 
@@ -335,7 +344,7 @@ export default function Products() {
         <div>
           <h1 className="text-xl font-bold">{t("heading")}</h1>
           <p className="hint mt-1">{t("rowHint")}</p>
-          {list.some((p) => p.images?.[0] && isRemote(p.images[0].path)) && (
+          {list.some((p) => p.images?.some((im) => isRemote(im.path))) && (
             <p className="hint mt-1">
               <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 align-text-bottom text-[10px] leading-none font-bold text-white">
                 !
@@ -576,7 +585,7 @@ export default function Products() {
                       className="border-line h-10 w-10 rounded border object-contain opacity-60"
                     />
                   )}
-                  {p.images?.[0] && isRemote(p.images[0].path) && (
+                  {p.images?.some((im) => isRemote(im.path)) && (
                     <span
                       title={t("remotePhoto")}
                       className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] leading-none font-bold text-white"

@@ -156,7 +156,7 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	go func() {
-		okCount, failed := importer.LocalizeImages(ctx, h.db, h.uploadsDir, imgs,
+		okCount, gone, failed := importer.LocalizeImages(ctx, h.db, h.uploadsDir, imgs,
 			func(done int, inFlight []int64) {
 				h.job.progress(kStagePhotos, done, len(imgs), inFlight)
 			})
@@ -170,8 +170,12 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 		thumbs, thumbErrors := media.MakeThumbs(ctx, h.uploadsDir, rest, func(done int) {
 			h.job.progress(kStageThumbs, done, len(rest), nil)
 		})
+		// The one line that outlives the job: job state is in memory and a restart
+		// wipes it, while the owner reads the log after the fact.
+		log.Infof("fill photos: %d downloaded, %d gone, %d failed, %d thumbnails",
+			okCount, gone, failed, thumbs)
 		h.job.finish(&importer.Result{
-			Imported: okCount, Updated: thumbs, Errors: failed + thumbErrors,
+			Imported: okCount, Updated: thumbs, Dropped: gone, Errors: failed + thumbErrors,
 		}, nil)
 	}()
 	writeOK(w, startedResponse{Started: true, Total: len(imgs) + len(missing)})

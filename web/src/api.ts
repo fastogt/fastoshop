@@ -255,6 +255,9 @@ export interface ImportResult {
   updated: number;
   skipped: number;
   zeroed: number;
+  // Photos whose source the supplier removed: the link was deleted, so the
+  // storefront shows its own placeholder instead of a broken picture.
+  dropped: number;
   conflicts: number;
   no_sku: number;
   duplicates: number;
@@ -420,8 +423,15 @@ export type Stats = {
   };
 };
 
+export interface LogInfo {
+  available: boolean;
+  size: number;
+  modified_at: string;
+}
+
 export const api = {
   stats: () => http.get("/stats").then(data<Stats>),
+  logInfo: () => http.get("/logs/info").then(data<LogInfo>),
   setupNeeded: () => http.get("/setup").then(data<{ needed: boolean }>),
   setup: (email: string, password: string) =>
     http.post("/setup", { email, password }),

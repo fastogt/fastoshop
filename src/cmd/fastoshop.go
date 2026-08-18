@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/fastogt/fastoshop/app"
 	"github.com/fastogt/fastoshop/app/config"
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/handler"
@@ -60,23 +61,13 @@ func listen(addr string) (net.Listener, error) {
 	return ln, nil
 }
 
-func setupLogging(logLevel string) {
-	level, err := log.ParseLevel(logLevel)
-	if err != nil {
-		level = log.InfoLevel
-	}
-	log.SetLevel(level)
-	log.SetFormatter(&log.TextFormatter{TimestampFormat: "02/01/2006 15:04:05.000", FullTimestamp: true})
-}
-
 func run(cfg *config.Config) error {
-	setupLogging(cfg.Settings.LogLevel)
-	log.Printf("Starting %s %s", version.ProjectName, version.VersionApp)
-
 	dbPath := expandHome(cfg.Settings.Database)
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		return fmt.Errorf("db dir: %w", err)
 	}
+	logPath := app.SetupLogging(cfg.Settings.LogLevel, cfg.Settings.LogPath)
+	log.Printf("Starting %s %s", version.ProjectName, version.VersionApp)
 	db, err := database.Open(dbPath)
 	if err != nil {
 		return err
@@ -89,6 +80,7 @@ func run(cfg *config.Config) error {
 
 	uploadsDir := filepath.Join(filepath.Dir(dbPath), "uploads")
 	h := handler.NewHandler(db, uploadsDir)
+	h.LogPath = logPath
 	sf := storefront.New(db, cfg.Settings.BaseURL, uploadsDir)
 
 	// The stock sync always starts: settings are read on every pass, and
@@ -150,6 +142,8 @@ func run(cfg *config.Config) error {
 			r.Post("/orders/bulk/delete", h.BulkDeleteOrders)
 			r.Get("/orders.csv", h.ExportOrdersCSV)
 			r.Get("/stats", h.Stats)
+			r.Get("/logs", h.Logs)
+			r.Get("/logs/info", h.LogInfo)
 			r.Get("/settings", h.GetSettings)
 			r.Put("/settings", h.UpdateSettings)
 			r.Put("/settings/lang", h.SetLang)

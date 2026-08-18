@@ -13,6 +13,9 @@ type Handler struct {
 	// integration disabled it simply isn't there), while threading it through
 	// the signature would burden every caller.
 	OnStockChange func()
+	// LogPath is the resolved log file. A field for the same reason: the admin
+	// serves it, but a shop with no log file configured works exactly as before.
+	LogPath string
 	// job is the single background slot: the import and the photo download both
 	// outlive a request, and nginx cuts one off at sixty seconds.
 	job job

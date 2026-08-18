@@ -71,7 +71,12 @@ type Result struct {
 	// ozon_links points at the product id and the slug is already indexed, so
 	// recreating one later would break the channel link and a live URL.
 	Zeroed int `json:"zeroed"`
-	Errors int `json:"errors"`
+	// Dropped counts photos whose source the supplier has removed, so the link
+	// was deleted. Its own field rather than a reuse of Skipped or Zeroed: those
+	// two already mean something on the import path, and sharing one would make
+	// the import banner report a number about something else.
+	Dropped int `json:"dropped"`
+	Errors  int `json:"errors"`
 }
 
 // Stages travel to the admin as keys: the text around them is rendered in the

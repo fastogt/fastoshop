@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +21,13 @@ import (
 // Same ceiling the admin upload uses: a photo bigger than this is a mistake at
 // the supplier's end, not a product picture.
 const kMaxImageBytes = 10 << 20
+
+// ErrImageGone marks a photo the supplier has removed for good. Such a row is
+// deleted instead of retried forever: an imported photo is a link, the link is
+// the only copy, and a catalogue page renders a dead link as the alt text
+// sprawling where the picture should be. Without the row the storefront falls
+// back to its own "no photo" placeholder.
+var ErrImageGone = errors.New("image gone")
 
 // ponytail: eight at a time is what turns 60 000 photos from a day into an
 // hour without looking like a crawl to the supplier. Make it a setting when
@@ -89,6 +97,15 @@ func fetchImage(im database.ProductImage, uploadsDir string) (string, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
+		// 404 and 410 only: those two say the supplier removed the file, and the
+		// link will never work again. A 403 is hotlink protection, a 429 is our
+		// own eight workers, a 5xx is their bad hour — all of them come back, and
+		// a body served as HTML under a 200 is caught below as a bad type rather
+		// than as a death. Widening this list would erase live photos during
+		// somebody else's outage, and there is no copy to restore them from.
+		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
+			return "", fmt.Errorf("http %d: %w", resp.StatusCode, ErrImageGone)
+		}
 		return "", fmt.Errorf("http %d", resp.StatusCode)
 	}
 	// One byte over the cap is enough to tell "too big" from "exactly at the cap".
@@ -123,7 +140,8 @@ func fetchImage(im database.ProductImage, uploadsDir string) (string, error) {
 
 // LocalizeImages downloads photos that still live on the supplier's server and
 // points the catalogue at our own copies. A photo that fails to download keeps
-// its link: a shop with a hotlinked picture beats a shop with no picture.
+// its link: a shop with a hotlinked picture beats a shop with no picture. A
+// photo the supplier has deleted loses its row instead — see ErrImageGone.
 //
 // The context stops the run: it is the way out of a download of sixty thousand
 // photos started by mistake.
@@ -131,12 +149,10 @@ func fetchImage(im database.ProductImage, uploadsDir string) (string, error) {
 // onProgress is called after every photo with the number finished and the ids
 // being downloaded right now — that is what the admin draws its spinner from.
 func LocalizeImages(ctx context.Context, db *database.Database, uploadsDir string,
-	imgs []database.ProductImage, onProgress func(done int, inFlight []int64)) (int, int) {
+	imgs []database.ProductImage, onProgress func(done int, inFlight []int64)) (ok, gone, failed int) {
 	var (
 		mu       sync.Mutex
 		done     int
-		ok       int
-		failed   int
 		inFlight = map[int64]int{}
 	)
 	report := func() {
@@ -169,15 +185,25 @@ func LocalizeImages(ctx context.Context, db *database.Database, uploadsDir strin
 						_ = os.Remove(filepath.Join(uploadsDir, name))
 					}
 				}
+				dead := errors.Is(err, ErrImageGone)
+				if dead {
+					if derr := db.DeleteImage(im.ID); derr != nil {
+						log.Warnf("drop gone image %q: %v", im.Path, derr)
+						dead = false
+					}
+				}
 				if err != nil {
 					log.Warnf("localize image %q: %v", im.Path, err)
 				}
 
 				mu.Lock()
 				done++
-				if err == nil {
+				switch {
+				case err == nil:
 					ok++
-				} else {
+				case dead:
+					gone++
+				default:
 					failed++
 				}
 				if inFlight[im.ProductID]--; inFlight[im.ProductID] <= 0 {
@@ -196,10 +222,10 @@ func LocalizeImages(ctx context.Context, db *database.Database, uploadsDir strin
 		case <-ctx.Done():
 			close(queue)
 			wg.Wait()
-			return ok, failed
+			return ok, gone, failed
 		}
 	}
 	close(queue)
 	wg.Wait()
-	return ok, failed
+	return ok, gone, failed
 }
