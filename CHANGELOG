@@ -1,6 +1,9 @@
 1.20.2 / August 18, 2026
 [Alexandr Topilski]
 - The browser's own "broken image" glyph is gone for good: a picture that fails to load is covered by its own mask, which a loaded picture never shows. Moving the glyph out of the frame did not work — it is drawn inside the picture's box and ignores colour, font size and indentation alike
+- A dialog freezes the page behind it. A modal takes the clicks but not the wheel, so the list kept scrolling under the card and the window carried two scrollbars side by side
+- A price in the product list no longer breaks across two lines, with the currency stranded under the number
+- The warning mark for a supplier-hosted photo is back to the one photo a shopper actually sees in the listing. Lit by any of a product's photos it burned on every row of a catalogue that is hotlinked from end to end, and a warning that fires on everything warns of nothing
 
 1.20.1 / August 18, 2026
 [Alexandr Topilski]

@@ -335,7 +335,7 @@ export default function Products() {
         <div>
           <h1 className="text-xl font-bold">{t("heading")}</h1>
           <p className="hint mt-1">{t("rowHint")}</p>
-          {list.some((p) => p.images?.some((im) => isRemote(im.path))) && (
+          {list.some((p) => p.images?.[0] && isRemote(p.images[0].path)) && (
             <p className="hint mt-1">
               <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 align-text-bottom text-[10px] leading-none font-bold text-white">
                 !
@@ -583,7 +583,7 @@ export default function Products() {
                       className="border-line h-10 w-10 rounded border object-contain opacity-60"
                     />
                   )}
-                  {p.images?.some((im) => isRemote(im.path)) && (
+                  {p.images?.[0] && isRemote(p.images[0].path) && (
                     <span
                       title={t("remotePhoto")}
                       className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] leading-none font-bold text-white"
@@ -617,7 +617,12 @@ export default function Products() {
             key: "price",
             label: t("thPrice"),
             sortable: true,
-            render: (p) => `${toRubles(p.price)} ${sign}`,
+            width: "110px",
+            render: (p) => (
+              <span className="whitespace-nowrap">
+                {toRubles(p.price)} {sign}
+              </span>
+            ),
           },
           {
             key: "stock",

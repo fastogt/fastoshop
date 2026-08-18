@@ -17,8 +17,17 @@ export default function Modal({ title, onClose, children, footer }: Props) {
 
   // The component only exists while open, so showModal on mount is enough;
   // unmounting removes the element and the backdrop with it.
+  //
+  // The page behind is frozen by hand: a modal dialog takes the clicks but not
+  // the wheel, so the list kept scrolling under the card and the window showed
+  // two scrollbars side by side — the dialog's own and the page's.
   useEffect(() => {
     ref.current?.showModal();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
   }, []);
 
   return (
