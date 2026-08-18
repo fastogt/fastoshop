@@ -142,6 +142,9 @@ export const apiError = (e: unknown): string | undefined =>
 export interface Product {
   id: number;
   sku: string;
+  // What the supplier charged, in minor units: the shelf price is derived from
+  // it, so the pricing block can show the whole chain on a real row.
+  source_price?: number;
   title: string;
   slug: string;
   description: string;

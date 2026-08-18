@@ -366,7 +366,7 @@ export default function WB() {
       </div>
 
       <section className="card flex flex-col gap-4">
-        <h2 className="font-semibold">{t("connection")}</h2>
+        <h2 className="font-bold">{t("connection")}</h2>
         <div>
           <label className="label" htmlFor="wb-token">
             {t("token")}
@@ -461,7 +461,7 @@ export default function WB() {
       </section>
 
       <section className="card flex flex-col gap-4">
-        <h2 className="font-semibold">{t("publication")}</h2>
+        <h2 className="font-bold">{t("publication")}</h2>
         <input
           className="field w-64"
           placeholder={t("searchPlaceholder")}
@@ -547,7 +547,7 @@ export default function WB() {
       </section>
 
       <section className="card flex flex-col gap-4">
-        <h2 className="font-semibold">{t("linking")}</h2>
+        <h2 className="font-bold">{t("linking")}</h2>
         <p className="hint">
           {t("linkedCount", { n: s.linked, m: s.unlinked })}
         </p>
@@ -741,7 +741,7 @@ export default function WB() {
       </section>
 
       <section className="card flex flex-col gap-4">
-        <h2 className="font-semibold">{t("sync")}</h2>
+        <h2 className="font-bold">{t("sync")}</h2>
         <p className="hint">
           {t("stockCounters", { n: s.pending, m: s.failed })}
         </p>
@@ -784,7 +784,7 @@ export default function WB() {
       </section>
 
       <section className="card flex flex-col gap-4">
-        <h2 className="font-semibold">{t("sales")}</h2>
+        <h2 className="font-bold">{t("sales")}</h2>
         <p className="hint">{t("salesHint")}</p>
         <DataTable<WBOrder>
           columns={[

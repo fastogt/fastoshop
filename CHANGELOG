@@ -1,3 +1,9 @@
+1.24.0 / August 18, 2026
+[Alexandr Topilski]
+- Prices are two fields now, not three numbers spread over two tabs under the same name. Products has a "Prices" block: a cost rate that turns a supplier's price into the shop's money, and a markup percentage on top — the ladder that used to be the only way to set a markup is still there, folded behind "A different markup for cheap and dear goods", for the sieve-and-steamer case where one percentage cannot serve both. A line under the fields spells out a real row's own chain: cost, times the rate, times the markup, equals the shelf price
+- The Import tab lost the ladder and the recompute button — both moved to where the prices they produce are shown. Its own rate field is gone too, except when a feed's currency does not match the shop's; a rouble price list into a rouble shop no longer asks the owner to think about a coefficient at all
+- Ozon and Wildberries read as one product again: Ozon's publish table lived inside a form's narrow column and wrapped titles onto five lines, WB's did not. Both now use the full-width layout, the platform column carries the same name in both, and the section heading is the same weight
+
 1.23.0 / August 18, 2026
 [Alexandr Topilski]
 - Photos in the product dialog can be dragged into any order. The first one is the card in search results, in the catalogue and in a marketplace listing, and an imported catalogue arrives in whatever order the supplier's feed had — often with a dead link first. The new order is saved as it is dropped, not on "Save": it belongs to the product, not to the form

@@ -96,7 +96,7 @@ const kText = {
     ru: "Товаров нет. Заведите их вручную или перенесите каталог на вкладке «Импорт».",
     en: "No products yet. Add them by hand or bring a catalogue over on the Import tab.",
   },
-  colPublished: { ru: "В Ozon", en: "On Ozon" },
+  colPublished: { ru: "На площадке", en: "On the platform" },
   yes: { ru: "да", en: "yes" },
   no: { ru: "нет", en: "no" },
   hiddenBadge: { ru: "скрыт с витрины", en: "hidden from storefront" },
@@ -529,7 +529,7 @@ export default function Ozon() {
   };
 
   return (
-    <div className="form-page">
+    <div className="page flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-bold">Ozon</h1>
         <p className="hint mt-1">{t("intro")}</p>
