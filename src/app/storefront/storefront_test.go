@@ -183,7 +183,7 @@ func TestRemoteImageURLRenderedAsIs(t *testing.T) {
 	if strings.Contains(body, "/uploads/https") {
 		t.Error("remote URL must not be prefixed with /uploads/")
 	}
-	if !strings.Contains(get(t, h, "/"), `<img src="https://cdn.example/x.jpg"`) {
+	if !strings.Contains(get(t, h, "/"), `src="https://cdn.example/x.jpg"`) {
 		t.Error("catalog card must use the remote URL")
 	}
 }

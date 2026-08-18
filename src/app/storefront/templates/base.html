@@ -8,7 +8,7 @@
     {{/* The frame holds the "no photo" mark; a picture that loads covers it, one
          that does not lets it through. A supplier's link can answer 404 today and
          work tomorrow, so nothing is deleted over it. */}}
-    <div class="frame">{{if .ImageURL}}<img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy" width="400" height="400">{{end}}</div>
+    <div class="frame">{{if .ImageURL}}<img class="nomark" src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy" width="400" height="400">{{end}}</div>
     <div class="body">
       <h2>{{.Title}}</h2>
       {{if le .Stock 0}}<span class="badge">Нет в наличии</span>{{end}}

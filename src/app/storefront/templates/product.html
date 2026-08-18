@@ -50,12 +50,12 @@
          itself the day the link does. A card with no photos at all gets one
          empty frame for the same reason: without it the price sat next to a hole
          the height of the page. */}}
-    {{range $i, $im := .Images}}<div class="frame slide"><img id="photo-{{$i}}" src="{{$im.URL}}" alt="{{$.P.Title}}" loading="lazy"></div>{{end}}
+    {{range $i, $im := .Images}}<div class="frame slide"><img class="nomark" id="photo-{{$i}}" src="{{$im.URL}}" alt="{{$.P.Title}}" loading="lazy"></div>{{end}}
     {{if not .Images}}<div class="frame slide"></div>{{end}}
     </div>
     {{if gt (len .Images) 1}}
     <div class="thumbs">
-    {{range $i, $im := .Images}}<a href="#photo-{{$i}}" aria-label="Фото {{$i}}"><img src="{{$im.URL}}" alt="" loading="lazy"></a>{{end}}
+    {{range $i, $im := .Images}}<a href="#photo-{{$i}}" aria-label="Фото {{$i}}"><img class="nomark" src="{{$im.URL}}" alt="" loading="lazy"></a>{{end}}
     </div>
     {{end}}
   </div>

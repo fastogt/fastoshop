@@ -12,7 +12,7 @@
 <table class="cart-table">
 {{range .Cart}}
   <tr>
-    <td>{{if .ImageURL}}<a href="/p/{{.Slug}}"><img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy"></a>{{end}}</td>
+    <td>{{if .ImageURL}}<a href="/p/{{.Slug}}"><img class="nomark" src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy"></a>{{end}}</td>
     <td><a href="/p/{{.Slug}}">{{.Title}}</a></td>
     <td class="unit">{{.PriceStr}} {{$.Shop.Sign}}</td>
     <td>

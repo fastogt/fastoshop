@@ -144,13 +144,23 @@ main > h1 { margin-block: 28px 20px; }
    crop cut off exactly those lines. White padding, not the brand beige: the
    margins must continue the photo's own background.
 
-   The frame carries the "no photo" mark under the picture, and the picture is
-   transparent-text: a supplier's link that answers 404 today may answer 200
-   tomorrow, so nothing is deleted anywhere — the frame simply shows through
-   whatever failed to load, instead of the alt text sprawling across the tile.
-   object-fit: contain always covers the centre, so a photo that did load hides
-   the mark completely. Not a line of JavaScript, which the storefront does not
-   have. */
+   A picture that fails to load is masked by its own ::after: a broken image
+   stops being a replaced element, so its pseudo-element renders, while a loaded
+   one never shows it. That covers both the alt text and the browser's own
+   "broken image" glyph, which is drawn inside the element's box and ignores
+   colour, font-size and text-indent alike. A supplier's link that answers 404
+   today may answer 200 tomorrow, so nothing is deleted over it — the mark simply
+   stands in until the picture returns. Not a line of JavaScript, which the
+   storefront does not have. */
+.nomark {
+  position: relative;
+}
+.nomark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--surface) url(/nophoto.svg) center / 45% no-repeat;
+}
 .frame {
   background: var(--surface) url(/nophoto.svg) center / 45% no-repeat;
   aspect-ratio: 1;
@@ -163,9 +173,6 @@ main > h1 { margin-block: 28px 20px; }
   width: 100%;
   aspect-ratio: 1;
   object-fit: contain;
-  color: transparent;
-  font-size: 0;
-  text-indent: -100vw;
 }
 .grid .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 /* Titles arrive verbatim from the supplier's price list, sizes and fabric
@@ -254,9 +261,6 @@ main > h1 { margin-block: 28px 20px; }
   width: 100%;
   height: 100%;
   object-fit: contain;
-  color: transparent;
-  font-size: 0;
-  text-indent: -100vw;
 }
 
 /* The "no photo" placeholder is drawn entirely in SVG, so it must not be
@@ -278,9 +282,6 @@ main > h1 { margin-block: 28px 20px; }
   width: 64px;
   height: 64px;
   object-fit: cover;
-  color: transparent;
-  font-size: 0;
-  text-indent: -100vw;
 }
 .thumbs a:hover { border-color: var(--accent); }
 
