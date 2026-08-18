@@ -10,6 +10,10 @@ import (
 
 type priceRulesResponse struct {
 	Rules []database.PriceRule `json:"rules"`
+	// Coefficient is what the catalogue actually runs on. The form used to open
+	// with a hard-coded 1 while the shop was on 0.0466: pressing "Recompute"
+	// there would have multiplied twenty thousand prices by twenty-one.
+	Coefficient float64 `json:"coefficient"`
 }
 
 type priceRulesRequest struct {
@@ -29,7 +33,12 @@ func (h *Handler) GetPriceRules(w http.ResponseWriter, r *http.Request) {
 	if rules == nil {
 		rules = []database.PriceRule{}
 	}
-	writeOK(w, priceRulesResponse{Rules: rules})
+	c, err := h.db.PriceCoefficient()
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeOK(w, priceRulesResponse{Rules: rules, Coefficient: c})
 }
 
 // SetPriceRules stores the ladder without touching a single price: applying it

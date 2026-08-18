@@ -227,7 +227,13 @@ export default function Import() {
 
   useEffect(() => {
     api.settings().then((s) => setCurrency(s.currency));
-    api.priceRules().then((r) => setRules(r.rules));
+    // The coefficient the catalogue actually runs on, not a hard-coded 1: with
+    // the field lying, one press of "Recompute prices" multiplies every price by
+    // the difference.
+    api.priceRules().then((r) => {
+      setRules(r.rules);
+      if (r.coefficient) setCoefficient(String(r.coefficient));
+    });
     api.importSuppliers().then((r) => setSuppliers(r.suppliers));
     api.importFeed().then((f) => {
       if (f.url) setFeed(f);

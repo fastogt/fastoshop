@@ -106,6 +106,10 @@ const kText = {
   labelPhotos: { ru: "Фотографии", en: "Photos" },
   addPhoto: { ru: "Добавить", en: "Add" },
   removePhoto: { ru: "Удалить фото", en: "Remove photo" },
+  dragHint: {
+    ru: "Фотографии можно перетаскивать: первая уходит в поиск, в каталог и в карточку канала.",
+    en: "Photos can be dragged: the first one goes to search, to the catalogue and to a channel listing.",
+  },
   photosHint: {
     ru: "JPEG, PNG или WebP, до 10 МБ. Первое фото попадает в поисковую выдачу и в карточку канала.",
     en: "JPEG, PNG or WebP, up to 10 MB. The first photo is what search results and the channel card show.",
@@ -159,6 +163,9 @@ const isRemote = isRemoteImage;
 export default function Products() {
   const [list, setList] = useState<Product[]>([]);
   const [edit, setEdit] = useState<Partial<Product> | null>(null);
+  // Index of the photo being dragged. A ref, not state: it changes on every
+  // dragover and re-rendering the strip mid-drag drops the drag itself.
+  const dragFrom = useRef<number | null>(null);
   const [priceRub, setPriceRub] = useState("0");
   // null = the stock field was never touched. Sending it means re-declaring the
   // physical stock: a form opened before a sale would resurrect sold units.
@@ -479,9 +486,36 @@ export default function Products() {
             {edit.id ? (
               <div>
                 <label className="label">{t("labelPhotos")}</label>
+                {(edit.images?.length ?? 0) > 1 && (
+                  <p className="hint mb-2">{t("dragHint")}</p>
+                )}
                 <div className="flex flex-wrap items-center gap-3">
-                  {edit.images?.map((im) => (
-                    <span key={im.id} className="group relative">
+                  {edit.images?.map((im, i) => (
+                    <span
+                      key={im.id}
+                      className="group relative cursor-grab active:cursor-grabbing"
+                      draggable
+                      onDragStart={() => (dragFrom.current = i)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        const from = dragFrom.current;
+                        dragFrom.current = null;
+                        if (from === null || from === i || !edit.images) return;
+                        const next = [...edit.images];
+                        next.splice(i, 0, ...next.splice(from, 1));
+                        setEdit({ ...edit, images: next });
+                        // Saved at once: the order is a property of the product,
+                        // not of the form, and losing it to a cancelled dialog
+                        // would be its own surprise.
+                        void api
+                          .setImageOrder(
+                            edit.id!,
+                            next.map((x) => x.id),
+                          )
+                          .then(() => reload())
+                          .catch(() => setEdit({ ...edit }));
+                      }}
+                    >
                       <img
                         src={imageURL(im.path)}
                         alt=""

@@ -304,3 +304,34 @@ func (h *Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	p, _ := h.db.GetProduct(id)
 	writeOK(w, h.enrich(*p))
 }
+
+type imageOrderRequest struct {
+	IDs []int64 `json:"ids"`
+}
+
+// SetImageOrder is the drag and drop behind the photo strip. The first photo is
+// what a shopper sees in the catalogue and what a search engine puts next to the
+// snippet, so moving a good one to the front is a routine job, not a nicety —
+// especially on an imported catalogue, where the order came from the supplier.
+func (h *Handler) SetImageOrder(w http.ResponseWriter, r *http.Request) {
+	id, err := idParam(r)
+	if err != nil {
+		writeBadRequest(w, "bad id")
+		return
+	}
+	var req imageOrderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
+		writeBadRequest(w, "ids required")
+		return
+	}
+	if err := h.db.SetImageOrder(id, req.IDs); err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	p, err := h.db.GetProduct(id)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeOK(w, h.enrich(*p))
+}

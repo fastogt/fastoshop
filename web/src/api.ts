@@ -500,6 +500,10 @@ export const api = {
     http
       .delete("/categories", { params: { path } })
       .then(data<{ status: string }>),
+  setImageOrder: (productId: number, ids: number[]) =>
+    http
+      .put(`/products/${productId}/images/order`, { ids })
+      .then(data<Product>),
   deleteImage: (productId: number, imageId: number) =>
     http.delete(`/products/${productId}/images/${imageId}`).then(data<Product>),
   orders: (page = 1, per = 50, sort?: string, dir?: string) =>
@@ -579,7 +583,9 @@ export const api = {
   ozonSetPrice: (productId: number, price: number) =>
     http.put(`/ozon/price/${productId}`, { price }),
   priceRules: () =>
-    http.get("/products/price-rules").then(data<{ rules: PriceRule[] }>),
+    http
+      .get("/products/price-rules")
+      .then(data<{ rules: PriceRule[]; coefficient: number }>),
   setPriceRules: (rules: PriceRule[]) =>
     http
       .put("/products/price-rules", { rules })

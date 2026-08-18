@@ -1,5 +1,10 @@
 package database
 
+import (
+	"database/sql"
+	"fmt"
+)
+
 type ProductImage struct {
 	ID        int64  `json:"id"`
 	ProductID int64  `json:"product_id"`
@@ -110,4 +115,28 @@ func (d *Database) SetImagePath(id int64, path string) error {
 func (d *Database) DeleteImage(id int64) error {
 	_, err := d.db.Exec(`DELETE FROM product_images WHERE id=?`, id)
 	return err
+}
+
+// SetImageOrder rewrites the positions of a product's photos to the order given.
+// The first one is not decoration: it is the card in search results, in the
+// catalogue grid and in a marketplace listing, so being able to put a good photo
+// there is the whole point of ordering at all.
+//
+// Ids that do not belong to the product are refused rather than ignored: a
+// silently dropped id would leave the gallery in an order nobody asked for.
+func (d *Database) SetImageOrder(productID int64, ids []int64) error {
+	return d.withTx(func(tx *sql.Tx) error {
+		for i, id := range ids {
+			res, err := tx.Exec(
+				`UPDATE product_images SET position=? WHERE id=? AND product_id=?`,
+				i, id, productID)
+			if err != nil {
+				return err
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				return fmt.Errorf("image %d does not belong to product %d", id, productID)
+			}
+		}
+		return nil
+	})
 }

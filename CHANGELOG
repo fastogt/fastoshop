@@ -1,3 +1,9 @@
+1.23.0 / August 18, 2026
+[Alexandr Topilski]
+- Photos in the product dialog can be dragged into any order. The first one is the card in search results, in the catalogue and in a marketplace listing, and an imported catalogue arrives in whatever order the supplier's feed had — often with a dead link first. The new order is saved as it is dropped, not on "Save": it belongs to the product, not to the form
+- The second scrollbar beside a dialog is gone, and this time it was measured rather than guessed at: the page was already locked, but the dialog element carries the browser's own overflow:auto and its padding plus the card's height added up to 38 pixels more than it could show
+- The Import tab shows the coefficient the catalogue actually runs on instead of a hard-coded 1. Pressing "Recompute prices" there would have multiplied twenty thousand prices by twenty-one
+
 1.22.2 / August 18, 2026
 [Alexandr Topilski]
 - The offer in a product's markup now carries the two things the shop actually knows and search engines ask for: the condition of the goods and how long the price holds. Without a validity date a price is eventually treated as stale and dropped from the snippet, which is how a shop loses the line that made it worth clicking. Availability was already there — the stars next to a competitor's result are not markup we are missing but reviews we do not have, and inventing them costs the snippet outright

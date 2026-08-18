@@ -37,7 +37,11 @@ export default function Modal({ title, onClose, children, footer }: Props) {
         // target; anything inside the card reports the card's children.
         if (e.target === ref.current) onClose();
       }}
-      className="m-auto w-full max-w-3xl bg-transparent p-4 backdrop:bg-black/40 sm:p-8"
+      // overflow-hidden on the dialog itself: the browser gives it overflow:auto,
+      // and the card's own max-height plus this padding add up to exactly the
+      // viewport — 38 pixels of overflow and a second scrollbar beside the one
+      // the content already has. Only the body inside scrolls.
+      className="m-auto w-full max-w-3xl overflow-hidden bg-transparent p-4 backdrop:bg-black/40 sm:p-8"
     >
       {/* Height is capped by the window, only the body scrolls: on a product with a
           long description and photos "Save" otherwise slides below the bottom edge,
