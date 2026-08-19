@@ -5,7 +5,6 @@
 {{define "content"}}
 <h1>Корзина</h1>
 {{if .Ordered}}<p class="notice good ok">Спасибо! Заказ принят, мы свяжемся с вами по телефону.</p>{{end}}
-{{if .NoContact}}<p class="notice oos">Заполните телефон или почту — иначе мы не сможем подтвердить заказ.</p>{{end}}
 {{if .SoldOut}}<p class="notice oos">Пока вы оформляли заказ, «{{.SoldOut}}» закончился — мы убрали его из корзины. Заказ не оформлен, проверьте состав и подтвердите ещё раз.</p>{{end}}
 {{if .Dropped}}<p class="notice oos">Часть товаров закончилась и была убрана из корзины.</p>{{end}}
 {{if .Cart}}
@@ -37,24 +36,29 @@
 <p class="total"><span class="oos">Итого:</span> <span class="price">{{.TotalStr}} {{$.Shop.Sign}}</span></p>
 <div class="checkout">
   <h2>Оформление заказа</h2>
+  {{/* The error lives next to the form it talks about: rendered at the top of
+       the page it sat above the fold while the empty field sat below it. */}}
+  {{if .NoContact}}<p class="notice oos">Заполните телефон или почту — иначе мы не сможем подтвердить заказ.</p>{{end}}
   <p class="oos">Оплата при получении. Мы перезвоним и подтвердим.</p>
   <form method="post" action="/cart/order">
     <div>
       <label for="name">Ваше имя</label>
-      <input id="name" name="name" placeholder="Иван" required>
+      <input id="name" name="name" placeholder="Иван" autocomplete="name" required value="{{.FormName}}">
     </div>
     <div>
       <label for="phone">Телефон</label>
-      <input id="phone" name="phone" type="tel" placeholder="+7 999 000-00-00">
+      {{/* The sample number matches the shop's own money: +7 on a shop that
+           sells in Br tells the buyer the shop is not for them. */}}
+      <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="{{if eq .Shop.Currency "BYN"}}+375 29 000-00-00{{else}}+7 999 000-00-00{{end}}">
     </div>
     <div>
       <label for="email">Почта</label>
-      <input id="email" name="email" type="email" placeholder="ivan@example.com">
+      <input id="email" name="email" type="email" autocomplete="email" placeholder="ivan@example.com">
       <p class="oos">Оставьте телефон или почту — можно и то, и другое. На почту пришлём подтверждение заказа.</p>
     </div>
     <div>
       <label for="comment">Комментарий</label>
-      <textarea id="comment" name="comment" placeholder="Удобное время для звонка, пожелания к доставке"></textarea>
+      <textarea id="comment" name="comment" placeholder="Удобное время для звонка, пожелания к доставке">{{.FormComment}}</textarea>
     </div>
     <button type="submit">Оформить заказ</button>
   </form>

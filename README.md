@@ -30,6 +30,8 @@ The public side is rendered on the server with `html/template`. We send no frame
 
 Out of the box: `schema.org/Product` markup, a sitemap with `lastmod`, canonical URLs, Open Graph, transliterated slugs, and a landing page for every category. Sorting and an "in stock only" filter are plain links — the state lives in the URL and every variant points its canonical at the clean page, so a search engine sees one page instead of five.
 
+The same pages serve AI search. Assistants answer "where do I buy X" from pages they can actually read: server-rendered HTML with the price in markup needs no script execution, and `/llms.txt` — generated from the live catalogue — hands them the whole shop in one read: what is sold, in which sections, how an order works.
+
 Categories arrive with the catalogue: a feed that says `Kitchen > Kettles` becomes a tree. On a live shop one supplier price list produced **570 category pages** instead of a single catalogue.
 
 ### The catalogue fills itself

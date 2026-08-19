@@ -40,7 +40,7 @@ func TestImportKeepsShopCoefficient(t *testing.T) {
 	w := httptest.NewRecorder()
 	// Port 1 refuses at once: the job starts and dies, which is all this needs.
 	h.ImportRun(w, httptest.NewRequest("POST", "/api/import/run", strings.NewReader(
-		`{"source":"yml","url":"http://127.0.0.1:1/feed.xml","supplier":"marinesh","coefficient":0.03572}`)))
+		`{"source":"yml","url":"http://127.0.0.1:1/feed.xml","supplier":"romashka","coefficient":0.03572}`)))
 	if w.Code != http.StatusOK {
 		t.Fatalf("run: %d %s", w.Code, w.Body.String())
 	}

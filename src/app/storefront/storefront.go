@@ -97,6 +97,7 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/yml.xml", s.YML)
 	r.Get("/gmc.xml", s.GMC)
 	r.Get("/robots.txt", s.Robots)
+	r.Get("/llms.txt", s.LlmsTxt)
 	r.Get("/favicon.svg", s.Favicon)
 	r.Get("/favicon.ico", s.FaviconICO)
 	r.Get("/nophoto.svg", s.NoPhoto)
@@ -256,6 +257,11 @@ type pageVM struct {
 	// not created: an order nobody can be reached about is not an order.
 	NoContact bool
 	SoldOut   string
+	// What the buyer had already typed when the order was refused. Rendered
+	// back into the form: a phone user who loses their name and comment to a
+	// validation error does not retype them — they leave.
+	FormName    string
+	FormComment string
 }
 
 // categoryURL is the address of a node of the tree: every segment of the path
@@ -649,4 +655,40 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 func (s *Storefront) Robots(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, "User-agent: *\nDisallow: /admin\nDisallow: /api\nDisallow: /cart\n\nSitemap: %s/sitemap.xml\n", s.baseURL)
+}
+
+// LlmsTxt is the shop's map for AI assistants — the answer engines already
+// send buyers (a visitor arrived with utm_source=chatgpt.com before this file
+// existed). A crawler pieces the shop together from twenty thousand pages;
+// an assistant asked "where do I buy X" wants the shape of the shop in one
+// read: what is sold, in which sections, how an order works. Russian on
+// purpose — the storefront speaks the language of its products.
+func (s *Storefront) LlmsTxt(w http.ResponseWriter, r *http.Request) {
+	shop := s.shop()
+	total, err := s.db.CountVisibleProducts(database.CatalogFilter{})
+	if err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	fmt.Fprintf(w, "# %s\n\n", shop.ShopName)
+	fmt.Fprintf(w, "> Интернет-магазин: %d товаров в наличии. Оплата при получении, без предоплаты; заказ подтверждается звонком. Цены в %s.\n\n",
+		total, shop.Currency)
+	fmt.Fprintf(w, "Заказ оформляется на сайте без регистрации: корзина → имя и телефон или почта.\n")
+	if shop.ShopPhone != "" {
+		fmt.Fprintf(w, "Телефон магазина: %s\n", shop.ShopPhone)
+	}
+	fmt.Fprintf(w, "\n## Каталог\n\n")
+	if nodes, err := s.db.VisibleCategories(); err == nil {
+		for _, c := range children(nodes, "") {
+			fmt.Fprintf(w, "- [%s](%s%s): %d товаров\n", c.Name, s.baseURL, c.URL, c.Count)
+		}
+	}
+	fmt.Fprintf(w, "\n## Страницы\n\n")
+	fmt.Fprintf(w, "- [Все категории](%s/c)\n", s.baseURL)
+	if shop.Terms != "" {
+		fmt.Fprintf(w, "- [Доставка и оплата](%s/info)\n", s.baseURL)
+	}
+	fmt.Fprintf(w, "- [Карта сайта](%s/sitemap.xml): каждый товар с датой обновления\n", s.baseURL)
+	fmt.Fprintf(w, "\nСтраница товара (%s/p/<slug>) отдаётся сервером без скриптов и несёт разметку schema.org/Product с ценой и наличием.\n", s.baseURL)
 }

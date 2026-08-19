@@ -312,6 +312,20 @@ func TestSitemapRobots404(t *testing.T) {
 	}
 }
 
+// llms.txt is the shop's map for AI assistants: name, how ordering works, the
+// catalogue sections. Answer engines already send buyers, and they decide from
+// one read, not from twenty thousand pages.
+func TestLlmsTxt(t *testing.T) {
+	_, h := setup(t)
+	body := get(t, h, "/llms.txt")
+	for _, want := range []string{"# Лавка", "Оплата при получении",
+		"## Каталог", "https://shop.example.com/sitemap.xml", "schema.org/Product"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("llms.txt lacks %q:\n%s", want, body)
+		}
+	}
+}
+
 // client is a minimal cookie jar: it carries `cart` between requests, like a browser.
 type client struct {
 	h      http.Handler
@@ -523,9 +537,17 @@ func TestCartCheckoutRequiresPhoneAndItems(t *testing.T) {
 	d, h := setup(t)
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "1")
-	c.do(t, "POST", "/cart/order", url.Values{"name": {"Иван"}})
+	w := c.do(t, "POST", "/cart/order", url.Values{"name": {"Иван"},
+		"comment": {"привезите к обеду"}})
 	if orders, _ := d.ListOrders(); len(orders) != 0 {
 		t.Fatal("order without phone must be rejected")
+	}
+	// The refused form comes back filled: a phone user who loses their name
+	// and comment to a validation error does not retype them — they leave.
+	body := w.Body.String()
+	if !strings.Contains(body, `value="Иван"`) ||
+		!strings.Contains(body, "привезите к обеду") {
+		t.Error("typed name and comment lost on the no-contact error")
 	}
 	empty := &client{h: h}
 	empty.do(t, "POST", "/cart/order", url.Values{"name": {"И"}, "phone": {"+7"}})

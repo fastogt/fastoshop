@@ -244,7 +244,8 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	// about is a lost sale that looks like a sale.
 	if phone == "" && email == "" {
 		rows, total, _ := s.resolveCart(readCart(r))
-		s.renderCart(w, rows, total, pageVM{NoContact: true})
+		s.renderCart(w, rows, total, pageVM{NoContact: true,
+			FormName: name, FormComment: strings.TrimSpace(r.FormValue("comment"))})
 		return
 	}
 	items := make([]orderItemJSON, 0, len(rows))

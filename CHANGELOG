@@ -1,3 +1,9 @@
+1.25.0 / August 19, 2026
+[Alexandr Topilski]
+- The shop hands AI assistants its own map: /llms.txt, generated from the live catalogue — the shop's name, how an order works, the sections with counts, where the sitemap is. Answer engines send buyers, and an assistant decides from one read, not from twenty thousand pages
+- A checkout refused for a missing contact no longer wipes the form: the typed name and comment come back filled, and the error moved next to the fields it talks about instead of the top of the page
+- The order form autofills on a phone: name, phone and email fields now carry autocomplete attributes, and the sample phone number follows the shop's own currency — +375 in a shop that sells in roubles of Belarus, +7 elsewhere
+
 1.24.2 / August 18, 2026
 [Alexandr Topilski]
 - Import and recompute now round a price identically. The Go path rounded the cost to whole kopecks before the markup, the SQL path rounded once at the end — a kopeck apart on almost half a live catalogue, which the import's "Check" then reported as thousands of changed prices that never moved. A test now holds the two formulas together
@@ -6,7 +12,7 @@
 
 1.24.1 / August 18, 2026
 [Alexandr Topilski]
-- "Recompute prices" failed on a single markup band — the plain-percentage case the new Prices block writes by default — with an internal error, because CASE with no WHEN is a syntax error in SQLite. Caught within minutes of v1.24.0 going live on abs.fastoshop.by; no price had moved, the UPDATE never ran
+- "Recompute prices" failed on a single markup band — the plain-percentage case the new Prices block writes by default — with an internal error, because CASE with no WHEN is a syntax error in SQLite. Caught within minutes of the release going live; no price had moved, the UPDATE never ran
 
 1.24.0 / August 18, 2026
 [Alexandr Topilski]
