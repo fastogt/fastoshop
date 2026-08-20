@@ -32,6 +32,18 @@ type enrichRequest struct {
 	Category    string   `json:"category"`
 	Lang        string   `json:"lang"`
 	Categories  []string `json:"categories"`
+	// What we already know for a fact, so the card can say it instead of
+	// leaving it out. Sent raw, in the units they are stored in: the service
+	// turns grams into kilograms for the text, and a model asked to convert
+	// units is a model given a chance to be wrong about a number.
+	//
+	// The shop's own characteristics are not here yet: without their
+	// definitions {"cvet":"белый"} is a pair of unexplained words, and there is
+	// nowhere to keep definitions until the dictionary has a home.
+	WeightG  *int64 `json:"weight_g,omitempty"`
+	LengthMM *int64 `json:"length_mm,omitempty"`
+	WidthMM  *int64 `json:"width_mm,omitempty"`
+	HeightMM *int64 `json:"height_mm,omitempty"`
 }
 
 type enrichResponse struct {
@@ -126,6 +138,8 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 	body, err := json.Marshal(enrichRequest{
 		Title: p.Title, Description: p.Description,
 		Category: p.Category, Lang: s.Lang, Categories: offered,
+		WeightG: p.WeightG, LengthMM: p.LengthMM,
+		WidthMM: p.WidthMM, HeightMM: p.HeightMM,
 	})
 	if err != nil {
 		writeInternalError(w, err)

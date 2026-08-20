@@ -221,3 +221,45 @@ func TestEnrichFailuresAreExplained(t *testing.T) {
 		})
 	}
 }
+
+// A measurement the shop already has travels with the request: the card can
+// then state the weight instead of leaving it out, and the model is never asked
+// to work one out.
+func TestEnrichSendsWhatTheShopAlreadyKnows(t *testing.T) {
+	h := newTestHandler(t)
+	if err := h.db.CreateSettings(&database.Settings{OwnerEmail: "o@example.com"}); err != nil {
+		t.Fatal(err)
+	}
+	s, _ := h.db.GetSettings()
+	s.AdHuntersAPIKey = "k"
+	if err := h.db.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	weight := int64(1200)
+	p := &database.Product{Title: "Кастрюля", SKU: "K-9", Price: 100,
+		Category: "Посуда", WeightG: &weight}
+	if err := h.db.CreateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+
+	var sent enrichRequest
+	srv := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&sent)
+			_, _ = w.Write([]byte(`{"data":{"title":"Кастрюля 1,2 кг","description":"Текст."}}`))
+		}))
+	old := adHuntersEnrichURL
+	adHuntersEnrichURL = srv.URL
+	defer func() { adHuntersEnrichURL = old; srv.Close() }()
+
+	if w := enrichProduct(t, h, p.ID); w.Code != http.StatusOK {
+		t.Fatalf("enrich: %d %s", w.Code, w.Body.String())
+	}
+	if sent.WeightG == nil || *sent.WeightG != 1200 {
+		t.Errorf("weight not sent: %v", sent.WeightG)
+	}
+	// An unmeasured side is absent rather than zero: a zero would read as a fact.
+	if sent.LengthMM != nil {
+		t.Errorf("an unstated length was sent as %v", *sent.LengthMM)
+	}
+}

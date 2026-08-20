@@ -1,3 +1,7 @@
+1.28.1 / August 20, 2026
+[Alexandr Topilski]
+- What the shop already knows about a parcel now travels with a rewrite request, so a card can state the weight and the packed size instead of leaving them out. They are sent in the units they are stored in and converted for the text on the service's side: a model asked to divide by a thousand is a model given the one chance to be wrong about a number a courier charges for
+
 1.28.0 / August 20, 2026
 [Alexandr Topilski]
 - An import from Ozon or Wildberries now brings the weight and the parcel size with it. Both platforms make them mandatory on a card, so a seller who already trades there has them filled in — and the shop was throwing them away on parse. This is the only way a catalogue of twenty thousand ever gets weighed: nobody types that in by hand, and a model cannot read a weight that is written nowhere
