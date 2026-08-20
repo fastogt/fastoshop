@@ -153,6 +153,10 @@ export interface Product {
   category: string;
   supplier: string;
   hidden: boolean;
+  // When the row last moved. The admin shows and sorts by it: after an import
+  // or a run of rewrites, "what changed" is the only question worth asking of
+  // twenty thousand rows.
+  updated_at: string;
   // Gross weight in grams and packed size in millimetres. null is "nobody said"
   // and is different from 0: a delivery quote must not read an unweighed
   // product as weightless.

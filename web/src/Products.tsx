@@ -11,7 +11,7 @@ import {
   IconTrash,
   IconDownload,
 } from "./Icons";
-import { useT } from "./i18n";
+import { useLang, useT } from "./i18n";
 import { imageURL, isRemoteImage, useSign } from "./shop";
 import { useJob } from "./useJob";
 import JobBar from "./JobBar";
@@ -212,6 +212,7 @@ const kText = {
   },
   thProduct: { ru: "Товар", en: "Product" },
   thPrice: { ru: "Цена", en: "Price" },
+  thUpdated: { ru: "Изменён", en: "Changed" },
   thStock: { ru: "Остаток", en: "In stock" },
   outOfStock: { ru: "нет", en: "none" },
 };
@@ -257,6 +258,7 @@ export default function Products() {
   const [suppliers, setSuppliers] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const t = useT(kText);
+  const lang = useLang();
   const sign = useSign();
 
   const reload = useCallback(
@@ -1015,6 +1017,22 @@ export default function Products() {
               ) : (
                 <span className="text-muted">{t("outOfStock")}</span>
               ),
+          },
+          {
+            key: "updated",
+            label: t("thUpdated"),
+            sortable: true,
+            hideMobile: true,
+            width: "110px",
+            render: (p) => (
+              <span className="text-muted whitespace-nowrap">
+                {new Date(p.updated_at).toLocaleDateString(lang, {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "2-digit",
+                })}
+              </span>
+            ),
           },
           {
             key: "supplier",

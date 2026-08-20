@@ -1,3 +1,8 @@
+1.29.0 / August 20, 2026
+[Alexandr Topilski]
+- The product table shows when a row last changed, and sorts by it. After an import or a run of AI rewrites over twenty thousand products, "what actually moved" is the only question worth asking, and until now the answer was nowhere on the screen. The date was already stored and already published as lastmod in the sitemap; it simply never reached the admin
+- Two notes for whoever picks up the channel tabs and search next live in docs/: what the Ozon and Wildberries tabs really do (they project onto existing cards, they do not publish) and why their table misleads on a large catalogue; and what the search does today, measured, with the two ways forward and what each costs
+
 1.28.2 / August 20, 2026
 [Alexandr Topilski]
 - Search finds goods whose names are capitalised. SQLite folds case for Latin letters only, so a shop whose catalogue is written in Russian was invisible to anyone typing in lower case: on a live shop "кастрюля" returned 8 products and "Кастрюля" returned 521 — the same 521 a buyer never saw. Both sides of the comparison now go through case folding that knows Unicode. Measured at 46 ms over 24 000 products, the same full pass as before, only correct

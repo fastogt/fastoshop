@@ -279,6 +279,9 @@ var kSortable = map[string]string{
 	"price":   "price",
 	"stock":   "stock",
 	"created": "created_at",
+	// The admin sorts by this after an import or a run of AI rewrites, to see
+	// what actually moved.
+	"updated": "updated_at",
 	"sku":     "sku",
 }
 
