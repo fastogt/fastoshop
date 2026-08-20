@@ -109,6 +109,12 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 		slices.SortStableFunc(paths, func(a, b string) int {
 			return strings.Count(a, "/") - strings.Count(b, "/")
 		})
+		// The product's own section jumps the queue whatever its depth. Without
+		// it the model cannot answer "keep the one it has", and the shallow
+		// section it picks instead would replace a precise path with a vague one.
+		if i := slices.Index(paths, p.Category); i > 0 {
+			paths = slices.Insert(slices.Delete(paths, i, i+1), 0, p.Category)
+		}
 		budget := kMaxCategoryBytes
 		for _, path := range paths {
 			if len(path)+1 > budget {

@@ -1,3 +1,7 @@
+1.26.2 / August 20, 2026
+[Alexandr Topilski]
+- The product's own section is always among the ones offered to the model, however deep in the tree it sits. Bounding the list by size had left the deep sections out, so the model could not answer "keep the one it has" — and the shallow section it picked instead would have replaced a precise path with a vague one
+
 1.26.1 / August 20, 2026
 [Alexandr Topilski]
 - The AI button failed on a big catalogue and would not say why. The list of sections offered to the model was capped at two hundred paths, and on a 24 000-product tree those two hundred came to 55 KB — enough to push the answer out of the model's context, so it returned nothing in three seconds. The list is now bounded by size and filled with the shallowest sections first

@@ -138,6 +138,33 @@ func TestEnrichOnlyOffersSectionsTheShopHas(t *testing.T) {
 	if got.Data.Category != "Посуда/Кружки" {
 		t.Errorf("a real section was dropped: %q", got.Data.Category)
 	}
+
+	// The product's own section must always be on the list, however deep it
+	// sits: otherwise the model cannot answer "keep it" and the shallow
+	// section it picks instead replaces a precise path with a vague one.
+	deep := &database.Product{Title: "Банка", SKU: "B-1", Price: 100,
+		Category: "Посуда/Ёмкости для хранения/Банки и крышки"}
+	if err := h.db.CreateProduct(deep); err != nil {
+		t.Fatal(err)
+	}
+	var sent enrichRequest
+	srv := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&sent)
+			_, _ = w.Write([]byte(draft(sent.Category)))
+		}))
+	old := adHuntersEnrichURL
+	adHuntersEnrichURL = srv.URL
+	defer func() { adHuntersEnrichURL = old; srv.Close() }()
+
+	w = enrichProduct(t, h, deep.ID)
+	if len(sent.Categories) == 0 || sent.Categories[0] != deep.Category {
+		t.Errorf("the product's own section was not offered first: %v", sent.Categories)
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &got)
+	if got.Data.Category != deep.Category {
+		t.Errorf("keeping the existing section was refused: %q", got.Data.Category)
+	}
 }
 
 // Every way this can fail says something the owner can act on, and none of
