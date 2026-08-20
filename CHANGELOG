@@ -1,3 +1,9 @@
+1.28.0 / August 20, 2026
+[Alexandr Topilski]
+- An import from Ozon or Wildberries now brings the weight and the parcel size with it. Both platforms make them mandatory on a card, so a seller who already trades there has them filled in — and the shop was throwing them away on parse. This is the only way a catalogue of twenty thousand ever gets weighed: nobody types that in by hand, and a model cannot read a weight that is written nowhere
+- Units are the platform's and differ, so they are converted once, on the way in: Ozon states its own beside the number, Wildberries fixes centimetres and kilograms by contract, and the shop stores grams and millimetres. A unit nobody recognises yields nothing rather than a guess — a weight wrong by a factor of a thousand is worse than a missing one, and it is silent
+- A refresh fills what is empty and leaves alone what the owner set, the same rule the category follows: a platform's weight is a starting point, and whoever corrected one is the person who actually weighed the parcel
+
 1.27.0 / August 20, 2026
 [Alexandr Topilski]
 - A product can now carry its weight and the size of its parcel. Optional and typed: unstated stays unstated rather than becoming a zero, because a delivery quote that reads an unweighed product as weightless is wrong in a way nobody notices until the parcel is handed over. Both are shown on the storefront as a characteristics block — kilograms and centimetres for the buyer — and in the page's markup in the units they are stored in, and both appear only when the owner has stated them

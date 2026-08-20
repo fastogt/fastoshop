@@ -86,6 +86,15 @@ type wbCardsResponse struct {
 		Photos      []struct {
 			Big string `json:"big"`
 		} `json:"photos"`
+		// Wildberries states no units: the contract fixes them — centimetres for
+		// the sides, kilograms for the weight. weightBrutto is the packed weight,
+		// which is the one a courier charges for.
+		Dimensions struct {
+			Length       float64 `json:"length"`
+			Width        float64 `json:"width"`
+			Height       float64 `json:"height"`
+			WeightBrutto float64 `json:"weightBrutto"`
+		} `json:"dimensions"`
 		Sizes []struct {
 			ChrtID   int64    `json:"chrtID"`
 			TechSize string   `json:"techSize"`
@@ -276,10 +285,17 @@ func (w *WB) Fetch() ([]Item, error) {
 			urls = append(urls, ph.Big)
 		}
 		category := database.CategoryPath(subjectParents[card.SubjectID], card.SubjectName)
+		// The card carries one weight and one box for every size: a size differs
+		// by its label and its barcode, not by its parcel.
+		weight := grams(card.Dimensions.WeightBrutto, "kg")
+		length := millimetres(card.Dimensions.Length, "cm")
+		width := millimetres(card.Dimensions.Width, "cm")
+		height := millimetres(card.Dimensions.Height, "cm")
 		if len(card.Sizes) == 0 {
 			items = append(items, Item{
 				SKU: card.VendorCode, Title: card.Title, Description: card.Description,
 				Price: priceByNm[card.NmID], ImageURLs: urls, Category: category,
+				WeightG: weight, LengthMM: length, WidthMM: width, HeightMM: height,
 			})
 			continue
 		}
@@ -309,6 +325,7 @@ func (w *WB) Fetch() ([]Item, error) {
 				SKU: sku, Title: title, Description: card.Description,
 				Price: price, Stock: stockByBarcode[barcode], ImageURLs: urls,
 				Category: category,
+				WeightG:  weight, LengthMM: length, WidthMM: width, HeightMM: height,
 			})
 		}
 	}

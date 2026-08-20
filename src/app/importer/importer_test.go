@@ -24,6 +24,8 @@ func TestOzonImport(t *testing.T) {
 	mux.HandleFunc("/v3/product/info/list", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"items":[{"id":11,"offer_id":"SKU-1","name":"Чайник",
 			"price":"2500.00","marketing_price":"","barcodes":["4600000000001"],
+			"weight":1.2,"weight_unit":"kg",
+			"depth":300,"width":200,"height":150,"dimension_unit":"mm",
 			"images":["` + imgURL(r) + `"]}]}`))
 	})
 	mux.HandleFunc("/v4/product/info/stocks", func(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +58,12 @@ func TestOzonImport(t *testing.T) {
 		t.Fatalf("res: %+v", res)
 	}
 	p, err := d.GetVisibleProductBySlug("chajnik")
+	if p.WeightG == nil || *p.WeightG != 1200 {
+		t.Errorf("Ozon weight: %v, want 1200 g", p.WeightG)
+	}
+	if p.HeightMM == nil || *p.HeightMM != 150 {
+		t.Errorf("Ozon height: %v, want 150 mm", p.HeightMM)
+	}
 	if err != nil || p.SKU != "SKU-1" || p.Price != 250000 || p.Description != "Хороший чайник" {
 		t.Fatalf("%v %+v", err, p)
 	}
@@ -174,6 +182,7 @@ func TestWBImportSizes(t *testing.T) {
 func TestWBImportSingleSize(t *testing.T) {
 	mux := wbMux(`{"cards":[{"nmID":22,"vendorCode":"WB-1","title":"Кружка",
 		"description":"Синяя","photos":[],
+		"dimensions":{"length":12,"width":9,"height":10,"weightBrutto":0.35},
 		"sizes":[{"chrtID":101,"techSize":"","wbSize":"","skus":["2000000000011"]}]}],
 		"cursor":{"total":1}}`)
 	mux.HandleFunc("/api/v2/list/goods/filter", func(w http.ResponseWriter, r *http.Request) {
@@ -200,6 +209,14 @@ func TestWBImportSingleSize(t *testing.T) {
 	p, err := d.GetVisibleProductBySlug("kruzhka")
 	if err != nil || p.SKU != "WB-1" || p.Title != "Кружка" || p.Price != 99050 || p.Stock != 4 {
 		t.Fatalf("%v %+v", err, p)
+	}
+	// Wildberries states centimetres and kilograms; we store millimetres and
+	// grams, and the conversion is the import's job, not the reader's.
+	if p.WeightG == nil || *p.WeightG != 350 {
+		t.Errorf("WB weight: %v, want 350 g", p.WeightG)
+	}
+	if p.LengthMM == nil || *p.LengthMM != 120 {
+		t.Errorf("WB length: %v, want 120 mm", p.LengthMM)
 	}
 }
 
@@ -347,6 +364,95 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	// The numbers the supplier does own still arrive.
 	if after.Price != 51520 || after.Stock != 7 {
 		t.Errorf("price or stock stopped updating: %d %d", after.Price, after.Stock)
+	}
+}
+
+// A catalogue of twenty thousand is never weighed by hand, so the only way the
+// fields ever fill is an import — and both platforms make weight and size
+// mandatory on a card. Units are theirs and differ: Ozon states its own beside
+// the number, Wildberries fixes centimetres and kilograms by contract.
+func TestUnitsConvertIntoOneStore(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		value float64
+		unit  string
+		grams bool
+		want  *int64
+	}{
+		{"grams stay grams", 340, "g", true, ptr(340)},
+		{"kilograms become grams", 1.2, "kg", true, ptr(1200)},
+		{"an unstated unit is grams", 500, "", true, ptr(500)},
+		{"an unknown unit is refused", 5, "lb", true, nil},
+		{"zero means nobody filled it in", 0, "kg", true, nil},
+		{"centimetres become millimetres", 36.5, "cm", false, ptr(365)},
+		{"millimetres stay millimetres", 82, "mm", false, ptr(82)},
+		{"an unknown unit is refused", 10, "in", false, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got *int64
+			if tc.grams {
+				got = grams(tc.value, tc.unit)
+			} else {
+				got = millimetres(tc.value, tc.unit)
+			}
+			switch {
+			case tc.want == nil && got != nil:
+				t.Fatalf("guessed %d out of %v %q", *got, tc.value, tc.unit)
+			case tc.want != nil && got == nil:
+				t.Fatalf("dropped %v %q", tc.value, tc.unit)
+			case tc.want != nil && *got != *tc.want:
+				t.Fatalf("%v %q became %d, want %d", tc.value, tc.unit, *got, *tc.want)
+			}
+		})
+	}
+}
+
+func ptr(v int64) *int64 { return &v }
+
+// The feed fills what is empty and keeps its hands off what the owner set —
+// the same rule the category follows. A platform's weight is a starting point,
+// not a verdict: the owner who corrected one is the one who weighed the parcel.
+func TestImportFillsMeasurementsWithoutOverwriting(t *testing.T) {
+	d, _ := database.OpenInMemory()
+	defer func() { _ = d.Close() }()
+
+	corrected := &database.Product{Title: "Взвешен руками", SKU: "A-1",
+		Supplier: "Ромашка", WeightG: ptr(900)}
+	empty := &database.Product{Title: "Не взвешен", SKU: "B-1", Supplier: "Ромашка"}
+	for _, p := range []*database.Product{corrected, empty} {
+		if err := d.CreateProduct(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	feed := []Item{
+		{SKU: "A-1", Title: "Взвешен руками", Price: 100, WeightG: ptr(1200)},
+		{SKU: "B-1", Title: "Не взвешен", Price: 100, WeightG: ptr(1200), HeightMM: ptr(82)},
+	}
+	stored, err := d.ListProducts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bySKU := map[string]database.Product{}
+	for _, p := range stored {
+		bySKU[p.SKU] = p
+	}
+	for _, it := range feed {
+		if _, err := merge(d, bySKU[it.SKU], it, 1, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got, _ := d.GetProduct(corrected.ID)
+	if got.WeightG == nil || *got.WeightG != 900 {
+		t.Errorf("the feed overwrote a weight the owner set: %v", got.WeightG)
+	}
+	got, _ = d.GetProduct(empty.ID)
+	if got.WeightG == nil || *got.WeightG != 1200 {
+		t.Errorf("an empty weight was not filled: %v", got.WeightG)
+	}
+	if got.HeightMM == nil || *got.HeightMM != 82 {
+		t.Errorf("an empty height was not filled: %v", got.HeightMM)
 	}
 }
 

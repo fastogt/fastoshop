@@ -202,6 +202,15 @@ func (o *Ozon) Fetch() ([]Item, error) {
 			Images     []string `json:"images"`
 			CategoryID int64    `json:"description_category_id"`
 			TypeID     int64    `json:"type_id"`
+			// Ozon states its own units alongside the numbers, so nothing here
+			// has to be assumed. Mandatory on a card, which makes this the one
+			// place a whole catalogue arrives already weighed.
+			Weight     float64 `json:"weight"`
+			WeightUnit string  `json:"weight_unit"`
+			Depth      float64 `json:"depth"`
+			Width      float64 `json:"width"`
+			Height     float64 `json:"height"`
+			DimUnit    string  `json:"dimension_unit"`
 		} `json:"items"`
 	}
 	if err := o.post("/v3/product/info/list", ozonProductIDsRequest{ProductID: ids}, &info); err != nil {
@@ -222,6 +231,10 @@ func (o *Ozon) Fetch() ([]Item, error) {
 			SKU: it.OfferID, Title: it.Name, Description: desc.Result.Description,
 			Price: int64(price * 100), Stock: stockByID[it.ID], ImageURLs: it.Images,
 			Category: categories[ozonCategoryKey{CategoryID: it.CategoryID, TypeID: it.TypeID}],
+			WeightG:  grams(it.Weight, it.WeightUnit),
+			LengthMM: millimetres(it.Depth, it.DimUnit),
+			WidthMM:  millimetres(it.Width, it.DimUnit),
+			HeightMM: millimetres(it.Height, it.DimUnit),
 		})
 	}
 	return items, nil

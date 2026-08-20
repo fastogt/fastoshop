@@ -1,7 +1,9 @@
 package importer
 
 import (
+	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -25,6 +27,66 @@ type Item struct {
 	// with a tree (YML, Ozon, a price list cell written as "Textile > Bedroom")
 	// fills every segment; one without (a WB subject) fills a single one.
 	Category string
+	// Gross weight in grams and packed size in millimetres, as the platform
+	// stated them. nil means the source said nothing — the one thing a delivery
+	// quote must tell apart from a zero. Marketplaces make both mandatory on a
+	// card, which is why an import is the only way a catalogue of twenty
+	// thousand ever gets weighed: nobody types that in by hand.
+	WeightG  *int64
+	LengthMM *int64
+	WidthMM  *int64
+	HeightMM *int64
+}
+
+// fill keeps what the product already has and takes the feed's value only when
+// there is nothing to keep. The second return says whether anything changed, so
+// a refresh that brings no news still writes nothing.
+func fill(have, incoming *int64) (*int64, bool) {
+	if have != nil || incoming == nil {
+		return have, false
+	}
+	return incoming, true
+}
+
+// grams and millimetres convert a platform's own units into ours. An unknown
+// unit returns nothing rather than a guess: a weight off by a factor of a
+// thousand is worse than no weight at all, and it is silent.
+func grams(v float64, unit string) *int64 {
+	var g float64
+	switch strings.ToLower(strings.TrimSpace(unit)) {
+	case "g", "г", "":
+		g = v
+	case "kg", "кг":
+		g = v * 1000
+	default:
+		return nil
+	}
+	return positive(g)
+}
+
+func millimetres(v float64, unit string) *int64 {
+	var mm float64
+	switch strings.ToLower(strings.TrimSpace(unit)) {
+	case "mm", "мм", "":
+		mm = v
+	case "cm", "см":
+		mm = v * 10
+	case "m", "м":
+		mm = v * 1000
+	default:
+		return nil
+	}
+	return positive(mm)
+}
+
+// positive rounds and keeps a measurement only when it is one: zero is what a
+// platform sends for "not filled in", and it must stay "not filled in" here.
+func positive(v float64) *int64 {
+	n := int64(math.Round(v))
+	if n <= 0 {
+		return nil
+	}
+	return &n
 }
 
 // Source is a one-off catalogue source (Ozon, WB). Not a Channel: read-only.
@@ -163,7 +225,9 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 		p := &database.Product{SKU: it.SKU, Title: it.Title,
 			Description: it.Description, Price: database.ShelfPrice(rules, it.Price, coefficient),
 			SourcePrice: it.Price, Stock: max(it.Stock, 0),
-			Category: it.Category, Supplier: supplier}
+			Category: it.Category, Supplier: supplier,
+			WeightG: it.WeightG, LengthMM: it.LengthMM,
+			WidthMM: it.WidthMM, HeightMM: it.HeightMM}
 		if err := db.CreateProduct(p); err != nil {
 			log.Warnf("import %s: create %q: %v", src.Name(), it.Title, err)
 			res.Errors++
@@ -222,10 +286,21 @@ func merge(db *database.Database, old database.Product, it Item, coefficient flo
 	if category == "" {
 		category = it.Category
 	}
+	// Measurements follow the same rule as the category: an empty one is filled,
+	// a stated one is left alone. A catalogue imported before this existed picks
+	// up its weights on the next refresh, and an owner who corrected one keeps
+	// the correction — the platform's number is a starting point, not a verdict.
+	weight, filled := fill(old.WeightG, it.WeightG)
+	length, l := fill(old.LengthMM, it.LengthMM)
+	width, w := fill(old.WidthMM, it.WidthMM)
+	height, hh := fill(old.HeightMM, it.HeightMM)
+	measured := filled || l || w || hh
 	if old.SourcePrice == it.Price && old.Stock == max(it.Stock, 0) &&
-		old.Price == price && old.Category == category {
+		old.Price == price && old.Category == category && !measured {
 		return false, nil
 	}
+	old.WeightG, old.LengthMM = weight, length
+	old.WidthMM, old.HeightMM = width, height
 	old.SourcePrice = it.Price
 	old.Stock = max(it.Stock, 0)
 	old.Price = price
