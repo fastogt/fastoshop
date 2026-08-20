@@ -224,6 +224,9 @@ export interface Settings {
   metrika_counter_id: string;
   requisites: string;
   terms: string;
+  // Last four characters of the stored AdHunters key, empty when none is set.
+  // Never the key itself.
+  adhunters_api_key: string;
 }
 
 export interface ImportDiffRow {
@@ -509,6 +512,12 @@ export const api = {
       .then(data<Product>),
   deleteImage: (productId: number, imageId: number) =>
     http.delete(`/products/${productId}/images/${imageId}`).then(data<Product>),
+  // Returns a draft only — the product is written by the ordinary save, after
+  // the owner has read what the model wrote.
+  enrichProduct: (productId: number) =>
+    http
+      .post(`/products/${productId}/enrich`, {})
+      .then(data<{ title: string; description: string; category: string }>),
   orders: (page = 1, per = 50, sort?: string, dir?: string) =>
     http
       .get("/orders", { params: { page, per, sort, dir } })

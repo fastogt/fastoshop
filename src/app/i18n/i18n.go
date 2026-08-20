@@ -44,6 +44,10 @@ const (
 	KeyBadCoefficient      = "bad_coefficient"
 	KeyOzonBadRules        = "ozon_bad_rules"
 	KeyBadPriceRules       = "bad_price_rules"
+	KeyNoAIKey             = "no_ai_key"
+	KeyAIKeyRejected       = "ai_key_rejected"
+	KeyAINoCredits         = "ai_no_credits"
+	KeyAIUnavailable       = "ai_unavailable"
 	KeyWBNoToken           = "wb_no_token"
 	KeyWBNegativePrice     = "wb_negative_price"
 	KeyWBNegativeMarkup    = "wb_negative_markup"
@@ -145,6 +149,22 @@ var kMessages = map[string][2]string{
 	KeyOzonBadRules: {
 		"проверьте лестницу наценки: множители больше нуля и ровно одна строка «и выше»",
 		"check the markup ladder: multipliers above zero and exactly one \"and above\" row",
+	},
+	KeyNoAIKey: {
+		"сначала сохраните ключ AdHunters в профиле",
+		"save the AdHunters key in your profile first",
+	},
+	KeyAIKeyRejected: {
+		"ключ AdHunters не подошёл — проверьте его в профиле",
+		"the AdHunters key was rejected — check it in your profile",
+	},
+	KeyAINoCredits: {
+		"на ключе AdHunters закончились запросы — пополните на adhunters.fastolead.com",
+		"the AdHunters key is out of requests — top it up at adhunters.fastolead.com",
+	},
+	KeyAIUnavailable: {
+		"не получилось получить текст, попробуйте ещё раз",
+		"could not get the text, try again",
 	},
 	KeyWBNoToken: {
 		"сначала сохраните токен Wildberries", "save the Wildberries token first",

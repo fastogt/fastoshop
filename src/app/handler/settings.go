@@ -27,6 +27,11 @@ type settingsResponse struct {
 	MetrikaCounterID string `json:"metrika_counter_id"`
 	Requisites       string `json:"requisites"`
 	Terms            string `json:"terms"`
+	// The stored AdHunters key as its last four characters ("…a1b2"), empty
+	// when there is none. Enough for the admin to show the button and for the
+	// owner to recognise which key is in — and the key itself still never
+	// leaves the server, because it spends their money.
+	AdHuntersAPIKey string `json:"adhunters_api_key"`
 }
 
 type settingsRequest struct {
@@ -46,6 +51,7 @@ type settingsRequest struct {
 	MetrikaCounterID *string `json:"metrika_counter_id"`
 	Requisites       *string `json:"requisites"`
 	Terms            *string `json:"terms"`
+	AdHuntersAPIKey  *string `json:"adhunters_api_key"`
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +70,21 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		MetrikaCounterID: s.MetrikaCounterID,
 		Requisites:       s.Requisites,
 		Terms:            s.Terms,
+		AdHuntersAPIKey:  maskKey(s.AdHuntersAPIKey),
 	})
+}
+
+// maskKey keeps the last four characters of a secret, which is enough to tell
+// two keys apart and useless to anyone who intercepts it.
+func maskKey(key string) string {
+	r := []rune(key)
+	if len(r) == 0 {
+		return ""
+	}
+	if len(r) <= 4 {
+		return "…"
+	}
+	return "…" + string(r[len(r)-4:])
 }
 
 func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +127,11 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Terms != nil {
 		s.Terms = strings.TrimSpace(*req.Terms)
+	}
+	// The admin sends this only when the owner typed a new key: the masked
+	// value it received back must never be saved as the key itself.
+	if req.AdHuntersAPIKey != nil {
+		s.AdHuntersAPIKey = strings.TrimSpace(*req.AdHuntersAPIKey)
 	}
 	if err := h.db.UpdateSettings(s); err != nil {
 		writeInternalError(w, err)

@@ -73,6 +73,10 @@ type Settings struct {
 	// the day a provider changes its own.
 	GAMeasurementID  string `json:"ga_measurement_id"`
 	MetrikaCounterID string `json:"metrika_counter_id"`
+	// The owner's AdHunters key, which pays for rewriting product cards. A
+	// secret like the SMTP password: it never leaves the server, the admin
+	// only learns whether one is stored.
+	AdHuntersAPIKey string `json:"-"`
 }
 
 func (d *Database) CreateSettings(s *Settings) error {
@@ -88,11 +92,13 @@ func (d *Database) GetSettings() (*Settings, error) {
 	err := d.db.QueryRow(
 		`SELECT owner_email, password_hash, shop_name, shop_phone, smtp_host,
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
-		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms
+		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms,
+		 adhunters_api_key
 		 FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
-		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms)
+		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms,
+		&s.AdHuntersAPIKey)
 	if err != nil {
 		return nil, err
 	}
@@ -120,11 +126,12 @@ func (d *Database) UpdateSettings(s *Settings) error {
 		`UPDATE settings SET owner_email=?, password_hash=?, shop_name=?, shop_phone=?,
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
 		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?,
-		 smtp_from=?, terms=?
+		 smtp_from=?, terms=?, adhunters_api_key=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
-		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom, s.Terms)
+		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom, s.Terms,
+		s.AdHuntersAPIKey)
 	return err
 }
 

@@ -70,6 +70,16 @@ const kText = {
   smtpUser: { ru: "Логин (полный email)", en: "Login (full email)" },
   smtpPassword: { ru: "Пароль приложения", en: "App password" },
   smtpPasswordSet: { ru: "сохранён", en: "saved" },
+  ai: { ru: "Тексты карточек (AI)", en: "Card texts (AI)" },
+  aiHint: {
+    ru: "Кнопка «Улучшить» в карточке товара переписывает название и описание из прайса поставщика в человеческий текст. Услуга платная и оплачивается отдельно, ключом AdHunters: сам магазин за неё денег не берёт.",
+    en: "The \u201cImprove\u201d button on a product rewrites the supplier\u2019s price-list wording into a readable card. It is a paid service, billed separately through an AdHunters key: the shop itself charges nothing for it.",
+  },
+  aiKey: { ru: "Ключ AdHunters", en: "AdHunters key" },
+  aiKeyHint: {
+    ru: "Заведите аккаунт и возьмите ключ на",
+    en: "Create an account and get a key at",
+  },
   testMail: { ru: "Отправить тестовое письмо", en: "Send a test email" },
   testMailOk: {
     ru: "Письмо отправлено — проверьте почту",
@@ -129,6 +139,7 @@ const kText = {
 export default function Profile() {
   const [s, setS] = useState<Settings | null>(null);
   const [smtpPassword, setSmtpPassword] = useState("");
+  const [aiKey, setAiKey] = useState("");
   const [msg, setMsg] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -144,10 +155,14 @@ export default function Profile() {
   const save = async () => {
     const body: Record<string, unknown> = { ...s };
     if (smtpPassword) body.smtp_password = smtpPassword;
+    // The masked value the form received back must never be saved as the key,
+    // so the field is sent only when the owner typed something new.
+    if (aiKey) body.adhunters_api_key = aiKey;
     const saved = await api.updateSettings(body);
     setS(saved);
     setCurrency(saved.currency);
     setSmtpPassword("");
+    setAiKey("");
     setMsg(t("saved"));
   };
 
@@ -344,6 +359,36 @@ export default function Profile() {
           >
             {t("testMail")}
           </button>
+        </div>
+      </section>
+
+      <section className="card flex flex-col gap-4">
+        <div>
+          <h2 className="font-bold">{t("ai")}</h2>
+          <p className="hint">{t("aiHint")}</p>
+        </div>
+        <div>
+          <label className="label">{t("aiKey")}</label>
+          <input
+            className="field"
+            type="password"
+            name="adhunters-key"
+            autoComplete="new-password"
+            placeholder={s.adhunters_api_key || ""}
+            value={aiKey}
+            onChange={(e) => setAiKey(e.target.value)}
+          />
+          <p className="hint mt-1">
+            {t("aiKeyHint")}{" "}
+            <a
+              className="text-brand underline"
+              href="https://adhunters.fastolead.com"
+              target="_blank"
+              rel="noopener"
+            >
+              adhunters.fastolead.com
+            </a>
+          </p>
         </div>
       </section>
 

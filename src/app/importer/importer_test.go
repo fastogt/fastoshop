@@ -289,6 +289,60 @@ func TestYMLImport(t *testing.T) {
 	}
 }
 
+// The card is the owner's work — typed by hand or paid for through the AI
+// button — and a weekly price refresh must never take it back. Only the numbers
+// the supplier owns are allowed to move.
+func TestReimportKeepsTheOwnersWords(t *testing.T) {
+	srv := ymlServer(t, kYMLFeed)
+	defer srv.Close()
+
+	d, _ := database.OpenInMemory()
+	defer func() { _ = d.Close() }()
+
+	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 7}
+	if _, err := Run(imp, d, "Ромашка", 1, "", nil); err != nil {
+		t.Fatal(err)
+	}
+	p, err := d.GetVisibleProductBySlug("terka-plastmassovaya")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// What the owner (or the model) made of the supplier's shorthand.
+	p.Title = "Тёрка пластмассовая с пятью насадками"
+	p.Description = "Человеческое описание, за которое заплачено."
+	p.Category = "Посуда/Тёрки"
+	if err := d.UpdateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Run(imp, d, "Ромашка", 1, "", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	after, err := d.GetProduct(p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Title != "Тёрка пластмассовая с пятью насадками" {
+		t.Errorf("the feed took the title back: %q", after.Title)
+	}
+	if after.Description != "Человеческое описание, за которое заплачено." {
+		t.Errorf("the feed took the description back: %q", after.Description)
+	}
+	if after.Category != "Посуда/Тёрки" {
+		t.Errorf("the feed took the category back: %q", after.Category)
+	}
+	// The slug is the indexed address and is never re-derived from a new title.
+	if after.Slug != "terka-plastmassovaya" {
+		t.Errorf("the address moved: %q", after.Slug)
+	}
+	// The numbers the supplier does own still arrive.
+	if after.Price != 51520 || after.Stock != 7 {
+		t.Errorf("price or stock stopped updating: %d %d", after.Price, after.Stock)
+	}
+}
+
 // A feed of ours states a quantity per offer; a feed from anywhere else does not.
 // Both arrive through the same source, so one catalogue must be able to hold the
 // counted and the uncounted at once.

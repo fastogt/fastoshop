@@ -45,6 +45,8 @@ You already have product cards somewhere, and typing them in again is how a shop
 
 Photos are stored as links to the source at import time — 20,000 products would otherwise mean 60,000 synchronous downloads. "Bring the photos in" pulls them onto your own disk later, in the background, with progress and a stop button.
 
+What a price list carries is warehouse shorthand, not a product card. "Improve the text (AI)" rewrites one card's name and description into something a person reads, and picks a section from the ones the shop already has. The model works from the source text only — inventing properties is forbidden, and a section it did not get offered is dropped rather than created. The result lands in the form as a draft: you read it, edit it and save it yourself, and a later price refresh never takes it back. It is billed separately through an [AdHunters](https://adhunters.fastolead.com) key; without a key the button is not there, and FastoShop itself charges nothing for it.
+
 ## Marketplace sync
 
 Two-way stock sync with **Ozon** and **Wildberries** over FBS (goods on your own warehouse). Tick the products you also sell on a platform and the stock becomes one number: an order on the storefront reaches the cabinet in seconds, a sale on the platform lowers the shop's stock. The platform price is separate — a flat percentage or a markup ladder, because on a 30-rouble item a percentage does not cover the platform's fee.

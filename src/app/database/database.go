@@ -174,7 +174,11 @@ func (d *Database) migrate() error {
 		requisites          TEXT NOT NULL DEFAULT '',
 		terms               TEXT NOT NULL DEFAULT '',
 		-- Sender address; empty means smtp_user is used.
-		smtp_from           TEXT NOT NULL DEFAULT ''
+		smtp_from           TEXT NOT NULL DEFAULT '',
+		-- The owner's own AdHunters key, which pays for rewriting product cards.
+		-- Empty means the button is not offered at all: there is no shop-wide
+		-- key to fall back on, every owner brings and pays for their own.
+		adhunters_api_key   TEXT NOT NULL DEFAULT ''
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,

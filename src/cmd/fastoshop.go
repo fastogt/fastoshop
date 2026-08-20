@@ -123,6 +123,7 @@ func run(cfg *config.Config) error {
 			r.Post("/products/{id}/images", h.UploadImage)
 			r.Delete("/products/{id}/images/{imageID}", h.DeleteImage)
 			r.Put("/products/{id}/images/order", h.SetImageOrder)
+			r.Post("/products/{id}/enrich", h.EnrichProduct)
 			r.Post("/products/recompute-prices", h.RecomputePrices)
 			r.Get("/products/price-rules", h.GetPriceRules)
 			r.Put("/products/price-rules", h.SetPriceRules)

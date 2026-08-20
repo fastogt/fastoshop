@@ -98,6 +98,16 @@ const kText = {
     ru: "Косая черта задаёт вложенность: «Посуда/Кастрюли» — это страница «Кастрюли» внутри «Посуды». У каждого уровня своя страница на витрине.",
     en: 'A slash makes a level: "Cookware/Pots" is a Pots page inside Cookware. Every level gets a page of its own on the storefront.',
   },
+  skuLocked: {
+    ru: "Артикул связывает товар с выгрузкой поставщика — по нему загрузка находит, что обновлять. Чтобы изменить, сначала уберите поставщика.",
+    en: "The article is what links this product to its supplier's feed — an import finds what to update by it. To change it, clear the supplier first.",
+  },
+  enrich: { ru: "Улучшить текст (AI)", en: "Improve the text (AI)" },
+  enriching: { ru: "Пишем…", en: "Writing…" },
+  enrichHint: {
+    ru: "Название и описание перепишет модель — проверьте факты перед сохранением. За карточку отвечаете вы. Пока не нажали «Сохранить», в магазине ничего не изменилось.",
+    en: "A model rewrites the name and the description — check the facts before saving. The card is your responsibility. Until you press Save, nothing in the shop has changed.",
+  },
   labelDescription: { ru: "Описание", en: "Description" },
   descriptionPlaceholder: {
     ru: "Что это, из чего сделано, кому подойдёт — этот текст читают и покупатели, и поисковики.",
@@ -214,6 +224,11 @@ export default function Products() {
   const [rate, setRate] = useState("1");
   const [rules, setRules] = useState<PriceRule[]>([]);
   const [priceMsg, setPriceMsg] = useState("");
+  // Whether the shop has an AdHunters key: the button is not offered without
+  // one, because there is nothing to pay the rewriting with.
+  const [hasAIKey, setHasAIKey] = useState(false);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichMsg, setEnrichMsg] = useState("");
   const [priceRub, setPriceRub] = useState("0");
   // null = the stock field was never touched. Sending it means re-declaring the
   // physical stock: a form opened before a sale would resurrect sold units.
@@ -257,6 +272,7 @@ export default function Products() {
   useEffect(() => {
     api.importSuppliers().then((r) => setSuppliers(r.suppliers));
     api.categories().then((r) => setCategories(r.categories));
+    api.settings().then((s) => setHasAIKey(!!s.adhunters_api_key));
   }, []);
 
   // Typing in the search box must not hit the API on every keystroke.
@@ -354,6 +370,25 @@ export default function Products() {
       setSuppliers(s.suppliers);
     } catch {
       setBulkMsg(t("bulkFailed"));
+    }
+  };
+
+  // The draft lands straight in the form: the dialog is already a draft —
+  // nothing reaches the database until Save, and closing the window undoes it.
+  const enrich = async () => {
+    if (!edit?.id) return;
+    setEnrichMsg("");
+    setEnriching(true);
+    try {
+      const d = await api.enrichProduct(edit.id);
+      setEdit((prev) =>
+        prev ? { ...prev, title: d.title, description: d.description,
+          category: d.category || prev.category } : prev,
+      );
+    } catch (e) {
+      setEnrichMsg(apiError(e) ?? t("bulkFailed"));
+    } finally {
+      setEnriching(false);
     }
   };
 
@@ -650,12 +685,18 @@ export default function Products() {
             <div className="flex flex-wrap gap-3">
               <div className="min-w-40 flex-1">
                 <label className="label">{t("labelSku")}</label>
+                {/* The article is what an import matches a product by. Change
+                    it on a supplier's goods and the next feed finds no match:
+                    it creates a duplicate and zeroes this product's stock, a
+                    week later and silently. Own goods have no feed to break. */}
                 <input
                   className="field"
                   placeholder="CH-201"
+                  readOnly={!!edit.supplier}
                   value={edit.sku ?? ""}
                   onChange={(e) => setEdit({ ...edit, sku: e.target.value })}
                 />
+                {edit.supplier && <p className="hint mt-1">{t("skuLocked")}</p>}
               </div>
               <div className="w-36">
                 <label className="label">{t("labelPrice", { sign })}</label>
@@ -723,6 +764,21 @@ export default function Products() {
                   setEdit({ ...edit, description: e.target.value })
                 }
               />
+              {hasAIKey && edit.id && (
+                <div className="mt-2">
+                  <button
+                    className="btn-ghost"
+                    disabled={enriching}
+                    onClick={() => void enrich()}
+                  >
+                    {enriching ? t("enriching") : t("enrich")}
+                  </button>
+                  <p className="hint mt-1">{t("enrichHint")}</p>
+                  {enrichMsg && (
+                    <p className="mt-1 text-sm text-red-600">{enrichMsg}</p>
+                  )}
+                </div>
+              )}
             </div>
             {edit.id ? (
               <div>

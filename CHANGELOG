@@ -1,3 +1,9 @@
+1.26.0 / August 20, 2026
+[Alexandr Topilski]
+- A product card can be rewritten by a model: "Improve the text (AI)" turns the supplier's warehouse shorthand into a name and a description a person reads, and suggests a section from the ones the shop already has. Inventing properties is forbidden in the prompt, and a section the shop did not offer is dropped rather than created — the worst the model can do is stay silent. The draft goes into the form, not into the database: the owner reads it, edits it and saves it, and closing the dialog changes nothing. The service is paid for separately with an AdHunters key entered in the profile; without a key the button is not shown, and the shop itself charges nothing
+- A re-import can no longer take back what the owner wrote. It never could — a feed refresh only ever wrote price, stock and an empty category — but the whole point of a paid rewrite is that it survives next week's price list, so a test now holds the two apart
+- The article of an imported product is read-only. It is the key a feed matches by: change it and the next import finds no match, creates a duplicate and zeroes the original's stock, silently and a week later. Goods with no supplier have no feed to break and stay editable
+
 1.25.0 / August 19, 2026
 [Alexandr Topilski]
 - The shop hands AI assistants its own map: /llms.txt, generated from the live catalogue — the shop's name, how an order works, the sections with counts, where the sitemap is. Answer engines send buyers, and an assistant decides from one read, not from twenty thousand pages
