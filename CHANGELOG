@@ -1,3 +1,7 @@
+1.28.2 / August 20, 2026
+[Alexandr Topilski]
+- Search finds goods whose names are capitalised. SQLite folds case for Latin letters only, so a shop whose catalogue is written in Russian was invisible to anyone typing in lower case: on a live shop "кастрюля" returned 8 products and "Кастрюля" returned 521 — the same 521 a buyer never saw. Both sides of the comparison now go through case folding that knows Unicode. Measured at 46 ms over 24 000 products, the same full pass as before, only correct
+
 1.28.1 / August 20, 2026
 [Alexandr Topilski]
 - What the shop already knows about a parcel now travels with a rewrite request, so a card can state the weight and the packed size instead of leaving them out. They are sent in the units they are stored in and converted for the text on the service's side: a model asked to divide by a thousand is a model given the one chance to be wrong about a number a courier charges for

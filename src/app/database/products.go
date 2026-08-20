@@ -214,8 +214,11 @@ func productWhere(category, q, supplier string, onlyVisible bool) (string, []any
 		args = append(args, category, likeEscape(category)+CategorySep+`%`)
 	}
 	if q != "" {
-		conds = append(conds, `(title LIKE ? ESCAPE '\' OR sku LIKE ? ESCAPE '\')`)
-		p := likePattern(q)
+		// ulower on both sides: SQLite's own case folding stops at ASCII, and a
+		// catalogue written in Russian is invisible to a buyer typing in lower
+		// case without this.
+		conds = append(conds, `(ulower(title) LIKE ? ESCAPE '\' OR ulower(sku) LIKE ? ESCAPE '\')`)
+		p := strings.ToLower(likePattern(q))
 		args = append(args, p, p)
 	}
 	if len(conds) == 0 {

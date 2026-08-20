@@ -3,8 +3,9 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 )
 
 type Database struct {
@@ -26,8 +27,29 @@ func (d *Database) Path() string { return d.path }
 // nightly backups. ":memory:" silently ignores WAL, so tests are unaffected.
 const kDSNParams = "?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL"
 
+// kDriver is our own driver name because the connection carries one extra
+// function. SQLite folds case for ASCII only, so `LIKE '%кастрюля%'` never
+// matched "Кастрюля": on a live catalogue a buyer typing lower case saw 8 pots
+// out of 521. Go's strings.ToLower knows Unicode, so the comparison is done on
+// both sides through it.
+//
+// ponytail: a callback per row on a search that was already a full scan.
+// Measured in milliseconds on 24 000 products; FTS5 with unicode61 is the
+// upgrade the day search needs ranking or prefixes rather than substrings.
+const kDriver = "sqlite3_fastoshop"
+
+func init() {
+	sql.Register(kDriver, &sqlite3.SQLiteDriver{
+		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+			// Pure: the same input always yields the same output, which lets
+			// SQLite cache the call.
+			return conn.RegisterFunc("ulower", strings.ToLower, true)
+		},
+	})
+}
+
 func Open(path string) (*Database, error) {
-	db, err := sql.Open("sqlite3", path+kDSNParams)
+	db, err := sql.Open(kDriver, path+kDSNParams)
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
