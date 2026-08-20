@@ -1491,6 +1491,55 @@ func TestFaviconICO(t *testing.T) {
 // A price with no validity date is eventually dropped from the search snippet as
 // stale, and an offer with no condition is incomplete. Both are things the shop
 // actually knows — unlike a rating, which it must never invent.
+// The measurements are the owner's, never a guess: a product nobody weighed
+// says nothing at all — no table of dashes on the page and no empty node in the
+// markup, which is what a shipping quote reads.
+func TestSpecsShownOnlyWhenStated(t *testing.T) {
+	d, h := setup(t)
+
+	silent := get(t, h, "/p/krasnyj-chajnik")
+	if strings.Contains(silent, "Характеристики") {
+		t.Error("a product with no measurements grew a specs block")
+	}
+	for _, node := range []string{`"weight"`, `"width"`, `"height"`, `"depth"`} {
+		if strings.Contains(silent, node) {
+			t.Errorf("empty %s published in the markup", node)
+		}
+	}
+
+	p, err := d.GetVisibleProductBySlug("krasnyj-chajnik")
+	if err != nil {
+		t.Fatal(err)
+	}
+	weight, l, w, ht := int64(1200), int64(300), int64(200), int64(150)
+	p.WeightG, p.LengthMM, p.WidthMM, p.HeightMM = &weight, &l, &w, &ht
+	if err := d.UpdateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+
+	body := get(t, h, "/p/krasnyj-chajnik")
+	if !strings.Contains(body, "Характеристики") {
+		t.Fatal("stated measurements are not shown")
+	}
+	// Stored in grams and millimetres, read in kilograms and centimetres.
+	if !strings.Contains(body, "1.2 кг") {
+		t.Error("weight not shown in kilograms")
+	}
+	if !strings.Contains(body, "30 × 20 × 15 см") {
+		t.Error("size not shown in centimetres")
+	}
+	// The markup keeps the stored units, which is what a machine wants. Spaces
+	// are collapsed first: html/template pads numbers inside a script, and a
+	// test that encodes that quirk breaks on the next Go release.
+	flat := strings.Join(strings.Fields(body), " ")
+	if !strings.Contains(flat, `"value": 1200 , "unitCode": "GRM"`) {
+		t.Error("weight missing from the markup")
+	}
+	if !strings.Contains(flat, `"value": 150 , "unitCode": "MMT"`) {
+		t.Error("height missing from the markup")
+	}
+}
+
 func TestOfferCarriesWhatWeKnow(t *testing.T) {
 	_, h := setup(t)
 	body := get(t, h, "/p/krasnyj-chajnik")

@@ -1,3 +1,9 @@
+1.27.0 / August 20, 2026
+[Alexandr Topilski]
+- A product can now carry its weight and the size of its parcel. Optional and typed: unstated stays unstated rather than becoming a zero, because a delivery quote that reads an unweighed product as weightless is wrong in a way nobody notices until the parcel is handed over. Both are shown on the storefront as a characteristics block — kilograms and centimetres for the buyer — and in the page's markup in the units they are stored in, and both appear only when the owner has stated them
+- Characteristics beyond those have a place too: a product carries them as a set of named values, and a definition says what each one is — its type, the values it may take, and the caption a buyer reads. Types are checked in one place, so "number" is a promise rather than a comment: a weight in words, a colour outside its list and a field nobody declared are all refused at the door. The shape is the one fastometa already uses, so a client that reads one reads the other
+- The article of an imported product, its text and now its measurements all survive a price-list refresh untouched — the feed owns the price and the stock, the owner owns everything else
+
 1.26.2 / August 20, 2026
 [Alexandr Topilski]
 - The product's own section is always among the ones offered to the model, however deep in the tree it sits. Bounding the list by size had left the deep sections out, so the model could not answer "keep the one it has" — and the shallow section it picked instead would have replaced a precise path with a vague one

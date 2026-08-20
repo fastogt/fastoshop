@@ -312,6 +312,8 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	p.Title = "Тёрка пластмассовая с пятью насадками"
 	p.Description = "Человеческое описание, за которое заплачено."
 	p.Category = "Посуда/Тёрки"
+	weight := int64(1200)
+	p.WeightG = &weight
 	if err := d.UpdateProduct(p); err != nil {
 		t.Fatal(err)
 	}
@@ -332,6 +334,11 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	}
 	if after.Category != "Посуда/Тёрки" {
 		t.Errorf("the feed took the category back: %q", after.Category)
+	}
+	// Measurements are the owner's too: a feed that never carried a weight must
+	// not take one back.
+	if after.WeightG == nil || *after.WeightG != 1200 {
+		t.Errorf("the feed took the weight back: %v", after.WeightG)
 	}
 	// The slug is the indexed address and is never re-derived from a new title.
 	if after.Slug != "terka-plastmassovaya" {

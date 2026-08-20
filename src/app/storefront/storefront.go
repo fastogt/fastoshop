@@ -228,11 +228,21 @@ type pageVM struct {
 	// truthful, and one that never does still looks current.
 	PriceValidUntil string
 	MetaDescription string
-	Canonical       string
-	NoIndex         bool
-	Query           string
-	FoundStr        string
-	Category        string
+	// Specs are the measurements the owner filled in — only those. A product
+	// nobody weighed shows no specs block at all rather than a table of dashes.
+	Specs specVM
+	// The same measurements for the markup, in the units they are stored in and
+	// as plain numbers: a template cannot dereference a pointer, and 0 is the
+	// "not set" that the markup must skip rather than publish.
+	WeightG   int64
+	LengthMM  int64
+	WidthMM   int64
+	HeightMM  int64
+	Canonical string
+	NoIndex   bool
+	Query     string
+	FoundStr  string
+	Category  string
 	// CategoryText is the owner's own words above the listing, and the first
 	// sentences of it become the page description: generated text is the same on
 	// every page of every shop, and a search engine has seen it a million times.
@@ -565,6 +575,56 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 	}
 }
 
+// specVM carries the measurements ready for the eye — a named field each, not a
+// list of label-value pairs: a spec is a known thing, and adding one should be
+// a field here rather than another entry in a bag of strings. Empty means the
+// owner did not state it, and the page says nothing at all instead.
+type specVM struct {
+	Weight string
+	Size   string
+}
+
+// Empty reports whether there is anything to show, so the template can drop the
+// whole block rather than render an empty table.
+func (s specVM) Empty() bool { return s.Weight == "" && s.Size == "" }
+
+// specs formats what is set. Grams and millimetres are what we store —
+// arithmetic wants one unit — but a buyer reads kilograms and centimetres.
+func specs(p *database.Product) specVM {
+	var out specVM
+	if p.WeightG != nil {
+		out.Weight = weightStr(*p.WeightG)
+	}
+	// All three or none: "длина 30 см" on its own tells a buyer nothing about
+	// whether the thing fits.
+	if p.LengthMM != nil && p.WidthMM != nil && p.HeightMM != nil {
+		out.Size = fmt.Sprintf("%s × %s × %s см",
+			cmStr(*p.LengthMM), cmStr(*p.WidthMM), cmStr(*p.HeightMM))
+	}
+	return out
+}
+
+// value flattens "not set" to 0 for the template, which has no notion of nil.
+func value(v *int64) int64 {
+	if v == nil {
+		return 0
+	}
+	return *v
+}
+
+func weightStr(g int64) string {
+	if g >= 1000 {
+		return strings.TrimSuffix(strings.TrimRight(
+			fmt.Sprintf("%.2f", float64(g)/1000), "0"), ".") + " кг"
+	}
+	return fmt.Sprintf("%d г", g)
+}
+
+func cmStr(mm int64) string {
+	return strings.TrimSuffix(strings.TrimRight(
+		fmt.Sprintf("%.1f", float64(mm)/10), "0"), ".")
+}
+
 func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	p, err := s.db.GetVisibleProductBySlug(chi.URLParam(r, "slug"))
 	if err != nil {
@@ -584,7 +644,10 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		CSS: template.CSS(styleCSS), P: p, Images: imgs,
 		PriceStr: priceStr(p.Price), PriceValidUntil: time.Now().AddDate(0, 1, 0).Format("2006-01-02"),
 		MetaDescription: desc,
+		Specs:           specs(p),
 		CartCount:       cartCount(r)}
+	data.WeightG, data.LengthMM = value(p.WeightG), value(p.LengthMM)
+	data.WidthMM, data.HeightMM = value(p.WidthMM), value(p.HeightMM)
 	if p.Category != "" {
 		data.Crumbs = crumbs(p.Category)
 		data.CrumbsEnd = len(data.Crumbs) + 2

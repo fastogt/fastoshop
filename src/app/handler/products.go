@@ -35,6 +35,24 @@ type productRequest struct {
 	// Same pointer idiom: an absent field means "leave as is". A plain bool would
 	// flip visibility for every client that does not know the field yet.
 	Hidden *bool `json:"hidden"`
+	// Gross weight in grams, packed size in millimetres. Here nil means "clear
+	// it" rather than "leave as is": an empty field in the form is how a wrong
+	// weight is taken back, and the admin ships inside the same package as the
+	// server, so there is no older client to protect against.
+	WeightG  *int64 `json:"weight_g"`
+	LengthMM *int64 `json:"length_mm"`
+	WidthMM  *int64 `json:"width_mm"`
+	HeightMM *int64 `json:"height_mm"`
+}
+
+// positive keeps a measurement only when it is one: zero and negative are not
+// weights or sizes, they are an empty field or a typo, and either must be
+// stored as "unknown" rather than as a number a delivery quote would trust.
+func positive(v *int64) *int64 {
+	if v == nil || *v <= 0 {
+		return nil
+	}
+	return v
 }
 
 type productResponse struct {
@@ -76,7 +94,9 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := &database.Product{SKU: req.SKU, Title: req.Title, Description: req.Description,
-		Price: req.Price, Category: req.Category}
+		Price: req.Price, Category: req.Category,
+		WeightG: positive(req.WeightG), LengthMM: positive(req.LengthMM),
+		WidthMM: positive(req.WidthMM), HeightMM: positive(req.HeightMM)}
 	if req.Stock != nil {
 		p.Stock = *req.Stock
 	}
@@ -122,7 +142,11 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		// source price, and dropping it would leave the product out of every
 		// later coefficient recompute.
 		SourcePrice: old.SourcePrice, PriceManual: old.PriceManual,
-		Supplier: old.Supplier}
+		Supplier: old.Supplier,
+		WeightG:  positive(req.WeightG),
+		LengthMM: positive(req.LengthMM),
+		WidthMM:  positive(req.WidthMM),
+		HeightMM: positive(req.HeightMM)}
 	if req.Stock != nil {
 		p.Stock = *req.Stock
 	}

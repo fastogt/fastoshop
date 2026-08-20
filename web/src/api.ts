@@ -153,6 +153,13 @@ export interface Product {
   category: string;
   supplier: string;
   hidden: boolean;
+  // Gross weight in grams and packed size in millimetres. null is "nobody said"
+  // and is different from 0: a delivery quote must not read an unweighed
+  // product as weightless.
+  weight_g: number | null;
+  length_mm: number | null;
+  width_mm: number | null;
+  height_mm: number | null;
   images: { id: number; path: string }[];
 }
 

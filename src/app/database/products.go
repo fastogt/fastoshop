@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -26,9 +27,22 @@ type Product struct {
 	Supplier string `json:"supplier"`
 	// Hidden only governs the storefront; whether the product is published to a
 	// marketplace is the channel tab's business.
-	Hidden    bool      `json:"hidden"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Hidden bool `json:"hidden"`
+	// Gross weight in grams and packed size in millimetres. Pointers, because
+	// "nobody said" and "zero" are different answers: a delivery quote must not
+	// treat an unweighed product as weightless. Absent stays absent — a price
+	// list rarely states a weight, and guessing one costs real money at the
+	// counter.
+	WeightG  *int64 `json:"weight_g"`
+	LengthMM *int64 `json:"length_mm"`
+	WidthMM  *int64 `json:"width_mm"`
+	HeightMM *int64 `json:"height_mm"`
+	// Characteristics the shop declared for itself, key to value. Weight and
+	// size are deliberately not among them: the core does arithmetic with those,
+	// and one number with two homes is one home too many.
+	Params    ParamValues `json:"params"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
 }
 
 // uniqueSlug keeps trying suffixes -2, -3… until it finds a free one.
@@ -61,10 +75,12 @@ func (d *Database) CreateProduct(p *Product) error {
 	p.Slug = slug
 	res, err := d.db.Exec(
 		`INSERT INTO products (sku, title, slug, description, price, source_price,
-		 price_manual, stock, category, supplier, hidden)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 price_manual, stock, category, supplier, hidden,
+		 weight_g, length_mm, width_mm, height_mm, params)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.SKU, p.Title, p.Slug, p.Description, p.Price, p.SourcePrice,
-		p.PriceManual, p.Stock, p.Category, p.Supplier, p.Hidden)
+		p.PriceManual, p.Stock, p.Category, p.Supplier, p.Hidden,
+		p.WeightG, p.LengthMM, p.WidthMM, p.HeightMM, paramsJSON(p.Params))
 	if err != nil {
 		return err
 	}
@@ -78,9 +94,11 @@ func (d *Database) UpdateProduct(p *Product) error {
 	_, err := d.db.Exec(
 		`UPDATE products SET sku=?, title=?, description=?, price=?, source_price=?,
 		 stock=?, category=?, supplier=?, hidden=?, price_manual=?,
+		 weight_g=?, length_mm=?, width_mm=?, height_mm=?, params=?,
 		 updated_at=CURRENT_TIMESTAMP WHERE id=?`,
 		p.SKU, p.Title, p.Description, p.Price, p.SourcePrice, p.Stock,
-		p.Category, p.Supplier, p.Hidden, p.PriceManual, p.ID)
+		p.Category, p.Supplier, p.Hidden, p.PriceManual,
+		p.WeightG, p.LengthMM, p.WidthMM, p.HeightMM, paramsJSON(p.Params), p.ID)
 	return err
 }
 
@@ -90,17 +108,39 @@ func (d *Database) DeleteProduct(id int64) error {
 }
 
 const kProductCols = `id, sku, title, slug, description, price, source_price,
-	price_manual, stock, category, supplier, hidden, created_at, updated_at`
+	price_manual, stock, category, supplier, hidden,
+	weight_g, length_mm, width_mm, height_mm, params, created_at, updated_at`
 
 func scanProduct(row interface{ Scan(...any) error }) (*Product, error) {
 	var p Product
+	var params string
 	err := row.Scan(&p.ID, &p.SKU, &p.Title, &p.Slug, &p.Description, &p.Price,
 		&p.SourcePrice, &p.PriceManual, &p.Stock, &p.Category,
-		&p.Supplier, &p.Hidden, &p.CreatedAt, &p.UpdatedAt)
+		&p.Supplier, &p.Hidden, &p.WeightG, &p.LengthMM, &p.WidthMM, &p.HeightMM,
+		&params, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
+	// Decoded here so no caller ever handles raw JSON. Unreadable contents are
+	// dropped rather than fatal: one bad row must not take a catalogue page
+	// down, and characteristics are not what the page is for.
+	if err := json.Unmarshal([]byte(params), &p.Params); err != nil {
+		p.Params = ParamValues{}
+	}
 	return &p, nil
+}
+
+// paramsJSON is what goes into the column: always an object, never NULL and
+// never the "null" a nil map marshals to.
+func paramsJSON(v ParamValues) string {
+	if len(v) == 0 {
+		return "{}"
+	}
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return "{}"
+	}
+	return string(raw)
 }
 
 func (d *Database) GetProduct(id int64) (*Product, error) {

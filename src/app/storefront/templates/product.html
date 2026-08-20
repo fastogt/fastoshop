@@ -14,6 +14,12 @@
   "description": {{.MetaDescription}},
   {{if .Images}}"image": "{{(index .Images 0).AbsURL}}",{{end}}
   "sku": {{.P.SKU}},
+  {{/* Only what the owner stated: an empty node in the markup is worse than an
+       absent one, and a made-up weight is worse than both. */}}
+  {{if .WeightG}}"weight": {"@type": "QuantitativeValue", "value": {{.WeightG}}, "unitCode": "GRM"},{{end}}
+  {{if .LengthMM}}"depth": {"@type": "QuantitativeValue", "value": {{.LengthMM}}, "unitCode": "MMT"},{{end}}
+  {{if .WidthMM}}"width": {"@type": "QuantitativeValue", "value": {{.WidthMM}}, "unitCode": "MMT"},{{end}}
+  {{if .HeightMM}}"height": {"@type": "QuantitativeValue", "value": {{.HeightMM}}, "unitCode": "MMT"},{{end}}
   "offers": {
     "@type": "Offer",
     "url": "{{.BaseURL}}/p/{{.P.Slug}}",
@@ -93,6 +99,15 @@
        to the buy box. Kept inside the right column it stretched that column
        alone, and a product with one photo showed half a page of nothing where
        the gallery had ended. */}}
+  {{if not .Specs.Empty}}
+  <div class="specs">
+    <h3>Характеристики</h3>
+    <table>
+      {{if .Specs.Weight}}<tr><td>Вес</td><td>{{.Specs.Weight}}</td></tr>{{end}}
+      {{if .Specs.Size}}<tr><td>Габариты</td><td>{{.Specs.Size}}</td></tr>{{end}}
+    </table>
+  </div>
+  {{end}}
   {{if .P.Description}}
   <div class="desc">
     <h3>Описание</h3>

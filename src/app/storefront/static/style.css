@@ -296,6 +296,15 @@ main > h1 { margin-block: 28px 20px; }
   box-shadow: var(--shadow);
 }
 
+/* The characteristics table sits next to the description and reads like it:
+   the label muted, the value in the text colour, no borders — a spec sheet is
+   a list, not a spreadsheet. */
+.specs { grid-column: 1 / -1; max-width: 78ch; margin-inline: auto; margin-top: 8px; }
+.specs h3 { font-size: 1rem; margin-bottom: 6px; }
+.specs table { border-collapse: collapse; }
+.specs td { padding: 4px 0; }
+.specs td:first-child { color: var(--muted); padding-right: 24px; }
+
 /* Spans both columns of the product grid, so a long text reads across the page
    instead of down one half of it. Capped at 78ch for the eye and centered:
    left-aligned under the photo column it left the right half of a wide screen

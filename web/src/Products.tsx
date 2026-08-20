@@ -93,6 +93,12 @@ const kText = {
   labelSku: { ru: "Артикул (SKU)", en: "SKU" },
   labelPrice: { ru: "Цена, {sign}", en: "Price, {sign}" },
   labelStock: { ru: "Остаток", en: "In stock" },
+  labelWeight: { ru: "Вес, г", en: "Weight, g" },
+  labelSize: { ru: "Габариты, мм", en: "Size, mm" },
+  sizeHint: {
+    ru: "Длина × ширина × высота упаковки. По весу и габаритам считается доставка, поэтому пустое поле честнее нуля: незаполненный вес — это «неизвестно», а не «невесомый».",
+    en: "Length × width × height of the parcel. Delivery is priced by weight and size, so an empty field is more honest than a zero: an unstated weight means \u201cunknown\u201d, not \u201cweightless\u201d.",
+  },
   labelCategory: { ru: "Категория", en: "Category" },
   categoryHint: {
     ru: "Косая черта задаёт вложенность: «Посуда/Кастрюли» — это страница «Кастрюли» внутри «Посуды». У каждого уровня своя страница на витрине.",
@@ -211,6 +217,13 @@ const kText = {
 };
 
 const isRemote = isRemoteImage;
+
+// An empty field is "nobody said", which the server stores as NULL — not as a
+// zero a delivery quote would take for a real measurement.
+const numOrNull = (v: string): number | null => {
+  const n = Number(v.trim());
+  return v.trim() === "" || !Number.isFinite(n) || n <= 0 ? null : n;
+};
 
 export default function Products() {
   const [list, setList] = useState<Product[]>([]);
@@ -716,6 +729,18 @@ export default function Products() {
                   onChange={(e) => setStock(Number(e.target.value))}
                 />
               </div>
+              <div className="w-28">
+                <label className="label">{t("labelWeight")}</label>
+                <input
+                  className="field"
+                  type="number"
+                  min="0"
+                  value={edit.weight_g ?? ""}
+                  onChange={(e) =>
+                    setEdit({ ...edit, weight_g: numOrNull(e.target.value) })
+                  }
+                />
+              </div>
               <div className="min-w-40 flex-1">
                 <label className="label">{t("labelSupplier")}</label>
                 <input
@@ -733,6 +758,26 @@ export default function Products() {
                   ))}
                 </datalist>
               </div>
+            </div>
+            <div>
+              <label className="label">{t("labelSize")}</label>
+              <div className="flex items-center gap-2">
+                {(["length_mm", "width_mm", "height_mm"] as const).map((k, i) => (
+                  <div key={k} className="flex items-center gap-2">
+                    {i > 0 && <span className="text-muted">×</span>}
+                    <input
+                      className="field w-24"
+                      type="number"
+                      min="0"
+                      value={edit[k] ?? ""}
+                      onChange={(e) =>
+                        setEdit({ ...edit, [k]: numOrNull(e.target.value) })
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="hint mt-1">{t("sizeHint")}</p>
             </div>
             {/* A category is a path, and paths are long: its own full-width row,
                 not a quarter of a row next to the price. */}

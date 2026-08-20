@@ -95,11 +95,15 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The sections the shop already has: the model may pick one, never write
-	// one of its own. Guessing a tree is the onboarding tool's job, not the
-	// shop's — a made-up section is a landing page that does not exist.
+	// The sections are sent only when the product has none. Measured on a live
+	// catalogue: the list is 36% of the prompt, it pushed four cards in ten past
+	// the gateway's sixty seconds, and the model kept the existing section every
+	// single time — so on a filed product it costs latency and buys nothing.
+	// What is left is the case with the value: filling an empty section.
+	// The model may pick from the list, never write one of its own; guessing a
+	// tree is the onboarding tool's job, not the shop's.
 	var offered []string
-	if nodes, err := h.db.VisibleCategories(); err == nil {
+	if nodes, err := h.db.VisibleCategories(); err == nil && p.Category == "" {
 		paths := make([]string, 0, len(nodes))
 		for _, n := range nodes {
 			paths = append(paths, n.Path)
@@ -109,12 +113,6 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 		slices.SortStableFunc(paths, func(a, b string) int {
 			return strings.Count(a, "/") - strings.Count(b, "/")
 		})
-		// The product's own section jumps the queue whatever its depth. Without
-		// it the model cannot answer "keep the one it has", and the shallow
-		// section it picks instead would replace a precise path with a vague one.
-		if i := slices.Index(paths, p.Category); i > 0 {
-			paths = slices.Insert(slices.Delete(paths, i, i+1), 0, p.Category)
-		}
 		budget := kMaxCategoryBytes
 		for _, path := range paths {
 			if len(path)+1 > budget {

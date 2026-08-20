@@ -97,10 +97,11 @@ func TestEnrichReturnsDraftWithoutWriting(t *testing.T) {
 	}
 }
 
-// A section the shop does not have cannot reach the form, however confidently
-// the model writes it: an invented category is a landing page that does not
-// exist. One the shop does have passes through.
-func TestEnrichOnlyOffersSectionsTheShopHas(t *testing.T) {
+// Sections are offered only for a product that has none — a filed product keeps
+// what it has, and the model is never given the chance to move it. For an
+// unfiled one, a section the shop does not have cannot reach the form however
+// confidently the model writes it.
+func TestEnrichOffersSectionsOnlyForAnUnfiledProduct(t *testing.T) {
 	h := newTestHandler(t)
 	if err := h.db.CreateSettings(&database.Settings{OwnerEmail: "o@example.com"}); err != nil {
 		t.Fatal(err)
@@ -110,10 +111,13 @@ func TestEnrichOnlyOffersSectionsTheShopHas(t *testing.T) {
 	if err := h.db.UpdateSettings(s); err != nil {
 		t.Fatal(err)
 	}
-	real := &database.Product{Title: "Кружка", SKU: "K-1", Price: 100,
+	filed := &database.Product{Title: "Кружка", SKU: "K-1", Price: 100,
 		Category: "Посуда/Кружки"}
-	if err := h.db.CreateProduct(real); err != nil {
-		t.Fatal(err)
+	unfiled := &database.Product{Title: "Банка", SKU: "B-1", Price: 100}
+	for _, p := range []*database.Product{filed, unfiled} {
+		if err := h.db.CreateProduct(p); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	draft := func(category string) string {
@@ -121,49 +125,51 @@ func TestEnrichOnlyOffersSectionsTheShopHas(t *testing.T) {
 			"title": "Кружка стеклянная", "description": "Текст.", "category": category}})
 		return string(b)
 	}
+	var sent enrichRequest
+	// What the fake service answers, set by each case just before its call.
+	reply := ""
+	srv := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&sent)
+			_, _ = w.Write([]byte(draft(reply)))
+		}))
+	old := adHuntersEnrichURL
+	adHuntersEnrichURL = srv.URL
+	defer func() { adHuntersEnrichURL = old; srv.Close() }()
 
-	fakeAdHunters(t, http.StatusOK, draft("Кухня/Придуманный раздел"), nil)
-	w := enrichProduct(t, h, real.ID)
 	var got struct {
 		Data enrichResponse `json:"data"`
+	}
+
+	// Filed: nothing to choose from, so the list is not sent and no section
+	// comes back to overwrite a precise path with a vague one.
+	reply = "Посуда"
+	w := enrichProduct(t, h, filed.ID)
+	if len(sent.Categories) != 0 {
+		t.Errorf("sections offered for a filed product: %v", sent.Categories)
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &got)
+	if got.Data.Category != "" {
+		t.Errorf("a filed product was moved: %q", got.Data.Category)
+	}
+
+	// Unfiled: the shop's own tree is offered, an invented section is dropped.
+	reply = "Кухня/Придуманный раздел"
+	w = enrichProduct(t, h, unfiled.ID)
+	if len(sent.Categories) == 0 {
+		t.Fatal("no sections offered for an unfiled product")
 	}
 	_ = json.Unmarshal(w.Body.Bytes(), &got)
 	if got.Data.Category != "" {
 		t.Errorf("invented section reached the form: %q", got.Data.Category)
 	}
 
-	fakeAdHunters(t, http.StatusOK, draft("Посуда/Кружки"), nil)
-	w = enrichProduct(t, h, real.ID)
+	// ...and a real one passes through.
+	reply = "Посуда/Кружки"
+	w = enrichProduct(t, h, unfiled.ID)
 	_ = json.Unmarshal(w.Body.Bytes(), &got)
 	if got.Data.Category != "Посуда/Кружки" {
 		t.Errorf("a real section was dropped: %q", got.Data.Category)
-	}
-
-	// The product's own section must always be on the list, however deep it
-	// sits: otherwise the model cannot answer "keep it" and the shallow
-	// section it picks instead replaces a precise path with a vague one.
-	deep := &database.Product{Title: "Банка", SKU: "B-1", Price: 100,
-		Category: "Посуда/Ёмкости для хранения/Банки и крышки"}
-	if err := h.db.CreateProduct(deep); err != nil {
-		t.Fatal(err)
-	}
-	var sent enrichRequest
-	srv := httptest.NewServer(http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			_ = json.NewDecoder(r.Body).Decode(&sent)
-			_, _ = w.Write([]byte(draft(sent.Category)))
-		}))
-	old := adHuntersEnrichURL
-	adHuntersEnrichURL = srv.URL
-	defer func() { adHuntersEnrichURL = old; srv.Close() }()
-
-	w = enrichProduct(t, h, deep.ID)
-	if len(sent.Categories) == 0 || sent.Categories[0] != deep.Category {
-		t.Errorf("the product's own section was not offered first: %v", sent.Categories)
-	}
-	_ = json.Unmarshal(w.Body.Bytes(), &got)
-	if got.Data.Category != deep.Category {
-		t.Errorf("keeping the existing section was refused: %q", got.Data.Category)
 	}
 }
 
