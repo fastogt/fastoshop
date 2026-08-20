@@ -767,11 +767,14 @@ export default function Products() {
               {hasAIKey && edit.id && (
                 <div className="mt-2">
                   <button
-                    className="btn-ghost"
+                    className="btn-ai"
                     disabled={enriching}
                     onClick={() => void enrich()}
                   >
-                    {enriching ? t("enriching") : t("enrich")}
+                    {enriching && (
+                      <span className="border-brand h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
+                    )}
+                    {enriching ? t("enriching") : `✨ ${t("enrich")}`}
                   </button>
                   <p className="hint mt-1">{t("enrichHint")}</p>
                   {enrichMsg && (

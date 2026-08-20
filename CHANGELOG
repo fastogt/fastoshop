@@ -1,3 +1,9 @@
+1.26.1 / August 20, 2026
+[Alexandr Topilski]
+- The AI button failed on a big catalogue and would not say why. The list of sections offered to the model was capped at two hundred paths, and on a 24 000-product tree those two hundred came to 55 KB — enough to push the answer out of the model's context, so it returned nothing in three seconds. The list is now bounded by size and filled with the shallowest sections first
+- When the service refuses, it says so in its own words instead of a blanket "try again", and the reason goes to the log. Diagnosing the failure above took a shell on the server, which is exactly what a log is for
+- The button reads as a button: an outlined accent rather than a cancel-grey one, with a spinner while the text is being written
+
 1.26.0 / August 20, 2026
 [Alexandr Topilski]
 - A product card can be rewritten by a model: "Improve the text (AI)" turns the supplier's warehouse shorthand into a name and a description a person reads, and suggests a section from the ones the shop already has. Inventing properties is forbidden in the prompt, and a section the shop did not offer is dropped rather than created — the worst the model can do is stay silent. The draft goes into the form, not into the database: the owner reads it, edits it and saves it, and closing the dialog changes nothing. The service is paid for separately with an AdHunters key entered in the profile; without a key the button is not shown, and the shop itself charges nothing
