@@ -42,6 +42,7 @@ func (h *Handlers) Routes() chi.Router {
 	r.Get("/price/rules", h.GetPriceRules)
 	r.Put("/price/rules", h.SetPriceRules)
 	r.Post("/price/fill-by-rules", h.FillPricesByRules)
+	r.Get("/cabinet", h.Cabinet)
 	r.Get("/candidates", h.Candidates)
 	r.Post("/publish", h.Publish)
 	r.Post("/unpublish", h.Unpublish)

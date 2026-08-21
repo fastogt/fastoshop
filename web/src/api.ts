@@ -395,6 +395,23 @@ export interface OzonCandidatePage {
   page_size: number;
 }
 
+// What the tab learns when it opens: how the shop's catalogue and the cabinet's
+// cards actually overlap. Without it the table lists twenty thousand rows and
+// cannot say which of them pressing "Publish" would do anything for.
+export interface CabinetState {
+  cards: number;
+  products: number;
+  linked: number;
+  ready: number;
+  no_card: number;
+  orphans: number;
+  // Wildberries only: the card exists but carries several sizes, so a vendor
+  // code alone cannot pick one. Not a missing card — telling the owner to
+  // create one would make a duplicate.
+  ambiguous?: number;
+  ready_ids: number[];
+}
+
 export interface OzonPublishResult {
   published: number;
   no_card: { id: number; title: string; sku: string }[];
@@ -595,6 +612,7 @@ export const api = {
     http
       .get(`/ozon/candidates`, { params: { page, q } })
       .then(data<OzonCandidatePage>),
+  ozonCabinet: () => http.get(`/ozon/cabinet`).then(data<CabinetState>),
   ozonPublish: (ids: number[]) =>
     http
       .post("/ozon/publish", { product_ids: ids })
@@ -642,6 +660,7 @@ export const api = {
     http.get(`/wb/orders?page=${page}`).then(data<WBOrderPage>),
   wbLinks: (page: number) =>
     http.get(`/wb/links?page=${page}`).then(data<WBLinkPage>),
+  wbCabinet: () => http.get(`/wb/cabinet`).then(data<CabinetState>),
   wbCandidates: (page: number, q: string) =>
     http
       .get(`/wb/candidates`, { params: { page, q } })

@@ -142,3 +142,52 @@ func TestCandidatesIncludeHidden(t *testing.T) {
 		t.Fatalf("search: %d", w.Code)
 	}
 }
+
+// The tab exists to answer "why can I not publish these". On the live shop the
+// catalogue is 24 000 products and the cabinet holds a few dozen cards, so a
+// table that lists everything and says nothing sends the owner to tick a
+// hundred rows for ninety-nine refusals. These are the numbers that stop that.
+func TestCabinetCountsTheThreeStates(t *testing.T) {
+	h, d, _ := publishTest(t, "A", "B", "ORPHAN")
+	idA := seedProduct(t, d, "A", 5)
+	seedProduct(t, d, "B", 7)
+	seedProduct(t, d, "NOPE", 1)
+	seedProduct(t, d, "ALSO-NOPE", 1)
+
+	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{idA}})
+	do(t, h, "POST", "/publish", string(body))
+
+	got := decode[cabinetResponse](t, do(t, h, "GET", "/cabinet", ""))
+	if got.Cards != 3 || got.Products != 4 {
+		t.Fatalf("cards %d products %d", got.Cards, got.Products)
+	}
+	if got.Linked != 1 || got.Ready != 1 || got.NoCard != 2 {
+		t.Errorf("linked %d ready %d no_card %d; want 1/1/2", got.Linked, got.Ready, got.NoCard)
+	}
+	// A card in the cabinet that matches nothing of ours is its own state: the
+	// owner may want to import it, and it is not a product row at all.
+	if got.Orphans != 1 {
+		t.Errorf("orphans %d, want 1", got.Orphans)
+	}
+	// The ids are what the table paints its rows from, so they must name the
+	// product that can actually be linked — not the one already linked.
+	if len(got.ReadyIDs) != 1 {
+		t.Fatalf("ready_ids %v", got.ReadyIDs)
+	}
+	if got.ReadyIDs[0] == idA {
+		t.Error("a product that is already linked was offered for linking again")
+	}
+}
+
+// A shop whose owner has not created a single card must still get a usable
+// answer rather than an error: nothing is ready, everything lacks a card.
+func TestCabinetWithAnEmptyCabinet(t *testing.T) {
+	h, d, _ := publishTest(t)
+	seedProduct(t, d, "A", 5)
+	seedProduct(t, d, "B", 7)
+
+	got := decode[cabinetResponse](t, do(t, h, "GET", "/cabinet", ""))
+	if got.Cards != 0 || got.Ready != 0 || got.NoCard != 2 || len(got.ReadyIDs) != 0 {
+		t.Fatalf("empty cabinet: %+v", got)
+	}
+}

@@ -43,3 +43,46 @@ func TestSearchIgnoresCyrillicCase(t *testing.T) {
 		t.Errorf("a word nobody wrote found %d", n)
 	}
 }
+
+// A buyer types words, not a substring. One LIKE over the whole query matched
+// their spacing and nothing else: on a live shop "кпб евро" found none of the
+// products titled "КПБ Евро 4 предмета". Every word has to be there; their
+// order is the buyer's business.
+func TestSearchMatchesEveryWordInAnyOrder(t *testing.T) {
+	d, err := OpenInMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = d.Close() }()
+
+	for _, title := range []string{
+		"КПБ Евро 4 предмета сатин",
+		"КПБ 1,5 спальный бязь",
+		"Кастрюля эмалированная 3 л с крышкой",
+		"Кастрюля алюминиевая 5 л",
+	} {
+		if err := d.CreateProduct(&Product{Title: title, Price: 100}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for _, c := range []struct {
+		q    string
+		want int
+	}{
+		{"кпб евро", 1},        // the case that found nothing at all
+		{"евро кпб", 1},        // the buyer's order is not ours to insist on
+		{"кастрюля 3 л", 1},    // words separated by other words
+		{"кпб", 2},             // one word still behaves as it did
+		{"кастрюля крышка", 0}, // every word must be there, not just one
+		{"  кпб   евро  ", 1},  // stray spaces are not empty words
+	} {
+		n, err := d.CountProducts(c.q, supplierAny)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n != c.want {
+			t.Errorf("%q found %d, want %d", c.q, n, c.want)
+		}
+	}
+}

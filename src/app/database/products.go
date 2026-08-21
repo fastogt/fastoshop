@@ -213,12 +213,22 @@ func productWhere(category, q, supplier string, onlyVisible bool) (string, []any
 		conds = append(conds, `(category=? OR category LIKE ? ESCAPE '\')`)
 		args = append(args, category, likeEscape(category)+CategorySep+`%`)
 	}
-	if q != "" {
-		// ulower on both sides: SQLite's own case folding stops at ASCII, and a
-		// catalogue written in Russian is invisible to a buyer typing in lower
-		// case without this.
+	// Every word must appear, in the title or in the article, in any order. One
+	// LIKE over the whole query matched the buyer's spacing and nothing else:
+	// "кпб евро" found none of the 24 000 products whose titles read "КПБ Евро
+	// 4 предмета", and two words in the buyer's own order is the common case.
+	//
+	// ulower on both sides: SQLite's own case folding stops at ASCII, and a
+	// catalogue written in Russian is invisible to a buyer typing in lower case
+	// without this.
+	//
+	// ponytail: a full scan per word — three words is three passes of the 46 ms
+	// one pass already costs. FTS5 with the unicode61 tokenizer is the upgrade,
+	// and it brings ranking, which this has never had; it also brings a virtual
+	// table to keep in step with an import that writes 24 000 rows at once.
+	for _, word := range strings.Fields(q) {
 		conds = append(conds, `(ulower(title) LIKE ? ESCAPE '\' OR ulower(sku) LIKE ? ESCAPE '\')`)
-		p := strings.ToLower(likePattern(q))
+		p := strings.ToLower(likePattern(word))
 		args = append(args, p, p)
 	}
 	if len(conds) == 0 {

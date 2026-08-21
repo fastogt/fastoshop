@@ -1,3 +1,11 @@
+1.30.0 / August 21, 2026
+[Alexandr Topilski]
+- Search matches every word a buyer typed, in any order, instead of the exact string with their exact spacing. "кпб евро" found nothing at all on a live catalogue whose titles read "КПБ Евро 4 предмета", and neither did "кастрюля 3 л" — two words is the ordinary way people search, and it returned an empty shelf. Both are now found, one word behaves as it did, and a query whose words are not all there still finds nothing
+- The cost is one pass over the catalogue per word rather than one in total: at 46 ms a pass on 24 000 products, a three-word query stays well inside a page load. Ranking is still absent — results come back in the table's own order — and that is what a full-text index would bring when this stops being enough
+- The Ozon and Wildberries tabs say which products can actually be published. They project onto cards the seller already created in their own cabinet, and until now the table listed the whole catalogue without saying which rows had one: on a live shop that is 24 000 products against a few dozen cards, so the owner ticked a hundred and got ninety-nine refusals back, and the integration read as broken when every part of it worked
+- Opening a tab now asks the platform once and matches it against the catalogue: the header says how many cards the cabinet holds, how many products are linked, how many are ready to link and how many have no card, and each row says which of those it is. Wildberries carries a fourth answer of its own — a card with several sizes, which one article cannot link — counted apart, because telling that owner to create a card would make a duplicate
+- The question is asked when the tab opens and not once per page of the table, and the answer is not cached: a stored one would go stale exactly when the owner has just created the card they came to look for
+
 1.29.0 / August 20, 2026
 [Alexandr Topilski]
 - The product table shows when a row last changed, and sorts by it. After an import or a run of AI rewrites over twenty thousand products, "what actually moved" is the only question worth asking, and until now the answer was nowhere on the screen. The date was already stored and already published as lastmod in the sitemap; it simply never reached the admin

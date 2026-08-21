@@ -434,3 +434,49 @@ func TestPassOrdersPricesAfterStocks(t *testing.T) {
 		t.Fatalf("a sale must lower stock before levels are pushed: %v", order)
 	}
 }
+
+// The tab exists to answer "why can I not publish these". On the live shop the
+// catalogue is 24 000 products and the cabinet holds a few dozen cards, so a
+// table that lists everything and says nothing sends the owner to tick a
+// hundred rows for ninety-nine refusals. These are the numbers that stop that.
+//
+// Wildberries adds a state Ozon does not have: a card with several sizes cannot
+// be linked by vendor code alone. It must not be filed under "no card" — the
+// card exists, and the owner told to create one would create a duplicate.
+func TestCabinetCountsWhatCanActuallyBeLinked(t *testing.T) {
+	h, d, _ := newTest(t,
+		card(100, "A", "brc-a"),
+		sizedCard(200, "SIZED", map[string]string{"S": "brc-s", "M": "brc-m"}),
+		card(300, "ORPHAN", "brc-o"),
+	)
+	enable(t, d, "1")
+	idA := seedProduct(t, d, "A", 5, 1000)
+	seedProduct(t, d, "SIZED", 5, 1000)
+	seedProduct(t, d, "NOPE", 1, 500)
+
+	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{idA}})
+	do(t, h, "POST", "/publish", string(body))
+
+	got := decode[cabinetResponse](t, do(t, h, "GET", "/cabinet", ""))
+	if got.Cards != 3 || got.Products != 3 {
+		t.Fatalf("cards %d products %d", got.Cards, got.Products)
+	}
+	if got.Linked != 1 {
+		t.Errorf("linked %d, want 1", got.Linked)
+	}
+	if got.Ambiguous != 1 {
+		t.Errorf("ambiguous %d, want 1 — a multi-size card is not a missing card",
+			got.Ambiguous)
+	}
+	if got.NoCard != 1 {
+		t.Errorf("no_card %d, want 1", got.NoCard)
+	}
+	if got.Orphans != 1 {
+		t.Errorf("orphans %d, want 1", got.Orphans)
+	}
+	// Nothing here can be linked: A is already linked, SIZED is ambiguous, NOPE
+	// has no card. A button offered on any of them would fail.
+	if got.Ready != 0 || len(got.ReadyIDs) != 0 {
+		t.Errorf("ready %d %v, want none", got.Ready, got.ReadyIDs)
+	}
+}

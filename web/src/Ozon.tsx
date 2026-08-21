@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   api,
   apiError,
@@ -10,6 +10,7 @@ import {
   type OzonCandidatePage,
   type PriceRule,
   type OzonCandidate,
+  type CabinetState,
   type OzonLink,
   type OzonOrder,
 } from "./api";
@@ -86,6 +87,16 @@ const kText = {
     ru: "Отметьте товары, которые продаёте на Ozon. В канал уезжают только отмеченные — остальные живут на витрине и площадку не видят.",
     en: "Tick the products you sell on Ozon. Only ticked ones go to the channel; the rest live on the storefront and never reach the marketplace.",
   },
+  cabinetSummary: {
+    ru: "В кабинете карточек: {cards}. Связано: {linked}, можно связать: {ready}, карточки нет: {noCard}.",
+    en: "Cards in the cabinet: {cards}. Linked: {linked}, ready to link: {ready}, no card: {noCard}.",
+  },
+  cabinetOrphans: {
+    ru: "Ещё {n} карточек на площадке не совпали ни с одним товаром.",
+    en: "Another {n} cards on the platform matched no product of yours.",
+  },
+  stateReady: { ru: "можно связать", en: "ready to link" },
+  stateNoCard: { ru: "нет карточки", en: "no card" },
   searchProducts: {
     ru: "Поиск по названию или артикулу",
     en: "Search by title or article",
@@ -272,6 +283,10 @@ export default function Ozon() {
   const [candQuery, setCandQuery] = useState("");
   const [pubMsg, setPubMsg] = useState("");
   const [noCard, setNoCard] = useState<{ id: number; sku: string }[]>([]);
+  // Asked once when the tab opens, and again after publishing changed the
+  // answer. Deliberately not part of the paged candidates call: that one runs
+  // per page of a hundred rows and would re-read the cabinet every time.
+  const [cabinet, setCabinet] = useState<CabinetState | null>(null);
   const [zeroFailed, setZeroFailed] = useState<
     { id: number; sku: string; title: string }[]
   >([]);
@@ -286,10 +301,24 @@ export default function Ozon() {
     [candPage, candQuery],
   );
 
+  const ready = useMemo(() => new Set(cabinet?.ready_ids ?? []), [cabinet]);
+
+  const loadCabinet = useCallback(
+    // A shop with no keys, or a platform that will not answer, simply gets no
+    // summary — the table worked before this existed and must keep working.
+    () =>
+      api
+        .ozonCabinet()
+        .then(setCabinet)
+        .catch(() => setCabinet(null)),
+    [],
+  );
+
   useEffect(() => {
     api.ozonSettings().then(setS);
     api.ozonPriceRules().then((r) => setRules(r.rules));
-  }, []);
+    loadCabinet();
+  }, [loadCabinet]);
   useEffect(() => {
     api.ozonOrders(page).then(setOrders);
   }, [page]);
@@ -440,7 +469,7 @@ export default function Ozon() {
 
   const afterPublishChange = async () => {
     setS(await api.ozonSettings());
-    await Promise.all([loadLinks(), loadCandidates()]);
+    await Promise.all([loadLinks(), loadCandidates(), loadCabinet()]);
   };
 
   const publish = async (ids: number[]) => {
@@ -635,6 +664,18 @@ export default function Ozon() {
         <div>
           <h2 className="font-bold">{t("publication")}</h2>
           <p className="hint">{t("publicationHint")}</p>
+          {cabinet && (
+            <p className="hint mt-1">
+              {t("cabinetSummary", {
+                cards: cabinet.cards,
+                linked: cabinet.linked,
+                ready: cabinet.ready,
+                noCard: cabinet.no_card,
+              })}
+              {cabinet.orphans > 0 &&
+                " " + t("cabinetOrphans", { n: cabinet.orphans })}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <input
@@ -671,12 +712,19 @@ export default function Ozon() {
             {
               key: "published",
               label: t("colPublished"),
-              render: (p) =>
-                p.published ? (
-                  t("yes")
+              render: (p) => {
+                if (p.published) return t("yes");
+                // Without the cabinet we know nothing and say nothing: a row
+                // guessing "no card" would send the owner to create one that
+                // may already exist.
+                if (!cabinet)
+                  return <span className="text-muted">{t("no")}</span>;
+                return ready.has(p.product_id) ? (
+                  <span className="text-green-700">{t("stateReady")}</span>
                 ) : (
-                  <span className="text-muted">{t("no")}</span>
-                ),
+                  <span className="text-muted">{t("stateNoCard")}</span>
+                );
+              },
             },
           ]}
           rows={candidates?.products ?? []}

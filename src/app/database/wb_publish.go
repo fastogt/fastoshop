@@ -76,3 +76,37 @@ func (d *Database) WBLinksByProducts(ids []int64) ([]WBLinkState, error) {
 	}
 	return out, rows.Err()
 }
+
+// WBSKUState is every product's article and whether it is already linked. The
+// tab joins this against the cabinet's own cards: counting on the hundred rows
+// currently on screen would answer a question nobody asked, while "12 of 24 000
+// can be published" is the one that explains the tab.
+//
+// ponytail: the whole catalogue in memory — 24 000 short strings read once when
+// the tab opens. An IN (…) against the platform's list would need thousands of
+// bound parameters and buys nothing at this size.
+func (d *Database) WBSKUState() (map[string]int64, map[string]bool, error) {
+	rows, err := d.db.Query(
+		`SELECT p.sku, p.id, l.product_id IS NOT NULL
+		 FROM products p LEFT JOIN wb_links l ON l.product_id = p.id
+		 WHERE p.sku != ''`)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	ids := make(map[string]int64)
+	linked := make(map[string]bool)
+	for rows.Next() {
+		var sku string
+		var id int64
+		var isLinked bool
+		if err := rows.Scan(&sku, &id, &isLinked); err != nil {
+			return nil, nil, err
+		}
+		ids[sku] = id
+		// A duplicate article keeps the linked side: the tab must not offer to
+		// link an article that already is.
+		linked[sku] = linked[sku] || isLinked
+	}
+	return ids, linked, rows.Err()
+}

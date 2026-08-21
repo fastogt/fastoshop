@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   api,
   apiError,
   type PriceRule,
   type WBCandidate,
+  type CabinetState,
   type WBLink,
   type WBOrder,
   type WBSettings,
@@ -61,6 +62,20 @@ const kText = {
   unpublish: { ru: "Снять", en: "Unpublish" },
   published: { ru: "На площадке", en: "On the platform" },
   yes: { ru: "да", en: "yes" },
+  cabinetSummary: {
+    ru: "В кабинете карточек: {cards}. Связано: {linked}, можно связать: {ready}, карточки нет: {noCard}.",
+    en: "Cards in the cabinet: {cards}. Linked: {linked}, ready to link: {ready}, no card: {noCard}.",
+  },
+  cabinetAmbiguous: {
+    ru: "Ещё {n} товаров нашли карточку с несколькими размерами — её нельзя связать по одному артикулу.",
+    en: "Another {n} products matched a card with several sizes, which one article cannot link.",
+  },
+  cabinetOrphans: {
+    ru: "Ещё {n} карточек на площадке не совпали ни с одним товаром.",
+    en: "Another {n} cards on the platform matched no product of yours.",
+  },
+  stateReady: { ru: "можно связать", en: "ready to link" },
+  stateNoCard: { ru: "нет карточки", en: "no card" },
   no: { ru: "нет", en: "no" },
   publishDone: { ru: "Связано карточек: {n}", en: "Cards linked: {n}" },
   unpublishDone: {
@@ -191,9 +206,26 @@ export default function WB() {
   const [noCard, setNoCard] = useState<WBUnlinkedProduct[]>([]);
   const [zeroFailed, setZeroFailed] = useState<WBUnlinkedProduct[]>([]);
   const [unlinked, setUnlinked] = useState<WBUnlinkedProduct[]>([]);
+  // Asked once when the tab opens, and again after publishing changed the
+  // answer. Deliberately not part of the paged candidates call: that one runs
+  // per page of a hundred rows and would re-read the cabinet every time.
+  const [cabinet, setCabinet] = useState<CabinetState | null>(null);
   const [unlinkedCards, setUnlinkedCards] = useState<
     { nm_id: number; vendor_code: string }[]
   >([]);
+
+  const ready = useMemo(() => new Set(cabinet?.ready_ids ?? []), [cabinet]);
+
+  const loadCabinet = useCallback(
+    // A shop with no token, or a platform that will not answer, simply gets no
+    // summary — the table worked before this existed and must keep working.
+    () =>
+      api
+        .wbCabinet()
+        .then(setCabinet)
+        .catch(() => setCabinet(null)),
+    [],
+  );
 
   const loadLinks = useCallback(async () => {
     const page = await api.wbLinks(linkPage);
@@ -211,8 +243,9 @@ export default function WB() {
     void (async () => {
       setS(await api.wbSettings());
       setRules((await api.wbPriceRules()).rules);
+      await loadCabinet();
     })();
-  }, []);
+  }, [loadCabinet]);
 
   useEffect(() => {
     void (async () => {
@@ -312,7 +345,7 @@ export default function WB() {
     run(setPubMsg, async () => {
       const r = await api.wbPublish(ids);
       setNoCard(r.no_card);
-      await Promise.all([loadLinks(), loadCandidates()]);
+      await Promise.all([loadLinks(), loadCandidates(), loadCabinet()]);
       return t("publishDone", { n: r.published });
     });
 
@@ -320,7 +353,7 @@ export default function WB() {
     run(setPubMsg, async () => {
       const r = await api.wbUnpublish(ids);
       setZeroFailed(r.failed);
-      await Promise.all([loadLinks(), loadCandidates()]);
+      await Promise.all([loadLinks(), loadCandidates(), loadCabinet()]);
       return t("unpublishDone", { n: r.unpublished });
     });
 
@@ -462,6 +495,20 @@ export default function WB() {
 
       <section className="card flex flex-col gap-4">
         <h2 className="font-bold">{t("publication")}</h2>
+        {cabinet && (
+          <p className="hint">
+            {t("cabinetSummary", {
+              cards: cabinet.cards,
+              linked: cabinet.linked,
+              ready: cabinet.ready,
+              noCard: cabinet.no_card,
+            })}
+            {!!cabinet.ambiguous &&
+              " " + t("cabinetAmbiguous", { n: cabinet.ambiguous })}
+            {cabinet.orphans > 0 &&
+              " " + t("cabinetOrphans", { n: cabinet.orphans })}
+          </p>
+        )}
         <input
           className="field w-64"
           placeholder={t("searchPlaceholder")}
@@ -489,7 +536,18 @@ export default function WB() {
             {
               key: "published",
               label: t("published"),
-              render: (p) => (p.published ? t("yes") : t("no")),
+              render: (p) => {
+                if (p.published) return t("yes");
+                // Without the cabinet we know nothing and say nothing: a row
+                // guessing "no card" would send the owner to create one that
+                // may already exist.
+                if (!cabinet) return t("no");
+                return ready.has(p.product_id) ? (
+                  <span className="text-green-700">{t("stateReady")}</span>
+                ) : (
+                  <span className="text-muted">{t("stateNoCard")}</span>
+                );
+              },
             },
           ]}
           rows={candidates}

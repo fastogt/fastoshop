@@ -79,6 +79,75 @@ func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, res)
 }
 
+// cabinetResponse is what the tab learns when it opens: how the shop's
+// catalogue and the cabinet's cards actually overlap.
+type cabinetResponse struct {
+	// Cards in the cabinet, products in the shop, and the three states between
+	// them. They do not add up to Products by accident: a product with no
+	// article at all is in none of them.
+	Cards    int `json:"cards"`
+	Products int `json:"products"`
+	Linked   int `json:"linked"`
+	Ready    int `json:"ready"`
+	NoCard   int `json:"no_card"`
+	// Orphans are cards in the cabinet whose article is in no product of ours.
+	Orphans int `json:"orphans"`
+	// ReadyIDs are the products that pressing "Publish" would actually link.
+	// The tab marks its rows from this and stops offering a button that cannot
+	// work: on a live shop the owner ticked a hundred rows and got ninety-nine
+	// refusals, because the table never said which ones had a card.
+	ReadyIDs []int64 `json:"ready_ids"`
+}
+
+// Cabinet is asked once, when the tab opens. It is deliberately not cached and
+// not folded into Candidates: the paged product table would otherwise re-read
+// the platform's whole article list for every page of a hundred rows, and a
+// cached answer would go stale exactly when the owner has just created the card
+// they are looking for.
+func (h *Handlers) Cabinet(w http.ResponseWriter, r *http.Request) {
+	c, ok := h.client(w)
+	if !ok {
+		return
+	}
+	offers, err := c.ListProducts()
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	ids, linked, err := h.db.OzonSKUState()
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	res := cabinetResponse{
+		Cards: len(offers), Products: len(ids), ReadyIDs: []int64{},
+	}
+	onPlatform := make(map[string]struct{}, len(offers))
+	for _, o := range offers {
+		onPlatform[o.OfferID] = struct{}{}
+		if _, mine := ids[o.OfferID]; !mine {
+			res.Orphans++
+		}
+	}
+	for sku, id := range ids {
+		switch {
+		case linked[sku]:
+			res.Linked++
+		case hasCard(onPlatform, sku):
+			res.Ready++
+			res.ReadyIDs = append(res.ReadyIDs, id)
+		default:
+			res.NoCard++
+		}
+	}
+	writeOK(w, res)
+}
+
+func hasCard(onPlatform map[string]struct{}, sku string) bool {
+	_, ok := onPlatform[sku]
+	return ok
+}
+
 // Publish links the selected products to their cabinet cards by article. It is
 // deliberately a selection, not a sweep: which goods go to a marketplace is the
 // owner's decision, and "everything that matched" is not that decision.

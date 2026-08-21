@@ -76,6 +76,78 @@ func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, res)
 }
 
+// cabinetResponse is what the tab learns when it opens: how the shop's
+// catalogue and the cabinet's cards actually overlap.
+type cabinetResponse struct {
+	Cards    int `json:"cards"`
+	Products int `json:"products"`
+	Linked   int `json:"linked"`
+	Ready    int `json:"ready"`
+	NoCard   int `json:"no_card"`
+	// Cards in the cabinet whose article matches no product of ours.
+	Orphans int `json:"orphans"`
+	// Products whose article matches a card that carries several sizes. They are
+	// neither ready nor cardless: the card exists, and publishing still cannot
+	// pick a size. Counted apart so the tab can say so instead of filing them
+	// under "no card", which would send the owner to create a duplicate.
+	Ambiguous int     `json:"ambiguous"`
+	ReadyIDs  []int64 `json:"ready_ids"`
+}
+
+// Cabinet is asked once, when the tab opens. Not cached and not folded into
+// Candidates: the paged product table would otherwise re-read the platform's
+// whole card list for every page of a hundred rows, and a cached answer would go
+// stale exactly when the owner has just created the card they are looking for.
+//
+// The match runs through the same index Publish uses, not a set of articles: on
+// Wildberries a card with several sizes cannot be linked by vendor code alone,
+// and a tab that promised otherwise would be lying about its own button.
+func (h *Handlers) Cabinet(w http.ResponseWriter, r *http.Request) {
+	c, ok := h.client(w)
+	if !ok {
+		return
+	}
+	cards, err := c.ListCards()
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	ids, linked, err := h.db.WBSKUState()
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	idx := newCardIndex(cards)
+	res := cabinetResponse{
+		Cards: len(cards), Products: len(ids), ReadyIDs: []int64{},
+	}
+	mine := make(map[string]struct{}, len(ids))
+	for sku := range ids {
+		mine[key(sku)] = struct{}{}
+	}
+	for _, card := range cards {
+		if _, ours := mine[key(card.VendorCode)]; !ours {
+			res.Orphans++
+		}
+	}
+	for sku, id := range ids {
+		if linked[sku] {
+			res.Linked++
+			continue
+		}
+		switch _, reason, ok := idx.lookup(sku); {
+		case ok:
+			res.Ready++
+			res.ReadyIDs = append(res.ReadyIDs, id)
+		case reason == i18n.KeyWBAmbiguousCard:
+			res.Ambiguous++
+		default:
+			res.NoCard++
+		}
+	}
+	writeOK(w, res)
+}
+
 // Publish links the selected products to their cabinet cards by article. It is
 // deliberately a selection, not a sweep: which goods go to a marketplace is the
 // owner's decision, and "everything that matched" is not that decision.
