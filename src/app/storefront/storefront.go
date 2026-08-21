@@ -25,13 +25,14 @@ var templatesFS embed.FS
 var styleCSS string
 
 type Storefront struct {
-	db      *database.Database
-	baseURL string
-	uploads string
-	index   *template.Template
-	product *template.Template
-	cart    *template.Template
-	info    *template.Template
+	db       *database.Database
+	baseURL  string
+	uploads  string
+	index    *template.Template
+	product  *template.Template
+	cart     *template.Template
+	info     *template.Template
+	contacts *template.Template
 	// Named with a suffix: the handlers are Category and Categories, and a field
 	// may not share a name with a method.
 	categoryTpl   *template.Template
@@ -55,6 +56,7 @@ func New(db *database.Database, baseURL, uploadsDir string) *Storefront {
 		product:       template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/product.html")),
 		cart:          template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/cart.html")),
 		info:          template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/info.html")),
+		contacts:      template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/contacts.html")),
 		categoryTpl:   template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/category.html")),
 		categoriesTpl: template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/categories.html")),
 	}
@@ -88,6 +90,7 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/p/{slug}", s.Product)
 	r.Get("/cart", s.Cart)
 	r.Get("/info", s.Info)
+	r.Get("/contacts", s.Contacts)
 	r.Get("/c", s.Categories)
 	r.Get("/c/*", s.Category)
 	r.Post("/cart/add", s.CartAdd)
@@ -675,6 +678,30 @@ func (s *Storefront) Info(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Contacts is a page a shop is expected to have and this one had nowhere: the
+// buyer looks for whom they are paying, and both search engines weigh a
+// published contact when they rank a shop. It writes nothing new — the phone
+// and the legal details are already in settings — so an owner who filled the
+// footer gets the page for free.
+//
+// The owner's email is on it. It doubles as the admin login, which is why it
+// was left off at first, but a contact address is what a buyer looks for and
+// what a search engine counts. Secrecy of a login is not a defence anyway: the
+// password is, and guessing it is now slowed down deliberately (see the login
+// throttle in app/handler).
+func (s *Storefront) Contacts(w http.ResponseWriter, r *http.Request) {
+	shop := s.shop()
+	if shop.ShopPhone == "" && shop.Requisites == "" {
+		http.NotFound(w, r)
+		return
+	}
+	data := pageVM{Shop: shop, BaseURL: s.baseURL, CSS: template.CSS(styleCSS),
+		CartCount: cartCount(r), Canonical: s.baseURL + "/contacts"}
+	if err := s.contacts.ExecuteTemplate(w, "base", data); err != nil {
+		log.Errorf("render contacts: %v", err)
+	}
+}
+
 type sitemapURL struct {
 	Loc     string `xml:"loc"`
 	LastMod string `xml:"lastmod,omitempty"`
@@ -694,6 +721,9 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 	}
 	set := sitemapSet{NS: "http://www.sitemaps.org/schemas/sitemap/0.9",
 		URLs: []sitemapURL{{Loc: s.baseURL + "/"}}}
+	if shop := s.shop(); shop.ShopPhone != "" || shop.Requisites != "" {
+		set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/contacts"})
+	}
 	if s.shop().Terms != "" {
 		set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/info"})
 	}
@@ -751,6 +781,9 @@ func (s *Storefront) LlmsTxt(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "- [Все категории](%s/c)\n", s.baseURL)
 	if shop.Terms != "" {
 		fmt.Fprintf(w, "- [Доставка и оплата](%s/info)\n", s.baseURL)
+	}
+	if shop.ShopPhone != "" || shop.Requisites != "" {
+		fmt.Fprintf(w, "- [Контакты](%s/contacts)\n", s.baseURL)
 	}
 	fmt.Fprintf(w, "- [Карта сайта](%s/sitemap.xml): каждый товар с датой обновления\n", s.baseURL)
 	fmt.Fprintf(w, "\nСтраница товара (%s/p/<slug>) отдаётся сервером без скриптов и несёт разметку schema.org/Product с ценой и наличием.\n", s.baseURL)

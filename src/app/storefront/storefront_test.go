@@ -1566,3 +1566,49 @@ func TestOfferCarriesWhatWeKnow(t *testing.T) {
 		t.Fatal("a rating must never be marked up without real reviews")
 	}
 }
+
+// A shop is expected to say whom the buyer is paying, and this one had nowhere
+// to say it: only /info existed. The page writes nothing new — it renders the
+// phone and the legal details the owner already filled — so it appears exactly
+// when there is something on it, and 404s when there is not.
+func TestContactsAppearsOnlyWhenThereIsSomethingToShow(t *testing.T) {
+	d, h := setup(t)
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/contacts", nil))
+	if w.Code != http.StatusNotFound {
+		t.Errorf("empty settings: /contacts answered %d, want 404", w.Code)
+	}
+	if strings.Contains(get(t, h, "/sitemap.xml"), "/contacts") {
+		t.Error("a page that 404s must not be in the sitemap")
+	}
+
+	s, _ := d.GetSettings()
+	s.ShopPhone = "+375 33 652 92 91"
+	s.Requisites = "ИП Петровский, УНП 191234567"
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	body := get(t, h, "/contacts")
+	for _, want := range []string{"+375 33 652 92 91", "191234567", "Контакты"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("/contacts is missing %q", want)
+		}
+	}
+	// The contact address is what a buyer looks for, so it is published on
+	// purpose even though it doubles as the admin login: the password is the
+	// secret, and guessing it is throttled.
+	if !strings.Contains(body, s.OwnerEmail) {
+		t.Error("no contact address on the contacts page")
+	}
+	if !strings.Contains(get(t, h, "/sitemap.xml"), "/contacts") {
+		t.Error("/contacts is not in the sitemap")
+	}
+	if !strings.Contains(get(t, h, "/llms.txt"), "/contacts") {
+		t.Error("/contacts is not in llms.txt")
+	}
+	if !strings.Contains(get(t, h, "/"), `href="/contacts"`) {
+		t.Error("no link to /contacts in the footer")
+	}
+}

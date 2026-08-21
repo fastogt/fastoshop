@@ -1,3 +1,10 @@
+1.31.0 / August 21, 2026
+[Alexandr Topilski]
+- The storefront has a contacts page. A shop is expected to say whom the buyer is paying, and this one had nowhere to say it: only the delivery-and-payment page existed. Both search engines weigh a published contact when they rank a shop, and a buyer about to pay a stranger looks for it first
+- It asks the owner for nothing: the phone and the legal details are already in settings, so a shop whose footer is filled gets the page for free. It appears only when there is something on it, and it is listed in the sitemap, in llms.txt and in the footer exactly when it exists
+- The contact address is on it too. It doubles as the admin login, which is the reason to hesitate, but the secret is the password, not the address a buyer needs to reach the shop
+- Guessing that password is now slowed down. The login had no brake of any kind: bcrypt alone allows on the order of a million attempts a night. After three failures each answer waits, the wait doubles, and it stops at eight seconds. Deliberately a delay and not a lockout — a shop has one owner and nobody to call, so refusing after N tries would let anyone who knows their address shut them out of their own admin until somebody reached the server over SSH. The wait is served before the password is checked, so its length never says whether the guess was right
+
 1.30.0 / August 21, 2026
 [Alexandr Topilski]
 - Search matches every word a buyer typed, in any order, instead of the exact string with their exact spacing. Measured on a live catalogue: "эмалированная кастрюля" found 1 product and now finds 302, "зонт романтика" and "ерш унитазный" found none and now find 4 and 16. One word behaves exactly as it did, and a query whose words are not all present still finds nothing

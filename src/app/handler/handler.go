@@ -19,6 +19,9 @@ type Handler struct {
 	// job is the single background slot: the import and the photo download both
 	// outlive a request, and nginx cuts one off at sixty seconds.
 	job job
+	// login slows an attacker down. Without it the password is guessable at the
+	// speed of bcrypt — roughly a million tries a night.
+	login loginThrottle
 }
 
 func NewHandler(db *database.Database, uploadsDir string) *Handler {

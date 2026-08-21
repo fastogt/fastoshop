@@ -279,3 +279,39 @@ func TestInternalErrorDoesNotLeakDetails(t *testing.T) {
 		t.Fatalf("internal details leaked: %s", w.Body.String())
 	}
 }
+
+// Login had no brake at all: bcrypt alone allows roughly a million guesses a
+// night. It is not a lockout on purpose — a shop has one owner and nobody to
+// call, so refusing after N tries would let anyone who knows their address shut
+// them out of their own admin until somebody reaches the server over SSH.
+func TestLoginSlowsDownAfterRepeatedFailures(t *testing.T) {
+	var th loginThrottle
+
+	for i := 0; i < kLoginFreeTries; i++ {
+		if d := th.delay(); d != 0 {
+			t.Fatalf("try %d waited %v; the owner mistyping must not be punished", i+1, d)
+		}
+		th.failure()
+	}
+	first := th.delay()
+	if first <= 0 {
+		t.Fatalf("no delay after %d failures", kLoginFreeTries)
+	}
+	th.failure()
+	if second := th.delay(); second <= first {
+		t.Errorf("delay did not grow: %v then %v", first, second)
+	}
+	// Capped, so a forgotten password never becomes a locked shop.
+	for range 20 {
+		th.failure()
+	}
+	if d := th.delay(); d != kMaxLoginDelay {
+		t.Errorf("delay %v, want the cap %v", d, kMaxLoginDelay)
+	}
+	// The right password clears it: the owner who finally remembers is not left
+	// waiting eight seconds on every future login.
+	th.success()
+	if d := th.delay(); d != 0 {
+		t.Errorf("after a success the delay is %v, want none", d)
+	}
+}

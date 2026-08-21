@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -13,6 +14,49 @@ import (
 )
 
 const kSessionTTL = 30 * 24 * time.Hour
+
+// Login is not rate-limited by refusing: a shop has one owner and nobody to
+// call, so a lockout after N tries would let anyone who knows their address
+// shut them out of their own admin until somebody reaches the server over SSH.
+// A growing delay costs an attacker time and costs the owner nothing — they
+// type the right password and the counter resets.
+//
+// ponytail: one counter for the whole instance rather than a bucket per
+// address. There is one owner, so "somebody is guessing" is a single fact, and
+// per-IP state would need expiry while an attacker rotates addresses anyway.
+// Per-IP buckets are the upgrade if a shop ever has more than one login.
+const (
+	kLoginFreeTries = 3
+	kMaxLoginDelay  = 8 * time.Second
+)
+
+type loginThrottle struct {
+	mu     sync.Mutex
+	failed int
+}
+
+// delay returns how long this attempt should wait before it is answered.
+func (t *loginThrottle) delay() time.Duration {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.failed < kLoginFreeTries {
+		return 0
+	}
+	d := time.Second << min(t.failed-kLoginFreeTries, 3)
+	return min(d, kMaxLoginDelay)
+}
+
+func (t *loginThrottle) failure() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.failed++
+}
+
+func (t *loginThrottle) success() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.failed = 0
+}
 
 const kPurposeInvite = "invite"
 
@@ -138,12 +182,23 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		writeBadRequest(w, "invalid body")
 		return
 	}
+	// Waited out before the answer, not after: the delay has to be paid whether
+	// the guess was right or wrong, or its length leaks which one it was.
+	if d := h.login.delay(); d > 0 {
+		select {
+		case <-time.After(d):
+		case <-r.Context().Done():
+			return
+		}
+	}
 	s, err := h.db.GetSettings()
 	if err != nil || s.OwnerEmail != req.Email ||
 		bcrypt.CompareHashAndPassword([]byte(s.PasswordHash), []byte(req.Password)) != nil {
+		h.login.failure()
 		writeUnauthorized(w)
 		return
 	}
+	h.login.success()
 	if err := h.setSession(w, r); err != nil {
 		writeInternalError(w, err)
 		return
