@@ -223,6 +223,10 @@ export interface Settings {
   owner_email: string;
   shop_name: string;
   shop_phone: string;
+  // Messenger handles for the "order in one message" buttons on a product page.
+  // Empty means no button — the default.
+  telegram: string;
+  whatsapp: string;
   currency: string;
   lang: string;
   logo: string;

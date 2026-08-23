@@ -13,6 +13,12 @@ const kText = {
   shopName: { ru: "Название магазина", en: "Shop name" },
   shopNamePlaceholder: { ru: "Лавка Ивана", en: "Ivan's Shop" },
   shopPhone: { ru: "Телефон для покупателей", en: "Customer phone number" },
+  telegram: { ru: "Telegram для заказов", en: "Telegram for orders" },
+  whatsapp: { ru: "WhatsApp для заказов", en: "WhatsApp for orders" },
+  messengerHint: {
+    ru: "Необязательно. Если заполнить, в карточке товара появится кнопка: покупатель нажимает и попадает в переписку с уже готовым текстом — название, артикул, цена и ссылка. Логин можно вставить как «@myshop» или ссылкой целиком.",
+    en: 'Optional. Filled in, it adds a button to the product page: the buyer taps it and lands in a chat with the message already written — title, article, price and a link. Paste the handle as "@myshop" or as a full link.',
+  },
   requisites: { ru: "Реквизиты", en: "Legal details" },
   requisitesHint: {
     ru: "Юрлицо, адрес, регистрационный номер — то, что по закону должно быть на сайте. Показываются в подвале витрины и попадают в разметку организации для поисковиков. Пишите как есть, переводы строк сохраняются.",
@@ -205,6 +211,29 @@ export default function Profile() {
             placeholder="+7 999 000-00-00"
             value={s.shop_phone}
             onChange={(e) => setS({ ...s, shop_phone: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="label">{t("telegram")}</label>
+          <input
+            className="field"
+            name="shop-telegram"
+            autoComplete="off"
+            placeholder="@myshop"
+            value={s.telegram}
+            onChange={(e) => setS({ ...s, telegram: e.target.value })}
+          />
+          <p className="hint">{t("messengerHint")}</p>
+        </div>
+        <div>
+          <label className="label">{t("whatsapp")}</label>
+          <input
+            className="field"
+            name="shop-whatsapp"
+            autoComplete="off"
+            placeholder="+7 999 000-00-00"
+            value={s.whatsapp}
+            onChange={(e) => setS({ ...s, whatsapp: e.target.value })}
           />
         </div>
         <div>

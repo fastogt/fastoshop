@@ -14,6 +14,8 @@ type settingsResponse struct {
 	OwnerEmail      string `json:"owner_email"`
 	ShopName        string `json:"shop_name"`
 	ShopPhone       string `json:"shop_phone"`
+	Telegram        string `json:"telegram"`
+	WhatsApp        string `json:"whatsapp"`
 	Currency        string `json:"currency"`
 	Lang            string `json:"lang"`
 	Logo            string `json:"logo"`
@@ -37,6 +39,8 @@ type settingsResponse struct {
 type settingsRequest struct {
 	ShopName     string  `json:"shop_name"`
 	ShopPhone    string  `json:"shop_phone"`
+	Telegram     string  `json:"telegram"`
+	WhatsApp     string  `json:"whatsapp"`
 	Currency     string  `json:"currency"`
 	Lang         string  `json:"lang"`
 	SMTPHost     string  `json:"smtp_host"`
@@ -62,6 +66,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	writeOK(w, settingsResponse{
 		OwnerEmail: s.OwnerEmail, ShopName: s.ShopName, ShopPhone: s.ShopPhone,
+		Telegram: s.Telegram, WhatsApp: s.WhatsApp,
 		Currency: s.Currency, Lang: s.Lang, Logo: s.Logo,
 		SMTPHost: s.SMTPHost, SMTPPort: s.SMTPPort, SMTPUser: s.SMTPUser,
 		SMTPFrom:         s.SMTPFrom,
@@ -99,6 +104,7 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.ShopName, s.ShopPhone = req.ShopName, req.ShopPhone
+	s.Telegram, s.WhatsApp = req.Telegram, req.WhatsApp
 	// An empty currency means an older admin build that does not send the field:
 	// keep what is stored instead of failing validation.
 	if req.Currency != "" {

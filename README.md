@@ -39,6 +39,8 @@ None of this is an argument for leaving. The marketplace is where buyers find yo
 
 **Pages built to be found.** The storefront sends no JavaScript at all: a catalogue page is about **16 KB gzipped** and paints immediately, which is what mobile ranking is scored on. Product markup, a sitemap with change dates, canonical addresses and human-readable URLs are there from the start, not as a plugin. Categories arrive with the catalogue — one supplier price list produced **570 category pages**, each a landing page for a broad query.
 
+**Ready for paid search on day one.** Two product feeds are generated from the live catalogue and always current: `/yml.xml` for Yandex — a product campaign in Direct or a listing on Market takes the URL and nothing else — and `/gmc.xml` for Google Merchant Center. They carry what those systems require: article, price, currency, availability, category path, picture and description, per offer. On a live shop that is **23,844 offers** with no export step, no plugin and no file to re-upload when a price changes.
+
 **AI assistants can read it too.** They answer "where do I buy X" from pages that need no script to render, and `/llms.txt` — generated from your live catalogue — hands them the whole shop in one read: what is sold, in which sections, how an order works.
 
 **One stock number across channels.** Two-way sync with Ozon and Wildberries for goods on your own warehouse: an order on the site lowers the stock in the cabinet within seconds, a sale on the platform lowers it on the site. The platform price is set separately — a percentage or a markup ladder, because on a 30-rouble item a flat percentage does not cover the platform's fee.

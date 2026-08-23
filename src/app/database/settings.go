@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -43,6 +44,11 @@ type Settings struct {
 	PasswordHash string `json:"-"`
 	ShopName     string `json:"shop_name"`
 	ShopPhone    string `json:"shop_phone"`
+	// Messenger handles for the "order in one message" buttons on a product
+	// page. Stored as the owner typed them; normalising happens where the link
+	// is built, so a pasted "@shop" or "+375 29 …" both work.
+	Telegram string `json:"telegram"`
+	WhatsApp string `json:"whatsapp"`
 	// Legal details shown in the storefront footer, free-form multiline: a shop
 	// selling in Russia or Belarus is required to publish them, and their shape
 	// differs by country and by whether the seller is a company or a sole
@@ -93,12 +99,12 @@ func (d *Database) GetSettings() (*Settings, error) {
 		`SELECT owner_email, password_hash, shop_name, shop_phone, smtp_host,
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
 		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms,
-		 adhunters_api_key
+		 adhunters_api_key, telegram, whatsapp
 		 FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
 		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms,
-		&s.AdHuntersAPIKey)
+		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp)
 	if err != nil {
 		return nil, err
 	}
@@ -126,12 +132,12 @@ func (d *Database) UpdateSettings(s *Settings) error {
 		`UPDATE settings SET owner_email=?, password_hash=?, shop_name=?, shop_phone=?,
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
 		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?,
-		 smtp_from=?, terms=?, adhunters_api_key=?
+		 smtp_from=?, terms=?, adhunters_api_key=?, telegram=?, whatsapp=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
 		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom, s.Terms,
-		s.AdHuntersAPIKey)
+		s.AdHuntersAPIKey, strings.TrimSpace(s.Telegram), strings.TrimSpace(s.WhatsApp))
 	return err
 }
 

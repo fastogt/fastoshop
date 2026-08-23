@@ -184,6 +184,11 @@ func (d *Database) migrate() error {
 		password_hash TEXT NOT NULL,
 		shop_name     TEXT NOT NULL DEFAULT '',
 		shop_phone    TEXT NOT NULL DEFAULT '',
+		-- Messenger contacts for the "order in one message" buttons. Two fields
+		-- and not one: they build different links, and a phone that takes calls
+		-- does not necessarily have WhatsApp on it. Empty means no button.
+		telegram      TEXT NOT NULL DEFAULT '',
+		whatsapp      TEXT NOT NULL DEFAULT '',
 		smtp_host     TEXT NOT NULL DEFAULT '',
 		smtp_port     INTEGER NOT NULL DEFAULT 465,
 		smtp_user     TEXT NOT NULL DEFAULT '',

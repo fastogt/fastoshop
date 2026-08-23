@@ -88,6 +88,14 @@
       <span class="badge">Нет в наличии</span>
       <p class="oos">Напишите нам — сообщим, когда товар вернётся.</p>
       {{end}}
+      {{/* A messenger button is a link, not a widget: the storefront ships no
+           JavaScript, and a deep link needs none. Shown only when the owner
+           filled a messenger in. */}}
+      {{if .OrderLinks}}
+      <div class="msg-order">
+        {{range .OrderLinks}}<a class="btn-msg" href="{{.URL}}" rel="nofollow noopener" target="_blank">{{.Label}}</a>{{end}}
+      </div>
+      {{end}}
       <ul class="trust">
         <li>Оплата при получении — без предоплаты</li>
         <li>Подтверждаем заказ звонком</li>

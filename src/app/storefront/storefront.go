@@ -237,15 +237,19 @@ type pageVM struct {
 	// The same measurements for the markup, in the units they are stored in and
 	// as plain numbers: a template cannot dereference a pointer, and 0 is the
 	// "not set" that the markup must skip rather than publish.
-	WeightG   int64
-	LengthMM  int64
-	WidthMM   int64
-	HeightMM  int64
-	Canonical string
-	NoIndex   bool
-	Query     string
-	FoundStr  string
-	Category  string
+	WeightG  int64
+	LengthMM int64
+	WidthMM  int64
+	HeightMM int64
+	// OrderLinks are the "order in one message" buttons — plain links to the
+	// owner's messengers with the product already written into the text. Empty
+	// when no messenger is set, which is the default.
+	OrderLinks []orderLinkVM
+	Canonical  string
+	NoIndex    bool
+	Query      string
+	FoundStr   string
+	Category   string
 	// CategoryText is the owner's own words above the listing, and the first
 	// sentences of it become the page description: generated text is the same on
 	// every page of every shop, and a search engine has seen it a million times.
@@ -643,9 +647,11 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	if len([]rune(desc)) > 160 {
 		desc = string([]rune(desc)[:157]) + "…"
 	}
-	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL,
+	shop := s.shop()
+	data := pageVM{Shop: shop, BaseURL: s.baseURL,
 		CSS: template.CSS(styleCSS), P: p, Images: imgs,
 		PriceStr: priceStr(p.Price), PriceValidUntil: time.Now().AddDate(0, 1, 0).Format("2006-01-02"),
+		OrderLinks:      orderLinks(shop, p, s.baseURL+"/p/"+p.Slug),
 		MetaDescription: desc,
 		Specs:           specs(p),
 		CartCount:       cartCount(r)}

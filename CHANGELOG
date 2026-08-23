@@ -1,3 +1,10 @@
+1.32.0 / August 23, 2026
+[Alexandr Topilski]
+- A product page can offer to order in a message. Fill in a Telegram handle or a WhatsApp number and each card grows a button that opens the buyer's own messenger with the text already written: what they want, its article, its price and the page it came from. The seller gets a contact they can answer; the buyer skips a checkout they did not want
+- It is a link, not a widget. A messenger deep link needs no JavaScript, so the storefront's promise survives intact — and so does the page weight. The whole message is escaped on the server, because a real title reads `Ерш унитазный с/подст "Шляпа" д13х36см` and an unescaped quote ends the address at the first one
+- Nothing about that button is counted. No click counter, no marker in the text, no row in the database: a deal closed in a chat is the seller's business, and a shop that quietly measured it would be charging rent on a conversation it had no part in
+- The two product feeds are now documented rather than merely present. `/yml.xml` feeds a Yandex Direct product campaign and `/gmc.xml` feeds Google Merchant Center; both are built from the live catalogue, carry article, price, currency, availability, category, picture and description per offer, and need no export step. Measured on a live shop: 23,844 offers and, because a variant here is its own product, 23,844 distinct addresses — the duplicate-URL problem that afflicts most feeds cannot arise
+
 1.31.0 / August 21, 2026
 [Alexandr Topilski]
 - The storefront has a contacts page. A shop is expected to say whom the buyer is paying, and this one had nowhere to say it: only the delivery-and-payment page existed. Both search engines weigh a published contact when they rank a shop, and a buyer about to pay a stranger looks for it first

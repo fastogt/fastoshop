@@ -470,3 +470,14 @@ footer {
   max-width: 220px;
   object-fit: contain;
 }
+
+/* "Order in a message" buttons. Secondary to the cart on purpose: the shop's
+   own checkout keeps the order in the shop, where it is counted and can be
+   answered later; a messenger thread lives in somebody's phone. */
+.msg-order { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0 0; }
+.btn-msg {
+  flex: 1 1 12rem; text-align: center; padding: .6rem .9rem; border-radius: .5rem;
+  border: 1px solid var(--accent); color: var(--accent); text-decoration: none;
+  font-weight: 600;
+}
+.btn-msg:hover { background: var(--surface); }
