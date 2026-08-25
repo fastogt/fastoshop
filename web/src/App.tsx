@@ -114,7 +114,11 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <header className="border-line border-b bg-white">
-        <div className="page flex items-center gap-1">
+        {/* flex-wrap: eight tabs plus three links do not fit a phone, and a row
+            that cannot wrap stretched the whole page to 999px on a 390px screen.
+            The overflow was not scrollable, so the price column and half the menu
+            sat past the right edge with no way to reach them. */}
+        <div className="page flex flex-wrap items-center gap-1">
           <span className="mr-6 text-lg font-extrabold tracking-tight">
             FastoShop
           </span>

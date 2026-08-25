@@ -397,8 +397,14 @@ export default function Products() {
     try {
       const d = await api.enrichProduct(edit.id);
       setEdit((prev) =>
-        prev ? { ...prev, title: d.title, description: d.description,
-          category: d.category || prev.category } : prev,
+        prev
+          ? {
+              ...prev,
+              title: d.title,
+              description: d.description,
+              category: d.category || prev.category,
+            }
+          : prev,
       );
     } catch (e) {
       setEnrichMsg(apiError(e) ?? t("bulkFailed"));
@@ -637,16 +643,16 @@ export default function Products() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <input
-            className="field w-64"
+            className="field w-64 max-w-full"
             placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           {suppliers.length > 0 && (
             <select
-              className="field w-48"
+              className="field w-48 max-w-full"
               // "" is a real filter (goods with no supplier), so "all" needs a
               // value of its own rather than reusing the empty string.
               value={supplier === undefined ? "all" : supplier}
@@ -764,20 +770,22 @@ export default function Products() {
             <div>
               <label className="label">{t("labelSize")}</label>
               <div className="flex items-center gap-2">
-                {(["length_mm", "width_mm", "height_mm"] as const).map((k, i) => (
-                  <div key={k} className="flex items-center gap-2">
-                    {i > 0 && <span className="text-muted">×</span>}
-                    <input
-                      className="field w-24"
-                      type="number"
-                      min="0"
-                      value={edit[k] ?? ""}
-                      onChange={(e) =>
-                        setEdit({ ...edit, [k]: numOrNull(e.target.value) })
-                      }
-                    />
-                  </div>
-                ))}
+                {(["length_mm", "width_mm", "height_mm"] as const).map(
+                  (k, i) => (
+                    <div key={k} className="flex items-center gap-2">
+                      {i > 0 && <span className="text-muted">×</span>}
+                      <input
+                        className="field w-24"
+                        type="number"
+                        min="0"
+                        value={edit[k] ?? ""}
+                        onChange={(e) =>
+                          setEdit({ ...edit, [k]: numOrNull(e.target.value) })
+                        }
+                      />
+                    </div>
+                  ),
+                )}
               </div>
               <p className="hint mt-1">{t("sizeHint")}</p>
             </div>

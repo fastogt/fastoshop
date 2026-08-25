@@ -1,3 +1,9 @@
+1.32.1 / August 25, 2026
+[Alexandr Topilski]
+- The admin is reachable on a phone again. Its header is a single row of eight tabs and three links, and a row that cannot wrap stretched the whole page to 999px on a 390px screen; the overflow was not scrollable, so the price column, half the tabs and the link back to the shop sat past the right edge with no way to reach them. The filter row above the product table did the same with a 256px search field beside a 192px select
+- Both rows now wrap, and the two fields may shrink below their preferred width. Measured on a live admin at 390px: the page went from 999px to 390px and every control in the header became reachable. Nothing changes on a desktop, where the rows fit on one line and never wrap
+- The product table itself was never the problem: it lives in a container of its own that scrolls sideways, which is what a table of twenty columns should do on a phone
+
 1.32.0 / August 23, 2026
 [Alexandr Topilski]
 - A product page can offer to order in a message. Fill in a Telegram handle or a WhatsApp number and each card grows a button that opens the buyer's own messenger with the text already written: what they want, its article, its price and the page it came from. The seller gets a contact they can answer; the buyer skips a checkout they did not want
