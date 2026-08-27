@@ -91,8 +91,8 @@ const kText = {
   // owner who never picked one sees "linked" and then nothing happens on the
   // platform, with no error anywhere: the worker skips stocks in silence.
   noWarehouse: {
-    ru: " Остатки не поедут: не выбран склад в настройках выше.",
-    en: " Stock will not travel: no warehouse is picked in the settings above.",
+    ru: " Остатки не поедут: не задан склад. Выберите его в настройках выше, а если список пуст — заведите склад в кабинете Wildberries: через API склады не создаются.",
+    en: " Stock will not travel: no warehouse is set. Pick one in the settings above, and if the list is empty, create a warehouse in the Wildberries cabinet — the API does not create them.",
   },
   unpublishDone: {
     ru: "Снято с площадки: {n}",

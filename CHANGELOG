@@ -1,3 +1,7 @@
+1.34.1 / August 27, 2026
+[Alexandr Topilski]
+- The warning added an hour ago sent the owner to a dropdown that can be empty. Neither platform creates warehouses over the API — we only read the list — so a cabinet with no warehouse at all leaves nothing to pick, and that is the case a first-time seller is actually in. The message now names both halves: pick one above, and if the list is empty the warehouse has to be created in the platform's own cabinet first
+
 1.34.0 / August 27, 2026
 [Alexandr Topilski]
 - «Связать по артикулу» is gone from the code, not just from the screen. It read the cabinet's articles and wrote every pair that matched — which is what «Опубликовать» does over a selection instead of over everything, and the shop has had multi-select on that table since it was built. The endpoint, its response types and its route are removed; the matching rules its tests held (a multi-size card is refused with a reason, an imported "article-size" matches its own barcode) now run against publishing, which is the code that does the matching
