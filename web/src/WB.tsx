@@ -69,8 +69,11 @@ const kText = {
   published: { ru: "На площадке", en: "On the platform" },
   yes: { ru: "да", en: "yes" },
   cabinetSummary: {
-    ru: "В кабинете карточек: {cards}. Связано: {linked}, можно связать: {ready}, карточки нет: {noCard}.",
-    en: "Cards in the cabinet: {cards}. Linked: {linked}, ready to link: {ready}, no card: {noCard}.",
+    // Only the cabinet's own card count: the three states below it are on the
+    // buttons, where they belong — the owner is choosing what to look at, and a
+    // sentence repeating the choice word for word is noise between them.
+    ru: "В кабинете карточек: {cards}.",
+    en: "Cards in the cabinet: {cards}.",
   },
   cabinetAmbiguous: {
     ru: "Ещё {n} товаров нашли карточку с несколькими размерами — её нельзя связать по одному артикулу.",
@@ -95,7 +98,7 @@ const kText = {
   },
 
   linking: { ru: "Связь с карточками", en: "Card linking" },
-  linkByArticle: { ru: "Связать по артикулу", en: "Link by article" },
+  moreCards: { ru: "…и ещё {n}", en: "…and {n} more" },
   linkHint: {
     ru: "Артикул товара сверяется с артикулом продавца в карточке. Штрихкод берётся из самой карточки — в прайсе его нет и быть не должно.",
     en: "The product article is matched against the seller's article on the card. The barcode is read off the card itself — a price list does not carry one.",
@@ -186,7 +189,6 @@ export default function WB() {
   const [warehouses, setWarehouses] = useState<WBWarehouse[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  const [linkMsg, setLinkMsg] = useState("");
   const [priceMsg, setPriceMsg] = useState("");
   const [ladderMsg, setLadderMsg] = useState("");
   const [pubMsg, setPubMsg] = useState("");
@@ -215,14 +217,10 @@ export default function WB() {
   const [markup, setMarkup] = useState("");
   const [noCard, setNoCard] = useState<WBUnlinkedProduct[]>([]);
   const [zeroFailed, setZeroFailed] = useState<WBUnlinkedProduct[]>([]);
-  const [unlinked, setUnlinked] = useState<WBUnlinkedProduct[]>([]);
   // Asked once when the tab opens, and again after publishing changed the
   // answer. Deliberately not part of the paged candidates call: that one runs
   // per page of a hundred rows and would re-read the cabinet every time.
   const [cabinet, setCabinet] = useState<CabinetState | null>(null);
-  const [unlinkedCards, setUnlinkedCards] = useState<
-    { nm_id: number; vendor_code: string }[]
-  >([]);
 
   const ready = useMemo(() => new Set(cabinet?.ready_ids ?? []), [cabinet]);
 
@@ -342,15 +340,6 @@ export default function WB() {
         t("checkOk", { n: r.total }) +
         (who ? `. ${t("checkWho", { name: who })}` : "")
       );
-    });
-
-  const link = () =>
-    run(setLinkMsg, async () => {
-      const r = await api.wbLink();
-      setUnlinked(r.unlinked_products);
-      setUnlinkedCards(r.unlinked_cards);
-      await loadLinks();
-      return t("linkDone", { n: r.linked });
     });
 
   const loadWarehouses = () =>
@@ -522,16 +511,9 @@ export default function WB() {
         <h2 className="font-bold">{t("publication")}</h2>
         {cabinet && (
           <p className="hint">
-            {t("cabinetSummary", {
-              cards: cabinet.cards,
-              linked: cabinet.linked,
-              ready: cabinet.ready,
-              noCard: cabinet.no_card,
-            })}
+            {t("cabinetSummary", { cards: cabinet.cards })}
             {!!cabinet.ambiguous &&
               " " + t("cabinetAmbiguous", { n: cabinet.ambiguous })}
-            {cabinet.orphans > 0 &&
-              " " + t("cabinetOrphans", { n: cabinet.orphans })}
           </p>
         )}
         {cabinet && (
@@ -660,44 +642,38 @@ export default function WB() {
         )}
       </section>
 
-      <section className="card flex flex-col gap-4">
-        <h2 className="font-bold">{t("linking")}</h2>
-        <p className="hint">
-          {t("linkedCount", { n: s.linked, m: s.unlinked })}
-        </p>
-        <div>
-          <button className="btn-ghost" disabled={busy} onClick={link}>
-            {t("linkByArticle")}
-          </button>
-          <p className="hint mt-1">{t("linkHint")}</p>
-        </div>
-        {line(linkMsg)}
-        {unlinked.length > 0 && (
+      {!!cabinet?.orphan_skus?.length && (
+        <section className="card flex flex-col gap-2">
           <div>
-            <p className="hint">{t("unlinkedProducts")}</p>
-            <ul className="hint list-disc pl-5">
-              {unlinked.slice(0, 50).map((p) => (
-                <li key={p.id}>
-                  {p.sku} — {p.title}
-                  {p.reason && ` (${p.reason})`}
-                </li>
-              ))}
-            </ul>
+            <h2 className="font-bold">{t("unlinkedCards")}</h2>
           </div>
-        )}
-        {unlinkedCards.length > 0 && (
-          <div>
-            <p className="hint">{t("unlinkedCards")}</p>
-            <ul className="hint list-disc pl-5">
-              {unlinkedCards.slice(0, 50).map((c) => (
-                <li key={c.nm_id}>
-                  {c.vendor_code} (nmID {c.nm_id})
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          <ul className="flex flex-wrap gap-2">
+            {cabinet.orphan_skus.map((c) => (
+              <li
+                key={c}
+                className="border-line rounded border px-2 py-1 text-sm"
+              >
+                {c}
+              </li>
+            ))}
+          </ul>
+          {cabinet.orphans > cabinet.orphan_skus.length && (
+            <p className="hint">
+              {t("moreCards", {
+                n: cabinet.orphans - cabinet.orphan_skus.length,
+              })}
+            </p>
+          )}
+        </section>
+      )}
 
+      {/* "Связать по артикулу" did what "Опубликовать" does, only over the whole
+          catalogue — both read the cabinet's vendor codes and write the pairs
+          that match. Its counters also called two states one thing, which is
+          what the state buttons above exist to separate. The cards with no
+          product of ours moved to their own section, filled by the cabinet call
+          the tab already makes instead of by pressing a button. */}
+      <section className="card flex flex-col gap-4">
         <div className="flex flex-wrap items-end gap-2">
           <div>
             <label className="label" htmlFor="wb-markup">

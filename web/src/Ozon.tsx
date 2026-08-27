@@ -3,7 +3,6 @@ import {
   api,
   apiError,
   type OzonSettings,
-  type OzonLinkResult,
   type OzonLinkPage,
   type OzonWarehouse,
   type OzonOrderPage,
@@ -89,8 +88,11 @@ const kText = {
     en: "Tick the products you sell on Ozon. Only ticked ones go to the channel; the rest live on the storefront and never reach the marketplace.",
   },
   cabinetSummary: {
-    ru: "В кабинете карточек: {cards}. Связано: {linked}, можно связать: {ready}, карточки нет: {noCard}.",
-    en: "Cards in the cabinet: {cards}. Linked: {linked}, ready to link: {ready}, no card: {noCard}.",
+    // Only the cabinet's own card count: the three states below it are on the
+    // buttons, where they belong — the owner is choosing what to look at, and a
+    // sentence repeating the choice word for word is noise between them.
+    ru: "В кабинете карточек: {cards}.",
+    en: "Cards in the cabinet: {cards}.",
   },
   cabinetOrphans: {
     ru: "Ещё {n} карточек на площадке не совпали ни с одним товаром.",
@@ -207,6 +209,10 @@ const kText = {
     ru: "Есть в кабинете, нет в магазине",
     en: "In the account, not in the shop",
   },
+  extraOnOzonMore: {
+    ru: "…и ещё {n}",
+    en: "…and {n} more",
+  },
   extraOnOzonHint: {
     ru: "Эти карточки Ozon не совпали ни с одним товаром — их можно перенести на вкладке «Импорт».",
     en: "These Ozon listings matched no product — you can bring them over on the Import tab.",
@@ -270,8 +276,6 @@ export default function Ozon() {
   const [s, setS] = useState<OzonSettings | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [msg, setMsg] = useState("");
-  const [linkMsg, setLinkMsg] = useState("");
-  const [result, setResult] = useState<OzonLinkResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [warehouses, setWarehouses] = useState<OzonWarehouse[] | null>(null);
   const [stockMsg, setStockMsg] = useState("");
@@ -539,23 +543,6 @@ export default function Ozon() {
     }
   };
 
-  const link = async () => {
-    setBusy(true);
-    setLinkMsg("");
-    setResult(null);
-    try {
-      const r = await api.ozonLink();
-      setResult(r);
-      setLinkMsg(t("linkedResult", { n: r.linked }));
-      setS(await api.ozonSettings());
-      await loadLinks();
-    } catch (e) {
-      setLinkMsg(fail(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   // The warehouse list is a convenience, not an obligation: if the method
   // answers in a way we did not expect, the field stays manual and the owner
   // sees why.
@@ -699,14 +686,7 @@ export default function Ozon() {
           <p className="hint">{t("publicationHint")}</p>
           {cabinet && (
             <p className="hint mt-1">
-              {t("cabinetSummary", {
-                cards: cabinet.cards,
-                linked: cabinet.linked,
-                ready: cabinet.ready,
-                noCard: cabinet.no_card,
-              })}
-              {cabinet.orphans > 0 &&
-                " " + t("cabinetOrphans", { n: cabinet.orphans })}
+              {t("cabinetSummary", { cards: cabinet.cards })}
             </p>
           )}
         </div>
@@ -858,42 +838,12 @@ export default function Ozon() {
       </section>
 
       <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("linking")}</h2>
-          <p className="hint">{t("linkingHint")}</p>
-          <p className="hint mt-1">
-            {t("linkedNow", { linked: s.linked, unlinked: s.unlinked })}
-          </p>
-        </div>
-        <div>
-          <button className="btn" disabled={busy} onClick={link}>
-            {t("linkByArticle")}
-          </button>
-        </div>
-
-        {linkMsg && (
-          <p className={isError(linkMsg) ? "text-red-600" : "text-green-700"}>
-            {linkMsg}
-          </p>
-        )}
-
-        {result && result.unlinked_products.length > 0 && (
-          <div>
-            <h3 className="font-semibold">{t("missingOnOzon")}</h3>
-            <p className="hint">{t("missingOnOzonHint")}</p>
-            <ul className="mt-2 flex flex-col gap-1">
-              {result.unlinked_products.map((p) => (
-                <li key={p.id} className="text-sm">
-                  {p.title}{" "}
-                  <span className="text-muted">
-                    {t("articleOf", { sku: p.sku || t("articleEmpty") })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
+        {/* "Связать по артикулу" lived here and did what "Опубликовать" does,
+            only over the whole catalogue: both fetch the cabinet's articles and
+            write the pairs that match. Worse, its own counters called the two
+            states one thing — "без связи: 105" for 104 products with no card
+            and one that only needed a click — which is the conflation the state
+            buttons above exist to undo. */}
         {links && links.links.length > 0 && (
           <div className="flex flex-col gap-3">
             <div>
@@ -1106,21 +1056,36 @@ export default function Ozon() {
             )}
           </div>
         )}
-
-        {result && result.unlinked_offers.length > 0 && (
-          <div>
-            <h3 className="font-semibold">{t("extraOnOzon")}</h3>
-            <p className="hint">{t("extraOnOzonHint")}</p>
-            <ul className="mt-2 flex flex-col gap-1">
-              {result.unlinked_offers.map((o) => (
-                <li key={o} className="text-sm">
-                  {o}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </section>
+
+      {/* Cards in the cabinet with no product of ours. This used to appear only
+          after pressing a button; the cabinet call the tab already makes on open
+          answers it for free, so the owner sees it without asking. */}
+      {!!cabinet?.orphan_skus?.length && (
+        <section className="card flex flex-col gap-2">
+          <div>
+            <h2 className="font-bold">{t("extraOnOzon")}</h2>
+            <p className="hint">{t("extraOnOzonHint")}</p>
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {cabinet.orphan_skus.map((o) => (
+              <li
+                key={o}
+                className="border-line rounded border px-2 py-1 text-sm"
+              >
+                {o}
+              </li>
+            ))}
+          </ul>
+          {cabinet.orphans > cabinet.orphan_skus.length && (
+            <p className="hint">
+              {t("extraOnOzonMore", {
+                n: cabinet.orphans - cabinet.orphan_skus.length,
+              })}
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="card flex flex-col gap-4">
         <div>

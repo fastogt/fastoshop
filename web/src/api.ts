@@ -414,6 +414,9 @@ export interface CabinetState {
   // create one would make a duplicate.
   ambiguous?: number;
   ready_ids: number[];
+  // The articles behind `orphans`, capped by the server. The number says
+  // whether they matter, the list says which they are.
+  orphan_skus: string[];
 }
 
 export interface OzonPublishResult {
