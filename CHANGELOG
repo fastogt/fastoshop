@@ -1,3 +1,7 @@
+1.36.1 / August 27, 2026
+[Alexandr Topilski]
+- Prices go to Ozon to the kopeck. We rounded up to a whole unit before sending — 25.11 left as 26.00 — on the belief that the platform takes whole rubles. It does not: "25.11" is accepted and stored as 25.11, verified against a live BYN cabinet. On roubles the rounding cost a kopeck; on a 2.53 BYN item it added eighteen percent to the buyer's price under the seller's name. The row now remembers exactly what was sent, so nothing flaps between "needs push" and "pushed"
+
 1.36.0 / August 27, 2026
 [Alexandr Topilski]
 - The markup ladder refuses to cross currencies. It multiplies the shelf price to get the platform price — it does not convert, and nothing said so: a storefront trading in RUB against an ozon.by cabinet in BYN would have shipped prices off by the exchange rate, about thirtyfold, in the direction that sells the goods for nothing. Both bulk fills now stop and say which two currencies disagree. A price typed into a single row is untouched: the owner typing it knows which money they mean. We do not convert, because a rate carried in the shop goes stale in silence

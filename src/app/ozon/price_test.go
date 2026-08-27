@@ -53,7 +53,7 @@ func TestPriceOptIn(t *testing.T) {
 		t.Fatalf("first price push: %d/%d", pushed, failed)
 	}
 	if got := m.lastPriceBatch(t); len(got) != 1 || got[0].OfferID != "A" ||
-		got[0].Price != "1000" || got[0].OldPrice != "0" || got[0].CurrencyCode != "RUB" {
+		got[0].Price != "1000.00" || got[0].OldPrice != "0" || got[0].CurrencyCode != "RUB" {
 		t.Fatalf("price batch: %+v", got)
 	}
 
@@ -70,7 +70,7 @@ func TestPriceOptIn(t *testing.T) {
 	if pushed, _ := pass(t, w); pushed != 1 {
 		t.Fatal("new price not pushed")
 	}
-	if got := m.lastPriceBatch(t); got[0].Price != "1200" {
+	if got := m.lastPriceBatch(t); got[0].Price != "1200.00" {
 		t.Fatalf("want 1200: %+v", got)
 	}
 
@@ -84,9 +84,10 @@ func TestPriceOptIn(t *testing.T) {
 	}
 }
 
-// TestPriceRoundsUpWithoutFlapping: Ozon takes whole rubles, and remembering the
-// rounded value is what keeps the row from being "changed" on every pass.
-func TestPriceRoundsUpWithoutFlapping(t *testing.T) {
+// TestPriceKeepsKopecksWithoutFlapping: the platform takes the minor unit, so
+// 1288.50 goes as it stands. Remembering exactly what was sent is what keeps the
+// row from being "changed" on every pass.
+func TestPriceKeepsKopecksWithoutFlapping(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 1)
 	setPrice(t, d, id, 128850)
@@ -94,10 +95,10 @@ func TestPriceRoundsUpWithoutFlapping(t *testing.T) {
 	if pushed, _ := pass(t, w); pushed != 2 {
 		t.Fatal("stock and price must go in one pass")
 	}
-	if got := m.lastPriceBatch(t); got[0].Price != "1289" {
-		t.Fatalf("rounding up: %+v", got)
+	if got := m.lastPriceBatch(t); got[0].Price != "1288.50" {
+		t.Fatalf("kopecks lost on the wire: %+v", got)
 	}
-	if r := linkRow(t, d, id); r.PricePushed != 128900 {
+	if r := linkRow(t, d, id); r.PricePushed != 128850 {
 		t.Fatalf("recorded a value that was not sent: %d", r.PricePushed)
 	}
 

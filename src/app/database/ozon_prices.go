@@ -15,11 +15,11 @@ type OzonPriceRow struct {
 // kOzonPriceGuard: price = 0 means the owner never opted this product in, and we
 // never touch a price we were not asked to manage. price_pushed = -1 is "no
 // baseline yet", so the first push of a set price always goes.
-// The comparison rounds the wanted price up to whole rubles first, because that
-// is what Ozon accepts and therefore what price_pushed holds — comparing raw
-// kopecks against a rounded value would mark every such row as changed forever.
+// price_pushed holds exactly what was sent, down to the kopeck, so the wanted
+// price is compared to it as it stands. A price of zero is not "free", it is
+// "not managed here" — those rows never travel.
 const kOzonPriceGuard = `offer_id != '' AND price > 0
-	 AND (price + 99) / 100 * 100 != price_pushed`
+	 AND price != price_pushed`
 
 func (d *Database) OzonPriceToPush() ([]OzonPriceRow, error) {
 	return d.ozonPriceRows(

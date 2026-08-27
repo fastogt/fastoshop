@@ -217,21 +217,28 @@ type PriceItem struct {
 }
 
 // NewPriceItem builds the wire item for a price stored in kopecks and returns
-// the value to remember as pushed, in kopecks. Rounding is up: an extra kopeck
-// on the shelf costs the seller nothing, a missing one costs margin. The stored
-// value is the rounded one, so the next pass compares like with like and the
-// row does not flap between "needs push" and "pushed" forever. currency is the
-// cabinet's trading currency — RUB for ozon.ru, BYN for ozon.by.
+// the value to remember as pushed. The platform takes the minor unit — "25.11"
+// is accepted and stored as 25.11, verified against a live BYN cabinet — so
+// nothing is rounded: a rouble rounded up is a kopeck, but a BYN rounded up on
+// a 2.53 item is eighteen percent of the price, charged to the buyer under the
+// seller's name. What we send is what we remember, so the next pass compares
+// like with like and the row does not flap between "needs push" and "pushed".
+// currency is the cabinet's trading currency — RUB for ozon.ru, BYN for ozon.by.
 func NewPriceItem(offerID string, kopecks int64, currency string) (PriceItem, int64) {
-	rubles := (kopecks + 99) / 100
 	return PriceItem{
 		AutoActionEnabled:    "UNKNOWN",
 		CurrencyCode:         currency,
 		OfferID:              offerID,
-		Price:                strconv.FormatInt(rubles, 10),
+		Price:                formatMinor(kopecks),
 		OldPrice:             "0",
 		PriceStrategyEnabled: "UNKNOWN",
-	}, rubles * 100
+	}, kopecks
+}
+
+// formatMinor writes kopecks as the platform's decimal string.
+func formatMinor(kopecks int64) string {
+	return strconv.FormatInt(kopecks/100, 10) + "." +
+		fmt.Sprintf("%02d", kopecks%100)
 }
 
 type pricesRequest struct {
