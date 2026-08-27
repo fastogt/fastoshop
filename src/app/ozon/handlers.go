@@ -487,6 +487,32 @@ func (h *Handlers) SetPrice(w http.ResponseWriter, r *http.Request) {
 // FillPrices is the bulk helper "shelf price + N%". It fills only links whose
 // price is still zero: the owner's own numbers are never overwritten in bulk,
 // so the button is safe to press twice.
+// sameCurrency guards the bulk price fills. Both of them derive the platform
+// price from the shelf price by a multiplier, so a shop trading in one currency
+// and a cabinet in another would ship prices off by the exchange rate — off by
+// thirty, between RUB and BYN, in the seller's own money. We refuse instead of
+// converting: a rate we carry ourselves goes stale in silence, and the seller
+// sets their own prices anyway. A price typed into one row is left alone — the
+// owner typing it knows which money they mean.
+func (h *Handlers) sameCurrency(w http.ResponseWriter) bool {
+	// No settings row means the shop has not been set up at all, so there is no
+	// storefront currency to disagree with. Nothing to guard.
+	shop, err := h.db.GetSettings()
+	if err != nil {
+		return true
+	}
+	s, err := h.db.GetOzonSettings()
+	if err != nil {
+		writeInternalError(w, err)
+		return false
+	}
+	if shop.Currency != s.Currency {
+		writeBadRequest(w, h.msg(i18n.KeyOzonCurrencyMismatch))
+		return false
+	}
+	return true
+}
+
 func (h *Handlers) FillPrices(w http.ResponseWriter, r *http.Request) {
 	var req fillPricesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -495,6 +521,9 @@ func (h *Handlers) FillPrices(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.MarkupBP < 0 {
 		writeBadRequest(w, h.msg(i18n.KeyOzonNegativeMarkup))
+		return
+	}
+	if !h.sameCurrency(w) {
 		return
 	}
 	filled, err := h.db.FillOzonPrices(req.MarkupBP)
@@ -537,6 +566,9 @@ func (h *Handlers) SetPriceRules(w http.ResponseWriter, r *http.Request) {
 
 // FillPricesByRules is the ladder's counterpart of the flat "+N%" helper.
 func (h *Handlers) FillPricesByRules(w http.ResponseWriter, r *http.Request) {
+	if !h.sameCurrency(w) {
+		return
+	}
 	n, err := h.db.FillOzonPricesByRules()
 	if err != nil {
 		writeBadRequest(w, h.msg(i18n.KeyOzonBadRules))

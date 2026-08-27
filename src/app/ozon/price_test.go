@@ -512,3 +512,36 @@ func TestPushNowIgnoresBackoff(t *testing.T) {
 		t.Fatalf("push now sent %d, want the fixed price to travel", res.Pushed)
 	}
 }
+
+// TestBulkFillRefusesCrossCurrency: the ladder multiplies the shelf price, it
+// does not convert it. A RUB storefront against a BYN cabinet would put prices
+// on the platform off by the exchange rate — around thirtyfold, and in the
+// direction that sells the goods for nothing.
+func TestBulkFillRefusesCrossCurrency(t *testing.T) {
+	h, d := newTestHandlers(t)
+	if err := d.SaveOzonSettings(&database.OzonSettings{
+		ClientID: "cid", APIKey: "key", Currency: database.OzonCurrencyBYN,
+		Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.CreateSettings(&database.Settings{
+		ShopName: "лавка", Currency: database.ShopCurrencyRUB}); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, path := range []string{"/price/fill", "/price/fill-by-rules"} {
+		w := do(t, h, "POST", path, `{"markup_bp":5000}`)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("%s crossed currencies: %d %s", path, w.Code, w.Body.String())
+		}
+	}
+
+	// Same money on both sides: the guard steps aside.
+	if err := d.UpdateSettings(&database.Settings{
+		ShopName: "лавка", Currency: database.ShopCurrencyBYN}); err != nil {
+		t.Fatal(err)
+	}
+	if w := do(t, h, "POST", "/price/fill", `{"markup_bp":5000}`); w.Code != http.StatusOK {
+		t.Fatalf("same currency refused: %d %s", w.Code, w.Body.String())
+	}
+}

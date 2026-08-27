@@ -1,3 +1,7 @@
+1.36.0 / August 27, 2026
+[Alexandr Topilski]
+- The markup ladder refuses to cross currencies. It multiplies the shelf price to get the platform price — it does not convert, and nothing said so: a storefront trading in RUB against an ozon.by cabinet in BYN would have shipped prices off by the exchange rate, about thirtyfold, in the direction that sells the goods for nothing. Both bulk fills now stop and say which two currencies disagree. A price typed into a single row is untouched: the owner typing it knows which money they mean. We do not convert, because a rate carried in the shop goes stale in silence
+
 1.35.0 / August 27, 2026
 [Alexandr Topilski]
 - «Отправить сейчас» no longer waits out a backoff the owner cannot see. A refused price or stock is retried later on purpose — that is what backoff is for, and the five-minute ticker keeps honouring it — but the button is an explicit instruction from someone who has just fixed what the platform complained about. It answered "sent 0, failed 0" and looked broken. Measured on a live cabinet: a price refused with «Неверно указана валюта» sat for thirteen minutes while the button did nothing
