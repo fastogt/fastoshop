@@ -1612,3 +1612,29 @@ func TestContactsAppearsOnlyWhenThereIsSomethingToShow(t *testing.T) {
 		t.Error("no link to /contacts in the footer")
 	}
 }
+
+// Clean-param folds the sorted copies of a section into the section itself, so
+// a crawler stops spending requests on permutations of the same products. The
+// half that matters is what it must NOT list: page two holds different goods,
+// and folding it into page one would hide most of a 24 000-product catalogue.
+func TestRobotsCleanParam(t *testing.T) {
+	_, h := setup(t)
+	rb := get(t, h, "/robots.txt")
+	line := ""
+	for _, l := range strings.Split(rb, "\n") {
+		if strings.HasPrefix(l, "Clean-param:") {
+			line = l
+		}
+	}
+	if line == "" {
+		t.Fatalf("no Clean-param: %s", rb)
+	}
+	for _, p := range []string{"sort", "desc", "instock"} {
+		if !strings.Contains(line, p) {
+			t.Errorf("%q missing from %q", p, line)
+		}
+	}
+	if strings.Contains(line, "page") {
+		t.Errorf("page must stay crawlable: %q", line)
+	}
+}

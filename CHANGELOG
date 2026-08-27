@@ -1,3 +1,8 @@
+1.32.3 / August 27, 2026
+[Alexandr Topilski]
+- robots.txt tells Yandex which query parameters reorder a page rather than make a new one. A canonical already pointed every sorted variant at the plain address, but a canonical is a hint given after the fetch, so the crawler kept spending a request on each permutation. Yandex reported the waste on a live shop: four sort orders crossed with an in-stock filter mean the sorted copies of a section outnumber its real pages, on a catalogue of 24 000 products
+- Clean-param lists sort, desc and instock. It deliberately does not list page: page two holds different goods, and folding it into page one would hide most of the catalogue from the crawler — a test pins that
+
 1.32.2 / August 27, 2026
 [Alexandr Topilski]
 - The product table stops claiming a product has no photo when it has one. Each 40px cell pulled the full-size original, and there are up to 500 rows on a page: a hundred products meant 9.8 MB of WebP requested at once, the browser dropped two thirds of them, and the error handler replaced every dropped one with the "no photo" stub. The table showed 67 products as pictureless while all 100 had a picture

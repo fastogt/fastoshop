@@ -751,9 +751,22 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 	_ = xml.NewEncoder(w).Encode(set)
 }
 
+// kCleanParams are the query parameters that reorder or filter a page without
+// changing which page it is. A canonical already points every sorted variant at
+// the plain address, and Google honours it — but a canonical is a hint given
+// after the fetch, so the crawler still spends a request on each permutation.
+// On a live shop Yandex reported the waste directly: with 24 000 products and
+// four sort orders crossed with an in-stock filter, the sorted copies of one
+// section outnumber its real pages.
+//
+// page is deliberately absent. Page two holds different products, and telling a
+// crawler to fold it into page one would hide most of the catalogue.
+const kCleanParams = "sort&desc&instock"
+
 func (s *Storefront) Robots(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
-	fmt.Fprintf(w, "User-agent: *\nDisallow: /admin\nDisallow: /api\nDisallow: /cart\n\nSitemap: %s/sitemap.xml\n", s.baseURL)
+	fmt.Fprintf(w, "User-agent: *\nDisallow: /admin\nDisallow: /api\nDisallow: /cart\nClean-param: %s\n\nSitemap: %s/sitemap.xml\n",
+		kCleanParams, s.baseURL)
 }
 
 // LlmsTxt is the shop's map for AI assistants — the answer engines already
