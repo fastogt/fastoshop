@@ -480,6 +480,22 @@ export interface LogInfo {
   modified_at: string;
 }
 
+// Which slice of the publication table the tab is showing. The states are not
+// all answerable in SQL: whether a product has a card is the platform's answer,
+// learned once when the tab opened, so "ready" and "no card" travel as the ids
+// from that call rather than as a flag.
+export type CandidateView = {
+  kind: "ready" | "linked" | "nocard" | "all";
+  readyIDs: number[];
+};
+
+function viewParams(v?: CandidateView) {
+  if (!v || v.kind === "all") return {};
+  if (v.kind === "linked") return { state: "linked" };
+  if (v.kind === "ready") return { ids: v.readyIDs.join(",") };
+  return { state: "unlinked", exclude: v.readyIDs.join(",") };
+}
+
 export const api = {
   stats: () => http.get("/stats").then(data<Stats>),
   logInfo: () => http.get("/logs/info").then(data<LogInfo>),
@@ -612,9 +628,9 @@ export const api = {
     http.get(`/ozon/orders?page=${page}`).then(data<OzonOrderPage>),
   ozonLinks: (page: number) =>
     http.get(`/ozon/links?page=${page}`).then(data<OzonLinkPage>),
-  ozonCandidates: (page: number, q: string) =>
+  ozonCandidates: (page: number, q: string, view?: CandidateView) =>
     http
-      .get(`/ozon/candidates`, { params: { page, q } })
+      .get(`/ozon/candidates`, { params: { page, q, ...viewParams(view) } })
       .then(data<OzonCandidatePage>),
   ozonCabinet: () => http.get(`/ozon/cabinet`).then(data<CabinetState>),
   ozonPublish: (ids: number[]) =>
@@ -665,9 +681,9 @@ export const api = {
   wbLinks: (page: number) =>
     http.get(`/wb/links?page=${page}`).then(data<WBLinkPage>),
   wbCabinet: () => http.get(`/wb/cabinet`).then(data<CabinetState>),
-  wbCandidates: (page: number, q: string) =>
+  wbCandidates: (page: number, q: string, view?: CandidateView) =>
     http
-      .get(`/wb/candidates`, { params: { page, q } })
+      .get(`/wb/candidates`, { params: { page, q, ...viewParams(view) } })
       .then(data<WBCandidatePage>),
   wbPublish: (ids: number[]) =>
     http.post("/wb/publish", { product_ids: ids }).then(data<WBPublishResult>),

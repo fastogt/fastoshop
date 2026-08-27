@@ -1,3 +1,9 @@
+1.33.0 / August 27, 2026
+[Alexandr Topilski]
+- The Ozon and Wildberries tabs open on the products the owner can actually do something with, instead of on the whole catalogue. The previous release taught every row to say which of four states it was in; the table still listed all 24 000 of them, so finding the seven with a card meant scrolling past 23 801 without one. The states are now buttons carrying their own counts — «Можно связать 7 · Связано 42 · Нет карточки 23 801 · Все товары 24 000» — and the tab opens on the first one that has an action attached
+- Which state a product is in is the platform's answer, not ours, so the filter travels as the ids the tab learned when it opened. That keeps the promise the cabinet call was built on: one request per tab open, never one per page of a hundred rows
+- Cards in the cabinet that match no product of ours are now named, not only counted. Twenty of them, which is enough to recognise what they are; the count already answered whether they matter
+
 1.32.3 / August 27, 2026
 [Alexandr Topilski]
 - robots.txt tells Yandex which query parameters reorder a page rather than make a new one. A canonical already pointed every sorted variant at the plain address, but a canonical is a hint given after the fetch, so the crawler kept spending a request on each permutation. Yandex reported the waste on a live shop: four sort orders crossed with an in-stock filter mean the sorted copies of a section outnumber its real pages, on a catalogue of 24 000 products

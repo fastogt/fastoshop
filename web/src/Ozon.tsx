@@ -13,6 +13,7 @@ import {
   type CabinetState,
   type OzonLink,
   type OzonOrder,
+  type CandidateView,
 } from "./api";
 import { useLang, useT } from "./i18n";
 import { toRubles, toMinor } from "./money";
@@ -181,6 +182,14 @@ const kText = {
   },
   filled: { ru: "Заполнено цен: {n}", en: "Prices filled: {n}" },
 
+  viewReady: { ru: "Можно связать", en: "Ready to link" },
+  viewLinked: { ru: "Связано", en: "Linked" },
+  viewNoCard: { ru: "Нет карточки", en: "No card" },
+  viewAll: { ru: "Все товары", en: "All products" },
+  orphanList: {
+    ru: "Карточки в кабинете, которым не нашлось товара: {list}",
+    en: "Cards in the cabinet with no product of ours: {list}",
+  },
   colProduct: { ru: "Товар", en: "Product" },
   colArticle: { ru: "Артикул", en: "Article" },
   colStock: { ru: "Остаток", en: "Stock" },
@@ -281,6 +290,11 @@ export default function Ozon() {
   const [candPage, setCandPage] = useState(1);
   const [candSearch, setCandSearch] = useState("");
   const [candQuery, setCandQuery] = useState("");
+  // Which slice the table shows. The tab opens on the only state with an action
+  // attached: on a live shop the catalogue is 24 000 rows and the cabinet holds
+  // a few dozen cards, so "everything" was a wall the owner had to scroll past
+  // to find the seven products a button could do anything with.
+  const [view, setView] = useState<CandidateView["kind"] | null>(null);
   const [pubMsg, setPubMsg] = useState("");
   const [noCard, setNoCard] = useState<{ id: number; sku: string }[]>([]);
   // Asked once when the tab opens, and again after publishing changed the
@@ -296,9 +310,28 @@ export default function Ozon() {
     [linkPage],
   );
 
+  // Open on the pile with a button attached; fall back to what is already
+  // linked, and only then to everything — a shop with no cabinet answer at all
+  // still gets the table it had before this existed.
+  const defaultView: CandidateView["kind"] = !cabinet
+    ? "all"
+    : cabinet.ready > 0
+      ? "ready"
+      : cabinet.linked > 0
+        ? "linked"
+        : "all";
+
+  const readyIDs = useMemo(() => cabinet?.ready_ids ?? [], [cabinet]);
+
   const loadCandidates = useCallback(
-    () => api.ozonCandidates(candPage, candQuery).then(setCandidates),
-    [candPage, candQuery],
+    () =>
+      api
+        .ozonCandidates(candPage, candQuery, {
+          kind: view ?? defaultView,
+          readyIDs,
+        })
+        .then(setCandidates),
+    [candPage, candQuery, view, defaultView, readyIDs],
   );
 
   const ready = useMemo(() => new Set(cabinet?.ready_ids ?? []), [cabinet]);
@@ -677,6 +710,37 @@ export default function Ozon() {
             </p>
           )}
         </div>
+        {cabinet && (
+          // The counts sit on the buttons rather than in a sentence above them:
+          // the owner is choosing what to look at, and the size of each pile is
+          // the whole basis for that choice.
+          <div className="flex flex-wrap items-center gap-2">
+            {(
+              [
+                ["ready", t("viewReady"), cabinet.ready],
+                ["linked", t("viewLinked"), cabinet.linked],
+                ["nocard", t("viewNoCard"), cabinet.no_card],
+                ["all", t("viewAll"), cabinet.products],
+              ] as const
+            ).map(([kind, label, n]) => (
+              <button
+                key={kind}
+                onClick={() => {
+                  setView(kind);
+                  setCandPage(1);
+                }}
+                className={
+                  "rounded-full border px-3 py-1 text-sm " +
+                  ((view ?? defaultView) === kind
+                    ? "border-brand text-brand font-semibold"
+                    : "border-line text-muted")
+                }
+              >
+                {label} {n}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <input
             className="field w-64"

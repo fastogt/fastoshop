@@ -11,6 +11,7 @@ import {
   type WBSettings,
   type WBUnlinkedProduct,
   type WBWarehouse,
+  type CandidateView,
 } from "./api";
 import DataTable from "./DataTable";
 import { IconDownload, IconUpload } from "./Icons";
@@ -19,6 +20,11 @@ import { toMinor, toRubles } from "./money";
 
 const kText = {
   heading: { ru: "Wildberries", en: "Wildberries" },
+  viewReady: { ru: "Можно связать", en: "Ready to link" },
+  viewLinked: { ru: "Связано", en: "Linked" },
+  viewNoCard: { ru: "Нет карточки", en: "No card" },
+  viewAll: { ru: "Все товары", en: "All products" },
+
   lead: {
     ru: "Витрина и кабинет Wildberries обмениваются остатками и ценами. Карточки заводит продавец в кабинете, мы связываемся с ними по артикулу.",
     en: "The storefront and the Wildberries account exchange stock and prices. Cards are created by the seller in the account; we link to them by article.",
@@ -200,6 +206,10 @@ export default function WB() {
   const [candTotal, setCandTotal] = useState(0);
   const [candSearch, setCandSearch] = useState("");
   const [candQuery, setCandQuery] = useState("");
+  // Which slice the table shows. The tab opens on the only state with an action
+  // attached: on a live shop the catalogue is 24 000 rows and the cabinet holds
+  // a few dozen cards, so "everything" was a wall to scroll past.
+  const [view, setView] = useState<CandidateView["kind"] | null>(null);
 
   const [rules, setRules] = useState<PriceRule[]>([]);
   const [markup, setMarkup] = useState("");
@@ -233,11 +243,26 @@ export default function WB() {
     setLinkTotal(page.total);
   }, [linkPage]);
 
+  // Open on the pile with a button attached; fall back to what is already
+  // linked, and only then to everything.
+  const defaultView: CandidateView["kind"] = !cabinet
+    ? "all"
+    : cabinet.ready > 0
+      ? "ready"
+      : cabinet.linked > 0
+        ? "linked"
+        : "all";
+
+  const readyIDs = useMemo(() => cabinet?.ready_ids ?? [], [cabinet]);
+
   const loadCandidates = useCallback(async () => {
-    const page = await api.wbCandidates(candPage, candQuery);
+    const page = await api.wbCandidates(candPage, candQuery, {
+      kind: view ?? defaultView,
+      readyIDs,
+    });
     setCandidates(page.products);
     setCandTotal(page.total);
-  }, [candPage, candQuery]);
+  }, [candPage, candQuery, view, defaultView, readyIDs]);
 
   useEffect(() => {
     void (async () => {
@@ -508,6 +533,37 @@ export default function WB() {
             {cabinet.orphans > 0 &&
               " " + t("cabinetOrphans", { n: cabinet.orphans })}
           </p>
+        )}
+        {cabinet && (
+          // The counts sit on the buttons rather than in a sentence above them:
+          // the owner is choosing what to look at, and the size of each pile is
+          // the whole basis for that choice.
+          <div className="flex flex-wrap items-center gap-2">
+            {(
+              [
+                ["ready", t("viewReady"), cabinet.ready],
+                ["linked", t("viewLinked"), cabinet.linked],
+                ["nocard", t("viewNoCard"), cabinet.no_card],
+                ["all", t("viewAll"), cabinet.products],
+              ] as const
+            ).map(([kind, label, n]) => (
+              <button
+                key={kind}
+                onClick={() => {
+                  setView(kind);
+                  setCandPage(1);
+                }}
+                className={
+                  "rounded-full border px-3 py-1 text-sm " +
+                  ((view ?? defaultView) === kind
+                    ? "border-brand text-brand font-semibold"
+                    : "border-line text-muted")
+                }
+              >
+                {label} {n}
+              </button>
+            ))}
+          </div>
         )}
         <input
           className="field w-64"

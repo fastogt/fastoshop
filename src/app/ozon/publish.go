@@ -48,6 +48,45 @@ type unpublishResponse struct {
 	Failed []unlinkedProduct `json:"failed"`
 }
 
+// candidateFilter reads the state the tab is showing. The ids come from the
+// cabinet call the tab already made when it opened: which products have a card
+// on the platform is the platform's answer, not ours, and re-asking it per page
+// of a hundred rows is what this endpoint must never do.
+//
+// Nothing given means the whole catalogue, which is what the table did before
+// the filter existed and what it still falls back to.
+func candidateFilter(r *http.Request) database.CandidateFilter {
+	f := database.CandidateFilter{Q: strings.TrimSpace(r.URL.Query().Get("q"))}
+	f.IDs = idList(r.URL.Query().Get("ids"))
+	f.ExcludeIDs = idList(r.URL.Query().Get("exclude"))
+	switch r.URL.Query().Get("state") {
+	case "linked":
+		yes := true
+		f.Linked = &yes
+	case "unlinked":
+		no := false
+		f.Linked = &no
+	}
+	return f
+}
+
+// idList parses "1,2,3". A malformed id is skipped rather than failing the
+// request: the list is a view filter, and answering with a shorter table beats
+// answering with an error the owner cannot act on.
+func idList(s string) []int64 {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]int64, 0, len(parts))
+	for _, p := range parts {
+		if id, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64); err == nil && id > 0 {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 // Candidates lists shop products with their publication state — the table the
 // owner ticks before pressing "Publish".
 func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
@@ -55,13 +94,13 @@ func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
 	if err != nil || page < 1 {
 		page = 1
 	}
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	total, err := h.db.CountProducts(q, database.AnySupplier)
+	f := candidateFilter(r)
+	total, err := h.db.CountOzonCandidates(f)
 	if err != nil {
 		writeInternalError(w, err)
 		return
 	}
-	list, err := h.db.ListOzonCandidates(q, kCandidatesPageSize, (page-1)*kCandidatesPageSize)
+	list, err := h.db.ListOzonCandidates(f, kCandidatesPageSize, (page-1)*kCandidatesPageSize)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -79,6 +118,10 @@ func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, res)
 }
 
+// kOrphanSample caps the named orphans. The count already answers whether
+// they matter; a thousand names would answer nothing louder than twenty.
+const kOrphanSample = 20
+
 // cabinetResponse is what the tab learns when it opens: how the shop's
 // catalogue and the cabinet's cards actually overlap.
 type cabinetResponse struct {
@@ -92,6 +135,10 @@ type cabinetResponse struct {
 	NoCard   int `json:"no_card"`
 	// Orphans are cards in the cabinet whose article is in no product of ours.
 	Orphans int `json:"orphans"`
+	// OrphanSKUs are those articles, so the tab can name them instead of only
+	// counting them. Capped: the number answers "should I care", the list
+	// answers "which ones", and nobody reads past the first screen of either.
+	OrphanSKUs []string `json:"orphan_skus"`
 	// ReadyIDs are the products that pressing "Publish" would actually link.
 	// The tab marks its rows from this and stops offering a button that cannot
 	// work: on a live shop the owner ticked a hundred rows and got ninety-nine
@@ -120,13 +167,17 @@ func (h *Handlers) Cabinet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res := cabinetResponse{
-		Cards: len(offers), Products: len(ids), ReadyIDs: []int64{},
+		Cards: len(offers), Products: len(ids),
+		ReadyIDs: []int64{}, OrphanSKUs: []string{},
 	}
 	onPlatform := make(map[string]struct{}, len(offers))
 	for _, o := range offers {
 		onPlatform[o.OfferID] = struct{}{}
 		if _, mine := ids[o.OfferID]; !mine {
 			res.Orphans++
+			if len(res.OrphanSKUs) < kOrphanSample {
+				res.OrphanSKUs = append(res.OrphanSKUs, o.OfferID)
+			}
 		}
 	}
 	for sku, id := range ids {

@@ -1,9 +1,6 @@
 package database
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 // WBCandidate is a shop product as the channel tab sees it. Published is the
 // presence of a link row — the link set IS the published set.
@@ -17,18 +14,28 @@ type WBCandidate struct {
 	Published bool
 }
 
+// CountWBCandidates counts what the same filter would list, so the table's page
+// numbers agree with its rows.
+func (d *Database) CountWBCandidates(f CandidateFilter) (int, error) {
+	where, args := candidateWhere(f)
+	var n int
+	err := d.db.QueryRow(
+		`SELECT count(*) FROM products p
+		 LEFT JOIN wb_links l ON l.product_id = p.id`+where, args...).Scan(&n)
+	return n, err
+}
+
 // ListWBCandidates returns a page of shop products with their publication state.
 // Hidden products are included on purpose: a product can be off the storefront
 // and still sold on the marketplace.
-func (d *Database) ListWBCandidates(q string, limit, offset int) ([]WBCandidate, error) {
-	where, args := productWhere("", q, supplierAny, false)
+func (d *Database) ListWBCandidates(f CandidateFilter, limit, offset int) ([]WBCandidate, error) {
+	where, args := candidateWhere(f)
 	args = append(args, limit, offset)
 	rows, err := d.db.Query(
 		`SELECT p.id, p.sku, p.title, MAX(p.stock, 0), p.price, p.hidden,
 		        l.product_id IS NOT NULL
 		 FROM products p LEFT JOIN wb_links l ON l.product_id = p.id`+
-			strings.ReplaceAll(where, "category=", "p.category=")+
-			` ORDER BY p.id LIMIT ? OFFSET ?`, args...)
+			where+` ORDER BY p.id LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return nil, err
 	}

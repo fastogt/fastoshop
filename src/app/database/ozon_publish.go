@@ -18,18 +18,106 @@ type OzonCandidate struct {
 	Published bool
 }
 
+// CandidateFilter narrows the publication table to the rows the owner can act
+// on. Which state a product is in depends on the platform's article list, and
+// that list lives in the tab's one-per-open cabinet call rather than in our
+// database — so the caller passes the ids it learned there instead of the
+// database trying to answer a question it cannot see.
+type CandidateFilter struct {
+	Q string
+	// IDs, when set, is the whole result: "ready to link" is exactly the set
+	// the cabinet call returned.
+	IDs []int64
+	// ExcludeIDs removes those same ready ids from the unlinked rows, which is
+	// what "no card" means.
+	ExcludeIDs []int64
+	// Linked filters on our own link table: nil is any, true is linked, false
+	// is not.
+	Linked *bool
+}
+
+// clauses turns the filter into SQL fragments over the products alias p.
+//
+// ponytail: the id lists travel in the query string, so a filter over more than
+// a few thousand ready products would outgrow the URL. The tab falls back to
+// the unfiltered table in that case — a seller with thousands of linkable
+// articles has long since linked them, and paging the whole catalogue is what
+// this endpoint did before the filter existed.
+func (f CandidateFilter) clauses() (string, []any) {
+	var conds []string
+	var args []any
+	if len(f.IDs) > 0 {
+		conds = append(conds, `p.id IN (`+placeholders(len(f.IDs))+`)`)
+		for _, id := range f.IDs {
+			args = append(args, id)
+		}
+	}
+	if len(f.ExcludeIDs) > 0 {
+		conds = append(conds, `p.id NOT IN (`+placeholders(len(f.ExcludeIDs))+`)`)
+		for _, id := range f.ExcludeIDs {
+			args = append(args, id)
+		}
+	}
+	if f.Linked != nil {
+		if *f.Linked {
+			conds = append(conds, `l.product_id IS NOT NULL`)
+		} else {
+			conds = append(conds, `l.product_id IS NULL`)
+		}
+	}
+	if len(conds) == 0 {
+		return "", nil
+	}
+	return " AND " + strings.Join(conds, " AND "), args
+}
+
+func placeholders(n int) string {
+	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
+}
+
+// candidateWhere joins the owner's search to the state filter. The search half
+// is the same builder the product table uses, so a word typed here matches what
+// it would match there; only the category column needs the alias, the rest are
+// unambiguous because the links table has no columns of those names.
+func candidateWhere(f CandidateFilter) (string, []any) {
+	where, args := productWhere("", f.Q, supplierAny, false)
+	where = strings.ReplaceAll(where, "category=", "p.category=")
+	extra, extraArgs := f.clauses()
+	if extra == "" {
+		return where, args
+	}
+	if where == "" {
+		// No search: the filter becomes the whole clause, so its leading AND
+		// has to give way to WHERE.
+		return " WHERE " + strings.TrimPrefix(extra, " AND "), extraArgs
+	}
+	return where + extra, append(args, extraArgs...)
+}
+
+// CountOzonCandidates counts what the same filter would list. The paged table
+// needs it to draw its page numbers, and it has to agree with the list exactly
+// — counting all products while listing a filtered subset is how a table grows
+// pages that turn out empty.
+func (d *Database) CountOzonCandidates(f CandidateFilter) (int, error) {
+	where, args := candidateWhere(f)
+	var n int
+	err := d.db.QueryRow(
+		`SELECT count(*) FROM products p
+		 LEFT JOIN ozon_links l ON l.product_id = p.id`+where, args...).Scan(&n)
+	return n, err
+}
+
 // ListOzonCandidates returns a page of shop products with their publication
 // state. Hidden products are included on purpose: a product can be off the
 // storefront and still sold on the marketplace.
-func (d *Database) ListOzonCandidates(q string, limit, offset int) ([]OzonCandidate, error) {
-	where, args := productWhere("", q, supplierAny, false)
+func (d *Database) ListOzonCandidates(f CandidateFilter, limit, offset int) ([]OzonCandidate, error) {
+	where, args := candidateWhere(f)
 	args = append(args, limit, offset)
 	rows, err := d.db.Query(
 		`SELECT p.id, p.sku, p.title, MAX(p.stock, 0), p.price, p.hidden,
 		        l.product_id IS NOT NULL
 		 FROM products p LEFT JOIN ozon_links l ON l.product_id = p.id`+
-			strings.ReplaceAll(where, "category=", "p.category=")+
-			` ORDER BY p.id LIMIT ? OFFSET ?`, args...)
+			where+` ORDER BY p.id LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return nil, err
 	}
