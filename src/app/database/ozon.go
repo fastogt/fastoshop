@@ -206,3 +206,12 @@ func (d *Database) CountOzonLinks() (linked, unlinked int, err error) {
 		Scan(&linked, &unlinked)
 	return linked, unlinked, err
 }
+
+// ClearOzonBackoff drops every pending retry. Only the manual "push now" button
+// calls it: after a failure the owner fixes what the platform complained about
+// and presses the button, and a backoff they cannot see makes it look like the
+// button does nothing. The ticker keeps waiting, which is what backoff is for.
+func (d *Database) ClearOzonBackoff() error {
+	_, err := d.db.Exec(`UPDATE ozon_links SET retry_at=NULL WHERE retry_at IS NOT NULL`)
+	return err
+}

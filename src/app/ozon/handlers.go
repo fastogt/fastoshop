@@ -409,6 +409,10 @@ func (h *Handlers) pushError(err error) string {
 }
 
 func (h *Handlers) Push(w http.ResponseWriter, r *http.Request) {
+	if err := h.db.ClearOzonBackoff(); err != nil {
+		writeInternalError(w, err)
+		return
+	}
 	pushed, failed, err := h.worker.Pass()
 	if err != nil {
 		writeBadRequest(w, h.pushError(err))

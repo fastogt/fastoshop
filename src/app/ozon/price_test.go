@@ -483,3 +483,32 @@ func TestErrorsFollowOwnerLanguage(t *testing.T) {
 		t.Fatalf("en: %d %s", w.Code, w.Body.String())
 	}
 }
+
+// TestPushNowIgnoresBackoff: the ticker waits out a failure, the button does
+// not. The owner presses "push now" right after fixing what the platform
+// refused — a wrong currency, say — and a backoff they cannot see answers
+// "0 sent, 0 failed", which is the same silence this tab has been cured of
+// everywhere else.
+func TestPushNowIgnoresBackoff(t *testing.T) {
+	w, d, m := newSyncTest(t)
+	h := NewHandlers(d, w)
+	id := seedLinked(t, d, "A", 5)
+	setPrice(t, d, id, 100000)
+	m.failPriceStatus(http.StatusInternalServerError, "")
+
+	if pushed, failed := pass(t, w); pushed != 1 || failed != 1 {
+		t.Fatalf("the price must fail first: %d/%d", pushed, failed)
+	}
+	if r := linkRow(t, d, id); r.PriceError == "" {
+		t.Fatal("no failure recorded — nothing to back off from")
+	}
+	if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
+		t.Fatalf("the ticker must hold off: %d/%d", pushed, failed)
+	}
+
+	m.failPriceStatus(0, "")
+	res := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	if res.Pushed != 1 {
+		t.Fatalf("push now sent %d, want the fixed price to travel", res.Pushed)
+	}
+}

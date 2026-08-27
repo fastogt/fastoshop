@@ -44,9 +44,12 @@ const kText = {
   },
   warehouse: { ru: "Склад", en: "Warehouse" },
   loadWarehouses: { ru: "Загрузить склады", en: "Load warehouses" },
+  // Why one field and not a choice per product: a product carries a single
+  // stock figure, so the same number sent to two warehouses would be the same
+  // goods promised twice.
   warehouseHint: {
-    ru: "Склад нужен только для остатков. Без него цены всё равно отправляются.",
-    en: "The warehouse is only needed for stock. Prices are sent without it.",
+    ru: "Склад нужен только для остатков — без него цены всё равно отправляются. Складов в кабинете может быть несколько, остатки уезжают на этот: у товара один остаток, разделить его между складами магазин не умеет.",
+    en: "The warehouse is only needed for stock — prices are sent without it. A cabinet may hold several warehouses and stock travels to this one: a product carries a single stock figure, and the shop cannot split it between warehouses.",
   },
   enabled: { ru: "Синхронизировать", en: "Sync enabled" },
   save: { ru: "Сохранить", en: "Save" },

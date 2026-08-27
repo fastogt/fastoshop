@@ -59,6 +59,13 @@ const kText = {
     ru: "Склад FBS (warehouse_id)",
     en: "FBS warehouse (warehouse_id)",
   },
+  // Why one field and not a choice per product: a product carries a single
+  // stock figure, so the same number sent to two warehouses would be the same
+  // goods promised twice.
+  warehouseHint: {
+    ru: "Складов в кабинете может быть несколько — остатки уезжают на этот. У товара один остаток, разделить его между складами магазин не умеет.",
+    en: "A cabinet may hold several warehouses — stock travels to this one. A product carries a single stock figure, and the shop cannot split it between warehouses.",
+  },
   pickWarehouse: { ru: "— выберите склад —", en: "— pick a warehouse —" },
   loadWarehouses: { ru: "Загрузить склады", en: "Load warehouses" },
   noWarehouses: {
@@ -661,6 +668,7 @@ export default function Ozon() {
               {t("loadWarehouses")}
             </button>
           </div>
+          <p className="hint">{t("warehouseHint")}</p>
         </div>
         <div>
           <label className="label">{t("currency")}</label>

@@ -1,3 +1,8 @@
+1.35.0 / August 27, 2026
+[Alexandr Topilski]
+- «Отправить сейчас» no longer waits out a backoff the owner cannot see. A refused price or stock is retried later on purpose — that is what backoff is for, and the five-minute ticker keeps honouring it — but the button is an explicit instruction from someone who has just fixed what the platform complained about. It answered "sent 0, failed 0" and looked broken. Measured on a live cabinet: a price refused with «Неверно указана валюта» sat for thirteen minutes while the button did nothing
+- The warehouse field says what one warehouse means. A cabinet may hold several, and a product carries a single stock figure — so the shop sends that figure to one of them and cannot split it. Stating it beats letting the owner work it out from an oversell
+
 1.34.1 / August 27, 2026
 [Alexandr Topilski]
 - The warning added an hour ago sent the owner to a dropdown that can be empty. Neither platform creates warehouses over the API — we only read the list — so a cabinet with no warehouse at all leaves nothing to pick, and that is the case a first-time seller is actually in. The message now names both halves: pick one above, and if the list is empty the warehouse has to be created in the platform's own cabinet first

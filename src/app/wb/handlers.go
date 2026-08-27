@@ -374,6 +374,10 @@ func (h *Handlers) pushError(err error) string {
 // Push is the "Push now" button: the same pass the worker runs, only synchronous
 // and with the counters in the answer.
 func (h *Handlers) Push(w http.ResponseWriter, r *http.Request) {
+	if err := h.db.ClearWBBackoff(); err != nil {
+		writeInternalError(w, err)
+		return
+	}
 	pushed, failed, err := h.worker.Pass()
 	if err != nil {
 		writeBadRequest(w, h.pushError(err))
