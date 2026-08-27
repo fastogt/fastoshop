@@ -259,6 +259,12 @@ func newSyncTest(t *testing.T) (*Worker, *database.Database, *ozonMock) {
 	}
 	t.Cleanup(func() { _ = d.Close() })
 	m := newOzonMock(t)
+	// A real shop always has settings, and its currency is what prices are
+	// labelled with on the way out.
+	if err := d.CreateSettings(&database.Settings{
+		ShopName: "лавка", Currency: database.ShopCurrencyRUB}); err != nil {
+		t.Fatal(err)
+	}
 	if err := d.SaveOzonSettings(&database.OzonSettings{
 		ClientID: "cid", APIKey: "key", WarehouseID: "77", Enabled: true}); err != nil {
 		t.Fatal(err)
@@ -433,6 +439,12 @@ func TestPushHonoursRetryAfter(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = d.Close() })
 	m := newOzonMock(t)
+	// A real shop always has settings, and its currency is what prices are
+	// labelled with on the way out.
+	if err := d.CreateSettings(&database.Settings{
+		ShopName: "лавка", Currency: database.ShopCurrencyRUB}); err != nil {
+		t.Fatal(err)
+	}
 	if err := d.SaveOzonSettings(&database.OzonSettings{
 		ClientID: "cid", APIKey: "key", WarehouseID: "77", Enabled: true}); err != nil {
 		t.Fatal(err)

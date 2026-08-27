@@ -39,6 +39,12 @@ func newTestHandlers(t *testing.T) (*Handlers, *database.Database) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
+	// A shop always has settings by the time a channel tab is opened, and its
+	// currency is what every price here is written in.
+	if err := d.CreateSettings(&database.Settings{
+		ShopName: "лавка", Currency: database.ShopCurrencyRUB}); err != nil {
+		t.Fatal(err)
+	}
 	return NewHandlers(d, NewWorker(d)), d
 }
 

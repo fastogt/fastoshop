@@ -1,3 +1,7 @@
+1.37.0 / August 27, 2026
+[Alexandr Topilski]
+- The Ozon tab stops keeping a currency of its own. One shop is one legal entity is one currency: a Belarusian entity gives a .by domain, a storefront in BYN and a cabinet in BYN, and a Polish shop will be its own instance with its own entity and its own złoty. So `ozon_settings.currency` was a second copy of an answer the shop already had, and the whole apparatus around it — two constants, a validator, a setter, a field in the request and in the tab, two message keys, and yesterday's refusal to run the markup ladder across currencies — existed to keep two truths in step. Wildberries never had any of it and never needed it: its price carries no currency at all, the cabinet decides. Prices now go out labelled with the shop's own money, and the cabinet's currency, read on «Проверить связь», became what it should have been — a check that says which of the two is wrong
+
 1.36.1 / August 27, 2026
 [Alexandr Topilski]
 - Prices go to Ozon to the kopeck. We rounded up to a whole unit before sending — 25.11 left as 26.00 — on the belief that the platform takes whole rubles. It does not: "25.11" is accepted and stored as 25.11, verified against a live BYN cabinet. On roubles the rounding cost a kopeck; on a 2.53 BYN item it added eighteen percent to the buyer's price under the seller's name. The row now remembers exactly what was sent, so nothing flaps between "needs push" and "pushed"

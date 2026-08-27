@@ -2,26 +2,17 @@ package database
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 )
 
-// Ozon price push currency: RUB for ozon.ru cabinets, BYN for ozon.by ones.
-const (
-	OzonCurrencyRUB = "RUB"
-	OzonCurrencyBYN = "BYN"
-)
-
-func IsValidOzonCurrency(c string) bool {
-	return c == OzonCurrencyRUB || c == OzonCurrencyBYN
-}
-
+// The cabinet's currency is not stored here. One shop is one legal entity is
+// one currency, and that currency lives in settings.currency — a second copy
+// would be a second truth to keep in step.
 type OzonSettings struct {
 	ClientID    string
 	APIKey      string
 	WarehouseID string
 	Enabled     bool
-	Currency    string
 }
 
 type OzonLink struct {
@@ -35,10 +26,9 @@ type OzonLink struct {
 func (d *Database) GetOzonSettings() (*OzonSettings, error) {
 	var s OzonSettings
 	err := d.db.QueryRow(
-		`SELECT client_id, api_key, warehouse_id, enabled, currency FROM ozon_settings WHERE id=1`).
-		Scan(&s.ClientID, &s.APIKey, &s.WarehouseID, &s.Enabled, &s.Currency)
+		`SELECT client_id, api_key, warehouse_id, enabled FROM ozon_settings WHERE id=1`).
+		Scan(&s.ClientID, &s.APIKey, &s.WarehouseID, &s.Enabled)
 	if err == sql.ErrNoRows {
-		s.Currency = OzonCurrencyRUB
 		return &s, nil
 	}
 	if err != nil {
@@ -47,36 +37,14 @@ func (d *Database) GetOzonSettings() (*OzonSettings, error) {
 	return &s, nil
 }
 
-// SaveOzonSettings treats an empty Currency as "keep the RUB default" — callers
-// that only touch other fields (e.g. tests, migrations) do not have to know
-// about the currency at all.
 func (d *Database) SaveOzonSettings(s *OzonSettings) error {
-	currency := s.Currency
-	if currency == "" {
-		currency = OzonCurrencyRUB
-	}
-	if !IsValidOzonCurrency(currency) {
-		return fmt.Errorf("invalid ozon currency: %q", currency)
-	}
 	_, err := d.db.Exec(
-		`INSERT INTO ozon_settings (id, client_id, api_key, warehouse_id, enabled, currency)
-		 VALUES (1, ?, ?, ?, ?, ?)
+		`INSERT INTO ozon_settings (id, client_id, api_key, warehouse_id, enabled)
+		 VALUES (1, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET client_id=excluded.client_id,
 		   api_key=excluded.api_key, warehouse_id=excluded.warehouse_id,
-		   enabled=excluded.enabled, currency=excluded.currency`,
-		s.ClientID, s.APIKey, s.WarehouseID, s.Enabled, currency)
-	return err
-}
-
-// SetOzonCurrency updates only the currency: it is detected from the cabinet on
-// every check, and must not overwrite keys the owner is editing at that moment.
-func (d *Database) SetOzonCurrency(currency string) error {
-	if !IsValidOzonCurrency(currency) {
-		return fmt.Errorf("invalid ozon currency: %q", currency)
-	}
-	_, err := d.db.Exec(
-		`INSERT INTO ozon_settings (id, currency) VALUES (1, ?)
-		 ON CONFLICT(id) DO UPDATE SET currency=excluded.currency`, currency)
+		   enabled=excluded.enabled`,
+		s.ClientID, s.APIKey, s.WarehouseID, s.Enabled)
 	return err
 }
 

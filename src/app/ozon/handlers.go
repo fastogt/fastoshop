@@ -71,10 +71,12 @@ type priceErrorRow struct {
 }
 
 type settingsResponse struct {
-	Enabled     bool            `json:"enabled"`
-	ClientID    string          `json:"client_id"`
-	APIKeySet   bool            `json:"api_key_set"`
-	WarehouseID string          `json:"warehouse_id"`
+	Enabled     bool   `json:"enabled"`
+	ClientID    string `json:"client_id"`
+	APIKeySet   bool   `json:"api_key_set"`
+	WarehouseID string `json:"warehouse_id"`
+	// The shop's currency, read through so the tab can label prices. Not a
+	// setting of this channel — see OzonSettings.
 	Currency    string          `json:"currency"`
 	Linked      int             `json:"linked"`
 	Unlinked    int             `json:"unlinked"`
@@ -99,7 +101,6 @@ type settingsRequest struct {
 	ClientID    string  `json:"client_id"`
 	APIKey      *string `json:"api_key"` // nil = leave unchanged
 	WarehouseID string  `json:"warehouse_id"`
-	Currency    string  `json:"currency"`
 }
 
 // Prices are in kopecks: Price is what the owner wants on Ozon, ShopPrice is the
@@ -253,7 +254,7 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	writeOK(w, settingsResponse{
 		Enabled: s.Enabled, ClientID: s.ClientID, APIKeySet: s.APIKey != "",
-		WarehouseID: s.WarehouseID, Currency: s.Currency, Linked: linked, Unlinked: unlinked,
+		WarehouseID: s.WarehouseID, Currency: h.shopCurrency(), Linked: linked, Unlinked: unlinked,
 		Pending: pending, Failed: failed, StockErrors: errs,
 		PricePending: pricePending, PriceFailed: priceFailed, PriceErrors: priceErrs,
 		OrdersTotal: total, OrdersOversold: oversold, OrdersUnresolved: unresolved,
@@ -307,15 +308,7 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 		writeBadRequest(w, "invalid body")
 		return
 	}
-	currency := req.Currency
-	if currency == "" {
-		currency = database.OzonCurrencyRUB
-	}
-	if !database.IsValidOzonCurrency(currency) {
-		writeBadRequest(w, h.msg(i18n.KeyOzonBadCurrency))
-		return
-	}
-	s.Enabled, s.ClientID, s.WarehouseID, s.Currency = req.Enabled, req.ClientID, req.WarehouseID, currency
+	s.Enabled, s.ClientID, s.WarehouseID = req.Enabled, req.ClientID, req.WarehouseID
 	if req.APIKey != nil {
 		s.APIKey = *req.APIKey
 	}
@@ -356,19 +349,14 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res := checkResponse{Total: len(offers)}
-	// The cabinet's currency follows from the legal entity behind it, so it is
-	// read here instead of being asked: a seller who picks the wrong one sends
-	// prices in the wrong money. A failure here must not fail the check itself.
+	// The cabinet's currency follows from the legal entity behind it. It is
+	// reported, not stored: the shop already has a currency, and if these two
+	// disagree the shop's is wrong — the tab says so instead of us keeping a
+	// second answer in step. A failure here must not fail the check itself.
 	if info, err := c.SellerInfo(); err != nil {
 		log.Warnf("ozon: seller info: %v", err)
 	} else {
 		res.LegalName, res.Currency = info.Company.LegalName, info.Company.Currency
-		if database.IsValidOzonCurrency(res.Currency) {
-			if err := h.db.SetOzonCurrency(res.Currency); err != nil {
-				writeInternalError(w, err)
-				return
-			}
-		}
 	}
 	writeOK(w, res)
 }
@@ -406,6 +394,16 @@ func (h *Handlers) pushError(err error) string {
 		return h.msg(i18n.KeyOzonBadWarehouse)
 	}
 	return err.Error()
+}
+
+// shopCurrency is the money every price in this tab is written in. Empty only
+// on a shop with no settings row, which has no prices either.
+func (h *Handlers) shopCurrency() string {
+	s, err := h.db.GetSettings()
+	if err != nil {
+		return ""
+	}
+	return s.Currency
 }
 
 func (h *Handlers) Push(w http.ResponseWriter, r *http.Request) {
@@ -487,32 +485,6 @@ func (h *Handlers) SetPrice(w http.ResponseWriter, r *http.Request) {
 // FillPrices is the bulk helper "shelf price + N%". It fills only links whose
 // price is still zero: the owner's own numbers are never overwritten in bulk,
 // so the button is safe to press twice.
-// sameCurrency guards the bulk price fills. Both of them derive the platform
-// price from the shelf price by a multiplier, so a shop trading in one currency
-// and a cabinet in another would ship prices off by the exchange rate — off by
-// thirty, between RUB and BYN, in the seller's own money. We refuse instead of
-// converting: a rate we carry ourselves goes stale in silence, and the seller
-// sets their own prices anyway. A price typed into one row is left alone — the
-// owner typing it knows which money they mean.
-func (h *Handlers) sameCurrency(w http.ResponseWriter) bool {
-	// No settings row means the shop has not been set up at all, so there is no
-	// storefront currency to disagree with. Nothing to guard.
-	shop, err := h.db.GetSettings()
-	if err != nil {
-		return true
-	}
-	s, err := h.db.GetOzonSettings()
-	if err != nil {
-		writeInternalError(w, err)
-		return false
-	}
-	if shop.Currency != s.Currency {
-		writeBadRequest(w, h.msg(i18n.KeyOzonCurrencyMismatch))
-		return false
-	}
-	return true
-}
-
 func (h *Handlers) FillPrices(w http.ResponseWriter, r *http.Request) {
 	var req fillPricesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -521,9 +493,6 @@ func (h *Handlers) FillPrices(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.MarkupBP < 0 {
 		writeBadRequest(w, h.msg(i18n.KeyOzonNegativeMarkup))
-		return
-	}
-	if !h.sameCurrency(w) {
 		return
 	}
 	filled, err := h.db.FillOzonPrices(req.MarkupBP)
@@ -566,9 +535,6 @@ func (h *Handlers) SetPriceRules(w http.ResponseWriter, r *http.Request) {
 
 // FillPricesByRules is the ladder's counterpart of the flat "+N%" helper.
 func (h *Handlers) FillPricesByRules(w http.ResponseWriter, r *http.Request) {
-	if !h.sameCurrency(w) {
-		return
-	}
 	n, err := h.db.FillOzonPricesByRules()
 	if err != nil {
 		writeBadRequest(w, h.msg(i18n.KeyOzonBadRules))

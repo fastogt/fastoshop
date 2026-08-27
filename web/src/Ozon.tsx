@@ -72,10 +72,11 @@ const kText = {
     ru: "Складов не нашлось — впишите id вручную",
     en: "No warehouses found — enter the id manually",
   },
-  currency: { ru: "Валюта кабинета", en: "Account currency" },
-  currencyHint: {
-    ru: "Определяется по вашему юрлицу в кабинете и обновляется при проверке — в ней и уходят цены на площадку.",
-    en: "Taken from your legal entity in the account and refreshed on every check — prices are sent to the marketplace in it.",
+  // The cabinet's currency is not ours to keep: one shop is one legal entity is
+  // one money. When the check disagrees with the shop, the shop is what is wrong.
+  currencyMismatch: {
+    ru: "Кабинет торгует в {cabinet}, а магазин — в {shop}. Цены уедут в валюте магазина и площадка их отобьёт. Поправьте валюту в Профиле.",
+    en: "The cabinet trades in {cabinet}, the shop in {shop}. Prices travel in the shop's currency and the platform will refuse them. Fix the currency in Profile.",
   },
   enabled: {
     ru: "Отправлять остатки и цены на Ozon",
@@ -503,14 +504,17 @@ export default function Ozon() {
     setMsg("");
     try {
       const r = await api.ozonCheck();
-      setMsg(
-        t("checked", {
-          name: r.legal_name || "",
-          n: r.total,
-          cur: r.currency || s.currency,
-        }).trim(),
-      );
-      if (r.currency) setS({ ...s, currency: r.currency });
+      const checked = t("checked", {
+        name: r.legal_name || "",
+        n: r.total,
+        cur: r.currency || s.currency,
+      }).trim();
+      const clash =
+        r.currency && s.currency && r.currency !== s.currency
+          ? " " +
+            t("currencyMismatch", { cabinet: r.currency, shop: s.currency })
+          : "";
+      setMsg(checked + clash);
     } catch (e) {
       setMsg(fail(e));
     } finally {
@@ -669,11 +673,6 @@ export default function Ozon() {
             </button>
           </div>
           <p className="hint">{t("warehouseHint")}</p>
-        </div>
-        <div>
-          <label className="label">{t("currency")}</label>
-          <p className="font-semibold">{s.currency}</p>
-          <p className="hint">{t("currencyHint")}</p>
         </div>
         <label className="flex items-center gap-2">
           <input

@@ -144,7 +144,15 @@ func (w *Worker) Pass() (pushed, failed int, err error) {
 		// would only spend the retry budget. The next tick picks both up.
 		return pushed, failed, err
 	}
-	p, f, err := w.pushPrices(c, s.Currency)
+	// The shop's currency is the cabinet's: one shop, one legal entity, one
+	// money. Reading it here keeps a single answer instead of two to reconcile.
+	// A shop with no settings row has no currency to label a price with, so the
+	// prices wait — the stocks above already went, and they need no money.
+	shop, err := w.db.GetSettings()
+	if err != nil {
+		return pushed, failed, nil
+	}
+	p, f, err := w.pushPrices(c, shop.Currency)
 	return pushed + p, failed + f, err
 }
 

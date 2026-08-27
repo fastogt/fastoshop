@@ -221,19 +221,16 @@ func TestPriceCallFailureBacksOff(t *testing.T) {
 	}
 }
 
-// TestPriceCurrencyBYN: a real ozon.by cabinet trades in BYN, and the price
-// push must carry that instead of the RUB default.
+// TestPriceCurrencyBYN: an ozon.by cabinet belongs to a Belarusian entity, and
+// so does the shop in front of it — the shop's own currency is what labels the
+// price on the wire, because there is only one.
 func TestPriceCurrencyBYN(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 5)
 	setPrice(t, d, id, 100000)
 
-	s, err := d.GetOzonSettings()
-	if err != nil {
-		t.Fatal(err)
-	}
-	s.Currency = database.OzonCurrencyBYN
-	if err := d.SaveOzonSettings(s); err != nil {
+	if err := d.UpdateSettings(&database.Settings{
+		ShopName: "лавка", Currency: database.ShopCurrencyBYN}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -242,43 +239,6 @@ func TestPriceCurrencyBYN(t *testing.T) {
 	}
 	if got := m.lastPriceBatch(t); len(got) != 1 || got[0].CurrencyCode != "BYN" {
 		t.Fatalf("currency did not reach the marketplace: %+v", got)
-	}
-}
-
-// TestSettingsCurrencyValidation: only RUB and BYN are accepted, and a saved
-// currency comes back on the next read.
-func TestSettingsCurrencyValidation(t *testing.T) {
-	h, _ := newTestHandlers(t)
-
-	w := do(t, h, "PUT", "/settings", `{"client_id":"cid","api_key":"key","currency":"USD"}`)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("invalid currency: %d %s", w.Code, w.Body.String())
-	}
-
-	w = do(t, h, "PUT", "/settings", `{"client_id":"cid","api_key":"key","currency":"BYN"}`)
-	if w.Code != http.StatusOK {
-		t.Fatalf("saving BYN: %d %s", w.Code, w.Body.String())
-	}
-	if got := decode[settingsResponse](t, w); got.Currency != "BYN" {
-		t.Fatalf("currency not saved: %+v", got)
-	}
-}
-
-// TestSettingsCurrencyDefaultRUB: a fresh install with no ozon_settings row
-// must read back as RUB, not an empty string.
-func TestSettingsCurrencyDefaultRUB(t *testing.T) {
-	d, err := database.OpenInMemory()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = d.Close() }()
-
-	s, err := d.GetOzonSettings()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if s.Currency != database.OzonCurrencyRUB {
-		t.Fatalf("fresh database must default to RUB: %q", s.Currency)
 	}
 }
 
@@ -462,7 +422,7 @@ func TestPricesPushWithoutWarehouse(t *testing.T) {
 // otherwise an English-language admin shows Russian text on every failure.
 func TestErrorsFollowOwnerLanguage(t *testing.T) {
 	h, d := newTestHandlers(t)
-	if err := d.CreateSettings(&database.Settings{
+	if err := d.UpdateSettings(&database.Settings{
 		OwnerEmail: "a@b.c", PasswordHash: "h"}); err != nil {
 		t.Fatal(err)
 	}
@@ -511,38 +471,5 @@ func TestPushNowIgnoresBackoff(t *testing.T) {
 	res := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
 	if res.Pushed != 1 {
 		t.Fatalf("push now sent %d, want the fixed price to travel", res.Pushed)
-	}
-}
-
-// TestBulkFillRefusesCrossCurrency: the ladder multiplies the shelf price, it
-// does not convert it. A RUB storefront against a BYN cabinet would put prices
-// on the platform off by the exchange rate — around thirtyfold, and in the
-// direction that sells the goods for nothing.
-func TestBulkFillRefusesCrossCurrency(t *testing.T) {
-	h, d := newTestHandlers(t)
-	if err := d.SaveOzonSettings(&database.OzonSettings{
-		ClientID: "cid", APIKey: "key", Currency: database.OzonCurrencyBYN,
-		Enabled: true}); err != nil {
-		t.Fatal(err)
-	}
-	if err := d.CreateSettings(&database.Settings{
-		ShopName: "лавка", Currency: database.ShopCurrencyRUB}); err != nil {
-		t.Fatal(err)
-	}
-
-	for _, path := range []string{"/price/fill", "/price/fill-by-rules"} {
-		w := do(t, h, "POST", path, `{"markup_bp":5000}`)
-		if w.Code != http.StatusBadRequest {
-			t.Fatalf("%s crossed currencies: %d %s", path, w.Code, w.Body.String())
-		}
-	}
-
-	// Same money on both sides: the guard steps aside.
-	if err := d.UpdateSettings(&database.Settings{
-		ShopName: "лавка", Currency: database.ShopCurrencyBYN}); err != nil {
-		t.Fatal(err)
-	}
-	if w := do(t, h, "POST", "/price/fill", `{"markup_bp":5000}`); w.Code != http.StatusOK {
-		t.Fatalf("same currency refused: %d %s", w.Code, w.Body.String())
 	}
 }

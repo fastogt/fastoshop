@@ -235,9 +235,7 @@ func (d *Database) migrate() error {
 		client_id    TEXT NOT NULL DEFAULT '',
 		api_key      TEXT NOT NULL DEFAULT '',
 		warehouse_id TEXT NOT NULL DEFAULT '',
-		enabled      INTEGER NOT NULL DEFAULT 0,
-		-- Price push currency: RUB for ozon.ru cabinets, BYN for ozon.by.
-		currency     TEXT NOT NULL DEFAULT 'RUB'
+		enabled      INTEGER NOT NULL DEFAULT 0
 	);
 	-- Deliberately without an FK on products: the link must outlive the product.
 	-- Once a product is removed from the shop its Ozon card is still up, and the
