@@ -12,7 +12,7 @@ import {
   IconDownload,
 } from "./Icons";
 import { useLang, useT } from "./i18n";
-import { imageURL, isRemoteImage, useSign } from "./shop";
+import { imageURL, isRemoteImage, thumbURL, useSign } from "./shop";
 import { useJob } from "./useJob";
 import JobBar from "./JobBar";
 
@@ -953,14 +953,28 @@ export default function Products() {
                 <span className="relative inline-block h-10 w-10 shrink-0">
                   {p.images?.[0] ? (
                     <img
-                      src={imageURL(p.images[0].path)}
+                      src={thumbURL(p.images[0].path)}
                       alt=""
-                      // A supplier's link can stop answering and start again a
-                      // day later, so nothing is deleted over it: the row shows
-                      // the shop's own mark until the picture is back.
+                      loading="lazy"
+                      // Two steps down, not one. A missing small copy means the
+                      // photo predates thumbnails, and the original is still
+                      // there — falling straight to the stub would claim the
+                      // product has no picture when it has one. Only when the
+                      // original fails too does the row show the shop's own
+                      // mark: a supplier's link can stop answering and start
+                      // again a day later, so nothing is deleted over it.
                       onError={(e) => {
-                        e.currentTarget.src = "/nophoto.svg";
-                        e.currentTarget.classList.add("opacity-60");
+                        const el = e.currentTarget;
+                        const full = new URL(
+                          imageURL(p.images![0].path),
+                          location.href,
+                        ).href;
+                        if (el.src !== full) {
+                          el.src = full;
+                          return;
+                        }
+                        el.src = "/nophoto.svg";
+                        el.classList.add("opacity-60");
                       }}
                       className="h-10 w-10 rounded object-cover"
                     />

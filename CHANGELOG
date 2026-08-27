@@ -1,3 +1,9 @@
+1.32.2 / August 27, 2026
+[Alexandr Topilski]
+- The product table stops claiming a product has no photo when it has one. Each 40px cell pulled the full-size original, and there are up to 500 rows on a page: a hundred products meant 9.8 MB of WebP requested at once, the browser dropped two thirds of them, and the error handler replaced every dropped one with the "no photo" stub. The table showed 67 products as pictureless while all 100 had a picture
+- It now asks for the small copy the storefront has used all along, and falls back to the original before the stub — a photo uploaded before thumbnails existed has no small copy, and going straight to the stub would repeat the same lie. Rows load lazily on top of that
+- The storefront was already right: its grid has taken thumbnails since they existed, for exactly this reason. The admin was simply never given the same treatment, and it needs it more — a 40px cell against a 220px card, 500 rows against 60
+
 1.32.1 / August 25, 2026
 [Alexandr Topilski]
 - The admin is reachable on a phone again. Its header is a single row of eight tabs and three links, and a row that cannot wrap stretched the whole page to 999px on a 390px screen; the overflow was not scrollable, so the price column, half the tabs and the link back to the shop sat past the right edge with no way to reach them. The filter row above the product table did the same with a 256px search field beside a 192px select

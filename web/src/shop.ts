@@ -56,3 +56,16 @@ export const imageURL = (path: string) =>
   path.startsWith("http") ? path : `/uploads/${path}`;
 
 export const isRemoteImage = (path: string) => path.startsWith("http");
+
+// The 40 px cell in a product row has even less business pulling the original
+// than the storefront's 220 px card does, and there are up to 500 rows on a
+// page: a hundred products meant 9.8 MB of full-size WebP at once, the browser
+// dropped two thirds of them, and onError replaced each dropped one with the
+// "no photo" stub — so the table claimed the products had no pictures at all.
+//
+// The name is derived rather than asked for, because whether a small copy
+// exists is a question about the disk and the answer would have to travel in
+// every product payload. A photo from before thumbnails existed has none, so
+// the caller falls back to the original on error.
+export const thumbURL = (path: string) =>
+  isRemoteImage(path) ? path : `/uploads/${path.replace(/\.[^.]+$/, "")}.t.jpg`;
