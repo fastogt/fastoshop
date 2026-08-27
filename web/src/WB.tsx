@@ -87,6 +87,13 @@ const kText = {
   stateNoCard: { ru: "нет карточки", en: "no card" },
   no: { ru: "нет", en: "no" },
   publishDone: { ru: "Связано карточек: {n}", en: "Cards linked: {n}" },
+  // Publishing writes the link, but stock travels only from a warehouse. An
+  // owner who never picked one sees "linked" and then nothing happens on the
+  // platform, with no error anywhere: the worker skips stocks in silence.
+  noWarehouse: {
+    ru: " Остатки не поедут: не выбран склад в настройках выше.",
+    en: " Stock will not travel: no warehouse is picked in the settings above.",
+  },
   unpublishDone: {
     ru: "Снято с площадки: {n}",
     en: "Taken off the platform: {n}",
@@ -360,7 +367,10 @@ export default function WB() {
       const r = await api.wbPublish(ids);
       setNoCard(r.no_card);
       await Promise.all([loadLinks(), loadCandidates(), loadCabinet()]);
-      return t("publishDone", { n: r.published });
+      return (
+        t("publishDone", { n: r.published }) +
+        (r.published > 0 && !s.warehouse_id ? t("noWarehouse") : "")
+      );
     });
 
   const unpublish = (ids: number[]) =>

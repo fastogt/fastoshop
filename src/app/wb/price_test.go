@@ -11,7 +11,7 @@ import (
 func linkAndPrice(t *testing.T, h *Handlers, d *database.Database, sku string, price int64) int64 {
 	t.Helper()
 	id := seedProduct(t, d, sku, 5, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 	if _, err := d.SetWBPrice(id, price); err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestSizesDisagreeingOnPriceSendNothing(t *testing.T) {
 	// Two products of one card, linked by their imported sized articles.
 	a := seedProduct(t, d, "ART-9-M", 5, 1000)
 	b := seedProduct(t, d, "ART-9-L", 5, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 	if _, err := d.SetWBPrice(a, 1500); err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestAgreeingSizesCollapseToOneItem(t *testing.T) {
 	enable(t, d, "7")
 	a := seedProduct(t, d, "ART-9-M", 5, 1000)
 	b := seedProduct(t, d, "ART-9-L", 5, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 	for _, id := range []int64{a, b} {
 		if _, err := d.SetWBPrice(id, 1500); err != nil {
 			t.Fatal(err)
@@ -176,7 +176,7 @@ func TestUnsetPriceIsNeverPushed(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")
 	seedProduct(t, d, "ART-1", 5, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 
 	do(t, h, "POST", "/push", "")
 	if len(cab.sentPrices()) != 0 {

@@ -27,7 +27,7 @@ func TestSaleDeductsStockOnce(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")
 	id := seedProduct(t, d, "ART-1", 10, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 	cab.orders = []Order{order(500, "2000000000011")}
 
 	do(t, h, "POST", "/push", "")
@@ -45,7 +45,7 @@ func TestCancellationReturnsStockOnce(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")
 	id := seedProduct(t, d, "ART-1", 10, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 	cab.orders = []Order{order(500, "2000000000011")}
 	do(t, h, "POST", "/push", "")
 
@@ -68,7 +68,7 @@ func TestOversellFloorsAtZero(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")
 	id := seedProduct(t, d, "ART-1", 0, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 	cab.orders = []Order{order(501, "2000000000011")}
 
 	do(t, h, "POST", "/push", "")
@@ -87,7 +87,7 @@ func TestUnknownBarcodeIsRecorded(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")
 	seedProduct(t, d, "ART-1", 10, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 	cab.orders = []Order{order(502, "9999999999999")}
 
 	do(t, h, "POST", "/push", "")

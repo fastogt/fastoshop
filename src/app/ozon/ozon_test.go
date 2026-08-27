@@ -120,10 +120,16 @@ func TestCheckCountsCabinet(t *testing.T) {
 	}
 }
 
-func TestCheckAndLinkRefuseWithoutCredentials(t *testing.T) {
+func TestCheckAndPublishRefuseWithoutCredentials(t *testing.T) {
 	h, _ := newTestHandlers(t)
-	for _, path := range []string{"/check", "/link"} {
-		w := do(t, h, "POST", path, "")
+	// A body that is not empty: publishing refuses a selection of nothing before
+	// it ever looks at the keys, and that is not the refusal under test here.
+	for _, c := range []struct{ path, body string }{
+		{"/check", ""},
+		{"/publish", `{"product_ids":[1]}`},
+	} {
+		path := c.path
+		w := do(t, h, "POST", path, c.body)
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("%s without creds: %d %s", path, w.Code, w.Body.String())
 		}
@@ -133,31 +139,32 @@ func TestCheckAndLinkRefuseWithoutCredentials(t *testing.T) {
 	}
 }
 
-func TestLinkMatchesBySKU(t *testing.T) {
+func TestPublishMatchesBySKU(t *testing.T) {
 	h, d := newTestHandlers(t)
 	srv := mockCabinet(t, "A", "B", "C")
 	h.BaseURL = srv.URL
 	do(t, h, "PUT", "/settings", `{"client_id":"cid","api_key":"key"}`)
 
+	var ids []int64
 	for _, sku := range []string{"A", "B", "D"} {
-		if err := d.CreateProduct(&database.Product{SKU: sku, Title: "Товар " + sku}); err != nil {
+		p := &database.Product{SKU: sku, Title: "Товар " + sku}
+		if err := d.CreateProduct(p); err != nil {
 			t.Fatal(err)
 		}
+		ids = append(ids, p.ID)
 	}
 
 	if n := decode[checkResponse](t, do(t, h, "POST", "/check", "")).Total; n != 3 {
-		t.Fatalf("check before link: %d", n)
+		t.Fatalf("check before publish: %d", n)
 	}
 
-	got := decode[linkResponse](t, do(t, h, "POST", "/link", ""))
-	if got.Linked != 2 {
-		t.Fatalf("linked: %+v", got)
+	body, _ := json.Marshal(publishRequest{ProductIDs: ids})
+	got := decode[publishResponse](t, do(t, h, "POST", "/publish", string(body)))
+	if got.Published != 2 {
+		t.Fatalf("published: %+v", got)
 	}
-	if len(got.UnlinkedProducts) != 1 || got.UnlinkedProducts[0].SKU != "D" {
-		t.Fatalf("unlinked products: %+v", got.UnlinkedProducts)
-	}
-	if len(got.UnlinkedOffers) != 1 || got.UnlinkedOffers[0] != "C" {
-		t.Fatalf("unlinked offers: %+v", got.UnlinkedOffers)
+	if len(got.NoCard) != 1 || got.NoCard[0].SKU != "D" {
+		t.Fatalf("the article with no card must be reported: %+v", got.NoCard)
 	}
 
 	links, err := d.ListOzonLinksPage(1000, 0)
@@ -165,11 +172,17 @@ func TestLinkMatchesBySKU(t *testing.T) {
 		t.Fatalf("links: %v %+v", err, links)
 	}
 
-	// Relinking is idempotent: the same two rows, no duplicates.
-	got = decode[linkResponse](t, do(t, h, "POST", "/link", ""))
+	// Publishing the same selection twice is idempotent: no duplicate rows.
+	got = decode[publishResponse](t, do(t, h, "POST", "/publish", string(body)))
 	links, _ = d.ListOzonLinksPage(1000, 0)
-	if got.Linked != 2 || len(links) != 2 {
-		t.Fatalf("relink: %+v %+v", got, links)
+	if got.Published != 2 || len(links) != 2 {
+		t.Fatalf("republish: %+v %+v", got, links)
+	}
+
+	// The card nothing points at is the tab's orphan list, not a silent drop.
+	cab := decode[cabinetResponse](t, do(t, h, "GET", "/cabinet", ""))
+	if cab.Orphans != 1 || len(cab.OrphanSKUs) != 1 || cab.OrphanSKUs[0] != "C" {
+		t.Fatalf("orphan card: %+v", cab)
 	}
 
 	// The tab's counters: 2 linked, 1 not.
@@ -179,9 +192,6 @@ func TestLinkMatchesBySKU(t *testing.T) {
 	}
 }
 
-// v2 returns warehouses without the "result" envelope and in cursor pages —
-// on a live cabinet v1 answers "obsolete method". We check both pages and that
-// a repeated cursor on the last page does not loop forever.
 func TestListWarehousesPaginates(t *testing.T) {
 	calls := 0
 	mux := http.NewServeMux()

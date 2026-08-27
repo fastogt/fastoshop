@@ -299,7 +299,26 @@ func mustJSON(t *testing.T, v any) []byte {
 	return b
 }
 
-func TestLinkMatchesByArticle(t *testing.T) {
+// selection is the whole catalogue as a publish body: these tests are about how
+// articles match cards, not about which rows the owner ticked.
+func selection(t *testing.T, d *database.Database) string {
+	t.Helper()
+	products, err := d.ListProducts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := make([]int64, 0, len(products))
+	for _, p := range products {
+		ids = append(ids, p.ID)
+	}
+	b, err := json.Marshal(publishRequest{ProductIDs: ids})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func TestPublishMatchesByArticle(t *testing.T) {
 	h, d, _ := newTest(t,
 		card(1, "ART-1", "2000000000011"),
 		sizedCard(2, "ART-2", map[string]string{"M": "2000000000028"}),
@@ -308,15 +327,12 @@ func TestLinkMatchesByArticle(t *testing.T) {
 	seedProduct(t, d, "ART-1", 5, 1000)
 	seedProduct(t, d, "NOPE", 5, 1000)
 
-	res := decode[linkResponse](t, do(t, h, "POST", "/link", ""))
-	if res.Linked != 1 {
-		t.Fatalf("expected one link, got %d", res.Linked)
+	res := decode[publishResponse](t, do(t, h, "POST", "/publish", selection(t, d)))
+	if res.Published != 1 {
+		t.Fatalf("expected one link, got %d", res.Published)
 	}
-	if len(res.UnlinkedProducts) != 1 || res.UnlinkedProducts[0].SKU != "NOPE" {
-		t.Fatalf("the unmatched product must be reported: %+v", res.UnlinkedProducts)
-	}
-	if len(res.UnlinkedCards) != 1 || res.UnlinkedCards[0].NmID != 2 {
-		t.Fatalf("the card nothing points at must be reported: %+v", res.UnlinkedCards)
+	if len(res.NoCard) != 1 || res.NoCard[0].SKU != "NOPE" {
+		t.Fatalf("the unmatched product must be reported: %+v", res.NoCard)
 	}
 	// The barcode is not ours to invent — it comes off the card.
 	rows, err := d.ListWBLinksPage(10, 0)
@@ -330,33 +346,33 @@ func TestLinkMatchesByArticle(t *testing.T) {
 
 // A card with several sizes has several barcodes and one article: which size the
 // product means is not knowable, so it is reported instead of guessed.
-func TestLinkRefusesMultiSizeCard(t *testing.T) {
+func TestPublishRefusesMultiSizeCard(t *testing.T) {
 	h, d, _ := newTest(t,
 		sizedCard(3, "ART-3", map[string]string{"M": "2000000000035", "L": "2000000000042"}),
 	)
 	enable(t, d, "7")
 	seedProduct(t, d, "ART-3", 5, 1000)
 
-	res := decode[linkResponse](t, do(t, h, "POST", "/link", ""))
-	if res.Linked != 0 {
+	res := decode[publishResponse](t, do(t, h, "POST", "/publish", selection(t, d)))
+	if res.Published != 0 {
 		t.Fatalf("a multi-size card must not be linked blindly: %+v", res)
 	}
-	if len(res.UnlinkedProducts) != 1 || res.UnlinkedProducts[0].Reason == "" {
-		t.Fatalf("the refusal must carry a reason: %+v", res.UnlinkedProducts)
+	if len(res.NoCard) != 1 || res.NoCard[0].Reason == "" {
+		t.Fatalf("the refusal must carry a reason: %+v", res.NoCard)
 	}
 }
 
 // A catalogue imported from Wildberries carries "vendorCode-<size>" in its
 // article, because that is what our importer writes there.
-func TestLinkMatchesImportedSizeArticle(t *testing.T) {
+func TestPublishMatchesImportedSizeArticle(t *testing.T) {
 	h, d, _ := newTest(t,
 		sizedCard(4, "ART-4", map[string]string{"M": "2000000000059", "L": "2000000000066"}),
 	)
 	enable(t, d, "7")
 	seedProduct(t, d, "ART-4-M", 5, 1000)
 
-	res := decode[linkResponse](t, do(t, h, "POST", "/link", ""))
-	if res.Linked != 1 {
+	res := decode[publishResponse](t, do(t, h, "POST", "/publish", selection(t, d)))
+	if res.Published != 1 {
 		t.Fatalf("the sized article must match its size: %+v", res)
 	}
 	rows, _ := d.ListWBLinksPage(10, 0)
@@ -369,7 +385,7 @@ func TestStockPushCreditsTheWholeBatch(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")
 	seedProduct(t, d, "ART-1", 12, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 
 	res := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
 	if res.Pushed != 1 || res.Failed != 0 {
@@ -396,7 +412,7 @@ func TestStockPushMarksOnlyRefusedBarcodes(t *testing.T) {
 	enable(t, d, "7")
 	seedProduct(t, d, "ART-1", 3, 1000)
 	seedProduct(t, d, "ART-2", 4, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 	cab.refuse["2000000000028"] = "нет такого товара"
 
 	res := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
@@ -416,7 +432,7 @@ func TestPassOrdersPricesAfterStocks(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")
 	id := seedProduct(t, d, "ART-1", 3, 1000)
-	do(t, h, "POST", "/link", "")
+	do(t, h, "POST", "/publish", selection(t, d))
 	if _, err := d.SetWBPrice(id, 1500); err != nil {
 		t.Fatal(err)
 	}

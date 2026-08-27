@@ -1,3 +1,8 @@
+1.34.0 / August 27, 2026
+[Alexandr Topilski]
+- «Связать по артикулу» is gone from the code, not just from the screen. It read the cabinet's articles and wrote every pair that matched — which is what «Опубликовать» does over a selection instead of over everything, and the shop has had multi-select on that table since it was built. The endpoint, its response types and its route are removed; the matching rules its tests held (a multi-size card is refused with a reason, an imported "article-size" matches its own barcode) now run against publishing, which is the code that does the matching
+- Publishing tells you when the stock cannot travel. A link is written the moment articles match, but stock reaches Ozon and Wildberries only from a warehouse, and an owner who never picked one saw "published" and then nothing at all on the platform: the worker skips stocks in silence, and silence is not an answer
+
 1.33.1 / August 27, 2026
 [Alexandr Topilski]
 - The channel tabs stop saying the same thing three times. Alongside the new state buttons sat a «Связывание» block with a button that did what «Опубликовать» already does — both read the cabinet's articles and write the pairs that match, one over a selection and one over the whole catalogue — and its own counters called two states one thing: "без связи: 105" for 104 products with no card and one that only needed a click. That is the exact conflation the state buttons exist to undo, printed twenty centimetres below them

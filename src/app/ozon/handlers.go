@@ -31,7 +31,6 @@ func (h *Handlers) Routes() chi.Router {
 	r.Get("/settings", h.GetSettings)
 	r.Put("/settings", h.SaveSettings)
 	r.Post("/check", h.Check)
-	r.Post("/link", h.Link)
 	r.Post("/warehouses", h.Warehouses)
 	r.Post("/push", h.Push)
 	r.Get("/orders", h.Orders)
@@ -157,12 +156,6 @@ type unlinkedProduct struct {
 	ID    int64  `json:"id"`
 	Title string `json:"title"`
 	SKU   string `json:"sku"`
-}
-
-type linkResponse struct {
-	Linked           int               `json:"linked"`
-	UnlinkedProducts []unlinkedProduct `json:"unlinked_products"`
-	UnlinkedOffers   []string          `json:"unlinked_offers"`
 }
 
 type okStatusResponse struct {
@@ -375,57 +368,6 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 				writeInternalError(w, err)
 				return
 			}
-		}
-	}
-	writeOK(w, res)
-}
-
-// Link matches shop products to cabinet cards by exact equality of products.sku
-// and offer_id. What did not match on either side comes back as lists: a card
-// lost silently is a product that will not travel to the platform later.
-func (h *Handlers) Link(w http.ResponseWriter, r *http.Request) {
-	c, ok := h.client(w)
-	if !ok {
-		return
-	}
-	offers, err := c.ListProducts()
-	if err != nil {
-		writeBadRequest(w, err.Error())
-		return
-	}
-	products, err := h.db.ListProducts()
-	if err != nil {
-		writeInternalError(w, err)
-		return
-	}
-
-	byOffer := make(map[string]Offer, len(offers))
-	for _, o := range offers {
-		if o.OfferID != "" {
-			byOffer[o.OfferID] = o
-		}
-	}
-
-	res := linkResponse{UnlinkedProducts: []unlinkedProduct{}, UnlinkedOffers: []string{}}
-	matched := make(map[string]bool, len(products))
-	for _, p := range products {
-		o, found := byOffer[p.SKU]
-		if p.SKU == "" || !found {
-			res.UnlinkedProducts = append(res.UnlinkedProducts,
-				unlinkedProduct{ID: p.ID, Title: p.Title, SKU: p.SKU})
-			continue
-		}
-		link := &database.OzonLink{ProductID: p.ID, OfferID: o.OfferID}
-		if err := h.db.UpsertOzonLink(link); err != nil {
-			writeInternalError(w, err)
-			return
-		}
-		matched[o.OfferID] = true
-		res.Linked++
-	}
-	for _, o := range offers {
-		if o.OfferID != "" && !matched[o.OfferID] {
-			res.UnlinkedOffers = append(res.UnlinkedOffers, o.OfferID)
 		}
 	}
 	writeOK(w, res)

@@ -115,6 +115,13 @@ const kText = {
   no: { ru: "нет", en: "no" },
   hiddenBadge: { ru: "скрыт с витрины", en: "hidden from storefront" },
   publishedResult: { ru: "Опубликовано: {n}", en: "Published: {n}" },
+  // Publishing writes the link, but stock travels only from a warehouse. An
+  // owner who never picked one sees "published" and then nothing happens on the
+  // platform, with no error anywhere: the worker skips stocks in silence.
+  noWarehouse: {
+    ru: " Остатки не поедут: не выбран склад FBS в настройках выше.",
+    en: " Stock will not travel: no FBS warehouse is picked in the settings above.",
+  },
   unpublishedResult: { ru: "Снято: {n}", en: "Unpublished: {n}" },
   noCardTitle: {
     ru: "Нет карточки на Ozon",
@@ -516,7 +523,10 @@ export default function Ozon() {
     setZeroFailed([]);
     try {
       const r = await api.ozonPublish(ids);
-      setPubMsg(t("publishedResult", { n: r.published }));
+      setPubMsg(
+        t("publishedResult", { n: r.published }) +
+          (r.published > 0 && !s.warehouse_id ? t("noWarehouse") : ""),
+      );
       setNoCard(r.no_card);
       await afterPublishChange();
     } catch (e) {

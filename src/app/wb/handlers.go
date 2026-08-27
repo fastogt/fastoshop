@@ -32,7 +32,6 @@ func (h *Handlers) Routes() chi.Router {
 	r.Get("/settings", h.GetSettings)
 	r.Put("/settings", h.SaveSettings)
 	r.Post("/check", h.Check)
-	r.Post("/link", h.Link)
 	r.Post("/warehouses", h.Warehouses)
 	r.Post("/push", h.Push)
 	r.Get("/orders", h.Orders)
@@ -169,18 +168,6 @@ type unlinkedProduct struct {
 	Title     string `json:"title"`
 	SKU       string `json:"sku"`
 	Reason    string `json:"reason"`
-}
-
-// unlinkedCard is a card in the cabinet nothing in the shop points at.
-type unlinkedCard struct {
-	NmID       int64  `json:"nm_id"`
-	VendorCode string `json:"vendor_code"`
-}
-
-type linkResponse struct {
-	Linked           int               `json:"linked"`
-	UnlinkedProducts []unlinkedProduct `json:"unlinked_products"`
-	UnlinkedCards    []unlinkedCard    `json:"unlinked_cards"`
 }
 
 type okStatusResponse struct {
@@ -347,49 +334,6 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 		log.Warnf("wb: seller info: %v", err)
 	} else {
 		res.LegalName, res.TradeMark = info.Name, info.TradeMark
-	}
-	writeOK(w, res)
-}
-
-// Link matches shop products to cabinet cards by the seller's article. What did
-// not match on either side comes back as lists: a card lost silently is a
-// product that will not travel to the platform later.
-func (h *Handlers) Link(w http.ResponseWriter, r *http.Request) {
-	c, ok := h.client(w)
-	if !ok {
-		return
-	}
-	cards, err := c.ListCards()
-	if err != nil {
-		writeBadRequest(w, err.Error())
-		return
-	}
-	products, err := h.db.ListProducts()
-	if err != nil {
-		writeInternalError(w, err)
-		return
-	}
-
-	idx := newCardIndex(cards)
-	links, missing := matchProducts(products, idx)
-	res := linkResponse{UnlinkedProducts: missing, UnlinkedCards: []unlinkedCard{}}
-	if res.UnlinkedProducts == nil {
-		res.UnlinkedProducts = []unlinkedProduct{}
-	}
-	matched := make(map[int64]bool, len(links))
-	for i := range links {
-		if err := h.db.UpsertWBLink(&links[i]); err != nil {
-			writeInternalError(w, err)
-			return
-		}
-		matched[links[i].NmID] = true
-		res.Linked++
-	}
-	for _, card := range cards {
-		if !matched[card.NmID] {
-			res.UnlinkedCards = append(res.UnlinkedCards,
-				unlinkedCard{NmID: card.NmID, VendorCode: card.VendorCode})
-		}
 	}
 	writeOK(w, res)
 }
