@@ -47,6 +47,13 @@ const kText = {
   // Why one field and not a choice per product: a product carries a single
   // stock figure, so the same number sent to two warehouses would be the same
   // goods promised twice.
+  // A token is issued per section. One without «Маркетплейс» answers every
+  // stock call with 403 while cards and prices keep working, so the tab looks
+  // connected and the levels quietly stay put.
+  noStockScope: {
+    ru: "Но в токене нет раздела «Маркетплейс»: остатки и заказы закрыты, синхронизация склада работать не будет. Выпустите токен заново в кабинете Wildberries, отметив этот раздел.",
+    en: "The token has no Marketplace section: stock and orders are refused, so warehouse sync will not work. Issue a new token in the Wildberries account with that section ticked.",
+  },
   warehouseHint: {
     ru: "Склад нужен только для остатков — без него цены всё равно отправляются. Складов в кабинете может быть несколько, остатки уезжают на этот: у товара один остаток, разделить его между складами магазин не умеет.",
     en: "The warehouse is only needed for stock — prices are sent without it. A cabinet may hold several warehouses and stock travels to this one: a product carries a single stock figure, and the shop cannot split it between warehouses.",
@@ -348,7 +355,8 @@ export default function WB() {
       const who = r.legal_name || r.trade_mark;
       return (
         t("checkOk", { n: r.total }) +
-        (who ? `. ${t("checkWho", { name: who })}` : "")
+        (who ? `. ${t("checkWho", { name: who })}` : "") +
+        (r.no_stock_scope ? " " + t("noStockScope") : "")
       );
     });
 

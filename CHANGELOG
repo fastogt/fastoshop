@@ -3,6 +3,7 @@
 - YML feeds bring their characteristics. `<param name="Цвет">белый</param>` is part of the standard and every exporter writes it — Bitrix, InSales, Tilda — and we read past it, which is the real reason no imported catalogue had any. A unit stays with its value, so "Диаметр" arrives as "12 см" and not as "12". `<weight>` was being dropped the same way and is now read as well
 - The spreadsheet template stops inventing a syntax. Yesterday's `params` column asked the owner to pack `Цвет=белый|Материал=эмаль` into one cell; a spreadsheet already has a way to state a property, and it is a column. Any column the shop does not know by name is a characteristic now — nothing to learn, and less code than the version it replaces
 - A YML feed can be uploaded as a file, not only fetched by link. Same as with a spreadsheet, the format is recognised by its own bytes rather than by another radio button: an owner whose export sits on disk had no way in before
+- «Проверить связь» on the Wildberries tab says when the token cannot carry stock. A token is issued per section, and one without «Маркетплейс» answers every stock and order call with 403 while cards and prices keep working — so the tab looked connected and the levels quietly stayed put. Found on a live seller who had pasted exactly such a token: 100 cards readable, warehouses refused
 
 1.37.0 / August 28, 2026
 [Alexandr Topilski]

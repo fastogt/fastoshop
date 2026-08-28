@@ -159,6 +159,11 @@ type checkResponse struct {
 	Total     int    `json:"total"`
 	LegalName string `json:"legal_name"`
 	TradeMark string `json:"trade_mark"`
+	// NoStockScope: the token was issued without the Marketplace section, so
+	// stock can never travel. Reported here because nothing else says it — the
+	// cards and prices calls succeed, the tab looks connected, and the levels
+	// silently stay put. Measured on a live seller who pasted such a token.
+	NoStockScope bool `json:"no_stock_scope"`
 }
 
 // Reason is empty for the plain "no such card" case and carries an explanation
@@ -334,6 +339,13 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 		log.Warnf("wb: seller info: %v", err)
 	} else {
 		res.LegalName, res.TradeMark = info.Name, info.TradeMark
+	}
+	// A token can be issued per section, and one without Marketplace answers
+	// every stock call with 403 while cards and prices keep working. Asking for
+	// the warehouse list is the cheapest question that has that answer.
+	if _, err := c.ListWarehouses(); err != nil {
+		var apiErr *APIError
+		res.NoStockScope = errors.As(err, &apiErr) && apiErr.Status == http.StatusForbidden
 	}
 	writeOK(w, res)
 }

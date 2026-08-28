@@ -22,6 +22,9 @@ type cabinet struct {
 	stocks   []StockItem
 	refuse   map[string]string // barcode -> reason, answered as a 409
 	stockErr int               // non-zero: fail the whole stocks call with this status
+	// noScope: answer the Marketplace section with 403, the way a token issued
+	// without it does.
+	noScope bool
 
 	priceBatches [][]PriceItem
 	taskStatus   int              // what /history/tasks reports
@@ -58,6 +61,14 @@ func newCabinet(t *testing.T, cards ...Card) (*cabinet, Hosts) {
 	})
 
 	mux.HandleFunc("/api/v3/warehouses", func(w http.ResponseWriter, r *http.Request) {
+		c.mu.Lock()
+		denied := c.noScope
+		c.mu.Unlock()
+		if denied {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"detail":"scope is not allowed for this resource"}`))
+			return
+		}
 		_ = json.NewEncoder(w).Encode([]Warehouse{{ID: 7, Name: "Основной"}})
 	})
 
@@ -494,5 +505,30 @@ func TestCabinetCountsWhatCanActuallyBeLinked(t *testing.T) {
 	// has no card. A button offered on any of them would fail.
 	if got.Ready != 0 || len(got.ReadyIDs) != 0 {
 		t.Errorf("ready %d %v, want none", got.Ready, got.ReadyIDs)
+	}
+}
+
+// TestCheckReportsMissingStockScope: a Wildberries token is issued per section,
+// and one without «Маркетплейс» answers every stock call with 403 while cards
+// and prices keep working. The tab then looks connected and the levels quietly
+// stay put. Measured on a live seller who pasted exactly such a token.
+func TestCheckReportsMissingStockScope(t *testing.T) {
+	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
+	enable(t, d, "7")
+
+	if got := decode[checkResponse](t, do(t, h, "POST", "/check", "")); got.NoStockScope {
+		t.Fatalf("полный токен не должен считаться урезанным: %+v", got)
+	}
+
+	cab.mu.Lock()
+	cab.noScope = true
+	cab.mu.Unlock()
+
+	got := decode[checkResponse](t, do(t, h, "POST", "/check", ""))
+	if got.Total != 1 {
+		t.Errorf("карточки читаются и без раздела складов: %+v", got)
+	}
+	if !got.NoStockScope {
+		t.Error("отказ склада по правам должен доходить до владельца")
 	}
 }

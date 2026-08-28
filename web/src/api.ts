@@ -122,12 +122,6 @@ export interface WBUnpublishResult {
   failed: WBUnlinkedProduct[];
 }
 
-export interface WBLinkResult {
-  linked: number;
-  unlinked_products: WBUnlinkedProduct[];
-  unlinked_cards: { nm_id: number; vendor_code: string }[];
-}
-
 export interface WBWarehouse {
   id: string;
   name: string;
@@ -439,12 +433,6 @@ export interface OzonWarehouse {
   name: string;
 }
 
-export interface OzonLinkResult {
-  linked: number;
-  unlinked_products: { id: number; title: string; sku: string }[];
-  unlinked_offers: string[];
-}
-
 const data = <T>(r: { data: { data: T } }) => r.data.data;
 
 export type Stats = {
@@ -619,7 +607,6 @@ export const api = {
     http
       .post("/ozon/check")
       .then(data<{ total: number; legal_name: string; currency: string }>),
-  ozonLink: () => http.post("/ozon/link").then(data<OzonLinkResult>),
   ozonWarehouses: () =>
     http
       .post("/ozon/warehouses")
@@ -668,10 +655,14 @@ export const api = {
   saveWBSettings: (s: Record<string, unknown>) =>
     http.put("/wb/settings", s).then(data<WBSettings>),
   wbCheck: () =>
-    http
-      .post("/wb/check")
-      .then(data<{ total: number; legal_name: string; trade_mark: string }>),
-  wbLink: () => http.post("/wb/link").then(data<WBLinkResult>),
+    http.post("/wb/check").then(
+      data<{
+        total: number;
+        legal_name: string;
+        trade_mark: string;
+        no_stock_scope: boolean;
+      }>,
+    ),
   wbWarehouses: () =>
     http
       .post("/wb/warehouses")
