@@ -1,3 +1,9 @@
+1.38.0 / August 28, 2026
+[Alexandr Topilski]
+- YML feeds bring their characteristics. `<param name="Цвет">белый</param>` is part of the standard and every exporter writes it — Bitrix, InSales, Tilda — and we read past it, which is the real reason no imported catalogue had any. A unit stays with its value, so "Диаметр" arrives as "12 см" and not as "12". `<weight>` was being dropped the same way and is now read as well
+- The spreadsheet template stops inventing a syntax. Yesterday's `params` column asked the owner to pack `Цвет=белый|Материал=эмаль` into one cell; a spreadsheet already has a way to state a property, and it is a column. Any column the shop does not know by name is a characteristic now — nothing to learn, and less code than the version it replaces
+- A YML feed can be uploaded as a file, not only fetched by link. Same as with a spreadsheet, the format is recognised by its own bytes rather than by another radio button: an owner whose export sits on disk had no way in before
+
 1.37.0 / August 28, 2026
 [Alexandr Topilski]
 - The catalogue template takes characteristics. `products.params` has existed since the table was written and no source filled it — not YML, not a spreadsheet, not the cabinet imports — so colour, size and material had to be typed in one product at a time. The CSV gains a `params` column written as `Цвет=белый|Материал=эмаль`, the same pipe the images column already uses: a cell holds one line, and JSON in it would not survive the semicolon that separates the columns

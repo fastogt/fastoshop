@@ -229,6 +229,9 @@ const kYMLFeed = `<?xml version="1.0" encoding="utf-8"?>
   <categoryId>5665</categoryId><picture>IMG</picture><picture>IMG</picture>
   <barcode>2000591430017</barcode><vendorCode>TR-1</vendorCode>
   <description>Пять насадок</description><weight>0.75</weight>
+  <param name="Цвет">белый</param><param name="Материал">пластик</param>
+  <param name="Диаметр" unit="см">12</param>
+  <param name="">без имени</param><param name="Пустой"></param>
 </offer>
 <offer id="059144" available="true">
   <name>Ковш эмалированный</name><price>1200</price><currencyId>RUB</currencyId>
@@ -686,5 +689,50 @@ func TestOzonSurvivesTaxonomyFailure(t *testing.T) {
 	items, err := (&Ozon{ClientID: "cid", APIKey: "key", BaseURL: srv.URL}).Fetch()
 	if err != nil || len(items) != 1 || items[0].Category != "" {
 		t.Fatalf("fetch: %v %+v", err, items)
+	}
+}
+
+// TestYMLParams: <param> is the standard's own place for characteristics, and
+// every exporter writes them. We read past them until v1.37, which is why no
+// imported catalogue had any. The unit belongs with the value — "12 см" reads,
+// "12" does not — and a nameless or empty param is dropped rather than shown
+// as a blank row on the card.
+func TestYMLParams(t *testing.T) {
+	srv := ymlServer(t, kYMLFeed)
+	defer srv.Close()
+
+	items, err := (&YML{URL: srv.URL + "/feed.xml", DefaultStock: 7}).Fetch()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var terka *Item
+	for i := range items {
+		if items[i].SKU == "TR-1" {
+			terka = &items[i]
+		}
+	}
+	if terka == nil {
+		t.Fatal("товар TR-1 не разобрался")
+	}
+	if len(terka.Params) != 3 {
+		t.Fatalf("характеристик %d, ожидалось 3: %+v", len(terka.Params), terka.Params)
+	}
+	if terka.Params["Цвет"] != "белый" || terka.Params["Материал"] != "пластик" {
+		t.Errorf("пары не разобрались: %+v", terka.Params)
+	}
+	if terka.Params["Диаметр"] != "12 см" {
+		t.Errorf("единица измерения потерялась: %q", terka.Params["Диаметр"])
+	}
+	// The weight is a named column, not a characteristic: the shop does
+	// arithmetic with it and two homes for one number is one home too many.
+	if terka.WeightG == nil || *terka.WeightG != 750 {
+		t.Errorf("вес из фида: %v", terka.WeightG)
+	}
+	// An offer without params must not gain an empty set — the storefront would
+	// print a heading over nothing.
+	for _, it := range items {
+		if it.SKU == "TR-4" && it.Params != nil {
+			t.Errorf("товар без характеристик получил набор: %+v", it.Params)
+		}
 	}
 }

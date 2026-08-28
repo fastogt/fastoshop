@@ -122,15 +122,15 @@ func TestCSVReadsCategory(t *testing.T) {
 	}
 }
 
-// TestCSVParams: the characteristics column. Weight and dimensions have named
-// columns of their own because the shop does arithmetic with them; everything
-// else — colour, material, size — is a pair in one cell.
+// TestCSVParams: a column the shop does not know by name is a characteristic.
+// In a spreadsheet a property is a column — that is what the format already
+// offers, and packing pairs into one cell would invent a second one beside it.
 func TestCSVParams(t *testing.T) {
 	c := &CSV{Data: []byte(
-		"sku;title;price;params\n" +
-			"A;Чайник;2500.00;Цвет=белый|Материал=эмаль\n" +
-			"B;Ковш;1000.00;\n" +
-			"C;Кружка;900.00;мусор|Цвет=синий|=пусто|Ключ=\n")}
+		"sku;title;price;Цвет;Материал;;Объём\n" +
+			"A;Чайник;2500.00;белый;эмаль;мусор;2 л\n" +
+			"B;Ковш;1000.00;;;;\n" +
+			"C;Кружка;900.00;синий;;;\n")}
 	items, err := c.Fetch()
 	if err != nil {
 		t.Fatal(err)
@@ -138,16 +138,16 @@ func TestCSVParams(t *testing.T) {
 	if len(items) != 3 {
 		t.Fatalf("строк %d, ожидалось 3", len(items))
 	}
-	if got := items[0].Params; len(got) != 2 || got["Цвет"] != "белый" ||
-		got["Материал"] != "эмаль" {
-		t.Errorf("пары не разобрались: %+v", got)
+	if got := items[0].Params; len(got) != 3 || got["Цвет"] != "белый" ||
+		got["Материал"] != "эмаль" || got["Объём"] != "2 л" {
+		t.Errorf("колонки не стали характеристиками: %+v", got)
 	}
 	if items[1].Params != nil {
-		t.Errorf("пустая ячейка должна давать ничего, а не пустой набор: %+v", items[1].Params)
+		t.Errorf("пустые ячейки должны давать ничего, а не пустой набор: %+v", items[1].Params)
 	}
-	// Half-written pairs are dropped, the good one survives: a spreadsheet
-	// always holds a few, and losing the row over them would be worse.
+	// A column with no heading is not a characteristic, and an empty cell adds
+	// nothing: both are ordinary in a spreadsheet and neither may reach a card.
 	if got := items[2].Params; len(got) != 1 || got["Цвет"] != "синий" {
-		t.Errorf("кривые пары не отсеялись: %+v", got)
+		t.Errorf("пустые и безымянные не отсеялись: %+v", got)
 	}
 }

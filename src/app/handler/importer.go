@@ -80,11 +80,14 @@ func makeSource(req importRequest) (importer.Source, bool) {
 		if err != nil || len(raw) == 0 {
 			return nil, false
 		}
-		// One file field, two formats: the owner uploads what they have, and a
-		// spreadsheet is recognised by its own bytes rather than by a second
-		// radio button nobody wants to think about.
+		// One file field, three formats: the owner uploads what they have, and
+		// each is recognised by its own bytes rather than by a radio button
+		// nobody wants to think about.
 		if importer.IsXLSX(raw) {
 			return &importer.XLSX{Data: raw}, true
+		}
+		if importer.IsYML(raw) {
+			return &importer.YML{Data: raw, DefaultStock: req.DefaultStock}, true
 		}
 		return &importer.CSV{Data: raw}, true
 	case "yml":

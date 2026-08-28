@@ -31,9 +31,9 @@ func (c *CSV) Name() string { return "csv" }
 // the file into one column of mojibake.
 func Template() []byte {
 	return []byte("\xef\xbb\xbf" +
-		"sku;title;description;price;stock;category;images;params\n" +
+		"sku;title;description;price;stock;category;images;Цвет;Материал\n" +
 		"CH-201;Чайник эмалированный 2 л;Объём 2 л, индукция;2500.00;7;kuhnya;" +
-		"https://example.com/1.jpg|https://example.com/2.jpg;Цвет=белый|Материал=эмаль\n")
+		"https://example.com/1.jpg|https://example.com/2.jpg;белый;эмаль\n")
 }
 
 // kCP1251 maps the upper half of windows-1251 to runes. A table beats pulling in
@@ -134,7 +134,7 @@ func (c *CSV) parse() {
 			Description: get(row, "description"), Price: price,
 			Stock: max(stock, 0), Category: cellCategory(get(row, "category")),
 		}
-		item.Params = cellParams(get(row, "params"))
+		item.Params = extraColumns(records[0], row)
 		if imgs := get(row, "images"); imgs != "" {
 			for _, u := range strings.Split(imgs, "|") {
 				if u = strings.TrimSpace(u); u != "" {
@@ -146,19 +146,26 @@ func (c *CSV) parse() {
 	}
 }
 
-// cellParams reads "Цвет=белый|Материал=эмаль" — the same pipe the images
-// column uses, because a spreadsheet cell holds one line and JSON in it would
-// not survive the semicolon that separates the columns.
-func cellParams(cell string) database.ParamValues {
-	if cell == "" {
-		return nil
-	}
+// kKnownColumns are the ones the shop reads by meaning. Everything else in the
+// header is a characteristic: in a spreadsheet a property is a column, and
+// asking the owner to pack "Цвет=белый|Материал=эмаль" into one cell would be
+// inventing a format next to the one the file already has.
+var kKnownColumns = map[string]bool{
+	"sku": true, "title": true, "description": true, "price": true,
+	"stock": true, "category": true, "images": true,
+}
+
+// extraColumns collects the header's own columns as characteristics. A blank
+// cell adds nothing: an empty property is a heading over nothing on the card.
+func extraColumns(header, row []string) database.ParamValues {
 	out := database.ParamValues{}
-	for _, pair := range strings.Split(cell, "|") {
-		k, v, ok := strings.Cut(pair, "=")
-		k, v = strings.TrimSpace(k), strings.TrimSpace(v)
-		if ok && k != "" && v != "" {
-			out[k] = v
+	for i, name := range header {
+		name = strings.TrimSpace(name)
+		if name == "" || kKnownColumns[strings.ToLower(name)] || i >= len(row) {
+			continue
+		}
+		if v := strings.TrimSpace(row[i]); v != "" {
+			out[name] = v
 		}
 	}
 	if len(out) == 0 {

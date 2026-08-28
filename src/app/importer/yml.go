@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -19,6 +20,11 @@ import (
 // of Bitrix, InSales, Tilda. A keyless source: the seller gives a link to the XML.
 type YML struct {
 	URL string
+	// Data is the feed itself, when the owner uploads the file instead of
+	// hosting it. Our own tools write one too — a generator that has the
+	// catalogue in hand should hand over the format the shop already reads,
+	// not invent a flat one beside it.
+	Data []byte
 	// DefaultStock — the standard carries no quantity, only an availability flag,
 	// so the seller sets the stock as one number for the whole catalogue. Used
 	// for offers that state no count of their own.
@@ -36,6 +42,16 @@ type YML struct {
 const kMaxFeedBytes = 100 << 20
 
 func (y *YML) Name() string { return "yml" }
+
+// IsYML recognises an uploaded feed by its opening bytes, the way IsXLSX does.
+// A declaration is optional in XML, so the root element is what settles it.
+func IsYML(raw []byte) bool {
+	head := raw
+	if len(head) > 512 {
+		head = head[:512]
+	}
+	return bytes.Contains(head, []byte("<yml_catalog"))
+}
 
 // Currency is only known after Fetch: the feed has to be parsed to see it.
 func (y *YML) Currency() string { return y.currency }
@@ -72,7 +88,19 @@ type ymlOffer struct {
 	Pictures    []string `xml:"picture"`
 	// Outside the standard: only a shop of ours puts a quantity in a feed. An
 	// empty element keeps the old behaviour for everyone else.
-	Count string `xml:"count"`
+	Count      string     `xml:"count"`
+	Params     []ymlParam `xml:"param"`
+	Weight     string     `xml:"weight"`
+	Dimensions string     `xml:"dimensions"`
+}
+
+// param is the standard's own place for characteristics — colour, size,
+// material. Every exporter writes them (Bitrix, InSales, Tilda), and we read
+// past them until now, which is why no imported catalogue had any.
+type ymlParam struct {
+	Name  string `xml:"name,attr"`
+	Unit  string `xml:"unit,attr"`
+	Value string `xml:",chardata"`
 }
 
 type ymlCategory struct {
@@ -145,24 +173,30 @@ func trimCommonRoot(items []Item) {
 // document and the tree in memory.
 func (y *YML) each(fn func(o *ymlOffer)) error {
 	y.categories = map[string]ymlCategory{}
-	if !strings.HasPrefix(y.URL, "http://") && !strings.HasPrefix(y.URL, "https://") {
-		return &i18n.KeyError{Key: i18n.KeyYMLBadURL}
-	}
-	resp, err := kHTTP.Get(y.URL)
-	if err != nil {
-		return fmt.Errorf("yml: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		return &i18n.KeyError{Key: i18n.KeyYMLBadStatus, Args: []any{resp.StatusCode}}
-	}
 	limit := y.MaxBytes
 	if limit <= 0 {
 		limit = kMaxFeedBytes
 	}
+	var body io.Reader
+	if len(y.Data) > 0 {
+		body = bytes.NewReader(y.Data)
+	} else {
+		if !strings.HasPrefix(y.URL, "http://") && !strings.HasPrefix(y.URL, "https://") {
+			return &i18n.KeyError{Key: i18n.KeyYMLBadURL}
+		}
+		resp, err := kHTTP.Get(y.URL)
+		if err != nil {
+			return fmt.Errorf("yml: %w", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode != http.StatusOK {
+			return &i18n.KeyError{Key: i18n.KeyYMLBadStatus, Args: []any{resp.StatusCode}}
+		}
+		body = resp.Body
+	}
 	// LimitedReader with one spare byte: when N runs out mid-document the
 	// decoder fails, and N == 0 tells truncation apart from real bad XML.
-	lr := &io.LimitedReader{R: resp.Body, N: limit + 1}
+	lr := &io.LimitedReader{R: body, N: limit + 1}
 	dec := xml.NewDecoder(lr)
 	for {
 		tok, err := dec.Token()
@@ -229,6 +263,40 @@ func (y *YML) stock(o *ymlOffer) int {
 	return y.DefaultStock
 }
 
+// offerParams turns the feed's <param> list into our map. A unit belongs with
+// the value — "Вес: 1.5 кг" reads, "Вес: 1.5" does not — and a nameless or
+// empty param is dropped rather than stored as a blank row on the card.
+func offerParams(ps []ymlParam) database.ParamValues {
+	out := database.ParamValues{}
+	for _, p := range ps {
+		name := strings.TrimSpace(p.Name)
+		value := strings.TrimSpace(p.Value)
+		if name == "" || value == "" {
+			continue
+		}
+		if unit := strings.TrimSpace(p.Unit); unit != "" {
+			value += " " + unit
+		}
+		out[name] = value
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// ymlWeight reads the standard's <weight>, stated in kilograms. Anything
+// unparseable is no weight at all: a number off by a thousand is worse than a
+// missing one, and it is silent.
+func ymlWeight(raw string) *int64 {
+	v, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || v <= 0 {
+		return nil
+	}
+	g := int64(math.Round(v * 1000))
+	return &g
+}
+
 func (y *YML) Fetch() ([]Item, error) {
 	y.errors = 0
 	y.currency = ""
@@ -269,6 +337,8 @@ func (y *YML) Fetch() ([]Item, error) {
 			Stock:       y.stock(o),
 			ImageURLs:   o.Pictures,
 			Category:    categoryPath(y.categories, strings.TrimSpace(o.CategoryID)),
+			Params:      offerParams(o.Params),
+			WeightG:     ymlWeight(o.Weight),
 		})
 	})
 	if err != nil {
