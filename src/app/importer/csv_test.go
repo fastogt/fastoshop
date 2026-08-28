@@ -121,3 +121,33 @@ func TestCSVReadsCategory(t *testing.T) {
 		t.Errorf("category = %q", items[0].Category)
 	}
 }
+
+// TestCSVParams: the characteristics column. Weight and dimensions have named
+// columns of their own because the shop does arithmetic with them; everything
+// else — colour, material, size — is a pair in one cell.
+func TestCSVParams(t *testing.T) {
+	c := &CSV{Data: []byte(
+		"sku;title;price;params\n" +
+			"A;Чайник;2500.00;Цвет=белый|Материал=эмаль\n" +
+			"B;Ковш;1000.00;\n" +
+			"C;Кружка;900.00;мусор|Цвет=синий|=пусто|Ключ=\n")}
+	items, err := c.Fetch()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("строк %d, ожидалось 3", len(items))
+	}
+	if got := items[0].Params; len(got) != 2 || got["Цвет"] != "белый" ||
+		got["Материал"] != "эмаль" {
+		t.Errorf("пары не разобрались: %+v", got)
+	}
+	if items[1].Params != nil {
+		t.Errorf("пустая ячейка должна давать ничего, а не пустой набор: %+v", items[1].Params)
+	}
+	// Half-written pairs are dropped, the good one survives: a spreadsheet
+	// always holds a few, and losing the row over them would be worse.
+	if got := items[2].Params; len(got) != 1 || got["Цвет"] != "синий" {
+		t.Errorf("кривые пары не отсеялись: %+v", got)
+	}
+}

@@ -31,8 +31,9 @@ func (c *CSV) Name() string { return "csv" }
 // the file into one column of mojibake.
 func Template() []byte {
 	return []byte("\xef\xbb\xbf" +
-		"sku;title;description;price;stock;category;images\n" +
-		"CH-201;Чайник эмалированный 2 л;Объём 2 л, индукция;2500.00;7;kuhnya;https://example.com/1.jpg|https://example.com/2.jpg\n")
+		"sku;title;description;price;stock;category;images;params\n" +
+		"CH-201;Чайник эмалированный 2 л;Объём 2 л, индукция;2500.00;7;kuhnya;" +
+		"https://example.com/1.jpg|https://example.com/2.jpg;Цвет=белый|Материал=эмаль\n")
 }
 
 // kCP1251 maps the upper half of windows-1251 to runes. A table beats pulling in
@@ -133,6 +134,7 @@ func (c *CSV) parse() {
 			Description: get(row, "description"), Price: price,
 			Stock: max(stock, 0), Category: cellCategory(get(row, "category")),
 		}
+		item.Params = cellParams(get(row, "params"))
 		if imgs := get(row, "images"); imgs != "" {
 			for _, u := range strings.Split(imgs, "|") {
 				if u = strings.TrimSpace(u); u != "" {
@@ -142,6 +144,27 @@ func (c *CSV) parse() {
 		}
 		c.rows = append(c.rows, item)
 	}
+}
+
+// cellParams reads "Цвет=белый|Материал=эмаль" — the same pipe the images
+// column uses, because a spreadsheet cell holds one line and JSON in it would
+// not survive the semicolon that separates the columns.
+func cellParams(cell string) database.ParamValues {
+	if cell == "" {
+		return nil
+	}
+	out := database.ParamValues{}
+	for _, pair := range strings.Split(cell, "|") {
+		k, v, ok := strings.Cut(pair, "=")
+		k, v = strings.TrimSpace(k), strings.TrimSpace(v)
+		if ok && k != "" && v != "" {
+			out[k] = v
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // cellCategory reads the category the way price lists write it. Half of them

@@ -1,3 +1,9 @@
+1.37.0 / August 28, 2026
+[Alexandr Topilski]
+- The catalogue template takes characteristics. `products.params` has existed since the table was written and no source filled it — not YML, not a spreadsheet, not the cabinet imports — so colour, size and material had to be typed in one product at a time. The CSV gains a `params` column written as `Цвет=белый|Материал=эмаль`, the same pipe the images column already uses: a cell holds one line, and JSON in it would not survive the semicolon that separates the columns
+- Re-import treats them as it treats the category and the weight: an empty set is filled, a set the owner has touched is theirs. `TestReimportKeepsTheOwnersWords` now holds that line for characteristics too — the whole set at once, because a half-owned set is one nobody can reason about
+- This is the column three separate things were waiting on: a card cannot be created on Ozon without attributes, a feed cannot be mapped for Kufar without them, and a catalogue cannot be filtered by them
+
 1.37.0 / August 27, 2026
 [Alexandr Topilski]
 - The Ozon tab stops keeping a currency of its own. One shop is one legal entity is one currency: a Belarusian entity gives a .by domain, a storefront in BYN and a cabinet in BYN, and a Polish shop will be its own instance with its own entity and its own złoty. So `ozon_settings.currency` was a second copy of an answer the shop already had, and the whole apparatus around it — two constants, a validator, a setter, a field in the request and in the tab, two message keys, and yesterday's refusal to run the markup ladder across currencies — existed to keep two truths in step. Wildberries never had any of it and never needed it: its price carries no currency at all, the cabinet decides. Prices now go out labelled with the shop's own money, and the cabinet's currency, read on «Проверить связь», became what it should have been — a check that says which of the two is wrong

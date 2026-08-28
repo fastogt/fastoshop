@@ -36,6 +36,10 @@ type Item struct {
 	LengthMM *int64
 	WidthMM  *int64
 	HeightMM *int64
+	// Characteristics as the source stated them: colour, size, material. Weight
+	// and dimensions are deliberately NOT in here — the core does arithmetic
+	// with those, and two homes for one number is one home too many.
+	Params database.ParamValues
 }
 
 // fill keeps what the product already has and takes the feed's value only when
@@ -227,7 +231,8 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 			SourcePrice: it.Price, Stock: max(it.Stock, 0),
 			Category: it.Category, Supplier: supplier,
 			WeightG: it.WeightG, LengthMM: it.LengthMM,
-			WidthMM: it.WidthMM, HeightMM: it.HeightMM}
+			WidthMM: it.WidthMM, HeightMM: it.HeightMM,
+			Params: it.Params}
 		if err := db.CreateProduct(p); err != nil {
 			log.Warnf("import %s: create %q: %v", src.Name(), it.Title, err)
 			res.Errors++
@@ -295,10 +300,18 @@ func merge(db *database.Database, old database.Product, it Item, coefficient flo
 	width, w := fill(old.WidthMM, it.WidthMM)
 	height, hh := fill(old.HeightMM, it.HeightMM)
 	measured := filled || l || w || hh
+	// Characteristics follow the category: an empty set is filled, a set the
+	// owner has touched is theirs. We do not merge key by key — a half-owned
+	// set is a set nobody can reason about.
+	params, gained := old.Params, false
+	if len(params) == 0 && len(it.Params) > 0 {
+		params, gained = it.Params, true
+	}
 	if old.SourcePrice == it.Price && old.Stock == max(it.Stock, 0) &&
-		old.Price == price && old.Category == category && !measured {
+		old.Price == price && old.Category == category && !measured && !gained {
 		return false, nil
 	}
+	old.Params = params
 	old.WeightG, old.LengthMM = weight, length
 	old.WidthMM, old.HeightMM = width, height
 	old.SourcePrice = it.Price

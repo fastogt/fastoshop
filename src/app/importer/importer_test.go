@@ -331,6 +331,7 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	p.Category = "Посуда/Тёрки"
 	weight := int64(1200)
 	p.WeightG = &weight
+	p.Params = database.ParamValues{"Цвет": "белый"}
 	if err := d.UpdateProduct(p); err != nil {
 		t.Fatal(err)
 	}
@@ -351,6 +352,11 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	}
 	if after.Category != "Посуда/Тёрки" {
 		t.Errorf("the feed took the category back: %q", after.Category)
+	}
+	// Characteristics are the owner's as well: a set they have touched is not
+	// overwritten, and a feed that carries none does not empty it.
+	if len(after.Params) != 1 || after.Params["Цвет"] != "белый" {
+		t.Errorf("the feed took the characteristics back: %+v", after.Params)
 	}
 	// Measurements are the owner's too: a feed that never carried a weight must
 	// not take one back.
