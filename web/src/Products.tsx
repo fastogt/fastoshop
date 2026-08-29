@@ -99,13 +99,15 @@ const kText = {
     ru: "Длина × ширина × высота упаковки. По весу и габаритам считается доставка, поэтому пустое поле честнее нуля: незаполненный вес — это «неизвестно», а не «невесомый».",
     en: "Length × width × height of the parcel. Delivery is priced by weight and size, so an empty field is more honest than a zero: an unstated weight means \u201cunknown\u201d, not \u201cweightless\u201d.",
   },
+  cardShop: { ru: "Витрина", en: "Storefront" },
+  cardStock: { ru: "Цена и склад", en: "Price and stock" },
+  cardPhotos: { ru: "Фото", en: "Photos" },
+  cardChannels: { ru: "Для площадок", en: "For marketplaces" },
+  paramAdd: { ru: "+ Свойство", en: "+ Property" },
+  paramRemove: { ru: "Убрать", en: "Remove" },
   labelParams: { ru: "Характеристики", en: "Characteristics" },
   paramName: { ru: "Свойство", en: "Property" },
   paramValue: { ru: "Значение", en: "Value" },
-  paramsHint: {
-    ru: "Цвет, материал, размер — то, что площадка называет атрибутами и без чего не принимает карточку. Пустая строка внизу — это место для новой; чтобы убрать характеристику, сотрите её название.",
-    en: "Colour, material, size — what a marketplace calls attributes and refuses a card without. The empty row at the bottom is where a new one goes; to remove one, clear its name.",
-  },
   labelCategory: { ru: "Категория", en: "Category" },
   categoryHint: {
     ru: "Косая черта задаёт вложенность: «Посуда/Кастрюли» — это страница «Кастрюли» внутри «Посуды». У каждого уровня своя страница на витрине.",
@@ -193,9 +195,9 @@ const kText = {
   },
   labelSupplier: { ru: "Поставщик (группа)", en: "Supplier (group)" },
   supplierPlaceholder: { ru: "без поставщика", en: "no supplier" },
-  fieldsHint: {
-    ru: "Категория — раздел витрины, по ней покупатель фильтрует каталог; импорт её не заполняет. Поставщик — чей это товар: только его выгрузка будет обновлять цену и остаток. Оставьте пустым, и товар не тронет ни одна загрузка. Группу можно менять и вписывать новую — она появится сама, заводить её заранее не нужно. Осторожно с переносом: если в выгрузке этой группы такого артикула нет, ближайшая загрузка обнулит остаток товара.",
-    en: "Category is a storefront section customers filter by; import never fills it. Supplier is whose goods these are: only that feed updates the price and stock. Leave it empty and no import will touch the product. The group can be changed and a new name typed in — it appears by itself, there is nothing to create up front. Mind the move: if that group’s feed has no such article, the next import zeroes the product’s stock.",
+  supplierHint: {
+    ru: "Чей это товар: только выгрузка этой группы будет обновлять его цену и остаток. Осторожно: если в выгрузке такого артикула нет, ближайшая загрузка обнулит остаток.",
+    en: "Whose goods these are: only this group's feed updates the price and stock. Careful — if the feed has no such article, the next import zeroes the stock.",
   },
   editTitle: { ru: "Товар", en: "Product" },
   newTitle: { ru: "Новый товар", en: "New product" },
@@ -228,6 +230,16 @@ const isRemote = isRemoteImage;
 
 // An empty field is "nobody said", which the server stores as NULL — not as a
 // zero a delivery quote would take for a real measurement.
+// The card is one record shown in parts, so the tabs are a view state and not
+// four forms: one Save, one request.
+const kCardTabs = [
+  "cardShop",
+  "cardStock",
+  "cardPhotos",
+  "cardChannels",
+] as const;
+type CardTab = (typeof kCardTabs)[number];
+
 const numOrNull = (v: string): number | null => {
   const n = Number(v.trim());
   return v.trim() === "" || !Number.isFinite(n) || n <= 0 ? null : n;
@@ -236,6 +248,7 @@ const numOrNull = (v: string): number | null => {
 export default function Products() {
   const [list, setList] = useState<Product[]>([]);
   const [edit, setEdit] = useState<Partial<Product> | null>(null);
+  const [cardTab, setCardTab] = useState<CardTab>("cardShop");
   // Index of the photo being dragged. A ref, not state: it changes on every
   // dragover and re-rendering the strip mid-drag drops the drag itself.
   const dragFrom = useRef<number | null>(null);
@@ -307,6 +320,7 @@ export default function Products() {
   }, [search]);
 
   const open = (p: Partial<Product>) => {
+    setCardTab("cardShop");
     setEdit(p);
     setPriceRub(toRubles(p.price ?? 0));
     setStock(null);
@@ -397,19 +411,30 @@ export default function Products() {
 
   // The draft lands straight in the form: the dialog is already a draft —
   // nothing reaches the database until Save, and closing the window undoes it.
-  // One row at a time, with the blank tail row turning into a real one as soon
-  // as it is typed into. A row whose name is cleared is dropped — the server
-  // drops it anyway, and leaving it on screen would say otherwise.
+  // Rows live in state as they are, blanks included: filtering on every
+  // keystroke deleted the row whose name was being retyped, value and all. The
+  // server drops nameless rows on save, so the screen and the record agree.
   const setParam = (i: number, name?: string, value?: string) =>
     setEdit((prev) => {
       if (!prev) return prev;
-      const rows = [...(prev.params ?? []), { name: "", value: "" }];
-      rows[i] = {
-        name: name ?? rows[i].name,
-        value: value ?? rows[i].value,
-      };
-      return { ...prev, params: rows.filter((r) => r.name.trim() !== "") };
+      const rows = [...(prev.params ?? [])];
+      rows[i] = { name: name ?? rows[i].name, value: value ?? rows[i].value };
+      return { ...prev, params: rows };
     });
+
+  const addParam = () =>
+    setEdit((prev) =>
+      prev
+        ? { ...prev, params: [...(prev.params ?? []), { name: "", value: "" }] }
+        : prev,
+    );
+
+  const removeParam = (i: number) =>
+    setEdit((prev) =>
+      prev
+        ? { ...prev, params: (prev.params ?? []).filter((_, n) => n !== i) }
+        : prev,
+    );
 
   const enrich = async () => {
     if (!edit?.id) return;
@@ -715,278 +740,333 @@ export default function Products() {
           }
         >
           <div className="flex flex-col gap-4">
-            <div>
-              <label className="label">{t("labelTitle")}</label>
-              <input
-                className="field"
-                placeholder={t("titlePlaceholder")}
-                value={edit.title ?? ""}
-                onChange={(e) => setEdit({ ...edit, title: e.target.value })}
-              />
+            {/* Same tab markup as the admin header: a row of buttons with an
+                underline on the active one. Wrapping, because four of them do
+                not fit a 390px screen in one line. */}
+            <div className="border-line -mt-2 flex flex-wrap gap-1 border-b">
+              {kCardTabs.map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setCardTab(k)}
+                  className={
+                    "-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors " +
+                    (cardTab === k
+                      ? "border-brand text-brand"
+                      : "text-muted hover:text-ink border-transparent")
+                  }
+                >
+                  {t(k)}
+                </button>
+              ))}
             </div>
-            <div className="flex flex-wrap gap-3">
-              <div className="min-w-40 flex-1">
-                <label className="label">{t("labelSku")}</label>
-                {/* The article is what an import matches a product by. Change
+            {cardTab === "cardShop" && (
+              <>
+                <div>
+                  <label className="label">{t("labelTitle")}</label>
+                  <input
+                    className="field"
+                    placeholder={t("titlePlaceholder")}
+                    value={edit.title ?? ""}
+                    onChange={(e) =>
+                      setEdit({ ...edit, title: e.target.value })
+                    }
+                  />
+                </div>
+                {/* A category is a path, and paths are long: its own full-width row,
+                not a quarter of a row next to the price. */}
+                <div>
+                  <label className="label">{t("labelCategory")}</label>
+                  <input
+                    className="field"
+                    list="product-categories"
+                    placeholder="Посуда/Кастрюли"
+                    value={edit.category ?? ""}
+                    onChange={(e) =>
+                      setEdit({ ...edit, category: e.target.value })
+                    }
+                  />
+                  <datalist id="product-categories">
+                    {categories.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
+                  <p className="hint mt-1">{t("categoryHint")}</p>
+                </div>
+                <div>
+                  <label className="label">{t("labelDescription")}</label>
+                  <textarea
+                    className="field"
+                    rows={4}
+                    placeholder={t("descriptionPlaceholder")}
+                    value={edit.description ?? ""}
+                    onChange={(e) =>
+                      setEdit({ ...edit, description: e.target.value })
+                    }
+                  />
+                  {hasAIKey && edit.id && (
+                    <div className="mt-2">
+                      <button
+                        className="btn-ai"
+                        disabled={enriching}
+                        onClick={() => void enrich()}
+                      >
+                        {enriching && (
+                          <span className="border-brand h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
+                        )}
+                        {enriching ? t("enriching") : `✨ ${t("enrich")}`}
+                      </button>
+                      <p className="hint mt-1">{t("enrichHint")}</p>
+                      {enrichMsg && (
+                        <p className="mt-1 text-sm text-red-600">{enrichMsg}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            {cardTab === "cardStock" && (
+              <>
+                <div className="flex flex-wrap gap-3">
+                  <div className="min-w-40 flex-1">
+                    <label className="label">{t("labelSku")}</label>
+                    {/* The article is what an import matches a product by. Change
                     it on a supplier's goods and the next feed finds no match:
                     it creates a duplicate and zeroes this product's stock, a
                     week later and silently. Own goods have no feed to break. */}
-                <input
-                  className="field"
-                  placeholder="CH-201"
-                  readOnly={!!edit.supplier}
-                  value={edit.sku ?? ""}
-                  onChange={(e) => setEdit({ ...edit, sku: e.target.value })}
-                />
-                {edit.supplier && <p className="hint mt-1">{t("skuLocked")}</p>}
-              </div>
-              <div className="w-36">
-                <label className="label">{t("labelPrice", { sign })}</label>
-                <input
-                  className="field"
-                  inputMode="decimal"
-                  value={priceRub}
-                  onChange={(e) => setPriceRub(e.target.value)}
-                />
-              </div>
-              <div className="w-28">
-                <label className="label">{t("labelStock")}</label>
-                <input
-                  className="field"
-                  type="number"
-                  value={stock ?? edit.stock ?? 0}
-                  onChange={(e) => setStock(Number(e.target.value))}
-                />
-              </div>
-              <div className="w-28">
-                <label className="label">{t("labelWeight")}</label>
-                <input
-                  className="field"
-                  type="number"
-                  min="0"
-                  value={edit.weight_g ?? ""}
-                  onChange={(e) =>
-                    setEdit({ ...edit, weight_g: numOrNull(e.target.value) })
-                  }
-                />
-              </div>
-              <div className="min-w-40 flex-1">
-                <label className="label">{t("labelSupplier")}</label>
-                <input
-                  className="field"
-                  list="product-suppliers"
-                  placeholder={t("supplierPlaceholder")}
-                  value={edit.supplier ?? ""}
-                  onChange={(e) =>
-                    setEdit({ ...edit, supplier: e.target.value })
-                  }
-                />
-                <datalist id="product-suppliers">
-                  {suppliers.map((x) => (
-                    <option key={x} value={x} />
-                  ))}
-                </datalist>
-              </div>
-            </div>
-            <div>
-              <label className="label">{t("labelSize")}</label>
-              <div className="flex items-center gap-2">
-                {(["length_mm", "width_mm", "height_mm"] as const).map(
-                  (k, i) => (
-                    <div key={k} className="flex items-center gap-2">
-                      {i > 0 && <span className="text-muted">×</span>}
-                      <input
-                        className="field w-24"
-                        type="number"
-                        min="0"
-                        value={edit[k] ?? ""}
-                        onChange={(e) =>
-                          setEdit({ ...edit, [k]: numOrNull(e.target.value) })
-                        }
-                      />
-                    </div>
-                  ),
-                )}
-              </div>
-              <p className="hint mt-1">{t("sizeHint")}</p>
-            </div>
-            {/* Characteristics: what a marketplace calls attributes and refuses
-                a card without. Every importer fills them, so the form has to be
-                able to correct them — and the empty row at the bottom is how a
-                new one is added without a button that says "add". */}
-            <div>
-              <label className="label">{t("labelParams")}</label>
-              <div className="flex flex-col gap-2">
-                {[...(edit.params ?? []), { name: "", value: "" }].map(
-                  (p, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <input
-                        className="field w-1/3"
-                        placeholder={t("paramName")}
-                        value={p.name}
-                        onChange={(e) => setParam(i, e.target.value, undefined)}
-                      />
-                      <input
-                        className="field flex-1"
-                        placeholder={t("paramValue")}
-                        value={String(p.value ?? "")}
-                        onChange={(e) => setParam(i, undefined, e.target.value)}
-                      />
-                    </div>
-                  ),
-                )}
-              </div>
-              <p className="hint mt-1">{t("paramsHint")}</p>
-            </div>
-            {/* A category is a path, and paths are long: its own full-width row,
-                not a quarter of a row next to the price. */}
-            <div>
-              <label className="label">{t("labelCategory")}</label>
-              <input
-                className="field"
-                list="product-categories"
-                placeholder="Посуда/Кастрюли"
-                value={edit.category ?? ""}
-                onChange={(e) => setEdit({ ...edit, category: e.target.value })}
-              />
-              <datalist id="product-categories">
-                {categories.map((c) => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
-              <p className="hint mt-1">{t("categoryHint")}</p>
-            </div>
-            <p className="hint -mt-2">{t("fieldsHint")}</p>
-            <div>
-              <label className="label">{t("labelDescription")}</label>
-              <textarea
-                className="field"
-                rows={4}
-                placeholder={t("descriptionPlaceholder")}
-                value={edit.description ?? ""}
-                onChange={(e) =>
-                  setEdit({ ...edit, description: e.target.value })
-                }
-              />
-              {hasAIKey && edit.id && (
-                <div className="mt-2">
-                  <button
-                    className="btn-ai"
-                    disabled={enriching}
-                    onClick={() => void enrich()}
-                  >
-                    {enriching && (
-                      <span className="border-brand h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
-                    )}
-                    {enriching ? t("enriching") : `✨ ${t("enrich")}`}
-                  </button>
-                  <p className="hint mt-1">{t("enrichHint")}</p>
-                  {enrichMsg && (
-                    <p className="mt-1 text-sm text-red-600">{enrichMsg}</p>
-                  )}
-                </div>
-              )}
-            </div>
-            {edit.id ? (
-              <div>
-                <label className="label">{t("labelPhotos")}</label>
-                {(edit.images?.length ?? 0) > 1 && (
-                  <p className="hint mb-2">{t("dragHint")}</p>
-                )}
-                <div className="flex flex-wrap items-center gap-3">
-                  {edit.images?.map((im, i) => (
-                    <span
-                      key={im.id}
-                      className="group relative cursor-grab active:cursor-grabbing"
-                      draggable
-                      onDragStart={() => (dragFrom.current = i)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => {
-                        const from = dragFrom.current;
-                        dragFrom.current = null;
-                        if (from === null || from === i || !edit.images) return;
-                        const next = [...edit.images];
-                        next.splice(i, 0, ...next.splice(from, 1));
-                        setEdit({ ...edit, images: next });
-                        // Saved at once: the order is a property of the product,
-                        // not of the form, and losing it to a cancelled dialog
-                        // would be its own surprise.
-                        void api
-                          .setImageOrder(
-                            edit.id!,
-                            next.map((x) => x.id),
-                          )
-                          .then(() => reload())
-                          .catch(() => setEdit({ ...edit }));
-                      }}
-                    >
-                      <img
-                        src={imageURL(im.path)}
-                        alt=""
-                        // Same rule as the list: a supplier's link that stops
-                        // answering shows the shop's mark, and starts working
-                        // again by itself the day the link does.
-                        onError={(e) => {
-                          e.currentTarget.src = "/nophoto.svg";
-                          e.currentTarget.classList.add("opacity-60");
-                        }}
-                        className="border-line h-20 w-20 rounded-lg border object-cover"
-                      />
-                      {isRemote(im.path) && (
-                        <span
-                          title={t("remotePhoto")}
-                          className="absolute -top-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white"
-                        >
-                          !
-                        </span>
-                      )}
-                      <button
-                        title={t("removePhoto")}
-                        className="border-line absolute -top-2 -right-2 hidden h-6 w-6 cursor-pointer rounded-full border bg-white text-sm text-red-600 group-hover:block"
-                        onClick={async () => {
-                          if (edit.id)
-                            setEdit(await api.deleteImage(edit.id, im.id));
-                        }}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  {/* The native file input shows "No file chosen" and resists
-                    styling — we hide it behind a button-styled label. */}
-                  <label className="btn-ghost border-line flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 border-2 border-dashed text-center text-xs">
-                    <span className="text-lg leading-none">+</span>
-                    {t("addPhoto")}
                     <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const f = e.target.files?.[0];
-                        if (f && edit.id)
-                          setEdit(await api.uploadImage(edit.id, f));
-                        e.target.value = "";
-                      }}
+                      className="field"
+                      placeholder="CH-201"
+                      readOnly={!!edit.supplier}
+                      value={edit.sku ?? ""}
+                      onChange={(e) =>
+                        setEdit({ ...edit, sku: e.target.value })
+                      }
                     />
-                  </label>
+                    {edit.supplier && (
+                      <p className="hint mt-1">{t("skuLocked")}</p>
+                    )}
+                  </div>
+                  <div className="w-36">
+                    <label className="label">{t("labelPrice", { sign })}</label>
+                    <input
+                      className="field"
+                      inputMode="decimal"
+                      value={priceRub}
+                      onChange={(e) => setPriceRub(e.target.value)}
+                    />
+                  </div>
+                  <div className="w-28">
+                    <label className="label">{t("labelStock")}</label>
+                    <input
+                      className="field"
+                      type="number"
+                      value={stock ?? edit.stock ?? 0}
+                      onChange={(e) => setStock(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="min-w-40 flex-1">
+                    <label className="label">{t("labelSupplier")}</label>
+                    <input
+                      className="field"
+                      list="product-suppliers"
+                      placeholder={t("supplierPlaceholder")}
+                      value={edit.supplier ?? ""}
+                      onChange={(e) =>
+                        setEdit({ ...edit, supplier: e.target.value })
+                      }
+                    />
+                    <datalist id="product-suppliers">
+                      {suppliers.map((x) => (
+                        <option key={x} value={x} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <p className="hint mt-1">{t("supplierHint")}</p>
                 </div>
-                <p className="hint mt-1">{t("photosHint")}</p>
-              </div>
-            ) : (
-              <p className="hint">{t("photosAfterSave")}</p>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={!edit.hidden}
+                    onChange={(e) =>
+                      setEdit({ ...edit, hidden: !e.target.checked })
+                    }
+                  />
+                  <span>{t("showOnStorefront")}</span>
+                </label>
+                <p className="hint -mt-2">{t("hiddenHint")}</p>
+              </>
             )}
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={!edit.hidden}
-                onChange={(e) =>
-                  setEdit({ ...edit, hidden: !e.target.checked })
-                }
-              />
-              <span>{t("showOnStorefront")}</span>
-            </label>
-            <p className="hint -mt-2">{t("hiddenHint")}</p>
-            {/* ponytail: per-channel toggles (Kufar/Avito) land in phase 2 together with the adapters */}
+            {cardTab === "cardPhotos" && (
+              <>
+                {edit.id ? (
+                  <div>
+                    <label className="label">{t("labelPhotos")}</label>
+                    {(edit.images?.length ?? 0) > 1 && (
+                      <p className="hint mb-2">{t("dragHint")}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-3">
+                      {edit.images?.map((im, i) => (
+                        <span
+                          key={im.id}
+                          className="group relative cursor-grab active:cursor-grabbing"
+                          draggable
+                          onDragStart={() => (dragFrom.current = i)}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={() => {
+                            const from = dragFrom.current;
+                            dragFrom.current = null;
+                            if (from === null || from === i || !edit.images)
+                              return;
+                            const next = [...edit.images];
+                            next.splice(i, 0, ...next.splice(from, 1));
+                            setEdit({ ...edit, images: next });
+                            // Saved at once: the order is a property of the product,
+                            // not of the form, and losing it to a cancelled dialog
+                            // would be its own surprise.
+                            void api
+                              .setImageOrder(
+                                edit.id!,
+                                next.map((x) => x.id),
+                              )
+                              .then(() => reload())
+                              .catch(() => setEdit({ ...edit }));
+                          }}
+                        >
+                          <img
+                            src={imageURL(im.path)}
+                            alt=""
+                            // Same rule as the list: a supplier's link that stops
+                            // answering shows the shop's mark, and starts working
+                            // again by itself the day the link does.
+                            onError={(e) => {
+                              e.currentTarget.src = "/nophoto.svg";
+                              e.currentTarget.classList.add("opacity-60");
+                            }}
+                            className="border-line h-20 w-20 rounded-lg border object-cover"
+                          />
+                          {isRemote(im.path) && (
+                            <span
+                              title={t("remotePhoto")}
+                              className="absolute -top-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white"
+                            >
+                              !
+                            </span>
+                          )}
+                          <button
+                            title={t("removePhoto")}
+                            className="border-line absolute -top-2 -right-2 hidden h-6 w-6 cursor-pointer rounded-full border bg-white text-sm text-red-600 group-hover:block"
+                            onClick={async () => {
+                              if (edit.id)
+                                setEdit(await api.deleteImage(edit.id, im.id));
+                            }}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      {/* The native file input shows "No file chosen" and resists
+                    styling — we hide it behind a button-styled label. */}
+                      <label className="btn-ghost border-line flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 border-2 border-dashed text-center text-xs">
+                        <span className="text-lg leading-none">+</span>
+                        {t("addPhoto")}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (f && edit.id)
+                              setEdit(await api.uploadImage(edit.id, f));
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <p className="hint mt-1">{t("photosHint")}</p>
+                  </div>
+                ) : (
+                  <p className="hint">{t("photosAfterSave")}</p>
+                )}
+              </>
+            )}
+            {cardTab === "cardChannels" && (
+              <>
+                <div className="w-28">
+                  <label className="label">{t("labelWeight")}</label>
+                  <input
+                    className="field"
+                    type="number"
+                    min="0"
+                    value={edit.weight_g ?? ""}
+                    onChange={(e) =>
+                      setEdit({ ...edit, weight_g: numOrNull(e.target.value) })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label">{t("labelSize")}</label>
+                  <div className="flex items-center gap-2">
+                    {(["length_mm", "width_mm", "height_mm"] as const).map(
+                      (k, i) => (
+                        <div key={k} className="flex items-center gap-2">
+                          {i > 0 && <span className="text-muted">×</span>}
+                          <input
+                            className="field w-24"
+                            type="number"
+                            min="0"
+                            value={edit[k] ?? ""}
+                            onChange={(e) =>
+                              setEdit({
+                                ...edit,
+                                [k]: numOrNull(e.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                      ),
+                    )}
+                  </div>
+                  <p className="hint mt-1">{t("sizeHint")}</p>
+                </div>
+                <div>
+                  <label className="label">{t("labelParams")}</label>
+                  <div className="flex flex-col gap-2">
+                    {(edit.params ?? []).map((p, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input
+                          className="field w-1/3"
+                          placeholder={t("paramName")}
+                          value={p.name}
+                          onChange={(e) =>
+                            setParam(i, e.target.value, undefined)
+                          }
+                        />
+                        <input
+                          className="field flex-1"
+                          placeholder={t("paramValue")}
+                          value={String(p.value ?? "")}
+                          onChange={(e) =>
+                            setParam(i, undefined, e.target.value)
+                          }
+                        />
+                        <button
+                          className="btn-ghost px-2"
+                          title={t("paramRemove")}
+                          onClick={() => removeParam(i)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <div>
+                      <button className="btn-ghost" onClick={addParam}>
+                        {t("paramAdd")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </Modal>
       )}
