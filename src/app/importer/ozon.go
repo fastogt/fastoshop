@@ -150,8 +150,11 @@ type ozonAttributesResponse struct {
 	Result []struct {
 		ID         int64 `json:"id"`
 		Attributes []struct {
-			AttributeID int64           `json:"attribute_id"`
-			Values      []ozonAttrValue `json:"values"`
+			// "id", not "attribute_id": the field is named one way in the
+			// dictionary and the other on the card, and reading the wrong one
+			// left every characteristic named "attribute 0".
+			ID     int64           `json:"id"`
+			Values []ozonAttrValue `json:"values"`
 		} `json:"attributes"`
 	} `json:"result"`
 }
@@ -211,7 +214,7 @@ func (o *Ozon) attributes(ids []int64) map[int64][]ozonAttrValueSet {
 	out := make(map[int64][]ozonAttrValueSet, len(resp.Result))
 	for _, p := range resp.Result {
 		for _, a := range p.Attributes {
-			out[p.ID] = append(out[p.ID], ozonAttrValueSet{ID: a.AttributeID, Values: a.Values})
+			out[p.ID] = append(out[p.ID], ozonAttrValueSet{ID: a.ID, Values: a.Values})
 		}
 	}
 	return out

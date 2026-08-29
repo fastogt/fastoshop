@@ -234,13 +234,13 @@ func TestOzonParsesEverythingItIsGiven(t *testing.T) {
 	})
 	mux.HandleFunc("/v4/product/info/attributes", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"result":[{"id":11,"attributes":[
-			{"attribute_id":85,"values":[{"dictionary_value_id":1,"value":"эмаль"}]},
-			{"attribute_id":10096,"values":[
+			{"id":85,"values":[{"dictionary_value_id":1,"value":"эмаль"}]},
+			{"id":10096,"values":[
 				{"dictionary_value_id":2,"value":"белый"},
 				{"dictionary_value_id":3,"value":"синий"}]},
-			{"attribute_id":4383,"values":[{"value":"2"}]},
-			{"attribute_id":9999,"values":[{"value":"со свистком"}]},
-			{"attribute_id":7777,"values":[{"value":"true"}]}]}]}`))
+			{"id":4383,"values":[{"value":"2"}]},
+			{"id":9999,"values":[{"value":"со свистком"}]},
+			{"id":7777,"values":[{"value":"true"}]}]}]}`))
 	})
 	mux.HandleFunc("/v1/description-category/attribute", func(w http.ResponseWriter, r *http.Request) {
 		var req ozonAttributeDictRequest
