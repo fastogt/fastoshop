@@ -14,6 +14,7 @@ import (
 // A live source against the parser, on demand:
 //
 //	FEED_URL=https://example.com/export.xml   go test ./app/importer -run Live -v
+//	FEED_FILE=/path/to/price.xlsx             go test ./app/importer -run Live -v
 //	WB_TOKEN=…                                go test ./app/importer -run Live -v
 //	OZON_CLIENT_ID=… OZON_API_KEY=…           go test ./app/importer -run Live -v
 //
@@ -33,6 +34,34 @@ func TestLiveYML(t *testing.T) {
 	src := &YML{URL: url, DefaultStock: 1}
 	items := fetchLive(t, src)
 	t.Logf("currency: %q, rejected: %d", src.Currency(), src.FetchErrors())
+	report(t, items)
+}
+
+// A price list off disk: a spreadsheet or a CSV, told apart by its own bytes
+// the way the upload endpoint tells them apart.
+func TestLiveFile(t *testing.T) {
+	path := os.Getenv("FEED_FILE")
+	if path == "" {
+		t.Skip("set FEED_FILE to run against a local price list")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var src Source
+	switch {
+	case IsXLSX(raw):
+		src = &XLSX{Data: raw}
+	case IsYML(raw):
+		src = &YML{Data: raw, DefaultStock: 1}
+	default:
+		src = &CSV{Data: raw}
+	}
+	t.Logf("%s, %d bytes", src.Name(), len(raw))
+	items := fetchLive(t, src)
+	if e, ok := src.(SourceErrors); ok {
+		t.Logf("rejected rows: %d", e.FetchErrors())
+	}
 	report(t, items)
 }
 

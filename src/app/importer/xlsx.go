@@ -174,10 +174,13 @@ func headerKey(raw string) string {
 	s := strings.ToLower(strings.TrimSpace(raw))
 	s = strings.NewReplacer("ё", "е", ".", "", ",", "").Replace(s)
 	switch {
-	case s == "sku" || strings.HasPrefix(s, "артикул") || strings.HasPrefix(s, "код"):
+	case s == "sku" || strings.HasPrefix(s, "артикул") || strings.HasPrefix(s, "код") ||
+		strings.HasPrefix(s, "штрихкод") || strings.HasPrefix(s, "штрих-код") ||
+		s == "ean" || strings.HasPrefix(s, "ean-"):
 		return "sku"
 	case s == "title" || strings.HasPrefix(s, "наименование") ||
-		strings.HasPrefix(s, "название") || strings.HasPrefix(s, "товар"):
+		strings.HasPrefix(s, "название") || strings.HasPrefix(s, "номенклатура") ||
+		strings.HasPrefix(s, "товар") && !strings.HasPrefix(s, "товкатегория"):
 		return "title"
 	case s == "price" || strings.HasPrefix(s, "цена") || strings.HasPrefix(s, "стоимость"):
 		return "price"
@@ -185,7 +188,8 @@ func headerKey(raw string) string {
 		strings.HasPrefix(s, "колич"):
 		return "stock"
 	case s == "category" || strings.HasPrefix(s, "категор") || strings.HasPrefix(s, "группа") ||
-		strings.HasPrefix(s, "раздел"):
+		strings.HasPrefix(s, "раздел") || strings.HasPrefix(s, "товкатегория") ||
+		strings.HasPrefix(s, "товгруппа"):
 		return "category"
 	case s == "description" || strings.HasPrefix(s, "описание") ||
 		strings.HasPrefix(s, "характеристик"):

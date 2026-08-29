@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -208,6 +209,13 @@ func isDigitish(r rune) bool {
 
 // parseMoney accepts both decimal separators and ignores spaces used as
 // thousands grouping: "1 234,50" is what a spreadsheet produces.
+// kPriceNote is a price followed by a note to a human: a star, a currency, a
+// discount in brackets. The number is the price and the note is not, so the
+// leading number is taken. A bracket may hold digits — "4.16(-9.2%)" is one
+// price and its discount — but a bare second number is two prices, and
+// choosing between them is not ours to do.
+var kPriceNote = regexp.MustCompile(`^(-?[0-9]+(?:\.[0-9]+)?)(?:\([^)]*\)|[^0-9(])*$`)
+
 func parseMoney(s string) (int64, error) {
 	s = strings.NewReplacer(" ", "", " ", "", ",", ".").Replace(s)
 	if s == "" {
@@ -215,7 +223,13 @@ func parseMoney(s string) (int64, error) {
 	}
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return 0, fmt.Errorf("not a number")
+		m := kPriceNote.FindStringSubmatch(s)
+		if m == nil {
+			return 0, fmt.Errorf("not a number")
+		}
+		if v, err = strconv.ParseFloat(m[1], 64); err != nil {
+			return 0, fmt.Errorf("not a number")
+		}
 	}
 	if v < 0 {
 		return 0, fmt.Errorf("negative")

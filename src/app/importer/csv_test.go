@@ -151,3 +151,31 @@ func TestCSVParams(t *testing.T) {
 		t.Errorf("пустые и безымянные не отсеялись: %+v", got)
 	}
 }
+
+// TestPriceWithNote: a price list annotates a price in the same cell — a
+// discount in brackets, a footnote star, a currency. The number is the price;
+// a cell holding a second number is two prices and stays refused.
+func TestPriceWithNote(t *testing.T) {
+	for _, c := range []struct {
+		in   string
+		want int64
+		ok   bool
+	}{
+		{"4,16", 416, true},
+		{"4,16(-9,2%)", 416, true},
+		{"5,40*", 540, true},
+		{"1 234,50", 123450, true},
+		{"12.30 руб", 1230, true},
+		{"4,16 / 5,20", 0, false},
+		{"", 0, false},
+		{"по запросу", 0, false},
+	} {
+		got, err := parseMoney(c.in)
+		if c.ok && (err != nil || got != c.want) {
+			t.Errorf("%q: получили %d, %v; ожидали %d", c.in, got, err, c.want)
+		}
+		if !c.ok && err == nil {
+			t.Errorf("%q: разобралось как %d, а не должно", c.in, got)
+		}
+	}
+}
