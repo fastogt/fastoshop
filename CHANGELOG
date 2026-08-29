@@ -1,3 +1,11 @@
+1.42.0 / August 29, 2026
+[Alexandr Topilski]
+- A product page shows its characteristics. They have been arriving from every source for a day and stopping in the database: the page had a table with two rows in it, weight and size, while the card behind it carried a dozen more. They are in the visible table now and in the structured data as `additionalProperty` — which is the half of a card a search engine matches "брелок антистресс белый" against, and the half a price aggregator reads to compare like with like
+- Which of them a buyer sees is the owner's decision, made once per property in Профиль → «Характеристики». A marketplace card mixes what a buyer reads with the seller's own paperwork — a VAT rate, a customs code — and the shop needs all of it, because Ozon refuses a card without the customs code. So the choice hides a property from the page and keeps it in the catalogue. Per property and not per product: one decision about «Ставка НДС» covers all thirty products that state it
+- Профиль is five tabs instead of six sections in one column: Магазин, Почта, Продвижение, Характеристики, Безопасность
+- The characteristics and description blocks on a product page run the full width. They were capped and centred, so on a wide screen they started somewhere in the middle with the left half empty
+- The admin table stops jumping sideways when a dialog opens and closes. Opening one locks the page behind it, the scrollbar goes with the lock, and the viewport grows by its width — `scrollbar-gutter: stable` reserves the space whether or not the page scrolls
+
 1.40.0 / August 29, 2026
 [Alexandr Topilski]
 - The product card is four tabs instead of one long scroll: «Витрина» for what a buyer sees, «Цена и склад» for what is sold, «Фото», and «Для площадок» for what Ozon and Wildberries refuse a card without. Twelve fields and 235 words of explanation in a single column had stopped saying what to type where; each tab now carries three or four fields and answers one question. It stays one record and one Save — the card is shown in parts, not split into four forms

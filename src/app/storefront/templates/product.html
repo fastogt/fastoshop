@@ -20,6 +20,13 @@
   {{if .LengthMM}}"depth": {"@type": "QuantitativeValue", "value": {{.LengthMM}}, "unitCode": "MMT"},{{end}}
   {{if .WidthMM}}"width": {"@type": "QuantitativeValue", "value": {{.WidthMM}}, "unitCode": "MMT"},{{end}}
   {{if .HeightMM}}"height": {"@type": "QuantitativeValue", "value": {{.HeightMM}}, "unitCode": "MMT"},{{end}}
+  {{/* Characteristics as the source stated them. This is the half of a card a
+       search engine can match a query like "чехол силиконовый прозрачный"
+       against, and the half a price aggregator reads to compare like with
+       like. */}}
+  {{if .Specs.Props}}"additionalProperty": [{{range $i, $p := .Specs.Props}}{{if $i}},{{end}}
+    {"@type": "PropertyValue", "name": {{$p.Name}}, "value": {{$p.Value}}}{{end}}
+  ],{{end}}
   "offers": {
     "@type": "Offer",
     "url": "{{.BaseURL}}/p/{{.P.Slug}}",
@@ -113,6 +120,7 @@
     <table>
       {{if .Specs.Weight}}<tr><td>Вес</td><td>{{.Specs.Weight}}</td></tr>{{end}}
       {{if .Specs.Size}}<tr><td>Габариты</td><td>{{.Specs.Size}}</td></tr>{{end}}
+      {{range .Specs.Props}}<tr><td>{{.Name}}</td><td>{{.Value}}</td></tr>{{end}}
     </table>
   </div>
   {{end}}

@@ -155,6 +155,8 @@ func run(cfg *config.Config) error {
 			r.Delete("/settings/logo", h.DeleteLogo)
 			r.Post("/settings/password", h.ChangePassword)
 			r.Post("/settings/test-smtp", h.TestSMTP)
+			r.Get("/settings/params", h.GetParamVisibility)
+			r.Put("/settings/params", h.SetParamVisibility)
 			r.Post("/logout", h.Logout)
 			r.Get("/import/suppliers", h.Suppliers)
 			r.Get("/import/template", h.ImportTemplate)

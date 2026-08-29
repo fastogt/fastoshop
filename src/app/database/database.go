@@ -141,6 +141,18 @@ func (d *Database) migrate() error {
 	-- product belongs to is still the path in products.category: this table
 	-- describes nodes (their text, their order, whether they are hidden) and
 	-- declares the ones the owner made before any product landed in them.
+	-- Characteristics the storefront does not show. A marketplace card mixes what
+	-- a buyer reads with the seller's own paperwork — a customs code, a VAT rate —
+	-- and the shop needs all of it (Ozon refuses a card without the customs code)
+	-- while the page needs only part. Which part is the owner's call, so this
+	-- holds their exceptions: a name absent from here is shown.
+	--
+	-- Keyed by name and not by product: one decision about "Ставка НДС" covers
+	-- every product that states it, and ticking it off on twenty thousand cards
+	-- is not a thing anyone would do.
+	CREATE TABLE IF NOT EXISTS hidden_params (
+		name TEXT PRIMARY KEY
+	);
 	CREATE TABLE IF NOT EXISTS categories (
 		path     TEXT PRIMARY KEY,
 		body     TEXT NOT NULL DEFAULT '',

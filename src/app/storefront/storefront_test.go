@@ -1638,3 +1638,54 @@ func TestRobotsCleanParam(t *testing.T) {
 		t.Errorf("page must stay crawlable: %q", line)
 	}
 }
+
+// TestProductShowsCharacteristics: an imported card carries a dozen properties
+// and they are what a buyer compares and a search engine matches a query
+// against. They belong in the visible table and in the structured data, both
+// stated by the source and neither invented.
+func TestProductShowsCharacteristics(t *testing.T) {
+	d, h := setup(t)
+	p := &database.Product{
+		SKU: "A", Title: "Брелок", Price: 2849, Stock: 5,
+		Params: []database.Param{
+			{Name: "Материал изделия", Value: []any{"PETG пластик"}},
+			{Name: "Цвет", Value: "прозрачный"},
+			{Name: "Ширина предмета", Value: 5.0},
+			{Name: "Пустое", Value: ""},
+		},
+	}
+	if err := d.CreateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+
+	body := get(t, h, "/p/"+p.Slug)
+	for _, want := range []string{"Материал изделия", "PETG пластик", "прозрачный",
+		"Ширина предмета", ">5<"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("страница не показывает %q", want)
+		}
+	}
+	// A list of one is how a marketplace states a single value; brackets and
+	// quotes are Go syntax and have no business on a page.
+	if strings.Contains(body, "[PETG") || strings.Contains(body, "Пустое") {
+		t.Error("сырое значение или пустая характеристика попали на страницу")
+	}
+	if !strings.Contains(body, `"additionalProperty"`) ||
+		!strings.Contains(body, `"@type": "PropertyValue"`) {
+		t.Error("характеристик нет в разметке для поисковика")
+	}
+
+	// What a buyer sees is the owner's call, not ours: a marketplace card also
+	// carries their paperwork, and which of it belongs on a page is a decision
+	// they make once per property in the settings.
+	if err := d.SetHiddenParams([]string{"Цвет"}); err != nil {
+		t.Fatal(err)
+	}
+	body = get(t, h, "/p/"+p.Slug)
+	if strings.Contains(body, "прозрачный") {
+		t.Error("снятая характеристика осталась на странице")
+	}
+	if !strings.Contains(body, "PETG пластик") {
+		t.Error("вместе с ней пропали остальные")
+	}
+}

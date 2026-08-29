@@ -13,6 +13,14 @@
   --color-canvas: #fdfcfa;
 }
 
+html {
+  /* The gutter is reserved whether or not the page scrolls, because opening a
+     modal locks scrolling below and the scrollbar would otherwise vanish: the
+     viewport grows by its width and the whole table shifts sideways, then
+     shifts back on close. */
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--color-canvas);
   color: var(--color-ink);

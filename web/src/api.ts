@@ -512,6 +512,14 @@ export const api = {
     http
       .get("/products", { params: { page, q, supplier, per, sort, dir } })
       .then(data<ProductsPage>),
+  paramVisibility: () =>
+    http
+      .get("/settings/params")
+      .then(data<{ params: { name: string; hidden: boolean }[] }>),
+  saveParamVisibility: (hidden: string[]) =>
+    http
+      .put("/settings/params", { hidden })
+      .then(data<{ params: { name: string; hidden: boolean }[] }>),
   bulkStock: (body: Record<string, unknown>) =>
     http.post("/products/bulk/stock", body).then(data<{ updated: number }>),
   bulkVisibility: (body: Record<string, unknown>) =>

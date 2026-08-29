@@ -5,6 +5,21 @@ import { setCurrency } from "./shop";
 
 const kText = {
   title: { ru: "Профиль", en: "Profile" },
+  tabShop: { ru: "Магазин", en: "Shop" },
+  tabMail: { ru: "Почта", en: "Mail" },
+  tabSeo: { ru: "Продвижение", en: "Promotion" },
+  tabParams: { ru: "Характеристики", en: "Characteristics" },
+  tabSecurity: { ru: "Безопасность", en: "Security" },
+  paramsTitle: { ru: "Что показывать в карточке", en: "What a card shows" },
+  paramsHint: {
+    ru: "Характеристики приезжают из площадок и прайсов как есть — вместе со ставкой НДС и кодом ТН ВЭД. Магазин хранит их все: без них не опубликовать карточку на Ozon. Снимите галку у того, что не нужно показывать покупателю — решение действует на весь каталог.",
+    en: "Characteristics arrive from marketplaces and price lists as they are, VAT rate and customs code included. The shop keeps all of them — a card cannot be published on Ozon without them. Untick what a buyer need not see; the choice applies to the whole catalogue.",
+  },
+  paramsEmpty: {
+    ru: "В каталоге пока нет характеристик. Они появятся после импорта из кабинета площадки или из фида.",
+    en: "The catalogue has no characteristics yet. They arrive with an import from a marketplace account or a feed.",
+  },
+  paramsSaved: { ru: "Сохранено", en: "Saved" },
   shop: { ru: "Магазин", en: "Shop" },
   shopHint: {
     ru: "Название и телефон видны покупателям на витрине.",
@@ -142,6 +157,70 @@ const kText = {
   errorPrefix: { ru: "Ошибка", en: "Error" },
 };
 
+const kProfileTabs = [
+  "tabShop",
+  "tabMail",
+  "tabSeo",
+  "tabParams",
+  "tabSecurity",
+] as const;
+type ProfileTab = (typeof kProfileTabs)[number];
+
+// The list of every characteristic the catalogue states, with a box each. Kept
+// beside the other settings and not in a product: one decision about "Ставка
+// НДС" covers every product that states it, and ticking it off on twenty
+// thousand cards is not a thing anyone would do.
+function ParamVisibility({ t }: { t: ReturnType<typeof useT<typeof kText>> }) {
+  const [rows, setRows] = useState<{ name: string; hidden: boolean }[] | null>(
+    null,
+  );
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    api.paramVisibility().then((d) => setRows(d.params));
+  }, []);
+
+  const toggle = async (name: string) => {
+    if (!rows) return;
+    const next = rows.map((r) =>
+      r.name === name ? { ...r, hidden: !r.hidden } : r,
+    );
+    setRows(next);
+    const d = await api.saveParamVisibility(
+      next.filter((r) => r.hidden).map((r) => r.name),
+    );
+    setRows(d.params);
+    setMsg(t("paramsSaved"));
+  };
+
+  if (!rows) return null;
+  return (
+    <section className="card flex flex-col gap-4">
+      <div>
+        <h2 className="font-bold">{t("paramsTitle")}</h2>
+        <p className="hint">{t("paramsHint")}</p>
+      </div>
+      {rows.length === 0 ? (
+        <p className="hint">{t("paramsEmpty")}</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {rows.map((r) => (
+            <label key={r.name} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={!r.hidden}
+                onChange={() => toggle(r.name)}
+              />
+              <span>{r.name}</span>
+            </label>
+          ))}
+        </div>
+      )}
+      {msg && <span className="text-muted text-sm">{msg}</span>}
+    </section>
+  );
+}
+
 export default function Profile() {
   const [s, setS] = useState<Settings | null>(null);
   const [smtpPassword, setSmtpPassword] = useState("");
@@ -151,6 +230,7 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState("");
   const [copied, setCopied] = useState("");
+  const [tab, setTab] = useState<ProfileTab>("tabShop");
   const t = useT(kText);
 
   useEffect(() => {
@@ -188,371 +268,404 @@ export default function Profile() {
     <div className="form-page">
       <h1 className="text-xl font-bold">{t("title")}</h1>
 
-      <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("shop")}</h2>
-          <p className="hint">{t("shopHint")}</p>
-        </div>
-        <div>
-          <label className="label">{t("shopName")}</label>
-          <input
-            className="field"
-            placeholder={t("shopNamePlaceholder")}
-            value={s.shop_name}
-            onChange={(e) => setS({ ...s, shop_name: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="label">{t("shopPhone")}</label>
-          <input
-            className="field"
-            name="shop-phone"
-            autoComplete="off"
-            placeholder="+7 999 000-00-00"
-            value={s.shop_phone}
-            onChange={(e) => setS({ ...s, shop_phone: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="label">{t("telegram")}</label>
-          <input
-            className="field"
-            name="shop-telegram"
-            autoComplete="off"
-            placeholder="@myshop"
-            value={s.telegram}
-            onChange={(e) => setS({ ...s, telegram: e.target.value })}
-          />
-          <p className="hint">{t("messengerHint")}</p>
-        </div>
-        <div>
-          <label className="label">{t("whatsapp")}</label>
-          <input
-            className="field"
-            name="shop-whatsapp"
-            autoComplete="off"
-            placeholder="+7 999 000-00-00"
-            value={s.whatsapp}
-            onChange={(e) => setS({ ...s, whatsapp: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="label">{t("requisites")}</label>
-          <textarea
-            className="field"
-            rows={4}
-            autoComplete="off"
-            placeholder={t("requisitesPlaceholder")}
-            value={s.requisites}
-            onChange={(e) => setS({ ...s, requisites: e.target.value })}
-          />
-          <p className="hint mt-1">{t("requisitesHint")}</p>
-        </div>
-        <div>
-          <label className="label">{t("terms")}</label>
-          <textarea
-            className="field"
-            rows={5}
-            autoComplete="off"
-            placeholder={t("termsPlaceholder")}
-            value={s.terms}
-            onChange={(e) => setS({ ...s, terms: e.target.value })}
-          />
-          <p className="hint mt-1">{t("termsHint")}</p>
-        </div>
-        <div>
-          <label className="label">{t("logo")}</label>
-          <div className="flex flex-wrap items-center gap-3">
-            {s.logo && (
-              <img
-                src={`/uploads/${s.logo}`}
-                alt=""
-                className="border-line h-12 w-auto max-w-52 rounded border object-contain"
-              />
-            )}
-            <label className="btn-ghost cursor-pointer">
-              {t("logoUpload")}
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/svg+xml"
-                className="hidden"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  if (f) setS(await api.uploadLogo(f));
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            {s.logo && (
-              <button
-                className="text-muted cursor-pointer text-sm hover:text-red-600"
-                onClick={async () => setS(await api.deleteLogo())}
-              >
-                {t("logoRemove")}
-              </button>
-            )}
-          </div>
-          <p className="hint mt-1">{t("logoHint")}</p>
-        </div>
-        <div>
-          <label className="label">{t("currency")}</label>
-          <select
-            className="field"
-            value={s.currency}
-            onChange={(e) => setS({ ...s, currency: e.target.value })}
-          >
-            <option value="RUB">{t("currencyRub")}</option>
-            <option value="BYN">{t("currencyByn")}</option>
-            <option value="PLN">{t("currencyPln")}</option>
-            <option value="KZT">{t("currencyKzt")}</option>
-          </select>
-          <p className="hint mt-1">{t("currencyHint")}</p>
-        </div>
-      </section>
-
-      <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("mail")}</h2>
-          <p className="hint">
-            {t("mailHintBefore")}
-            <b>{t("mailHintBold")}</b>
-            {t("mailHintAfter")}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label className="label">{t("smtpHost")}</label>
-            <input
-              className="field"
-              placeholder="smtp.yandex.ru"
-              value={s.smtp_host}
-              onChange={(e) => setS({ ...s, smtp_host: e.target.value })}
-            />
-          </div>
-          <div className="w-28">
-            <label className="label">{t("smtpPort")}</label>
-            <input
-              className="field"
-              type="number"
-              value={s.smtp_port}
-              onChange={(e) =>
-                setS({ ...s, smtp_port: Number(e.target.value) })
-              }
-            />
-          </div>
-        </div>
-        <div>
-          <label className="label">{t("smtpUser")}</label>
-          <input
-            className="field"
-            name="smtp-login"
-            autoComplete="off"
-            placeholder="shop@example.ru"
-            value={s.smtp_user}
-            onChange={(e) => setS({ ...s, smtp_user: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="label">{t("smtpFrom")}</label>
-          <input
-            className="field"
-            name="smtp-from"
-            autoComplete="off"
-            placeholder={s.smtp_user || "shop@example.ru"}
-            value={s.smtp_from}
-            onChange={(e) => setS({ ...s, smtp_from: e.target.value })}
-          />
-          <p className="hint mt-1">{t("smtpFromHint")}</p>
-        </div>
-        <div>
-          <label className="label">{t("smtpPassword")}</label>
-          <input
-            className="field"
-            type="password"
-            name="smtp-app-password"
-            autoComplete="new-password"
-            placeholder={s.smtp_password_set ? t("smtpPasswordSet") : ""}
-            value={smtpPassword}
-            onChange={(e) => setSmtpPassword(e.target.value)}
-          />
-        </div>
-        <div>
+      <div className="border-line flex flex-wrap gap-1 border-b">
+        {kProfileTabs.map((k) => (
           <button
-            className="btn-ghost"
-            onClick={() =>
-              api
-                .testSmtp()
-                .then(() => setMsg(t("testMailOk")))
-                .catch(() => setMsg(t("testMailFail")))
-            }
-          >
-            {t("testMail")}
-          </button>
-        </div>
-      </section>
-
-      <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("ai")}</h2>
-          <p className="hint">{t("aiHint")}</p>
-        </div>
-        <div>
-          <label className="label">{t("aiKey")}</label>
-          <input
-            className="field"
-            type="password"
-            name="adhunters-key"
-            autoComplete="new-password"
-            placeholder={s.adhunters_api_key || ""}
-            value={aiKey}
-            onChange={(e) => setAiKey(e.target.value)}
-          />
-          <p className="hint mt-1">
-            {t("aiKeyHint")}{" "}
-            <a
-              className="text-brand underline"
-              href="https://adhunters.fastolead.com"
-              target="_blank"
-              rel="noopener"
-            >
-              adhunters.fastolead.com
-            </a>
-          </p>
-        </div>
-      </section>
-
-      <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("seo")}</h2>
-          <p className="hint">{t("seoHint")}</p>
-        </div>
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label className="label">{t("gaId")}</label>
-            <input
-              className="field"
-              autoComplete="off"
-              placeholder="G-XXXXXXXXXX"
-              value={s.ga_measurement_id}
-              onChange={(e) =>
-                setS({ ...s, ga_measurement_id: e.target.value })
-              }
-            />
-          </div>
-          <div className="flex-1">
-            <label className="label">{t("metrikaId")}</label>
-            <input
-              className="field"
-              autoComplete="off"
-              placeholder="12345678"
-              value={s.metrika_counter_id}
-              onChange={(e) =>
-                setS({ ...s, metrika_counter_id: e.target.value })
-              }
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("feeds")}</h2>
-          <p className="hint">{t("feedsHint")}</p>
-        </div>
-        {(
-          [
-            ["feedYandex", "/yml.xml"],
-            ["feedGoogle", "/gmc.xml"],
-          ] as const
-        ).map(([label, path]) => (
-          <div key={path}>
-            <label className="label">{t(label)}</label>
-            <div className="flex gap-3">
-              <input
-                className="field flex-1"
-                readOnly
-                value={location.origin + path}
-                onFocus={(e) => e.target.select()}
-              />
-              <button
-                className="btn-ghost"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(location.origin + path);
-                  setCopied(path);
-                }}
-              >
-                {copied === path ? t("copied") : t("copy")}
-              </button>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      {/* ponytail: the Kufar/Avito section lands in phase 2 with its adapters */}
-
-      <div className="flex items-center gap-4">
-        <button className="btn" onClick={save}>
-          {t("save")}
-        </button>
-        {msg && (
-          <span
+            key={k}
+            onClick={() => setTab(k)}
             className={
-              msg.startsWith(t("errorPrefix"))
-                ? "text-red-600"
-                : "text-green-700"
+              "-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors " +
+              (tab === k
+                ? "border-brand text-brand"
+                : "text-muted hover:text-ink border-transparent")
             }
           >
-            {msg}
-          </span>
-        )}
+            {t(k)}
+          </button>
+        ))}
       </div>
 
-      <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("passwordSection")}</h2>
-          <p className="hint">
-            {t("passwordHintBefore")}
-            <code>sudo fastoshop -reset-password</code>
-            {t("passwordHintAfter")}
-          </p>
-        </div>
-        <div>
-          <label className="label">{t("currentPassword")}</label>
-          <input
-            className="field"
-            type="password"
-            autoComplete="current-password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="label">{t("newPassword")}</label>
-          <input
-            className="field"
-            type="password"
-            autoComplete="new-password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="btn-ghost" onClick={changePassword}>
-            {t("changePassword")}
-          </button>
-          {passwordMsg && (
-            <span
-              className={
-                passwordMsg.startsWith(t("errorPrefix"))
-                  ? "text-red-600"
-                  : "text-green-700"
-              }
-            >
-              {passwordMsg}
-            </span>
-          )}
-        </div>
-      </section>
+      {tab === "tabShop" && (
+        <>
+          <section className="card flex flex-col gap-4">
+            <div>
+              <h2 className="font-bold">{t("shop")}</h2>
+              <p className="hint">{t("shopHint")}</p>
+            </div>
+            <div>
+              <label className="label">{t("shopName")}</label>
+              <input
+                className="field"
+                placeholder={t("shopNamePlaceholder")}
+                value={s.shop_name}
+                onChange={(e) => setS({ ...s, shop_name: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">{t("shopPhone")}</label>
+              <input
+                className="field"
+                name="shop-phone"
+                autoComplete="off"
+                placeholder="+7 999 000-00-00"
+                value={s.shop_phone}
+                onChange={(e) => setS({ ...s, shop_phone: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">{t("telegram")}</label>
+              <input
+                className="field"
+                name="shop-telegram"
+                autoComplete="off"
+                placeholder="@myshop"
+                value={s.telegram}
+                onChange={(e) => setS({ ...s, telegram: e.target.value })}
+              />
+              <p className="hint">{t("messengerHint")}</p>
+            </div>
+            <div>
+              <label className="label">{t("whatsapp")}</label>
+              <input
+                className="field"
+                name="shop-whatsapp"
+                autoComplete="off"
+                placeholder="+7 999 000-00-00"
+                value={s.whatsapp}
+                onChange={(e) => setS({ ...s, whatsapp: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">{t("requisites")}</label>
+              <textarea
+                className="field"
+                rows={4}
+                autoComplete="off"
+                placeholder={t("requisitesPlaceholder")}
+                value={s.requisites}
+                onChange={(e) => setS({ ...s, requisites: e.target.value })}
+              />
+              <p className="hint mt-1">{t("requisitesHint")}</p>
+            </div>
+            <div>
+              <label className="label">{t("terms")}</label>
+              <textarea
+                className="field"
+                rows={5}
+                autoComplete="off"
+                placeholder={t("termsPlaceholder")}
+                value={s.terms}
+                onChange={(e) => setS({ ...s, terms: e.target.value })}
+              />
+              <p className="hint mt-1">{t("termsHint")}</p>
+            </div>
+            <div>
+              <label className="label">{t("logo")}</label>
+              <div className="flex flex-wrap items-center gap-3">
+                {s.logo && (
+                  <img
+                    src={`/uploads/${s.logo}`}
+                    alt=""
+                    className="border-line h-12 w-auto max-w-52 rounded border object-contain"
+                  />
+                )}
+                <label className="btn-ghost cursor-pointer">
+                  {t("logoUpload")}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setS(await api.uploadLogo(f));
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {s.logo && (
+                  <button
+                    className="text-muted cursor-pointer text-sm hover:text-red-600"
+                    onClick={async () => setS(await api.deleteLogo())}
+                  >
+                    {t("logoRemove")}
+                  </button>
+                )}
+              </div>
+              <p className="hint mt-1">{t("logoHint")}</p>
+            </div>
+            <div>
+              <label className="label">{t("currency")}</label>
+              <select
+                className="field"
+                value={s.currency}
+                onChange={(e) => setS({ ...s, currency: e.target.value })}
+              >
+                <option value="RUB">{t("currencyRub")}</option>
+                <option value="BYN">{t("currencyByn")}</option>
+                <option value="PLN">{t("currencyPln")}</option>
+                <option value="KZT">{t("currencyKzt")}</option>
+              </select>
+              <p className="hint mt-1">{t("currencyHint")}</p>
+            </div>
+          </section>
+
+          <section className="card flex flex-col gap-4">
+            <div>
+              <h2 className="font-bold">{t("ai")}</h2>
+              <p className="hint">{t("aiHint")}</p>
+            </div>
+            <div>
+              <label className="label">{t("aiKey")}</label>
+              <input
+                className="field"
+                type="password"
+                name="adhunters-key"
+                autoComplete="new-password"
+                placeholder={s.adhunters_api_key || ""}
+                value={aiKey}
+                onChange={(e) => setAiKey(e.target.value)}
+              />
+              <p className="hint mt-1">
+                {t("aiKeyHint")}{" "}
+                <a
+                  className="text-brand underline"
+                  href="https://adhunters.fastolead.com"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  adhunters.fastolead.com
+                </a>
+              </p>
+            </div>
+          </section>
+        </>
+      )}
+      {tab === "tabMail" && (
+        <>
+          <section className="card flex flex-col gap-4">
+            <div>
+              <h2 className="font-bold">{t("mail")}</h2>
+              <p className="hint">
+                {t("mailHintBefore")}
+                <b>{t("mailHintBold")}</b>
+                {t("mailHintAfter")}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="label">{t("smtpHost")}</label>
+                <input
+                  className="field"
+                  placeholder="smtp.yandex.ru"
+                  value={s.smtp_host}
+                  onChange={(e) => setS({ ...s, smtp_host: e.target.value })}
+                />
+              </div>
+              <div className="w-28">
+                <label className="label">{t("smtpPort")}</label>
+                <input
+                  className="field"
+                  type="number"
+                  value={s.smtp_port}
+                  onChange={(e) =>
+                    setS({ ...s, smtp_port: Number(e.target.value) })
+                  }
+                />
+              </div>
+            </div>
+            <div>
+              <label className="label">{t("smtpUser")}</label>
+              <input
+                className="field"
+                name="smtp-login"
+                autoComplete="off"
+                placeholder="shop@example.ru"
+                value={s.smtp_user}
+                onChange={(e) => setS({ ...s, smtp_user: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">{t("smtpFrom")}</label>
+              <input
+                className="field"
+                name="smtp-from"
+                autoComplete="off"
+                placeholder={s.smtp_user || "shop@example.ru"}
+                value={s.smtp_from}
+                onChange={(e) => setS({ ...s, smtp_from: e.target.value })}
+              />
+              <p className="hint mt-1">{t("smtpFromHint")}</p>
+            </div>
+            <div>
+              <label className="label">{t("smtpPassword")}</label>
+              <input
+                className="field"
+                type="password"
+                name="smtp-app-password"
+                autoComplete="new-password"
+                placeholder={s.smtp_password_set ? t("smtpPasswordSet") : ""}
+                value={smtpPassword}
+                onChange={(e) => setSmtpPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <button
+                className="btn-ghost"
+                onClick={() =>
+                  api
+                    .testSmtp()
+                    .then(() => setMsg(t("testMailOk")))
+                    .catch(() => setMsg(t("testMailFail")))
+                }
+              >
+                {t("testMail")}
+              </button>
+            </div>
+          </section>
+        </>
+      )}
+      {tab === "tabSeo" && (
+        <>
+          <section className="card flex flex-col gap-4">
+            <div>
+              <h2 className="font-bold">{t("seo")}</h2>
+              <p className="hint">{t("seoHint")}</p>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="label">{t("gaId")}</label>
+                <input
+                  className="field"
+                  autoComplete="off"
+                  placeholder="G-XXXXXXXXXX"
+                  value={s.ga_measurement_id}
+                  onChange={(e) =>
+                    setS({ ...s, ga_measurement_id: e.target.value })
+                  }
+                />
+              </div>
+              <div className="flex-1">
+                <label className="label">{t("metrikaId")}</label>
+                <input
+                  className="field"
+                  autoComplete="off"
+                  placeholder="12345678"
+                  value={s.metrika_counter_id}
+                  onChange={(e) =>
+                    setS({ ...s, metrika_counter_id: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="card flex flex-col gap-4">
+            <div>
+              <h2 className="font-bold">{t("feeds")}</h2>
+              <p className="hint">{t("feedsHint")}</p>
+            </div>
+            {(
+              [
+                ["feedYandex", "/yml.xml"],
+                ["feedGoogle", "/gmc.xml"],
+              ] as const
+            ).map(([label, path]) => (
+              <div key={path}>
+                <label className="label">{t(label)}</label>
+                <div className="flex gap-3">
+                  <input
+                    className="field flex-1"
+                    readOnly
+                    value={location.origin + path}
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <button
+                    className="btn-ghost"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(
+                        location.origin + path,
+                      );
+                      setCopied(path);
+                    }}
+                  >
+                    {copied === path ? t("copied") : t("copy")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </section>
+
+          {/* ponytail: the Kufar/Avito section lands in phase 2 with its adapters */}
+
+          <div className="flex items-center gap-4">
+            <button className="btn" onClick={save}>
+              {t("save")}
+            </button>
+            {msg && (
+              <span
+                className={
+                  msg.startsWith(t("errorPrefix"))
+                    ? "text-red-600"
+                    : "text-green-700"
+                }
+              >
+                {msg}
+              </span>
+            )}
+          </div>
+        </>
+      )}
+      {tab === "tabParams" && <ParamVisibility t={t} />}
+      {tab === "tabSecurity" && (
+        <>
+          <section className="card flex flex-col gap-4">
+            <div>
+              <h2 className="font-bold">{t("passwordSection")}</h2>
+              <p className="hint">
+                {t("passwordHintBefore")}
+                <code>sudo fastoshop -reset-password</code>
+                {t("passwordHintAfter")}
+              </p>
+            </div>
+            <div>
+              <label className="label">{t("currentPassword")}</label>
+              <input
+                className="field"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">{t("newPassword")}</label>
+              <input
+                className="field"
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <button className="btn-ghost" onClick={changePassword}>
+                {t("changePassword")}
+              </button>
+              {passwordMsg && (
+                <span
+                  className={
+                    passwordMsg.startsWith(t("errorPrefix"))
+                      ? "text-red-600"
+                      : "text-green-700"
+                  }
+                >
+                  {passwordMsg}
+                </span>
+              )}
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }

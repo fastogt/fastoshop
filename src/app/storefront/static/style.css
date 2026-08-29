@@ -299,7 +299,7 @@ main > h1 { margin-block: 28px 20px; }
 /* The characteristics table sits next to the description and reads like it:
    the label muted, the value in the text colour, no borders — a spec sheet is
    a list, not a spreadsheet. */
-.specs { grid-column: 1 / -1; max-width: 78ch; margin-inline: auto; margin-top: 8px; }
+.specs { grid-column: 1 / -1; margin-top: 8px; }
 .specs h3 { font-size: 1rem; margin-bottom: 6px; }
 .specs table { border-collapse: collapse; }
 .specs td { padding: 4px 0; }
@@ -309,7 +309,7 @@ main > h1 { margin-block: 28px 20px; }
    instead of down one half of it. Capped at 78ch for the eye and centered:
    left-aligned under the photo column it left the right half of a wide screen
    looking unfinished. */
-.desc { grid-column: 1 / -1; max-width: 78ch; margin-top: 8px; margin-inline: auto; white-space: pre-line; color: var(--muted); }
+.desc { grid-column: 1 / -1; margin-top: 8px; white-space: pre-line; color: var(--muted); }
 .desc h3 { font-size: 1rem; color: var(--text); margin-bottom: 6px; }
 
 .trust { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--muted); }

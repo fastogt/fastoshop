@@ -589,15 +589,26 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 type specVM struct {
 	Weight string
 	Size   string
+	// Props are the characteristics the source stated, in its order. Weight and
+	// size are not among them: they are named fields the shop does arithmetic
+	// with, and one number with two homes is one home too many.
+	Props []specProp
+}
+
+type specProp struct {
+	Name  string
+	Value string
 }
 
 // Empty reports whether there is anything to show, so the template can drop the
 // whole block rather than render an empty table.
-func (s specVM) Empty() bool { return s.Weight == "" && s.Size == "" }
+func (s specVM) Empty() bool {
+	return s.Weight == "" && s.Size == "" && len(s.Props) == 0
+}
 
 // specs formats what is set. Grams and millimetres are what we store —
 // arithmetic wants one unit — but a buyer reads kilograms and centimetres.
-func specs(p *database.Product) specVM {
+func specs(p *database.Product, hidden map[string]bool) specVM {
 	var out specVM
 	if p.WeightG != nil {
 		out.Weight = weightStr(*p.WeightG)
@@ -608,7 +619,52 @@ func specs(p *database.Product) specVM {
 		out.Size = fmt.Sprintf("%s × %s × %s см",
 			cmStr(*p.LengthMM), cmStr(*p.WidthMM), cmStr(*p.HeightMM))
 	}
+	for _, prm := range p.Params {
+		if hidden[prm.Name] {
+			continue
+		}
+		if v := propStr(prm.Value); v != "" {
+			out.Props = append(out.Props, specProp{Name: prm.Name, Value: v})
+		}
+	}
 	return out
+}
+
+// hiddenParams is what the owner ticked off in the settings. A failure shows
+// everything rather than nothing: a page missing its characteristics is worse
+// than a page carrying one the owner would rather hide.
+func (s *Storefront) hiddenParams() map[string]bool {
+	h, err := s.db.HiddenParams()
+	if err != nil {
+		return nil
+	}
+	return h
+}
+
+// propStr renders a characteristic for a buyer. A marketplace states one value
+// as a list of one, so a list is joined rather than shown with its brackets;
+// anything a buyer cannot read is left out instead of printed as Go syntax.
+func propStr(v any) string {
+	switch x := v.(type) {
+	case string:
+		return strings.TrimSpace(x)
+	case float64:
+		return strconv.FormatFloat(x, 'f', -1, 64)
+	case bool:
+		if x {
+			return "да"
+		}
+		return "нет"
+	case []any:
+		parts := make([]string, 0, len(x))
+		for _, e := range x {
+			if s := propStr(e); s != "" {
+				parts = append(parts, s)
+			}
+		}
+		return strings.Join(parts, ", ")
+	}
+	return ""
 }
 
 // value flattens "not set" to 0 for the template, which has no notion of nil.
@@ -653,7 +709,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		PriceStr: priceStr(p.Price), PriceValidUntil: time.Now().AddDate(0, 1, 0).Format("2006-01-02"),
 		OrderLinks:      orderLinks(shop, p, s.baseURL+"/p/"+p.Slug),
 		MetaDescription: desc,
-		Specs:           specs(p),
+		Specs:           specs(p, s.hiddenParams()),
 		CartCount:       cartCount(r)}
 	data.WeightG, data.LengthMM = value(p.WeightG), value(p.LengthMM)
 	data.WidthMM, data.HeightMM = value(p.WidthMM), value(p.HeightMM)
