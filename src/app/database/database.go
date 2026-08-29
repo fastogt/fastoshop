@@ -109,7 +109,9 @@ func (d *Database) migrate() error {
 		length_mm   INTEGER,
 		width_mm    INTEGER,
 		height_mm   INTEGER,
-		-- Characteristics: {"cvet":"белый"}. A column rather than a table because
+		-- Characteristics: [{"name":"Цвет","value":"белый"},{"name":"Вес, кг",
+		-- "value":1.5}]. A list, not an object: the source's order is how the
+		-- seller meant the card to read. A column rather than a table because
 		-- values travel with the product — the catalogue reads sixty of them per
 		-- page and a join would earn nothing — and because writing them is one
 		-- UPDATE. Weight and size are NOT in here: the core does arithmetic with
@@ -118,7 +120,7 @@ func (d *Database) migrate() error {
 		-- fields and attributes as a list beside them.
 		-- ponytail: no index. Faceted filtering, when it comes, is a generated
 		-- column over json_extract; nothing here has to move for that.
-		params      TEXT NOT NULL DEFAULT '{}',
+		params      TEXT NOT NULL DEFAULT '[]',
 		created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);

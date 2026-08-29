@@ -138,8 +138,8 @@ func TestCSVParams(t *testing.T) {
 	if len(items) != 3 {
 		t.Fatalf("строк %d, ожидалось 3", len(items))
 	}
-	if got := items[0].Params; len(got) != 3 || got["Цвет"] != "белый" ||
-		got["Материал"] != "эмаль" || got["Объём"] != "2 л" {
+	if got := items[0].Params; len(got) != 3 || param(got, "Цвет") != "белый" ||
+		param(got, "Материал") != "эмаль" || param(got, "Объём") != "2 л" {
 		t.Errorf("колонки не стали характеристиками: %+v", got)
 	}
 	if items[1].Params != nil {
@@ -147,7 +147,7 @@ func TestCSVParams(t *testing.T) {
 	}
 	// A column with no heading is not a characteristic, and an empty cell adds
 	// nothing: both are ordinary in a spreadsheet and neither may reach a card.
-	if got := items[2].Params; len(got) != 1 || got["Цвет"] != "синий" {
+	if got := items[2].Params; len(got) != 1 || param(got, "Цвет") != "синий" {
 		t.Errorf("пустые и безымянные не отсеялись: %+v", got)
 	}
 }

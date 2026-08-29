@@ -119,6 +119,154 @@ func (o *Ozon) categoryPaths() map[ozonCategoryKey]string {
 	return paths
 }
 
+// Characteristics -------------------------------------------------------
+//
+// Ozon splits a card's characteristics in two: /v4/product/info/attributes says
+// which attribute holds what, by numeric id, and the category's own dictionary
+// says what that id is called and what type it is. Both halves are needed — an
+// id is not a caption — which is why this costs a second call per category the
+// catalogue actually uses rather than one call for everything.
+//
+// The type comes from the platform, not from the shape of the value: Ozon
+// declares Integer, Decimal, Boolean or String per attribute, so nothing here
+// is guessed at, and a number arrives as a number.
+
+type ozonAttributesFilter struct {
+	ProductID  []int64 `json:"product_id"`
+	Visibility string  `json:"visibility"`
+}
+
+type ozonAttributesRequest struct {
+	Filter ozonAttributesFilter `json:"filter"`
+	Limit  int                  `json:"limit"`
+}
+
+type ozonAttrValue struct {
+	DictionaryValueID int64  `json:"dictionary_value_id"`
+	Value             string `json:"value"`
+}
+
+type ozonAttributesResponse struct {
+	Result []struct {
+		ID         int64 `json:"id"`
+		Attributes []struct {
+			AttributeID int64           `json:"attribute_id"`
+			Values      []ozonAttrValue `json:"values"`
+		} `json:"attributes"`
+	} `json:"result"`
+}
+
+type ozonAttributeDictRequest struct {
+	CategoryID int64  `json:"description_category_id"`
+	TypeID     int64  `json:"type_id"`
+	Language   string `json:"language"`
+}
+
+type ozonAttributeDef struct {
+	ID           int64  `json:"id"`
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	IsCollection bool   `json:"is_collection"`
+}
+
+type ozonAttributeDictResponse struct {
+	Result []ozonAttributeDef `json:"result"`
+}
+
+// attributeDicts fetches the attribute dictionary for every category the
+// catalogue actually uses — one call each, not one per product. A category whose
+// dictionary fails is not fatal: its characteristics arrive as plain strings
+// under their numeric id's name, which is worse than a caption and better than
+// nothing.
+func (o *Ozon) attributeDicts(keys map[ozonCategoryKey]bool) map[ozonCategoryKey]map[int64]ozonAttributeDef {
+	out := make(map[ozonCategoryKey]map[int64]ozonAttributeDef, len(keys))
+	for k := range keys {
+		var resp ozonAttributeDictResponse
+		if err := o.post("/v1/description-category/attribute",
+			ozonAttributeDictRequest{CategoryID: k.CategoryID, TypeID: k.TypeID, Language: "RU"},
+			&resp); err != nil {
+			log.Warnf("ozon: attribute dictionary for %d/%d: %v", k.CategoryID, k.TypeID, err)
+			continue
+		}
+		defs := make(map[int64]ozonAttributeDef, len(resp.Result))
+		for _, d := range resp.Result {
+			defs[d.ID] = d
+		}
+		out[k] = defs
+	}
+	return out
+}
+
+// attributes returns a card's characteristics keyed by product id.
+func (o *Ozon) attributes(ids []int64) map[int64][]ozonAttrValueSet {
+	var resp ozonAttributesResponse
+	if err := o.post("/v4/product/info/attributes",
+		ozonAttributesRequest{Limit: 1000,
+			Filter: ozonAttributesFilter{ProductID: ids, Visibility: "ALL"}}, &resp); err != nil {
+		// Characteristics are description, not the product: an import without
+		// them is worth more than no import.
+		log.Warnf("ozon: attributes: %v", err)
+		return nil
+	}
+	out := make(map[int64][]ozonAttrValueSet, len(resp.Result))
+	for _, p := range resp.Result {
+		for _, a := range p.Attributes {
+			out[p.ID] = append(out[p.ID], ozonAttrValueSet{ID: a.AttributeID, Values: a.Values})
+		}
+	}
+	return out
+}
+
+type ozonAttrValueSet struct {
+	ID     int64
+	Values []ozonAttrValue
+}
+
+// ozonParams turns one card's attributes into ours, reading each value as the
+// type the platform declared for it.
+func ozonParams(sets []ozonAttrValueSet, defs map[int64]ozonAttributeDef) []database.Param {
+	var out []database.Param
+	for _, s := range sets {
+		def, known := defs[s.ID]
+		name := def.Name
+		if !known || name == "" {
+			// An id is not a caption, but dropping the value would lose data the
+			// dictionary call failed to explain, not data Ozon failed to send.
+			name = "attribute " + strconv.FormatInt(s.ID, 10)
+		}
+		var vals []any
+		for _, v := range s.Values {
+			if raw := strings.TrimSpace(v.Value); raw != "" {
+				vals = append(vals, ozonValue(def.Type, raw))
+			}
+		}
+		switch {
+		case len(vals) == 0:
+		case len(vals) == 1 && !def.IsCollection:
+			out = append(out, database.Param{Name: name, Value: vals[0]})
+		default:
+			out = append(out, database.Param{Name: name, Value: vals})
+		}
+	}
+	return out
+}
+
+// ozonValue reads one value as its declared type. An unparseable number stays a
+// string: Ozon says what the field is, but the seller is who filled it in.
+func ozonValue(kind, raw string) any {
+	switch strings.ToLower(kind) {
+	case "integer", "decimal":
+		if f, err := strconv.ParseFloat(strings.Replace(raw, ",", ".", 1), 64); err == nil {
+			return f
+		}
+	case "boolean":
+		if b, err := strconv.ParseBool(raw); err == nil {
+			return b
+		}
+	}
+	return raw
+}
+
 type ozonStocksFilter struct {
 	Visibility string `json:"visibility"`
 }
@@ -218,6 +366,14 @@ func (o *Ozon) Fetch() ([]Item, error) {
 	}
 	stockByID := o.stocks()
 	categories := o.categoryPaths()
+	attrs := o.attributes(ids)
+	// Only the categories this catalogue actually sells in: a dictionary per
+	// card would be twenty thousand calls, one per category is a handful.
+	used := map[ozonCategoryKey]bool{}
+	for _, it := range info.Items {
+		used[ozonCategoryKey{CategoryID: it.CategoryID, TypeID: it.TypeID}] = true
+	}
+	dicts := o.attributeDicts(used)
 	items := make([]Item, 0, len(info.Items))
 	for _, it := range info.Items {
 		price, _ := strconv.ParseFloat(strings.TrimSpace(it.Price), 64)
@@ -227,10 +383,12 @@ func (o *Ozon) Fetch() ([]Item, error) {
 			} `json:"result"`
 		}
 		_ = o.post("/v1/product/info/description", ozonProductIDRequest{ProductID: it.ID}, &desc)
+		key := ozonCategoryKey{CategoryID: it.CategoryID, TypeID: it.TypeID}
 		items = append(items, Item{
 			SKU: it.OfferID, Title: it.Name, Description: desc.Result.Description,
 			Price: int64(price * 100), Stock: stockByID[it.ID], ImageURLs: it.Images,
-			Category: categories[ozonCategoryKey{CategoryID: it.CategoryID, TypeID: it.TypeID}],
+			Category: categories[key],
+			Params:   ozonParams(attrs[it.ID], dicts[key]),
 			WeightG:  grams(it.Weight, it.WeightUnit),
 			LengthMM: millimetres(it.Depth, it.DimUnit),
 			WidthMM:  millimetres(it.Width, it.DimUnit),

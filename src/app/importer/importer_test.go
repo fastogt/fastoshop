@@ -182,6 +182,10 @@ func TestWBImportSizes(t *testing.T) {
 func TestWBImportSingleSize(t *testing.T) {
 	mux := wbMux(`{"cards":[{"nmID":22,"vendorCode":"WB-1","title":"Кружка",
 		"description":"Синяя","photos":[],
+		"characteristics":[{"name":"Цвет","value":["синий","белый"]},
+			{"name":"Высота предмета","value":10},
+			{"name":"Материал","value":"керамика"},
+			{"name":"Пустая","value":[]},{"name":"","value":"без имени"}],
 		"dimensions":{"length":12,"width":9,"height":10,"weightBrutto":0.35},
 		"sizes":[{"chrtID":101,"techSize":"","wbSize":"","skus":["2000000000011"]}]}],
 		"cursor":{"total":1}}`)
@@ -210,6 +214,25 @@ func TestWBImportSingleSize(t *testing.T) {
 	if err != nil || p.SKU != "WB-1" || p.Title != "Кружка" || p.Price != 99050 || p.Stock != 4 {
 		t.Fatalf("%v %+v", err, p)
 	}
+	// A card carries a dozen characteristics because the seller cannot publish
+	// without them — which makes an import the one way a catalogue arrives
+	// already described. One name holds a string, a number or a list.
+	if len(p.Params) != 3 {
+		t.Fatalf("характеристик %d, ожидалось 3: %+v", len(p.Params), p.Params)
+	}
+	// Each keeps the type Wildberries stated, all the way through the database:
+	// a list stays a list rather than becoming "синий, белый", and a height
+	// stays a number rather than becoming "10".
+	colour, ok := param(p.Params, "Цвет").([]any)
+	if !ok || len(colour) != 2 || colour[0] != "синий" || colour[1] != "белый" {
+		t.Errorf("список значений не доехал списком: %+v", param(p.Params, "Цвет"))
+	}
+	if param(p.Params, "Высота предмета") != 10.0 {
+		t.Errorf("число доехало не числом: %+v", param(p.Params, "Высота предмета"))
+	}
+	if param(p.Params, "Материал") != "керамика" {
+		t.Errorf("строка не разобралась: %+v", p.Params)
+	}
 	// Wildberries states centimetres and kilograms; we store millimetres and
 	// grams, and the conversion is the import's job, not the reader's.
 	if p.WeightG == nil || *p.WeightG != 350 {
@@ -218,6 +241,18 @@ func TestWBImportSingleSize(t *testing.T) {
 	if p.LengthMM == nil || *p.LengthMM != 120 {
 		t.Errorf("WB length: %v, want 120 mm", p.LengthMM)
 	}
+}
+
+// param finds a characteristic by name. Characteristics are a list, so the
+// tests need a lookup the storage no longer provides — and they compare the
+// value as it is stored, which is the point of the whole exercise.
+func param(ps []database.Param, name string) any {
+	for _, p := range ps {
+		if p.Name == name {
+			return p.Value
+		}
+	}
+	return nil
 }
 
 const kYMLFeed = `<?xml version="1.0" encoding="utf-8"?>
@@ -334,7 +369,7 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	p.Category = "Посуда/Тёрки"
 	weight := int64(1200)
 	p.WeightG = &weight
-	p.Params = database.ParamValues{"Цвет": "белый"}
+	p.Params = []database.Param{{Name: "Цвет", Value: "белый"}}
 	if err := d.UpdateProduct(p); err != nil {
 		t.Fatal(err)
 	}
@@ -358,7 +393,7 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	}
 	// Characteristics are the owner's as well: a set they have touched is not
 	// overwritten, and a feed that carries none does not empty it.
-	if len(after.Params) != 1 || after.Params["Цвет"] != "белый" {
+	if len(after.Params) != 1 || param(after.Params, "Цвет") != "белый" {
 		t.Errorf("the feed took the characteristics back: %+v", after.Params)
 	}
 	// Measurements are the owner's too: a feed that never carried a weight must
@@ -717,11 +752,17 @@ func TestYMLParams(t *testing.T) {
 	if len(terka.Params) != 3 {
 		t.Fatalf("характеристик %d, ожидалось 3: %+v", len(terka.Params), terka.Params)
 	}
-	if terka.Params["Цвет"] != "белый" || terka.Params["Материал"] != "пластик" {
+	if param(terka.Params, "Цвет") != "белый" || param(terka.Params, "Материал") != "пластик" {
 		t.Errorf("пары не разобрались: %+v", terka.Params)
 	}
-	if terka.Params["Диаметр"] != "12 см" {
-		t.Errorf("единица измерения потерялась: %q", terka.Params["Диаметр"])
+	// The unit moves into the caption and the value stays a number: a filter can
+	// compare 12 to 20, it cannot compare "12 см" to "20 см".
+	if param(terka.Params, "Диаметр, см") != 12.0 {
+		t.Errorf("единица не переехала в подпись, или число стало строкой: %+v", terka.Params)
+	}
+	// The order is the feed's: a seller arranges a card to be read in that order.
+	if terka.Params[0].Name != "Цвет" || terka.Params[2].Name != "Диаметр, см" {
+		t.Errorf("порядок из фида не сохранился: %+v", terka.Params)
 	}
 	// The weight is a named column, not a characteristic: the shop does
 	// arithmetic with it and two homes for one number is one home too many.

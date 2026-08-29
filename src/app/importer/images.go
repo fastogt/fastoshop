@@ -51,37 +51,6 @@ func extByContent(head []byte) string {
 	return ""
 }
 
-// SaveBlob writes a picture that arrived inside a source file and returns its
-// local name. The naming, the size ceiling and the thumbnail are the same as for
-// a downloaded photo: on disk an imported picture must be indistinguishable from
-// an uploaded one.
-func SaveBlob(productID int64, blob []byte, uploadsDir string) (string, error) {
-	if uploadsDir == "" {
-		return "", fmt.Errorf("no uploads directory")
-	}
-	if len(blob) > kMaxImageBytes {
-		return "", fmt.Errorf("larger than %d MB", kMaxImageBytes>>20)
-	}
-	ext := extByContent(blob)
-	if ext == "" {
-		return "", fmt.Errorf("not a jpeg, png or webp")
-	}
-	name, err := localName(productID, ext)
-	if err != nil {
-		return "", err
-	}
-	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
-		return "", err
-	}
-	if err := os.WriteFile(filepath.Join(uploadsDir, name), blob, 0644); err != nil {
-		return "", err
-	}
-	if err := media.MakeThumb(uploadsDir, name); err != nil {
-		log.Warnf("thumbnail for %q: %v", name, err)
-	}
-	return name, nil
-}
-
 func fetchImage(im database.ProductImage, uploadsDir string) (string, error) {
 	resp, err := kHTTP.Get(im.Path)
 	if err != nil {

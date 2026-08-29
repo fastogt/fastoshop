@@ -1,3 +1,10 @@
+1.39.0 / August 28, 2026
+[Alexandr Topilski]
+- Ozon characteristics reach the catalogue. The platform keeps them in two halves and both are needed: `/v4/product/info/attributes` gives values against a numeric id, and only the category dictionary knows what that id is called. Values cost one request per catalogue, names one request per category met — a catalogue of twenty thousand lives in a dozen categories, so it is a dozen requests, not twenty thousand
+- A characteristic keeps the type and the order its source gave it. Values were a map of strings, which shuffled properties a seller had arranged deliberately and threw away a type nobody had to guess at — Wildberries states `any` for exactly that reason. They are a list of {name, value} now, and a value is whatever JSON already spells: string, number, boolean, or a flat list of those
+- Every importer is checked whole. Five tests compare the entire parsed result against a fixture stating everything that source can carry, because the previous style — one line per field — is how a parcel's width came to be read and asserted by nobody: deleting the line that parsed it left the suite green
+- Pictures embedded inside a spreadsheet are no longer read. Nobody asked for it since it was written, and the machinery to unpack a sheet's drawing relations was the largest thing in the importer. A price list states photo links; when a seller turns up who only has them inside the file, it comes back
+
 1.38.0 / August 28, 2026
 [Alexandr Topilski]
 - YML feeds bring their characteristics. `<param name="Цвет">белый</param>` is part of the standard and every exporter writes it — Bitrix, InSales, Tilda — and we read past it, which is the real reason no imported catalogue had any. A unit stays with its value, so "Диаметр" arrives as "12 см" and not as "12". `<weight>` was being dropped the same way and is now read as well

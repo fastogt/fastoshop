@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -101,6 +102,13 @@ type wbCardsResponse struct {
 			WBSize   string   `json:"wbSize"`
 			Skus     []string `json:"skus"` // the size's barcodes
 		} `json:"sizes"`
+		// The seller fills these to publish at all, so a card carries a dozen
+		// of them. Value is a string, a number or a list depending on the
+		// characteristic — Wildberries states no type, only the payload.
+		Characteristics []struct {
+			Name  string `json:"name"`
+			Value any    `json:"value"`
+		} `json:"characteristics"`
 	} `json:"cards"`
 	Cursor struct {
 		Total int `json:"total"`
@@ -285,6 +293,17 @@ func (w *WB) Fetch() ([]Item, error) {
 			urls = append(urls, ph.Big)
 		}
 		category := database.CategoryPath(subjectParents[card.SubjectID], card.SubjectName)
+		// The value goes through as Wildberries decoded it — a number stays a
+		// number, a list stays a list. This is the one place a whole catalogue
+		// arrives already described, and it arrives typed; flattening it here
+		// would be discarding a type nobody would then be able to recover.
+		var params []database.Param
+		for _, ch := range card.Characteristics {
+			name := strings.TrimSpace(ch.Name)
+			if name != "" && database.ParamValueOK(ch.Value) {
+				params = append(params, database.Param{Name: name, Value: ch.Value})
+			}
+		}
 		// The card carries one weight and one box for every size: a size differs
 		// by its label and its barcode, not by its parcel.
 		weight := grams(card.Dimensions.WeightBrutto, "kg")
@@ -296,6 +315,7 @@ func (w *WB) Fetch() ([]Item, error) {
 				SKU: card.VendorCode, Title: card.Title, Description: card.Description,
 				Price: priceByNm[card.NmID], ImageURLs: urls, Category: category,
 				WeightG: weight, LengthMM: length, WidthMM: width, HeightMM: height,
+				Params: params,
 			})
 			continue
 		}
@@ -326,6 +346,7 @@ func (w *WB) Fetch() ([]Item, error) {
 				Price: price, Stock: stockByBarcode[barcode], ImageURLs: urls,
 				Category: category,
 				WeightG:  weight, LengthMM: length, WidthMM: width, HeightMM: height,
+				Params: params,
 			})
 		}
 	}

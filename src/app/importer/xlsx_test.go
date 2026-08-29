@@ -112,39 +112,3 @@ func TestXLSXWithoutHeaderIsRefused(t *testing.T) {
 		t.Fatal("and it must say so instead of reporting an empty catalogue")
 	}
 }
-
-// Half the price lists in circulation put the photo inside the cell, so it has
-// to come out with the row it is anchored to.
-func TestXLSXTakesPicturesOutOfCells(t *testing.T) {
-	raw := build(t, map[string]string{
-		"xl/sharedStrings.xml":     kStrings,
-		"xl/worksheets/sheet1.xml": kSheet,
-		"xl/worksheets/_rels/sheet1.xml.rels": `<?xml version="1.0"?><Relationships>
-			<Relationship Id="rId1"
-			  Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"
-			  Target="../drawings/drawing1.xml"/></Relationships>`,
-		"xl/drawings/drawing1.xml": `<?xml version="1.0"?><wsDr>
-			<twoCellAnchor><from><row>3</row></from>
-			  <pic><blipFill><blip embed="rId1"/></blipFill></pic></twoCellAnchor>
-			</wsDr>`,
-		"xl/drawings/_rels/drawing1.xml.rels": `<?xml version="1.0"?><Relationships>
-			<Relationship Id="rId1"
-			  Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
-			  Target="../media/image1.png"/></Relationships>`,
-	}, map[string][]byte{"xl/media/image1.png": kPNG})
-
-	items, err := (&XLSX{Data: raw}).Fetch()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(items) != 2 {
-		t.Fatalf("expected two products, got %d", len(items))
-	}
-	// Row 4 in the sheet is index 3 in the anchor: the first product.
-	if len(items[0].ImageBlobs) != 1 || !bytes.Equal(items[0].ImageBlobs[0], kPNG) {
-		t.Fatalf("the picture did not follow its row: %+v", items[0].ImageBlobs)
-	}
-	if len(items[1].ImageBlobs) != 0 {
-		t.Fatal("a row with no picture must not borrow one")
-	}
-}

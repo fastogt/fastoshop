@@ -19,10 +19,6 @@ type Item struct {
 	Price       int64 // minor units
 	Stock       int
 	ImageURLs   []string
-	// ImageBlobs are pictures that came inside the file itself (a photo pasted
-	// into a price list cell). They have no URL to keep, so they are written to
-	// our uploads at import time instead of being fetched later.
-	ImageBlobs [][]byte
 	// Category is a path from the root down, segments joined by "/". A source
 	// with a tree (YML, Ozon, a price list cell written as "Textile > Bedroom")
 	// fills every segment; one without (a WB subject) fills a single one.
@@ -39,7 +35,7 @@ type Item struct {
 	// Characteristics as the source stated them: colour, size, material. Weight
 	// and dimensions are deliberately NOT in here — the core does arithmetic
 	// with those, and two homes for one number is one home too many.
-	Params database.ParamValues
+	Params []database.Param
 }
 
 // fill keeps what the product already has and takes the feed's value only when
@@ -245,16 +241,6 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 		// want to, with "Download photos" in the products table.
 		for _, u := range it.ImageURLs {
 			_ = db.AddImage(p.ID, u)
-		}
-		// A picture from inside the file has no link to fall back on, so it is
-		// written now or lost.
-		for _, blob := range it.ImageBlobs {
-			name, err := SaveBlob(p.ID, blob, uploadsDir)
-			if err != nil {
-				log.Warnf("import %s: image for %q: %v", src.Name(), it.Title, err)
-				continue
-			}
-			_ = db.AddImage(p.ID, name)
 		}
 		res.Imported++
 	}

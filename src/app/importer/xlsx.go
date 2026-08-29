@@ -4,14 +4,14 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/xml"
-	"fmt"
-	"io"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/fastogt/fastoshop/app/database"
 )
 
 // XLSX is a supplier's own price list, the file a seller actually has. Unlike
@@ -83,7 +83,6 @@ func (x *XLSX) parse() {
 		x.errs++
 		return
 	}
-	photos := sheetImages(files, sheetName)
 
 	head := headerRow(grid)
 	if head < 0 {
@@ -92,6 +91,15 @@ func (x *XLSX) parse() {
 		return
 	}
 	col := map[string]int{}
+	// A column the shop does not know by name is a characteristic, the same rule
+	// the CSV template follows: in a spreadsheet a property is a column, and a
+	// supplier's own list is where "Цвет" and "Материал" actually live. Dropping
+	// them here while keeping them there made one format lose what the other
+	// kept.
+	var extra []struct {
+		at   int
+		name string
+	}
 	for i, name := range grid[head] {
 		if key := headerKey(name); key != "" {
 			// The first column of a kind wins: price lists like to repeat "Цена"
@@ -99,6 +107,13 @@ func (x *XLSX) parse() {
 			if _, seen := col[key]; !seen {
 				col[key] = i
 			}
+			continue
+		}
+		if name = strings.TrimSpace(name); name != "" {
+			extra = append(extra, struct {
+				at   int
+				name string
+			}{i, name})
 		}
 	}
 
@@ -134,12 +149,19 @@ func (x *XLSX) parse() {
 			x.errs++
 			continue
 		}
+		for _, e := range extra {
+			if e.at >= len(row) {
+				continue
+			}
+			if v := strings.TrimSpace(row[e.at]); v != "" {
+				item.Params = append(item.Params, database.Param{Name: e.name, Value: v})
+			}
+		}
 		for _, u := range strings.Split(get("images"), "|") {
 			if u = strings.TrimSpace(u); strings.HasPrefix(u, "http") {
 				item.ImageURLs = append(item.ImageURLs, u)
 			}
 		}
-		item.ImageBlobs = photos[n]
 		x.rows = append(x.rows, item)
 	}
 }
@@ -324,154 +346,4 @@ func columnIndex(ref string) int {
 		n = n*26 + int(r-'A') + 1
 	}
 	return max(n-1, 0)
-}
-
-// Embedded pictures ------------------------------------------------------
-
-// kMaxSheetImage is the ceiling per picture. A price list holds thumbnails; a
-// cell with ten megabytes in it is a mistake, and the admin upload refuses that
-// size anyway.
-const kMaxSheetImage = 10 << 20
-
-// sheetImages returns the pictures anchored in the sheet, by row index. Half the
-// price lists in circulation put the photo inside the cell, and asking the owner
-// to extract 20 000 of them by hand is the same as saying no.
-func sheetImages(files map[string]*zip.File, sheet string) map[int][][]byte {
-	drawing := relTarget(files, relsFor(sheet), "drawing")
-	if drawing == "" {
-		return nil
-	}
-	media := drawingMedia(files, drawing)
-	if len(media) == 0 {
-		return nil
-	}
-
-	f, ok := files[drawing]
-	if !ok {
-		return nil
-	}
-	rc, err := f.Open()
-	if err != nil {
-		return nil
-	}
-	defer func() { _ = rc.Close() }()
-
-	// Both anchor kinds carry the same thing we need: the row the picture starts
-	// on and the relationship id of the image part. The blip is a nested struct
-	// rather than a path: encoding/xml cannot read an attribute at the end of an
-	// "a>b>c" path, and written that way the field silently stays empty.
-	type blip struct {
-		Embed string `xml:"embed,attr"`
-	}
-	type pic struct {
-		Blip blip `xml:"blipFill>blip"`
-	}
-	type anchor struct {
-		Row int `xml:"from>row"`
-		Pic pic `xml:"pic"`
-	}
-	var doc struct {
-		Two []anchor `xml:"twoCellAnchor"`
-		One []anchor `xml:"oneCellAnchor"`
-	}
-	if err := xml.NewDecoder(rc).Decode(&doc); err != nil {
-		return nil
-	}
-
-	out := map[int][][]byte{}
-	for _, a := range append(doc.Two, doc.One...) {
-		part, ok := media[a.Pic.Blip.Embed]
-		if !ok {
-			continue
-		}
-		blob, err := readPart(files, part)
-		if err != nil {
-			continue
-		}
-		out[a.Row] = append(out[a.Row], blob)
-	}
-	return out
-}
-
-func relsFor(part string) string {
-	return path.Join(path.Dir(part), "_rels", path.Base(part)+".rels")
-}
-
-type relationships struct {
-	Rel []struct {
-		ID     string `xml:"Id,attr"`
-		Type   string `xml:"Type,attr"`
-		Target string `xml:"Target,attr"`
-	} `xml:"Relationship"`
-}
-
-func readRels(files map[string]*zip.File, name string) *relationships {
-	f, ok := files[name]
-	if !ok {
-		return nil
-	}
-	rc, err := f.Open()
-	if err != nil {
-		return nil
-	}
-	defer func() { _ = rc.Close() }()
-	var rels relationships
-	if err := xml.NewDecoder(rc).Decode(&rels); err != nil {
-		return nil
-	}
-	return &rels
-}
-
-// relTarget resolves the first relationship whose type ends with kind, as an
-// archive path.
-func relTarget(files map[string]*zip.File, relsName, kind string) string {
-	rels := readRels(files, relsName)
-	if rels == nil {
-		return ""
-	}
-	base := path.Dir(path.Dir(relsName))
-	for _, r := range rels.Rel {
-		if strings.HasSuffix(r.Type, "/"+kind) {
-			return path.Clean(path.Join(base, r.Target))
-		}
-	}
-	return ""
-}
-
-// drawingMedia maps a drawing's relationship ids to the image parts they point
-// at.
-func drawingMedia(files map[string]*zip.File, drawing string) map[string]string {
-	rels := readRels(files, relsFor(drawing))
-	if rels == nil {
-		return nil
-	}
-	base := path.Dir(path.Dir(relsFor(drawing)))
-	out := map[string]string{}
-	for _, r := range rels.Rel {
-		if strings.HasSuffix(r.Type, "/image") {
-			out[r.ID] = path.Clean(path.Join(base, r.Target))
-		}
-	}
-	return out
-}
-
-func readPart(files map[string]*zip.File, name string) ([]byte, error) {
-	f, ok := files[name]
-	if !ok {
-		return nil, fmt.Errorf("no such part: %s", name)
-	}
-	rc, err := f.Open()
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rc.Close() }()
-	// One byte over the cap tells "too big" from "exactly at the cap".
-	blob, err := io.ReadAll(io.LimitReader(rc, kMaxSheetImage+1))
-	if err != nil {
-		return nil, err
-	}
-	if len(blob) > kMaxSheetImage {
-		return nil, fmt.Errorf("larger than %d MB", kMaxSheetImage>>20)
-	}
-	return blob, nil
 }

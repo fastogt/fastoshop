@@ -157,19 +157,20 @@ var kKnownColumns = map[string]bool{
 
 // extraColumns collects the header's own columns as characteristics. A blank
 // cell adds nothing: an empty property is a heading over nothing on the card.
-func extraColumns(header, row []string) database.ParamValues {
-	out := database.ParamValues{}
+//
+// Values stay text. A spreadsheet states no types and no units, so reading a
+// cell as a number would be reading the digits and hoping — and the column that
+// finally proves it wrong is the one holding article numbers.
+func extraColumns(header, row []string) []database.Param {
+	var out []database.Param
 	for i, name := range header {
 		name = strings.TrimSpace(name)
 		if name == "" || kKnownColumns[strings.ToLower(name)] || i >= len(row) {
 			continue
 		}
 		if v := strings.TrimSpace(row[i]); v != "" {
-			out[name] = v
+			out = append(out, database.Param{Name: name, Value: v})
 		}
-	}
-	if len(out) == 0 {
-		return nil
 	}
 	return out
 }

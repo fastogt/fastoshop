@@ -263,11 +263,16 @@ func (y *YML) stock(o *ymlOffer) int {
 	return y.DefaultStock
 }
 
-// offerParams turns the feed's <param> list into our map. A unit belongs with
-// the value — "Вес: 1.5 кг" reads, "Вес: 1.5" does not — and a nameless or
-// empty param is dropped rather than stored as a blank row on the card.
-func offerParams(ps []ymlParam) database.ParamValues {
-	out := database.ParamValues{}
+// offerParams turns the feed's <param> list into ours. A nameless or empty param
+// is dropped rather than stored as a blank row on the card.
+//
+// The unit joins the caption — "Вес, кг" reads as well as "Вес: 1.5 кг" did and
+// leaves 1.5 a number a filter can compare. The unit is also what decides to
+// read the value as one: the feed stating a measure is the feed's own word that
+// the field is numeric, whereas the shape of the digits is a guess, and it is
+// the guess that turns an article number "007" into 7.
+func offerParams(ps []ymlParam) []database.Param {
+	var out []database.Param
 	for _, p := range ps {
 		name := strings.TrimSpace(p.Name)
 		value := strings.TrimSpace(p.Value)
@@ -275,12 +280,14 @@ func offerParams(ps []ymlParam) database.ParamValues {
 			continue
 		}
 		if unit := strings.TrimSpace(p.Unit); unit != "" {
-			value += " " + unit
+			name += ", " + unit
+			// A decimal comma is how half the feeds in this country write 1,5.
+			if n, err := strconv.ParseFloat(strings.Replace(value, ",", ".", 1), 64); err == nil {
+				out = append(out, database.Param{Name: name, Value: n})
+				continue
+			}
 		}
-		out[name] = value
-	}
-	if len(out) == 0 {
-		return nil
+		out = append(out, database.Param{Name: name, Value: value})
 	}
 	return out
 }
@@ -295,6 +302,28 @@ func ymlWeight(raw string) *int64 {
 	}
 	g := int64(math.Round(v * 1000))
 	return &g
+}
+
+// ymlDimensions reads the standard's <dimensions>: length/width/height in
+// centimetres, slash-separated ("20.1/30.5/11"). All three or nothing — a
+// parcel with two sides is not a parcel, and a marketplace card refuses it just
+// as a delivery quote would.
+func ymlDimensions(raw string) (l, w, h *int64) {
+	parts := strings.Split(strings.TrimSpace(raw), "/")
+	if len(parts) != 3 {
+		return nil, nil, nil
+	}
+	out := make([]*int64, 3)
+	for i, p := range parts {
+		v, err := strconv.ParseFloat(strings.TrimSpace(p), 64)
+		if err != nil {
+			return nil, nil, nil
+		}
+		if out[i] = millimetres(v, "cm"); out[i] == nil {
+			return nil, nil, nil
+		}
+	}
+	return out[0], out[1], out[2]
 }
 
 func (y *YML) Fetch() ([]Item, error) {
@@ -329,7 +358,7 @@ func (y *YML) Fetch() ([]Item, error) {
 		if sku == "" {
 			sku = strings.TrimSpace(o.ID)
 		}
-		items = append(items, Item{
+		item := Item{
 			SKU:         sku,
 			Title:       strings.TrimSpace(o.Name),
 			Description: strings.TrimSpace(o.Description),
@@ -339,7 +368,9 @@ func (y *YML) Fetch() ([]Item, error) {
 			Category:    categoryPath(y.categories, strings.TrimSpace(o.CategoryID)),
 			Params:      offerParams(o.Params),
 			WeightG:     ymlWeight(o.Weight),
-		})
+		}
+		item.LengthMM, item.WidthMM, item.HeightMM = ymlDimensions(o.Dimensions)
+		items = append(items, item)
 	})
 	if err != nil {
 		return nil, err

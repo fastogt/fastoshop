@@ -37,12 +37,53 @@ type Product struct {
 	LengthMM *int64 `json:"length_mm"`
 	WidthMM  *int64 `json:"width_mm"`
 	HeightMM *int64 `json:"height_mm"`
-	// Characteristics the shop declared for itself, key to value. Weight and
-	// size are deliberately not among them: the core does arithmetic with those,
-	// and one number with two homes is one home too many.
-	Params    ParamValues `json:"params"`
-	CreatedAt time.Time   `json:"created_at"`
-	UpdatedAt time.Time   `json:"updated_at"`
+	// Characteristics as their source stated them, in the order it stated them:
+	// a seller arranges a card's properties to be read in that order, and a map
+	// would shuffle them. Weight and size are deliberately not among these: the
+	// core does arithmetic with those, and one number with two homes is one home
+	// too many.
+	Params    []Param   `json:"params"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Param is one characteristic. Value keeps the type its source gave it, because
+// JSON already has that notation — a second one beside it would be a second one
+// to keep in sync, and every type it could name is one JSON already spells.
+// Wildberries hands us `any` for exactly this reason, and flattening it into a
+// string was throwing away a type nobody had to guess at.
+//
+// Name is both the caption and the key: all three sources state one string and
+// no identifier, so a separate key would be that same string twice. A unit
+// belongs in it — "Вес, кг" reads, and it leaves 1.5 a number.
+type Param struct {
+	Name  string `json:"name"`
+	Value any    `json:"value"`
+}
+
+// ParamValueOK reports whether v is a value we store: one of JSON's own scalars
+// or a flat list of them. Everything else — an object, null, a blank string — is
+// not a characteristic: it would put an empty row on the card, or a shape the
+// storefront's switch has no branch for. Checked on the way in and again on the
+// way out, because a database is not only written by this code.
+func ParamValueOK(v any) bool {
+	switch x := v.(type) {
+	case string:
+		return strings.TrimSpace(x) != ""
+	case float64, int, int64, bool:
+		return true
+	case []any:
+		if len(x) == 0 {
+			return false
+		}
+		for _, e := range x {
+			if _, nested := e.([]any); nested || !ParamValueOK(e) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // uniqueSlug keeps trying suffixes -2, -3… until it finds a free one.
@@ -123,22 +164,29 @@ func scanProduct(row interface{ Scan(...any) error }) (*Product, error) {
 	}
 	// Decoded here so no caller ever handles raw JSON. Unreadable contents are
 	// dropped rather than fatal: one bad row must not take a catalogue page
-	// down, and characteristics are not what the page is for.
-	if err := json.Unmarshal([]byte(params), &p.Params); err != nil {
-		p.Params = ParamValues{}
+	// down, and characteristics are not what the page is for. The same goes for
+	// a single unreadable characteristic among readable ones.
+	p.Params = nil
+	var stored []Param
+	if err := json.Unmarshal([]byte(params), &stored); err == nil {
+		for _, prm := range stored {
+			if prm.Name != "" && ParamValueOK(prm.Value) {
+				p.Params = append(p.Params, prm)
+			}
+		}
 	}
 	return &p, nil
 }
 
-// paramsJSON is what goes into the column: always an object, never NULL and
-// never the "null" a nil map marshals to.
-func paramsJSON(v ParamValues) string {
+// paramsJSON is what goes into the column: always a list, never NULL and never
+// the "null" a nil slice marshals to.
+func paramsJSON(v []Param) string {
 	if len(v) == 0 {
-		return "{}"
+		return "[]"
 	}
 	raw, err := json.Marshal(v)
 	if err != nil {
-		return "{}"
+		return "[]"
 	}
 	return string(raw)
 }
