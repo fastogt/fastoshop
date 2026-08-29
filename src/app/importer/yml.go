@@ -95,8 +95,7 @@ type ymlOffer struct {
 }
 
 // param is the standard's own place for characteristics — colour, size,
-// material. Every exporter writes them (Bitrix, InSales, Tilda), and we read
-// past them until now, which is why no imported catalogue had any.
+// material. Every exporter writes them: Bitrix, InSales, Tilda.
 type ymlParam struct {
 	Name  string `xml:"name,attr"`
 	Unit  string `xml:"unit,attr"`

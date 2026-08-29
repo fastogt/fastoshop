@@ -150,9 +150,7 @@ type ozonAttributesResponse struct {
 	Result []struct {
 		ID         int64 `json:"id"`
 		Attributes []struct {
-			// "id", not "attribute_id": the field is named one way in the
-			// dictionary and the other on the card, and reading the wrong one
-			// left every characteristic named "attribute 0".
+			// The dictionary calls the same field attribute_id.
 			ID     int64           `json:"id"`
 			Values []ozonAttrValue `json:"values"`
 		} `json:"attributes"`
