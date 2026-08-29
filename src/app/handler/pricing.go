@@ -10,9 +10,10 @@ import (
 
 type priceRulesResponse struct {
 	Rules []database.PriceRule `json:"rules"`
-	// Coefficient is what the catalogue actually runs on. The form used to open
-	// with a hard-coded 1 while the shop was on 0.0466: pressing "Recompute"
-	// there would have multiplied twenty thousand prices by twenty-one.
+	// Coefficient is what the catalogue actually runs on, and the form has to
+	// open with it: recomputing against a wrong one multiplies every price in
+	// the shop — a form defaulting to 1 against a shop on 0.0466 is twenty-one
+	// times.
 	Coefficient float64 `json:"coefficient"`
 }
 

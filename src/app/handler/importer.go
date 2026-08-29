@@ -158,9 +158,9 @@ func (h *Handler) coefficient(w http.ResponseWriter, sent float64) (float64, boo
 	return c, true
 }
 
-// ImportRun starts the transfer and returns at once. It used to answer only when
-// the whole catalogue was in, which put it under nginx's sixty-second proxy read
-// timeout — 24 000 products walk right up to that line. Progress is polled from
+// ImportRun starts the transfer and returns at once: answering only when the
+// whole catalogue is in would run into nginx's sixty-second proxy read timeout,
+// and 24 000 products walk right up to that line. Progress is polled from
 // GET /api/job.
 func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 	var req importRequest

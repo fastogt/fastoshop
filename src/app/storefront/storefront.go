@@ -112,8 +112,8 @@ func priceStr(minor int64) string {
 }
 
 // kCatalogPageSize — ~60 cards ≈ 100–200 KB of HTML: the page stays light for
-// mobile and for the crawler, and a 20,000-item catalogue is no longer rendered
-// in one piece.
+// mobile and for the crawler, and a 20,000-item catalogue never renders in one
+// piece.
 // A search box is not a text field: anything longer than this is a bot or a
 // paste, and it has no business reaching the database or the page title.
 const kMaxQueryRunes = 100
@@ -770,8 +770,7 @@ func (s *Storefront) Robots(w http.ResponseWriter, r *http.Request) {
 }
 
 // LlmsTxt is the shop's map for AI assistants — the answer engines already
-// send buyers (a visitor arrived with utm_source=chatgpt.com before this file
-// existed). A crawler pieces the shop together from twenty thousand pages;
+// send buyers, measured: a visitor arrives with utm_source=chatgpt.com. A crawler pieces the shop together from twenty thousand pages;
 // an assistant asked "where do I buy X" wants the shape of the shop in one
 // read: what is sold, in which sections, how an order works. Russian on
 // purpose — the storefront speaks the language of its products.

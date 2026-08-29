@@ -321,9 +321,9 @@ func waitIdle(t *testing.T, w *Worker) {
 	t.Fatal("sync pass did not finish")
 }
 
-// TestPushFollowsLevelBothWays: the defensive mode is gone, the sync is
-// bidirectional — platform sales arrive by polling, and a push upwards no longer
-// overwrites what we have not seen.
+// TestPushFollowsLevelBothWays: the sync runs both ways — platform sales arrive
+// by polling, and a push upwards must not overwrite a sale we have not polled
+// yet.
 func TestPushFollowsLevelBothWays(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 5)

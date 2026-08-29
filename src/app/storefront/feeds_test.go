@@ -38,8 +38,8 @@ func TestFeedsCatalog(t *testing.T) {
 		"<picture>https://cdn.example.org/tea.jpg</picture>",
 		"<price>2500.00</price>",
 		"<currencyId>RUB</currencyId>",
-		// Outside the standard, and the reason a shop copied from another
-		// instance no longer arrives with one invented stock level.
+		// Outside the standard: without it a shop copied from another instance
+		// arrives with one invented stock level for the whole catalogue.
 		"<count>3</count>",
 		`available="true"`,
 		`available="false"`,

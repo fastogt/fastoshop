@@ -2,10 +2,10 @@ package database
 
 import "testing"
 
-// SQLite folds case for ASCII only, so a catalogue written in Russian used to be
-// invisible to a buyer typing in lower case: on a live shop "кастрюля" found 8
-// products and "Кастрюля" found 521. Search compares through a Unicode-aware
-// lower on both sides, and this is the test that says so.
+// SQLite folds case for ASCII only, so a catalogue written in Russian is
+// invisible to a buyer typing in lower case unless both sides go through a
+// Unicode-aware lower: measured on a live shop, "кастрюля" finds 8 products
+// against "Кастрюля" 521.
 func TestSearchIgnoresCyrillicCase(t *testing.T) {
 	d, err := OpenInMemory()
 	if err != nil {

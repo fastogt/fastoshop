@@ -949,8 +949,8 @@ func TestCatalogFallsBackToOriginal(t *testing.T) {
 	}
 }
 
-// The shop language is the seller's choice, and the storefront used to declare
-// Russian regardless: an English shop told every crawler it was in Russian.
+// The shop language is the seller's choice, and <html lang> has to follow it:
+// an English shop declaring Russian tells every crawler the wrong thing.
 func TestHTMLLang(t *testing.T) {
 	d, h := setup(t)
 	for _, lang := range []string{"ru", "en"} {

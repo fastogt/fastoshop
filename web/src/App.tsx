@@ -88,7 +88,7 @@ export default function App() {
   if (screen === "loading") return null;
   // enter() and not setScreen: the shop's currency and the owner's language come
   // from the server, and until they are loaded the admin shows roubles and the
-  // browser's language. Reaching the app through a login used to skip that.
+  // browser's language — so every way into the app has to go through here.
   const enter = () => {
     loadShop();
     setScreen("app");
