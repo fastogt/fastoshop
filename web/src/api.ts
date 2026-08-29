@@ -158,6 +158,10 @@ export interface Product {
   length_mm: number | null;
   width_mm: number | null;
   height_mm: number | null;
+  // Characteristics in the order their source stated them. The value keeps the
+  // type it came with: a marketplace states a number as a number, and a form
+  // states everything as a string.
+  params: { name: string; value: string | number | boolean | unknown[] }[];
   images: { id: number; path: string }[];
 }
 

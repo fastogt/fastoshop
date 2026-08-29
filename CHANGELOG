@@ -1,5 +1,6 @@
 1.40.0 / August 29, 2026
 [Alexandr Topilski]
+- Characteristics can be filled in by hand. Every importer writes them and the catalogue is the shop's source of truth, but the product form had no field for them: an owner could see what a feed stated and not correct it, and could not state anything a feed left out. Colour, material, size are rows now, with the blank one at the bottom being where a new one goes; clearing a name removes it. A body without the field leaves the stored set alone, so an import is not undone by opening a product and pressing save
 - A price list reads four times as often. Measured on 36 real ones from horeca suppliers: 3 parsed before, 13 now. The header dictionary gained the words those files actually use — «Штрихкод», «Штрих-код», EAN for an article, «Номенклатура» for a title, «Тов.Категория» for a section — and a price may carry a note in its own cell: «5,40*», «12.30 руб», «4,16(-9,2%)». A bracket holding digits is one price and its discount; a bare second number is two prices and stays refused, because choosing between them is not ours to do
 - The live checks read a local file too, so a price list can be run through the parser before anyone is promised anything: `FEED_FILE=/path/to/price.xlsx go test ./app/importer -run Live -v`
 

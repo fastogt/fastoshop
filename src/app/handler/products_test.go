@@ -292,3 +292,53 @@ func TestUploadAndDeleteImage(t *testing.T) {
 		t.Error("file remained on disk")
 	}
 }
+
+// TestProductParams: characteristics are the shop's own data — every importer
+// writes them, so the form has to be able to correct them. A set arrives whole:
+// a body without the field leaves the stored one alone, an empty list clears it.
+func TestProductParams(t *testing.T) {
+	h := newTestHandler(t)
+	r := router(h)
+
+	send := func(method, path, body string) map[string]any {
+		t.Helper()
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(method, path, strings.NewReader(body)))
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s %s: %d %s", method, path, w.Code, w.Body.String())
+		}
+		var out struct {
+			Data map[string]any `json:"data"`
+		}
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		return out.Data
+	}
+	params := func(d map[string]any) []any {
+		list, _ := d["params"].([]any)
+		return list
+	}
+
+	created := send("POST", "/api/products", `{"title":"Чайник","price":2500,"params":[
+		{"name":"Цвет","value":"белый"},
+		{"name":" Объём ","value":2.3},
+		{"name":"","value":"без имени"},
+		{"name":"Пустая","value":""}]}`)
+	got := params(created)
+	if len(got) != 2 {
+		t.Fatalf("характеристик %d, ожидалось 2: %+v", len(got), got)
+	}
+	if got[0].(map[string]any)["name"] != "Цвет" ||
+		got[1].(map[string]any)["name"] != "Объём" {
+		t.Errorf("имена не подчистились: %+v", got)
+	}
+
+	path := fmt.Sprintf("/api/products/%.0f", created["id"].(float64))
+	kept := send("PUT", path, `{"title":"Чайник","price":2500}`)
+	if len(params(kept)) != 2 {
+		t.Errorf("тело без поля стёрло характеристики: %+v", params(kept))
+	}
+	cleared := send("PUT", path, `{"title":"Чайник","price":2500,"params":[]}`)
+	if len(params(cleared)) != 0 {
+		t.Errorf("пустой список должен очищать: %+v", params(cleared))
+	}
+}

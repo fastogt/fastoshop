@@ -99,6 +99,13 @@ const kText = {
     ru: "Длина × ширина × высота упаковки. По весу и габаритам считается доставка, поэтому пустое поле честнее нуля: незаполненный вес — это «неизвестно», а не «невесомый».",
     en: "Length × width × height of the parcel. Delivery is priced by weight and size, so an empty field is more honest than a zero: an unstated weight means \u201cunknown\u201d, not \u201cweightless\u201d.",
   },
+  labelParams: { ru: "Характеристики", en: "Characteristics" },
+  paramName: { ru: "Свойство", en: "Property" },
+  paramValue: { ru: "Значение", en: "Value" },
+  paramsHint: {
+    ru: "Цвет, материал, размер — то, что площадка называет атрибутами и без чего не принимает карточку. Пустая строка внизу — это место для новой; чтобы убрать характеристику, сотрите её название.",
+    en: "Colour, material, size — what a marketplace calls attributes and refuses a card without. The empty row at the bottom is where a new one goes; to remove one, clear its name.",
+  },
   labelCategory: { ru: "Категория", en: "Category" },
   categoryHint: {
     ru: "Косая черта задаёт вложенность: «Посуда/Кастрюли» — это страница «Кастрюли» внутри «Посуды». У каждого уровня своя страница на витрине.",
@@ -390,6 +397,20 @@ export default function Products() {
 
   // The draft lands straight in the form: the dialog is already a draft —
   // nothing reaches the database until Save, and closing the window undoes it.
+  // One row at a time, with the blank tail row turning into a real one as soon
+  // as it is typed into. A row whose name is cleared is dropped — the server
+  // drops it anyway, and leaving it on screen would say otherwise.
+  const setParam = (i: number, name?: string, value?: string) =>
+    setEdit((prev) => {
+      if (!prev) return prev;
+      const rows = [...(prev.params ?? []), { name: "", value: "" }];
+      rows[i] = {
+        name: name ?? rows[i].name,
+        value: value ?? rows[i].value,
+      };
+      return { ...prev, params: rows.filter((r) => r.name.trim() !== "") };
+    });
+
   const enrich = async () => {
     if (!edit?.id) return;
     setEnrichMsg("");
@@ -788,6 +809,34 @@ export default function Products() {
                 )}
               </div>
               <p className="hint mt-1">{t("sizeHint")}</p>
+            </div>
+            {/* Characteristics: what a marketplace calls attributes and refuses
+                a card without. Every importer fills them, so the form has to be
+                able to correct them — and the empty row at the bottom is how a
+                new one is added without a button that says "add". */}
+            <div>
+              <label className="label">{t("labelParams")}</label>
+              <div className="flex flex-col gap-2">
+                {[...(edit.params ?? []), { name: "", value: "" }].map(
+                  (p, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        className="field w-1/3"
+                        placeholder={t("paramName")}
+                        value={p.name}
+                        onChange={(e) => setParam(i, e.target.value, undefined)}
+                      />
+                      <input
+                        className="field flex-1"
+                        placeholder={t("paramValue")}
+                        value={String(p.value ?? "")}
+                        onChange={(e) => setParam(i, undefined, e.target.value)}
+                      />
+                    </div>
+                  ),
+                )}
+              </div>
+              <p className="hint mt-1">{t("paramsHint")}</p>
             </div>
             {/* A category is a path, and paths are long: its own full-width row,
                 not a quarter of a row next to the price. */}

@@ -43,6 +43,29 @@ type productRequest struct {
 	LengthMM *int64 `json:"length_mm"`
 	WidthMM  *int64 `json:"width_mm"`
 	HeightMM *int64 `json:"height_mm"`
+	// Characteristics, in the order the form lists them. Nil means "leave as
+	// is" and an empty list means "clear them": a set arrives from a source or
+	// from a person, and both state the whole set rather than one key of it.
+	Params []database.Param `json:"params"`
+}
+
+// cleanParams keeps the rows a card can show. A form always has a blank row at
+// the bottom and a person always leaves one half-filled, so both are dropped
+// here rather than stored as an empty line under the price.
+func cleanParams(in []database.Param) []database.Param {
+	out := make([]database.Param, 0, len(in))
+	for _, p := range in {
+		name := strings.TrimSpace(p.Name)
+		if name == "" || !database.ParamValueOK(p.Value) {
+			continue
+		}
+		if s, ok := p.Value.(string); ok {
+			p.Value = strings.TrimSpace(s)
+		}
+		p.Name = name
+		out = append(out, p)
+	}
+	return out
 }
 
 // positive keeps a measurement only when it is one: zero and negative are not
@@ -96,7 +119,8 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	p := &database.Product{SKU: req.SKU, Title: req.Title, Description: req.Description,
 		Price: req.Price, Category: req.Category,
 		WeightG: positive(req.WeightG), LengthMM: positive(req.LengthMM),
-		WidthMM: positive(req.WidthMM), HeightMM: positive(req.HeightMM)}
+		WidthMM: positive(req.WidthMM), HeightMM: positive(req.HeightMM),
+		Params: cleanParams(req.Params)}
 	if req.Stock != nil {
 		p.Stock = *req.Stock
 	}
@@ -146,7 +170,11 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		WeightG:  positive(req.WeightG),
 		LengthMM: positive(req.LengthMM),
 		WidthMM:  positive(req.WidthMM),
-		HeightMM: positive(req.HeightMM)}
+		HeightMM: positive(req.HeightMM),
+		Params:   old.Params}
+	if req.Params != nil {
+		p.Params = cleanParams(req.Params)
+	}
 	if req.Stock != nil {
 		p.Stock = *req.Stock
 	}
