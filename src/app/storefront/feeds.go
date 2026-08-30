@@ -40,6 +40,7 @@ type ymlOffer struct {
 	ID          int64    `xml:"id,attr"`
 	Available   bool     `xml:"available,attr"`
 	Name        string   `xml:"name"`
+	Vendor      string   `xml:"vendor,omitempty"`
 	VendorCode  string   `xml:"vendorCode,omitempty"`
 	URL         string   `xml:"url"`
 	Price       string   `xml:"price"`
@@ -91,6 +92,9 @@ type gmcItem struct {
 	Availability string   `xml:"g:availability"`
 	Condition    string   `xml:"g:condition"`
 	ProductType  string   `xml:"g:product_type,omitempty"`
+	// Merchant Center matches an offer against the catalogue by brand; without
+	// one a listing competes in fewer places and some categories refuse it.
+	Brand string `xml:"g:brand,omitempty"`
 	// Merchant Center quotes delivery from it; without a weight it quotes from
 	// the account default, which is one number for a catalogue of every size.
 	ShippingWeight string `xml:"g:shipping_weight,omitempty"`
@@ -241,7 +245,8 @@ func (s *Storefront) YML(w http.ResponseWriter, r *http.Request) {
 			catID = catchAll
 		}
 		catalog.Shop.Offers = append(catalog.Shop.Offers, ymlOffer{
-			ID: p.ID, Available: p.Stock > 0, Name: p.Title, VendorCode: p.SKU,
+			ID: p.ID, Available: p.Stock > 0, Name: p.Title,
+			Vendor: p.Brand, VendorCode: p.SKU,
 			URL: s.baseURL + "/p/" + p.Slug, Price: priceStr(p.Price),
 			CurrencyID: currency, CategoryID: catID,
 			Pictures: s.feedPictures(p.ID, images), Description: p.Description,
@@ -273,7 +278,7 @@ func (s *Storefront) GMC(w http.ResponseWriter, r *http.Request) {
 			ID: p.ID, Title: p.Title, Description: p.Description,
 			Link:  s.baseURL + "/p/" + p.Slug,
 			Price: priceStr(p.Price) + " " + currency, Availability: availability,
-			Condition: "new", ProductType: p.Category,
+			Condition: "new", ProductType: p.Category, Brand: p.Brand,
 		}
 		if kg := feedWeightKG(p.WeightG); kg != "" {
 			item.ShippingWeight = kg + " kg"

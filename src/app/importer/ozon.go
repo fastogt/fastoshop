@@ -223,11 +223,38 @@ type ozonAttrValueSet struct {
 	Values []ozonAttrValue
 }
 
+// Attributes that are not characteristics. 85 becomes the brand field, and one
+// number with two homes is one home too many. 11254 is a rich-content document:
+// kilobytes of JSON that would sit in the storefront's table as a row and go out
+// in the feed as a <param>.
+const (
+	kOzonAttrBrand       = 85
+	kOzonAttrRichContent = 11254
+)
+
+// ozonBrand pulls the maker's name out of the attribute set.
+func ozonBrand(sets []ozonAttrValueSet) string {
+	for _, s := range sets {
+		if s.ID != kOzonAttrBrand {
+			continue
+		}
+		for _, v := range s.Values {
+			if raw := strings.TrimSpace(v.Value); raw != "" {
+				return raw
+			}
+		}
+	}
+	return ""
+}
+
 // ozonParams turns one card's attributes into ours, reading each value as the
 // type the platform declared for it.
 func ozonParams(sets []ozonAttrValueSet, defs map[int64]ozonAttributeDef) []database.Param {
 	var out []database.Param
 	for _, s := range sets {
+		if s.ID == kOzonAttrBrand || s.ID == kOzonAttrRichContent {
+			continue
+		}
 		def, known := defs[s.ID]
 		name := def.Name
 		if !known || name == "" {
@@ -388,7 +415,7 @@ func (o *Ozon) Fetch() ([]Item, error) {
 		items = append(items, Item{
 			SKU: it.OfferID, Title: it.Name, Description: desc.Result.Description,
 			Price: int64(price * 100), Stock: stockByID[it.ID], ImageURLs: it.Images,
-			Category: categories[key],
+			Category: categories[key], Brand: ozonBrand(attrs[it.ID]),
 			Params:   ozonParams(attrs[it.ID], dicts[key]),
 			WeightG:  grams(it.Weight, it.WeightUnit),
 			LengthMM: millimetres(it.Depth, it.DimUnit),

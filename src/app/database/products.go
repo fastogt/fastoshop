@@ -22,6 +22,9 @@ type Product struct {
 	PriceManual bool   `json:"price_manual"`
 	Stock       int    `json:"stock"`
 	Category    string `json:"category"`
+	// Brand is the manufacturer, not the supplier: one supplier ships many
+	// brands, and a buyer types the brand into the search box.
+	Brand string `json:"brand"`
 	// Supplier is the group that owns this product; empty means the owner made it
 	// by hand and no feed may touch it.
 	Supplier string `json:"supplier"`
@@ -116,11 +119,11 @@ func (d *Database) CreateProduct(p *Product) error {
 	p.Slug = slug
 	res, err := d.db.Exec(
 		`INSERT INTO products (sku, title, slug, description, price, source_price,
-		 price_manual, stock, category, supplier, hidden,
+		 price_manual, stock, category, brand, supplier, hidden,
 		 weight_g, length_mm, width_mm, height_mm, params)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.SKU, p.Title, p.Slug, p.Description, p.Price, p.SourcePrice,
-		p.PriceManual, p.Stock, p.Category, p.Supplier, p.Hidden,
+		p.PriceManual, p.Stock, p.Category, p.Brand, p.Supplier, p.Hidden,
 		p.WeightG, p.LengthMM, p.WidthMM, p.HeightMM, paramsJSON(p.Params))
 	if err != nil {
 		return err
@@ -134,11 +137,11 @@ func (d *Database) CreateProduct(p *Product) error {
 func (d *Database) UpdateProduct(p *Product) error {
 	_, err := d.db.Exec(
 		`UPDATE products SET sku=?, title=?, description=?, price=?, source_price=?,
-		 stock=?, category=?, supplier=?, hidden=?, price_manual=?,
+		 stock=?, category=?, brand=?, supplier=?, hidden=?, price_manual=?,
 		 weight_g=?, length_mm=?, width_mm=?, height_mm=?, params=?,
 		 updated_at=CURRENT_TIMESTAMP WHERE id=?`,
 		p.SKU, p.Title, p.Description, p.Price, p.SourcePrice, p.Stock,
-		p.Category, p.Supplier, p.Hidden, p.PriceManual,
+		p.Category, p.Brand, p.Supplier, p.Hidden, p.PriceManual,
 		p.WeightG, p.LengthMM, p.WidthMM, p.HeightMM, paramsJSON(p.Params), p.ID)
 	return err
 }
@@ -149,14 +152,14 @@ func (d *Database) DeleteProduct(id int64) error {
 }
 
 const kProductCols = `id, sku, title, slug, description, price, source_price,
-	price_manual, stock, category, supplier, hidden,
+	price_manual, stock, category, brand, supplier, hidden,
 	weight_g, length_mm, width_mm, height_mm, params, created_at, updated_at`
 
 func scanProduct(row interface{ Scan(...any) error }) (*Product, error) {
 	var p Product
 	var params string
 	err := row.Scan(&p.ID, &p.SKU, &p.Title, &p.Slug, &p.Description, &p.Price,
-		&p.SourcePrice, &p.PriceManual, &p.Stock, &p.Category,
+		&p.SourcePrice, &p.PriceManual, &p.Stock, &p.Category, &p.Brand,
 		&p.Supplier, &p.Hidden, &p.WeightG, &p.LengthMM, &p.WidthMM, &p.HeightMM,
 		&params, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {

@@ -32,6 +32,10 @@ type Item struct {
 	LengthMM *int64
 	WidthMM  *int64
 	HeightMM *int64
+	// Brand is the manufacturer the source named. Not the supplier: Wildberries
+	// states it on the card, Ozon as attribute 85, YML as <vendor>, and every
+	// one of them means the maker of the goods.
+	Brand string
 	// Characteristics as the source stated them: colour, size, material. Weight
 	// and dimensions are deliberately NOT in here — the core does arithmetic
 	// with those, and two homes for one number is one home too many.
@@ -225,7 +229,7 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 		p := &database.Product{SKU: it.SKU, Title: it.Title,
 			Description: it.Description, Price: database.ShelfPrice(rules, it.Price, coefficient),
 			SourcePrice: it.Price, Stock: max(it.Stock, 0),
-			Category: it.Category, Supplier: supplier,
+			Category: it.Category, Brand: it.Brand, Supplier: supplier,
 			WeightG: it.WeightG, LengthMM: it.LengthMM,
 			WidthMM: it.WidthMM, HeightMM: it.HeightMM,
 			Params: it.Params}
@@ -293,11 +297,17 @@ func merge(db *database.Database, old database.Product, it Item, coefficient flo
 	if len(params) == 0 && len(it.Params) > 0 {
 		params, gained = it.Params, true
 	}
+	brand := old.Brand
+	if brand == "" {
+		brand = it.Brand
+	}
 	if old.SourcePrice == it.Price && old.Stock == max(it.Stock, 0) &&
-		old.Price == price && old.Category == category && !measured && !gained {
+		old.Price == price && old.Category == category && old.Brand == brand &&
+		!measured && !gained {
 		return false, nil
 	}
 	old.Params = params
+	old.Brand = brand
 	old.WeightG, old.LengthMM = weight, length
 	old.WidthMM, old.HeightMM = width, height
 	old.SourcePrice = it.Price

@@ -88,6 +88,11 @@ func (d *Database) migrate() error {
 		price_manual INTEGER NOT NULL DEFAULT 0,
 		stock       INTEGER NOT NULL DEFAULT 0,
 		category    TEXT NOT NULL DEFAULT '',
+		-- The manufacturer's brand, as the source stated it. Not the supplier:
+		-- one supplier ships many brands, and a buyer searches for the brand.
+		-- Wildberries states it on the card, Ozon as attribute 85, YML as
+		-- <vendor>; Merchant Center and schema.org both ask for it back.
+		brand       TEXT NOT NULL DEFAULT '',
 		-- Whose goods these are: a group the owner names (a supplier).
 		-- Empty means nobody's but the owner's. A shop can live off two suppliers
 		-- at once, and one feed must not reprice or zero out another's goods.

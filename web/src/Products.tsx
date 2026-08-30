@@ -22,6 +22,7 @@ const kEmpty = {
   description: "",
   price: 0,
   category: "",
+  brand: "",
 };
 
 const kText = {
@@ -109,6 +110,11 @@ const kText = {
   paramName: { ru: "Свойство", en: "Property" },
   paramValue: { ru: "Значение", en: "Value" },
   labelCategory: { ru: "Категория", en: "Category" },
+  labelBrand: { ru: "Бренд", en: "Brand" },
+  brandHint: {
+    ru: "Производитель товара, а не поставщик. Уходит в разметку страницы и в товарные фиды: без бренда Google Merchant Center показывает карточку реже.",
+    en: "The maker of the goods, not the supplier. It goes into the page markup and the product feeds: without a brand, Merchant Center shows the listing less often.",
+  },
   categoryHint: {
     ru: "Косая черта задаёт вложенность: «Посуда/Кастрюли» — это страница «Кастрюли» внутри «Посуды». У каждого уровня своя страница на витрине.",
     en: 'A slash makes a level: "Cookware/Pots" is a Pots page inside Cookware. Every level gets a page of its own on the storefront.',
@@ -277,6 +283,9 @@ export default function Products() {
   const [supplier, setSupplier] = useState<string | undefined>(undefined);
   const [suppliers, setSuppliers] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  // Suggestions from the page in hand, not an endpoint of their own: a brand is
+  // typed once per product and the list only has to save the retyping.
+  const brands = [...new Set(list.map((p) => p.brand).filter(Boolean))].sort();
   const t = useT(kText);
   const lang = useLang();
   const sign = useSign();
@@ -791,6 +800,23 @@ export default function Products() {
                     ))}
                   </datalist>
                   <p className="hint mt-1">{t("categoryHint")}</p>
+                </div>
+                <div>
+                  <label className="label">{t("labelBrand")}</label>
+                  <input
+                    className="field"
+                    list="product-brands"
+                    value={edit.brand ?? ""}
+                    onChange={(e) =>
+                      setEdit({ ...edit, brand: e.target.value })
+                    }
+                  />
+                  <datalist id="product-brands">
+                    {brands.map((b) => (
+                      <option key={b} value={b} />
+                    ))}
+                  </datalist>
+                  <p className="hint mt-1">{t("brandHint")}</p>
                 </div>
                 <div>
                   <label className="label">{t("labelDescription")}</label>

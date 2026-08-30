@@ -183,3 +183,35 @@ func TestFeedsParcelAndParams(t *testing.T) {
 		t.Error("yml states dimensions with a side missing")
 	}
 }
+
+// The brand travels the whole way: every source states it, and both feeds and
+// the card's markup are asked for it back.
+func TestFeedsBrand(t *testing.T) {
+	d, h := setup(t)
+	p := &database.Product{Title: "Чайник", SKU: "TK-9", Price: 5000, Stock: 1,
+		Brand: "Гжель"}
+	if err := d.CreateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+	if yml := get(t, h, "/yml.xml"); !strings.Contains(yml, "<vendor>Гжель</vendor>") {
+		t.Error("yml missing <vendor>")
+	}
+	if gmc := get(t, h, "/gmc.xml"); !strings.Contains(gmc, "<g:brand>Гжель</g:brand>") {
+		t.Error("gmc missing g:brand")
+	}
+	if page := get(t, h, "/p/"+p.Slug); !strings.Contains(page, `"brand": {"@type": "Brand", "name": "Гжель"}`) {
+		t.Error("product page missing brand in JSON-LD")
+	}
+	// A product nobody named a maker for states none: an empty node in a feed is
+	// worse than an absent one.
+	q := &database.Product{Title: "Ковш", SKU: "KV-9", Price: 4000, Stock: 1}
+	if err := d.CreateProduct(q); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(get(t, h, "/yml.xml"), "<vendor></vendor>") {
+		t.Error("yml states an empty vendor")
+	}
+	if strings.Contains(get(t, h, "/gmc.xml"), "<g:brand></g:brand>") {
+		t.Error("gmc states an empty brand")
+	}
+}

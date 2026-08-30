@@ -29,6 +29,7 @@ type productRequest struct {
 	// stock to the number it displayed and resurrect already sold units.
 	Stock    *int   `json:"stock"`
 	Category string `json:"category"`
+	Brand    string `json:"brand"`
 	// Supplier group. Pointer for the same reason as the others: a client that
 	// does not send the field must not move the product out of its group.
 	Supplier *string `json:"supplier"`
@@ -117,7 +118,7 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := &database.Product{SKU: req.SKU, Title: req.Title, Description: req.Description,
-		Price: req.Price, Category: req.Category,
+		Price: req.Price, Category: req.Category, Brand: req.Brand,
 		WeightG: positive(req.WeightG), LengthMM: positive(req.LengthMM),
 		WidthMM: positive(req.WidthMM), HeightMM: positive(req.HeightMM),
 		Params: cleanParams(req.Params)}
@@ -161,7 +162,7 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	p := &database.Product{ID: id, SKU: req.SKU, Title: req.Title,
 		Description: req.Description, Price: req.Price,
-		Stock: old.Stock, Category: req.Category, Hidden: old.Hidden,
+		Stock: old.Stock, Category: req.Category, Brand: req.Brand, Hidden: old.Hidden,
 		// Carried from the stored row: the admin form knows nothing about the
 		// source price, and dropping it would leave the product out of every
 		// later coefficient recompute.

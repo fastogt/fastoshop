@@ -81,6 +81,7 @@ type ymlOffer struct {
 	Available   string   `xml:"available,attr"`
 	Name        string   `xml:"name"`
 	VendorCode  string   `xml:"vendorCode"`
+	Vendor      string   `xml:"vendor"`
 	Description string   `xml:"description"`
 	Price       string   `xml:"price"`
 	CurrencyID  string   `xml:"currencyId"`
@@ -365,6 +366,7 @@ func (y *YML) Fetch() ([]Item, error) {
 			Stock:       y.stock(o),
 			ImageURLs:   o.Pictures,
 			Category:    categoryPath(y.categories, strings.TrimSpace(o.CategoryID)),
+			Brand:       strings.TrimSpace(o.Vendor),
 			Params:      offerParams(o.Params),
 			WeightG:     ymlWeight(o.Weight),
 		}

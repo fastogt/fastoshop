@@ -231,7 +231,9 @@ func TestOzonParsesEverythingItIsGiven(t *testing.T) {
 	})
 	mux.HandleFunc("/v4/product/info/attributes", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"result":[{"id":11,"attributes":[
-			{"id":85,"values":[{"dictionary_value_id":1,"value":"эмаль"}]},
+			{"id":85,"values":[{"dictionary_value_id":1,"value":"Гжель"}]},
+			{"id":8229,"values":[{"dictionary_value_id":9,"value":"эмаль"}]},
+			{"id":11254,"values":[{"value":"{\"content\":[],\"version\":0.3}"}]},
 			{"id":10096,"values":[
 				{"dictionary_value_id":2,"value":"белый"},
 				{"dictionary_value_id":3,"value":"синий"}]},
@@ -248,7 +250,9 @@ func TestOzonParsesEverythingItIsGiven(t *testing.T) {
 			t.Errorf("attribute dictionary asked for %d/%d", req.CategoryID, req.TypeID)
 		}
 		_, _ = w.Write([]byte(`{"result":[
-			{"id":85,"name":"Материал","type":"String"},
+			{"id":85,"name":"Бренд","type":"String"},
+			{"id":8229,"name":"Материал","type":"String"},
+			{"id":11254,"name":"Rich-контент JSON","type":"String"},
 			{"id":10096,"name":"Цвет","type":"String","is_collection":true},
 			{"id":4383,"name":"Объём, л","type":"Decimal"},
 			{"id":7777,"name":"Со свистком","type":"Boolean"}]}`))
@@ -264,6 +268,10 @@ func TestOzonParsesEverythingItIsGiven(t *testing.T) {
 	// look: Decimal is a number, Boolean is a bool, a collection stays a list,
 	// and an attribute the category dictionary does not describe keeps its value
 	// under its id rather than being dropped.
+	//
+	// Two of them are not characteristics at all. 85 is the brand and belongs in
+	// its own field; 11254 is a rich-content document, and kilobytes of JSON in
+	// the storefront's table of properties is not a property.
 	want := []Item{{
 		SKU:         "TK-1",
 		Title:       "Чайник",
@@ -272,6 +280,7 @@ func TestOzonParsesEverythingItIsGiven(t *testing.T) {
 		Stock:       7,
 		ImageURLs:   []string{"http://a/1.jpg", "http://a/2.jpg"},
 		Category:    "Посуда/Чайники",
+		Brand:       "Гжель",
 		WeightG:     i64(750),
 		LengthMM:    i64(305),
 		WidthMM:     i64(201),

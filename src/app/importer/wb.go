@@ -84,6 +84,7 @@ type wbCardsResponse struct {
 		Description string `json:"description"`
 		SubjectID   int64  `json:"subjectID"`
 		SubjectName string `json:"subjectName"`
+		Brand       string `json:"brand"`
 		Photos      []struct {
 			Big string `json:"big"`
 		} `json:"photos"`
@@ -314,6 +315,7 @@ func (w *WB) Fetch() ([]Item, error) {
 			items = append(items, Item{
 				SKU: card.VendorCode, Title: card.Title, Description: card.Description,
 				Price: priceByNm[card.NmID], ImageURLs: urls, Category: category,
+				Brand: card.Brand,
 				WeightG: weight, LengthMM: length, WidthMM: width, HeightMM: height,
 				Params: params,
 			})
@@ -344,7 +346,7 @@ func (w *WB) Fetch() ([]Item, error) {
 			items = append(items, Item{
 				SKU: sku, Title: title, Description: card.Description,
 				Price: price, Stock: stockByBarcode[barcode], ImageURLs: urls,
-				Category: category,
+				Category: category, Brand: card.Brand,
 				WeightG:  weight, LengthMM: length, WidthMM: width, HeightMM: height,
 				Params: params,
 			})

@@ -145,6 +145,9 @@ export interface Product {
   price: number;
   stock: number;
   category: string;
+  // The maker of the goods, not the supplier who ships them. Merchant Center
+  // and schema.org both ask for it, and every source we import states it.
+  brand: string;
   supplier: string;
   hidden: boolean;
   // When the row last moved. The admin shows and sorts by it: after an import
