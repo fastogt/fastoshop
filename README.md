@@ -99,7 +99,9 @@ After the shop is live, add it to Yandex.Webmaster and Google Search Console and
 
 ## Architecture
 
-Go 1.25 with chi and SQLite on the server, React 19 with Vite and Tailwind for the admin. Eight direct dependencies, no framework. Everything ships as one binary plus a database file, which is also the whole backup: copy the file and the uploads directory and the shop moves to another machine.
+Go 1.25 with chi and SQLite on the server, React 19 with Vite and Tailwind for the admin. Eight direct dependencies, no framework. Everything ships as one binary plus a database file, which is also the whole backup: take the database and the uploads directory and the shop moves to another machine.
+
+Take the database with `sqlite3 shop.db "VACUUM INTO 'backup.db'"` rather than by copying the file. The shop runs SQLite in WAL mode, so a live database keeps part of its data in a sibling `-wal` file and a plain copy of `shop.db` is short of whatever has not been checkpointed yet.
 
 ```
 src/app/storefront/   server-rendered storefront, zero JavaScript

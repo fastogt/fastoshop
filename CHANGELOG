@@ -1,5 +1,6 @@
 1.43.1 / August 30, 2026
 [Alexandr Topilski]
+- The README no longer tells a self-hoster to copy the database file. The shop runs SQLite in WAL mode, so a live `shop.db` is short of whatever sits in its `-wal` sibling, and a copy taken that way restores missing the newest orders. `sqlite3 shop.db "VACUUM INTO 'backup.db'"` is the line that works, and it is the same one our own hosting has used all along
 - A shop no longer stays down after an update. `prerm` runs on an upgrade too, with `upgrade` as its argument, and it stopped and disabled the service regardless — after which `postinst` restarts only what is still enabled, and this had just disabled it. So `apt upgrade` left a self-hosted shop switched off and out of autostart, silently, until a buyer said the site would not open. It now stops the service only on `remove` and `deconfigure`. Shops we host were never affected: they run templated `fastoshop@<name>` units, which this script does not touch, which is why nobody saw it
 
 1.43.0 / August 30, 2026
