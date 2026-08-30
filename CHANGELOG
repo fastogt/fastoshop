@@ -1,3 +1,10 @@
+1.44.0 / August 30, 2026
+[Alexandr Topilski]
+- The catalogue keeps the brand. Wildberries states it on the card, Ozon in attribute 85, YML in `<vendor>`, and we read none of them — then sent nothing back where it is asked for: Merchant Center matches an offer by brand and shows a listing without one less often, YML has `<vendor>`, `schema.org/Product` has `brand`. Three sources in, three consumers out, and the field existed at neither end. It is a field of its own rather than a characteristic: one supplier ships many brands, and a buyer types the maker's name into the search box
+- Ozon's rich content stops arriving as a characteristic. Attribute 11254 holds a document — kilobytes of JSON — and it was landing in the storefront's table of properties as a row and in `/yml.xml` as a `<param>`. Nobody had seen it because our own cabinet has no rich content
+- On a re-import the brand behaves like the category: an empty one is filled from the source, one the owner set stays theirs
+- **An existing database needs the column added by hand** before this version runs: `ALTER TABLE products ADD COLUMN brand TEXT NOT NULL DEFAULT ''`. A new shop gets it from the schema
+
 1.43.1 / August 30, 2026
 [Alexandr Topilski]
 - The README no longer tells a self-hoster to copy the database file. The shop runs SQLite in WAL mode, so a live `shop.db` is short of whatever sits in its `-wal` sibling, and a copy taken that way restores missing the newest orders. `sqlite3 shop.db "VACUUM INTO 'backup.db'"` is the line that works, and it is the same one our own hosting has used all along
