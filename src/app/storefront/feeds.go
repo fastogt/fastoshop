@@ -3,6 +3,7 @@ package storefront
 import (
 	"encoding/xml"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,6 +52,17 @@ type ymlOffer struct {
 	// importer reads this one — without it a shop copied from another instance
 	// arrives with one made-up stock level for the whole catalogue.
 	Count int `xml:"count"`
+	// A feed without a parcel size is an advertising feed: Direct never asks
+	// how big the box is, a marketplace refuses the card without it. Kilograms
+	// and centimetres are what YML states; we store grams and millimetres.
+	Weight     string     `xml:"weight,omitempty"`
+	Dimensions string     `xml:"dimensions,omitempty"`
+	Params     []ymlParam `xml:"param,omitempty"`
+}
+
+type ymlParam struct {
+	Name  string `xml:"name,attr"`
+	Value string `xml:",chardata"`
 }
 
 type ymlShop struct {
@@ -79,6 +91,9 @@ type gmcItem struct {
 	Availability string   `xml:"g:availability"`
 	Condition    string   `xml:"g:condition"`
 	ProductType  string   `xml:"g:product_type,omitempty"`
+	// Merchant Center quotes delivery from it; without a weight it quotes from
+	// the account default, which is one number for a catalogue of every size.
+	ShippingWeight string `xml:"g:shipping_weight,omitempty"`
 }
 
 type gmcChannel struct {
@@ -121,6 +136,40 @@ func (s *Storefront) feedPictures(productID int64, images map[int64][]string) []
 	out := make([]string, 0, len(paths))
 	for _, p := range paths {
 		out = append(out, s.absImageURL(p))
+	}
+	return out
+}
+
+func feedWeightKG(grams *int64) string {
+	if grams == nil || *grams <= 0 {
+		return ""
+	}
+	return strconv.FormatFloat(float64(*grams)/1000, 'f', -1, 64)
+}
+
+// All three or nothing: a box stated as two sides is not a box, and a partial
+// value reads to the receiving side as a wrong one rather than a missing one.
+func feedDimensionsCM(l, w, h *int64) string {
+	if l == nil || w == nil || h == nil || *l <= 0 || *w <= 0 || *h <= 0 {
+		return ""
+	}
+	cm := func(mm int64) string {
+		return strconv.FormatFloat(float64(mm)/10, 'f', -1, 64)
+	}
+	return cm(*l) + "/" + cm(*w) + "/" + cm(*h)
+}
+
+// The owner's choice of what a buyer sees holds here too: a marketplace shows
+// these in the card, so the same checkboxes decide it.
+func feedParams(params []database.Param, hidden map[string]bool) []ymlParam {
+	out := make([]ymlParam, 0, len(params))
+	for _, p := range params {
+		if p.Name == "" || hidden[p.Name] {
+			continue
+		}
+		if v := propStr(p.Value); v != "" {
+			out = append(out, ymlParam{Name: p.Name, Value: v})
+		}
 	}
 	return out
 }
@@ -185,6 +234,7 @@ func (s *Storefront) YML(w http.ResponseWriter, r *http.Request) {
 			Categories: categories,
 		},
 	}
+	hidden := s.hiddenParams()
 	for _, p := range products {
 		catID := catIDs[p.Category]
 		if catID == 0 {
@@ -195,7 +245,10 @@ func (s *Storefront) YML(w http.ResponseWriter, r *http.Request) {
 			URL: s.baseURL + "/p/" + p.Slug, Price: priceStr(p.Price),
 			CurrencyID: currency, CategoryID: catID,
 			Pictures: s.feedPictures(p.ID, images), Description: p.Description,
-			Count: p.Stock,
+			Count:      p.Stock,
+			Weight:     feedWeightKG(p.WeightG),
+			Dimensions: feedDimensionsCM(p.LengthMM, p.WidthMM, p.HeightMM),
+			Params:     feedParams(p.Params, hidden),
 		})
 	}
 	writeFeed(w, catalog)
@@ -221,6 +274,9 @@ func (s *Storefront) GMC(w http.ResponseWriter, r *http.Request) {
 			Link:  s.baseURL + "/p/" + p.Slug,
 			Price: priceStr(p.Price) + " " + currency, Availability: availability,
 			Condition: "new", ProductType: p.Category,
+		}
+		if kg := feedWeightKG(p.WeightG); kg != "" {
+			item.ShippingWeight = kg + " kg"
 		}
 		if pics := s.feedPictures(p.ID, images); len(pics) > 0 {
 			item.ImageLink = pics[0]

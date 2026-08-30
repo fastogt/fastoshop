@@ -130,3 +130,56 @@ func TestFeedsCurrencyBYN(t *testing.T) {
 		t.Error("gmc keeps RUB after the shop switched to BYN")
 	}
 }
+
+// The parcel, in the units the feeds state rather than the ones we store: a
+// wrong conversion is silent on our side and rejected on theirs.
+func TestFeedsParcelAndParams(t *testing.T) {
+	d, h := setup(t)
+	g, l, w, ht := int64(1250), int64(300), int64(205), int64(90)
+	p := &database.Product{
+		Title: "Гантель", SKU: "GN-1", Price: 5000, Stock: 2,
+		WeightG: &g, LengthMM: &l, WidthMM: &w, HeightMM: &ht,
+		Params: []database.Param{
+			{Name: "Материал", Value: "чугун"},
+			{Name: "Код ТН ВЭД", Value: "9506910000"},
+			{Name: "", Value: "безымянное"},
+		},
+	}
+	if err := d.CreateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.SetHiddenParams([]string{"Код ТН ВЭД"}); err != nil {
+		t.Fatal(err)
+	}
+
+	yml := get(t, h, "/yml.xml")
+	for _, want := range []string{
+		"<weight>1.25</weight>",
+		"<dimensions>30/20.5/9</dimensions>",
+		`<param name="Материал">чугун</param>`,
+	} {
+		if !strings.Contains(yml, want) {
+			t.Errorf("yml missing %q", want)
+		}
+	}
+	// What the owner unticked for the storefront stays out of the feed too, and
+	// a characteristic with no name is not a characteristic.
+	if strings.Contains(yml, "Код ТН ВЭД") {
+		t.Error("yml carries a param the owner hid")
+	}
+	if strings.Contains(yml, "безымянное") {
+		t.Error("yml carries a nameless param")
+	}
+	if gmc := get(t, h, "/gmc.xml"); !strings.Contains(gmc, "<g:shipping_weight>1.25 kg</g:shipping_weight>") {
+		t.Error("gmc missing shipping weight")
+	}
+
+	// Two sides out of three is not a box: a partial value reads as a wrong one.
+	p.HeightMM = nil
+	if err := d.UpdateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(get(t, h, "/yml.xml"), "<dimensions>") {
+		t.Error("yml states dimensions with a side missing")
+	}
+}
