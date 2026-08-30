@@ -1,3 +1,10 @@
+1.43.0 / August 30, 2026
+[Alexandr Topilski]
+- The product feeds carry the parcel. `/yml.xml` states `<weight>` in kilograms and `<dimensions>` as length/width/height in centimetres, `/gmc.xml` states `g:shipping_weight` — the catalogue has held grams and millimetres for both since the Wildberries migration filled them for every product, and the feeds threw all of it away. What went out was a name, a price and a picture: enough for an advertising feed, which never asks how big the box is, and not enough for a marketplace, which refuses a card without one. Merchant Center quotes delivery from the weight, and without one it quotes the account default across a catalogue that runs from twelve roubles to fourteen hundred
+- Dimensions go out all three or not at all. Two sides of a box is a wrong answer to the receiving side, not a partial one
+- Characteristics go into `/yml.xml` as `<param name="…">`, and they obey the same checkboxes as the storefront. The owner already decided per property what a buyer sees, and a marketplace card is read by buyers — so «Ставка НДС» hidden from the page stays out of the feed too
+- Brand and barcode stay out: the catalogue stores neither, and filling `vendor` from the supplier field would print the wrong manufacturer on someone's card
+
 1.42.0 / August 29, 2026
 [Alexandr Topilski]
 - A product page shows its characteristics. They have been arriving from every source for a day and stopping in the database: the page had a table with two rows in it, weight and size, while the card behind it carried a dozen more. They are in the visible table now and in the structured data as `additionalProperty` — which is the half of a card a search engine matches "брелок антистресс белый" against, and the half a price aggregator reads to compare like with like
