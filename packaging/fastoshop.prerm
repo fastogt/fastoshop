@@ -1,4 +1,12 @@
 #!/bin/sh
 set -e
-systemctl stop fastoshop || true
-systemctl disable fastoshop || true
+
+# dpkg calls prerm for an upgrade too, with "upgrade <version>". Stopping and
+# disabling there took the shop down and left it down: postinst restarts only
+# what is still enabled, and this had just disabled it.
+case "$1" in
+    remove|deconfigure)
+        systemctl stop fastoshop || true
+        systemctl disable fastoshop || true
+        ;;
+esac

@@ -1,3 +1,7 @@
+1.43.1 / August 30, 2026
+[Alexandr Topilski]
+- A shop no longer stays down after an update. `prerm` runs on an upgrade too, with `upgrade` as its argument, and it stopped and disabled the service regardless — after which `postinst` restarts only what is still enabled, and this had just disabled it. So `apt upgrade` left a self-hosted shop switched off and out of autostart, silently, until a buyer said the site would not open. It now stops the service only on `remove` and `deconfigure`. Shops we host were never affected: they run templated `fastoshop@<name>` units, which this script does not touch, which is why nobody saw it
+
 1.43.0 / August 30, 2026
 [Alexandr Topilski]
 - The product feeds carry the parcel. `/yml.xml` states `<weight>` in kilograms and `<dimensions>` as length/width/height in centimetres, `/gmc.xml` states `g:shipping_weight` — the catalogue has held grams and millimetres for both since the Wildberries migration filled them for every product, and the feeds threw all of it away. What went out was a name, a price and a picture: enough for an advertising feed, which never asks how big the box is, and not enough for a marketplace, which refuses a card without one. Merchant Center quotes delivery from the weight, and without one it quotes the account default across a catalogue that runs from twelve roubles to fourteen hundred
