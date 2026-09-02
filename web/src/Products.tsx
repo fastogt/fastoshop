@@ -998,12 +998,18 @@ export default function Products() {
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp"
+                          multiple
                           className="hidden"
                           onChange={async (e) => {
-                            const f = e.target.files?.[0];
-                            if (f && edit.id)
-                              setEdit(await api.uploadImage(edit.id, f));
+                            const files = Array.from(e.target.files ?? []);
                             e.target.value = "";
+                            const id = edit.id;
+                            if (!id) return;
+                            // One at a time: position decides which photo is the
+                            // main one, and parallel uploads would land in
+                            // whatever order the server happened to finish.
+                            for (const f of files)
+                              setEdit(await api.uploadImage(id, f));
                           }}
                         />
                       </label>
