@@ -315,7 +315,7 @@ func (w *WB) Fetch() ([]Item, error) {
 			items = append(items, Item{
 				SKU: card.VendorCode, Title: card.Title, Description: card.Description,
 				Price: priceByNm[card.NmID], ImageURLs: urls, Category: category,
-				Brand: card.Brand,
+				Brand:   card.Brand,
 				WeightG: weight, LengthMM: length, WidthMM: width, HeightMM: height,
 				Params: params,
 			})
@@ -347,7 +347,7 @@ func (w *WB) Fetch() ([]Item, error) {
 				SKU: sku, Title: title, Description: card.Description,
 				Price: price, Stock: stockByBarcode[barcode], ImageURLs: urls,
 				Category: category, Brand: card.Brand,
-				WeightG:  weight, LengthMM: length, WidthMM: width, HeightMM: height,
+				WeightG: weight, LengthMM: length, WidthMM: width, HeightMM: height,
 				Params: params,
 			})
 		}

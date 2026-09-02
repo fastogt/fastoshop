@@ -41,6 +41,18 @@ const kText = {
     ru: "Скачаем фотографии с сервера поставщика на наш и уменьшим их для каталога. Это займёт время и место на диске, зато магазин перестанет зависеть от чужого сервера.",
     en: "We download the photos from the supplier's server to ours and shrink them for the catalogue. It takes time and disk space, but the shop stops depending on somebody else's server.",
   },
+  fillMain: { ru: "Только главные", en: "Main photos only" },
+  fillAll: { ru: "Все фотографии", en: "Every photo" },
+  fillMainHint: {
+    ru: "Та, что видна в каталоге, в фидах и в поиске по картинкам",
+    en: "The one shown in the catalogue, the feeds and image search",
+  },
+  fillAllHint: {
+    ru: "Вместе с остальными, которые видно внутри карточки",
+    en: "Together with the rest, seen inside the card",
+  },
+  fillCount: { ru: "{n} шт", en: "{n}" },
+  fillDownload: { ru: "Скачать", en: "Download" },
   fillNothing: {
     ru: "Нечего скачивать: у выбранных товаров фото уже свои",
     en: "Nothing to download: the selected products already have their own photos",
@@ -277,6 +289,12 @@ export default function Products() {
   const [per, setPer] = useState(100);
   const [sort, setSort] = useState<Sort>({ key: "created", desc: true });
   const [bulkMsg, setBulkMsg] = useState("");
+  const [fill, setFill] = useState<{
+    sel: Selection;
+    main: number;
+    total: number;
+  } | null>(null);
+  const [fillMainOnly, setFillMainOnly] = useState(true);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -362,8 +380,24 @@ export default function Products() {
     return () => clearInterval(id);
   }, [job?.running, reload]);
 
+  // The dialog asks before downloading because the two answers differ by a
+  // third of the disk and a third of the wait, and the counts make that visible.
   const runFill = async (sel: Selection) => {
-    if (!window.confirm(`${t("fillPhotos")}\n\n${t("fillPhotosHint")}`)) return;
+    const c = await api.bulkFillCount({
+      ids: sel.ids,
+      all: sel.all,
+      q: query,
+      supplier: supplier ?? null,
+    });
+    if (c.total === 0) {
+      setBulkMsg(t("fillNothing"));
+      return;
+    }
+    setFill({ sel, main: c.main, total: c.total });
+  };
+
+  const startFill = async (sel: Selection, mainOnly: boolean) => {
+    setFill(null);
     setBulkMsg("");
     try {
       const r = await api.bulkFill({
@@ -371,6 +405,7 @@ export default function Products() {
         all: sel.all,
         q: query,
         supplier: supplier ?? null,
+        main_only: mainOnly,
       });
       setBulkMsg(
         r.started ? t("fillStarted", { n: r.total }) : t("fillNothing"),
@@ -1099,6 +1134,62 @@ export default function Products() {
                 </div>
               </>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {fill && (
+        <Modal
+          title={t("fillPhotos")}
+          onClose={() => setFill(null)}
+          footer={
+            <>
+              <button
+                className="btn"
+                onClick={() => void startFill(fill.sel, fillMainOnly)}
+              >
+                {t("fillDownload")}
+              </button>
+              <button className="btn-ghost" onClick={() => setFill(null)}>
+                {t("cancel")}
+              </button>
+            </>
+          }
+        >
+          <p className="hint">{t("fillPhotosHint")}</p>
+          <div className="mt-4 flex flex-col gap-3">
+            {[
+              {
+                only: true,
+                label: t("fillMain"),
+                hint: t("fillMainHint"),
+                n: fill.main,
+              },
+              {
+                only: false,
+                label: t("fillAll"),
+                hint: t("fillAllHint"),
+                n: fill.total,
+              },
+            ].map((o) => (
+              <label
+                key={String(o.only)}
+                className="border-line flex cursor-pointer items-start gap-3 rounded border p-3"
+              >
+                <input
+                  type="radio"
+                  className="mt-1"
+                  checked={fillMainOnly === o.only}
+                  onChange={() => setFillMainOnly(o.only)}
+                />
+                <span>
+                  <span className="font-semibold">{o.label}</span>
+                  {" — "}
+                  {t("fillCount", { n: o.n })}
+                  <span className="hint block">{o.hint}</span>
+                </span>
+              </label>
+            ))}
           </div>
         </Modal>
       )}

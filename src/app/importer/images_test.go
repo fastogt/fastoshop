@@ -63,7 +63,7 @@ func TestLocalizeImages(t *testing.T) {
 	other := seedProduct(t, d, "Чайник", "Оптбаза", srv.URL+"/ok.png")
 
 	sel := database.Selection{All: true, Supplier: "Ромашка"}
-	imgs, err := d.ListRemoteImages(sel)
+	imgs, err := d.ListRemoteImages(sel, false)
 	if err != nil || len(imgs) != 4 {
 		t.Fatalf("remote images: %v %+v", err, imgs)
 	}
@@ -115,7 +115,7 @@ func TestLocalizeImagesStop(t *testing.T) {
 		urls[i] = srv.URL + "/ok.png"
 	}
 	seedProduct(t, d, "Тёрка", "Ромашка", urls...)
-	imgs, _ := d.ListRemoteImages(database.Selection{All: true, Supplier: "Ромашка"})
+	imgs, _ := d.ListRemoteImages(database.Selection{All: true, Supplier: "Ромашка"}, false)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ok, failed := LocalizeImages(ctx, d, t.TempDir(), imgs, func(done int, _ []int64) {
@@ -136,7 +136,7 @@ func TestLocalizeImagesProgress(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	seedProduct(t, d, "Тёрка", "Ромашка", srv.URL+"/ok.png", srv.URL+"/ok.png")
-	imgs, _ := d.ListRemoteImages(database.Selection{All: true, Supplier: "Ромашка"})
+	imgs, _ := d.ListRemoteImages(database.Selection{All: true, Supplier: "Ромашка"}, false)
 
 	var last int
 	LocalizeImages(context.Background(), d, t.TempDir(), imgs, func(done int, inFlight []int64) {
@@ -144,5 +144,37 @@ func TestLocalizeImagesProgress(t *testing.T) {
 	})
 	if last != 2 {
 		t.Fatalf("progress ended at %d of 2", last)
+	}
+}
+
+// The dialog offers "main photos only" as a third of the work, so the query
+// behind it must return exactly one row per product — the first position — and
+// the counts shown next to the choice must agree with what the download gets.
+func TestListRemoteImagesMainOnly(t *testing.T) {
+	srv := imageServer(t)
+	d, _ := database.OpenInMemory()
+	defer func() { _ = d.Close() }()
+
+	seedProduct(t, d, "Тёрка", "Ромашка",
+		srv.URL+"/ok.png", srv.URL+"/down.jpg", srv.URL+"/liar.jpg")
+	seedProduct(t, d, "Чайник", "Ромашка", srv.URL+"/ok.png")
+
+	sel := database.Selection{All: true, Supplier: "Ромашка"}
+	all, err := d.ListRemoteImages(sel, false)
+	if err != nil || len(all) != 4 {
+		t.Fatalf("all: %v %d", err, len(all))
+	}
+	main, err := d.ListRemoteImages(sel, true)
+	if err != nil || len(main) != 2 {
+		t.Fatalf("main only: %v %d", err, len(main))
+	}
+	for _, im := range main {
+		if im.Position != 0 {
+			t.Fatalf("position %d is not the main photo", im.Position)
+		}
+	}
+	gotMain, gotTotal, err := d.CountRemoteImages(sel)
+	if err != nil || gotMain != len(main) || gotTotal != len(all) {
+		t.Fatalf("counts: %v main=%d total=%d", err, gotMain, gotTotal)
 	}
 }

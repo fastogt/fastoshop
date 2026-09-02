@@ -77,17 +77,46 @@ func (d *Database) GetImage(id int64) (*ProductImage, error) {
 	return &im, nil
 }
 
+// CountRemoteImages answers both halves of the question the fill dialog asks —
+// how many photos are still on someone else's server, and how many of those are
+// the main one of their product — in a single pass.
+func (d *Database) CountRemoteImages(s Selection) (main, total int, err error) {
+	where, args, ok := s.where()
+	if !ok {
+		return 0, 0, nil
+	}
+	row := d.db.QueryRow(
+		`SELECT COUNT(*),
+		        COALESCE(SUM(CASE WHEN i.position = (SELECT MIN(j.position)
+		            FROM product_images j WHERE j.product_id = i.product_id)
+		          THEN 1 ELSE 0 END), 0)
+		 FROM product_images i
+		 WHERE i.path LIKE 'http%' AND i.product_id IN (SELECT id FROM products`+where+`)`,
+		args...)
+	err = row.Scan(&total, &main)
+	return main, total, err
+}
+
 // ListRemoteImages returns the photos still living on someone else's server for
 // the products in the selection. It is what "download the photos" works from:
 // the rows are already in the right order, and only their path changes.
-func (d *Database) ListRemoteImages(s Selection) ([]ProductImage, error) {
+// mainOnly narrows it to the first photo of each product — the one the
+// catalogue, the feeds and image search actually show. It is a third of the
+// rows and a third of the downloads.
+func (d *Database) ListRemoteImages(s Selection, mainOnly bool) ([]ProductImage, error) {
 	where, args, ok := s.where()
 	if !ok {
 		return nil, nil
 	}
+	main := ""
+	if mainOnly {
+		main = ` AND i.position = (SELECT MIN(j.position) FROM product_images j
+			WHERE j.product_id = i.product_id)`
+	}
 	rows, err := d.db.Query(
 		`SELECT i.id, i.product_id, i.path, i.position FROM product_images i
-		 WHERE i.path LIKE 'http%' AND i.product_id IN (SELECT id FROM products`+where+`)
+		 WHERE i.path LIKE 'http%' AND i.product_id IN (SELECT id FROM products`+where+`)`+
+			main+`
 		 ORDER BY i.product_id, i.position`, args...)
 	if err != nil {
 		return nil, err

@@ -26,6 +26,7 @@ type bulkRequest struct {
 	Stock       *int    `json:"stock"`
 	Hidden      *bool   `json:"hidden"`
 	NewSupplier *string `json:"new_supplier"`
+	MainOnly    bool    `json:"main_only"`
 }
 
 type bulkResponse struct {
@@ -120,6 +121,27 @@ type startedResponse struct {
 // r.Context() would cancel the download the moment the response is written.
 //
 //nolint:contextcheck // the job outlives the request on purpose: inheriting
+type fillCountResponse struct {
+	Main  int `json:"main"`
+	Total int `json:"total"`
+}
+
+// BulkFillCount feeds the fill dialog: the owner decides between the main photo
+// of each product and every photo there is, and that choice is a third of the
+// disk and a third of the wait.
+func (h *Handler) BulkFillCount(w http.ResponseWriter, r *http.Request) {
+	req, ok := decodeBulk(w, r)
+	if !ok {
+		return
+	}
+	main, total, err := h.db.CountRemoteImages(h.selection(req))
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeOK(w, fillCountResponse{Main: main, Total: total})
+}
+
 func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeBulk(w, r)
 	if !ok {
@@ -131,7 +153,7 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 		writeBadRequest(w, h.msg(i18n.KeyJobBusy))
 		return
 	}
-	imgs, err := h.db.ListRemoteImages(h.selection(req))
+	imgs, err := h.db.ListRemoteImages(h.selection(req), req.MainOnly)
 	if err != nil {
 		writeInternalError(w, err)
 		return

@@ -531,6 +531,10 @@ export const api = {
       .then(data<{ updated: number }>),
   bulkSupplier: (body: Record<string, unknown>) =>
     http.post("/products/bulk/supplier", body).then(data<{ updated: number }>),
+  bulkFillCount: (body: Record<string, unknown>) =>
+    http
+      .post("/products/bulk/fill/count", body)
+      .then(data<{ main: number; total: number }>),
   bulkFill: (body: Record<string, unknown>) =>
     http
       .post("/products/bulk/fill", body)

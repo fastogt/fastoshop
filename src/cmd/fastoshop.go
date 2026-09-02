@@ -137,6 +137,7 @@ func run(cfg *config.Config) error {
 			r.Post("/products/bulk/supplier", h.BulkSupplier)
 			r.Post("/products/bulk/delete", h.BulkDelete)
 			r.Post("/products/bulk/fill", h.BulkFill)
+			r.Post("/products/bulk/fill/count", h.BulkFillCount)
 			r.Get("/job", h.Job)
 			r.Get("/job/stream", h.JobStream)
 			r.Post("/job/stop", h.JobStop)
