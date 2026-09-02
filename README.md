@@ -8,7 +8,7 @@
 
 *[Русская версия](README.ru.md) — the original documentation, kept in full.*
 
-FastoShop is a self-hosted online store for a seller who already trades on Wildberries, Ozon, Avito or Kufar. It does not replace the marketplace — everything there stays as it is. It adds the channel everyone forgot while chasing marketplaces: **search**. People still look for goods in Google and Yandex, that channel takes no cut of a sale, and the buyer arrives with a name and a phone number instead of remaining the platform's customer.
+FastoShop is your own sales channel next to the marketplace, for a seller who already trades on Wildberries, Ozon, Avito or Kufar. It does not replace the marketplace — everything there stays as it is. It adds the channel everyone forgot while chasing marketplaces: **search**. People still look for goods in Google and Yandex, that channel takes no cut of a sale, and the buyer arrives with a name and a phone number instead of remaining the platform's customer.
 
 The shop runs on **your domain and your server**. No fee for the software, no percentage of your turnover, and no third party that can change the rules overnight.
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   api,
@@ -18,8 +18,20 @@ import { IconDownload, IconUpload } from "./Icons";
 import { useLang, useT } from "./i18n";
 import { toMinor, toRubles } from "./money";
 
+const kChannelTabs = [
+  "tabSetup",
+  "tabPublish",
+  "tabPrices",
+  "tabSales",
+] as const;
+type ChannelTab = (typeof kChannelTabs)[number];
+
 const kText = {
   heading: { ru: "Wildberries", en: "Wildberries" },
+  tabSetup: { ru: "Подключение", en: "Connection" },
+  tabPublish: { ru: "Публикация", en: "Publishing" },
+  tabPrices: { ru: "Цены", en: "Prices" },
+  tabSales: { ru: "Продажи", en: "Sales" },
   viewReady: { ru: "Можно связать", en: "Ready to link" },
   viewLinked: { ru: "Связано", en: "Linked" },
   viewNoCard: { ru: "Нет карточки", en: "No card" },
@@ -193,6 +205,10 @@ const kText = {
   unmatched: { ru: "нет товара", en: "no product" },
   hidden: { ru: "скрыт", en: "hidden" },
   emptyLinks: { ru: "Пока ничего не связано", en: "Nothing linked yet" },
+  salesOff: {
+    ru: "Заказы не загружаются: синхронизация выключена на вкладке «Подключение».",
+    en: "Orders are not being fetched: sync is off on the Connection tab.",
+  },
   emptyOrders: { ru: "Продаж пока нет", en: "No sales yet" },
   emptyProducts: { ru: "Товаров нет", en: "No products" },
 };
@@ -238,6 +254,9 @@ export default function WB() {
   // answer. Deliberately not part of the paged candidates call: that one runs
   // per page of a hundred rows and would re-read the cabinet every time.
   const [cabinet, setCabinet] = useState<CabinetState | null>(null);
+  // A configured channel is opened to see what sold, not to retype the token.
+  const [tab, setTab] = useState<ChannelTab>("tabSetup");
+  const tabPicked = useRef(false);
 
   const ready = useMemo(() => new Set(cabinet?.ready_ids ?? []), [cabinet]);
 
@@ -306,6 +325,14 @@ export default function WB() {
     }, 300);
     return () => clearTimeout(id);
   }, [candSearch]);
+
+  // Chosen once, when the settings first arrive: a connected channel opens on
+  // its sales, a fresh one on the form that makes it work. Later renders must
+  // not fight the operator's own click.
+  if (s && !tabPicked.current) {
+    tabPicked.current = true;
+    if (s.token_set) setTab("tabSales");
+  }
 
   if (!s) return null;
 
@@ -433,6 +460,24 @@ export default function WB() {
         <p className="hint mt-1">{t("lead")}</p>
       </div>
 
+      <div className="border-line flex flex-wrap gap-1 border-b">
+        {kChannelTabs.map((k) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={
+              "-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors " +
+              (tab === k
+                ? "border-brand text-brand"
+                : "text-muted hover:text-ink border-transparent")
+            }
+          >
+            {t(k)}
+          </button>
+        ))}
+      </div>
+
+      {tab === "tabSetup" && (
       <section className="card flex flex-col gap-4">
         <h2 className="font-bold">{t("connection")}</h2>
         <div>
@@ -527,7 +572,9 @@ export default function WB() {
         </div>
         {line(msg)}
       </section>
+      )}
 
+      {tab === "tabPublish" && (<>
       <section className="card flex flex-col gap-4">
         <h2 className="font-bold">{t("publication")}</h2>
         {cabinet && (
@@ -688,6 +735,9 @@ export default function WB() {
         </section>
       )}
 
+      </>)}
+
+      {tab === "tabPrices" && (<>
       {/* "Связать по артикулу" did what "Опубликовать" does, only over the whole
           catalogue — both read the cabinet's vendor codes and write the pairs
           that match. Its counters also called two states one thing, which is
@@ -850,7 +900,9 @@ export default function WB() {
           emptyTitle={t("emptyLinks")}
         />
       </section>
+      </>)}
 
+      {tab === "tabSales" && (<>
       <section className="card flex flex-col gap-4">
         <h2 className="font-bold">{t("sync")}</h2>
         <p className="hint">
@@ -897,6 +949,7 @@ export default function WB() {
       <section className="card flex flex-col gap-4">
         <h2 className="font-bold">{t("sales")}</h2>
         <p className="hint">{t("salesHint")}</p>
+        {s.token_set && !s.enabled && <p className="hint">{t("salesOff")}</p>}
         <DataTable<WBOrder>
           columns={[
             {
@@ -947,6 +1000,7 @@ export default function WB() {
           emptyTitle={t("emptyOrders")}
         />
       </section>
+      </>)}
     </div>
   );
 }

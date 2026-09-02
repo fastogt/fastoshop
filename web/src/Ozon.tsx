@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
   apiError,
@@ -23,7 +23,19 @@ import { IconDownload, IconUpload } from "./Icons";
 // Ozon posting statuses live in the same dictionary under their raw codes. An
 // unknown status is shown as is: the platform keeps adding new ones, and hiding
 // them behind "—" is worse than showing the raw code.
+const kChannelTabs = [
+  "tabSetup",
+  "tabPublish",
+  "tabPrices",
+  "tabSales",
+] as const;
+type ChannelTab = (typeof kChannelTabs)[number];
+
 const kText = {
+  tabSetup: { ru: "Подключение", en: "Connection" },
+  tabPublish: { ru: "Публикация", en: "Publishing" },
+  tabPrices: { ru: "Цены", en: "Prices" },
+  tabSales: { ru: "Продажи", en: "Sales" },
   awaiting_registration: {
     ru: "ожидает регистрации",
     en: "awaiting registration",
@@ -270,6 +282,10 @@ const kText = {
     ru: "Опрос заказов Ozon не прошёл: {err}. Пока он не пройдёт, остатки на площадку не отправляются.",
     en: "Polling Ozon orders failed: {err}. Until it succeeds, stock is not sent to the marketplace.",
   },
+  salesOff: {
+    ru: "Заказы не загружаются: синхронизация выключена на вкладке «Подключение».",
+    en: "Orders are not being fetched: sync is off on the Connection tab.",
+  },
   noSales: { ru: "Продаж на Ozon пока не было.", en: "No Ozon sales yet." },
   colPosting: { ru: "Отправление", en: "Shipment" },
   colDate: { ru: "Дата", en: "Date" },
@@ -320,6 +336,9 @@ export default function Ozon() {
   // answer. Deliberately not part of the paged candidates call: that one runs
   // per page of a hundred rows and would re-read the cabinet every time.
   const [cabinet, setCabinet] = useState<CabinetState | null>(null);
+  // A configured channel is opened to see what sold, not to retype the key.
+  const [tab, setTab] = useState<ChannelTab>("tabSetup");
+  const tabPicked = useRef(false);
   const [zeroFailed, setZeroFailed] = useState<
     { id: number; sku: string; title: string }[]
   >([]);
@@ -388,6 +407,14 @@ export default function Ozon() {
     }, 300);
     return () => clearTimeout(timer);
   }, [candSearch]);
+  // Chosen once, when the settings first arrive: a connected channel opens on
+  // its sales, a fresh one on the form that makes it work. Later renders must
+  // not fight the operator's own click.
+  if (s && !tabPicked.current) {
+    tabPicked.current = true;
+    if (s.api_key_set) setTab("tabSales");
+  }
+
   if (!s) return null;
 
   const fail = (e: unknown) =>
@@ -605,6 +632,24 @@ export default function Ozon() {
         <p className="hint mt-1">{t("intro")}</p>
       </div>
 
+      <div className="border-line flex flex-wrap gap-1 border-b">
+        {kChannelTabs.map((k) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={
+              "-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors " +
+              (tab === k
+                ? "border-brand text-brand"
+                : "text-muted hover:text-ink border-transparent")
+            }
+          >
+            {t(k)}
+          </button>
+        ))}
+      </div>
+
+      {tab === "tabSetup" && (
       <section className="card flex flex-col gap-4">
         <div>
           <h2 className="font-bold">{t("connection")}</h2>
@@ -697,6 +742,9 @@ export default function Ozon() {
         )}
       </section>
 
+      )}
+
+      {tab === "tabPublish" && (
       <section className="card flex flex-col gap-4">
         <div>
           <h2 className="font-bold">{t("publication")}</h2>
@@ -853,7 +901,9 @@ export default function Ozon() {
           </div>
         )}
       </section>
+      )}
 
+      {tab === "tabPrices" && (
       <section className="card flex flex-col gap-4">
         {/* "Связать по артикулу" lived here and did what "Опубликовать" does,
             only over the whole catalogue: both fetch the cabinet's articles and
@@ -1074,11 +1124,12 @@ export default function Ozon() {
           </div>
         )}
       </section>
+      )}
 
       {/* Cards in the cabinet with no product of ours. This used to appear only
           after pressing a button; the cabinet call the tab already makes on open
           answers it for free, so the owner sees it without asking. */}
-      {!!cabinet?.orphan_skus?.length && (
+      {tab === "tabPublish" && !!cabinet?.orphan_skus?.length && (
         <section className="card flex flex-col gap-2">
           <div>
             <h2 className="font-bold">{t("extraOnOzon")}</h2>
@@ -1104,6 +1155,8 @@ export default function Ozon() {
         </section>
       )}
 
+      {tab === "tabSales" && (
+      <>
       <section className="card flex flex-col gap-4">
         <div>
           <h2 className="font-bold">{t("sync")}</h2>
@@ -1168,6 +1221,7 @@ export default function Ozon() {
         <div>
           <h2 className="font-bold">{t("sales")}</h2>
           <p className="hint">{t("salesHint")}</p>
+        {s.api_key_set && !s.enabled && <p className="hint">{t("salesOff")}</p>}
           <p className="hint mt-1">
             {t("salesTotal", { n: s.orders_total })}
             {s.orders_oversold > 0 &&
@@ -1244,6 +1298,8 @@ export default function Ozon() {
           emptyTitle={t("noSales")}
         />
       </section>
+      </>
+      )}
     </div>
   );
 }
