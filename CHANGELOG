@@ -1,3 +1,10 @@
+1.45.0 / September 2, 2026
+[Alexandr Topilski]
+- A channel page opens on what the seller came for. Wildberries and Ozon had grown to six sections on a page-long scroll, and «Продажи на площадке» — the orders we already fetch, store and render — was the last of them, so nobody scrolled that far. Both pages now carry four tabs: Подключение, Публикация, Цены, Продажи. A channel with a key stored opens on Продажи, one without on Подключение. Nothing moved but what is shown: state, requests and tables are untouched
+- An empty sales table says why it is empty. With synchronisation switched off the orders are never fetched, and the table still read «Продаж пока нет» — which was a lie, because we had not asked. It now names the tab that holds the switch, and deliberately does not urge anyone to flip it: on someone else's live cabinet that decision is theirs
+- Photos upload as a selection. The file input took the first file and dropped the rest, so five pictures meant five trips through the dialog. They now go one after another in the order they were picked, because the first one is the card's main photo
+- The README no longer opens by calling FastoShop a self-hosted online store. That noun phrase is what an answer engine quotes back, and it led a seller with the deployment model instead of the reason to care
+
 1.44.0 / August 30, 2026
 [Alexandr Topilski]
 - The catalogue keeps the brand. Wildberries states it on the card, Ozon in attribute 85, YML in `<vendor>`, and we read none of them — then sent nothing back where it is asked for: Merchant Center matches an offer by brand and shows a listing without one less often, YML has `<vendor>`, `schema.org/Product` has `brand`. Three sources in, three consumers out, and the field existed at neither end. It is a field of its own rather than a characteristic: one supplier ships many brands, and a buyer types the maker's name into the search box
