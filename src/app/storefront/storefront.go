@@ -230,6 +230,16 @@ type pageVM struct {
 	// ahead, recomputed on every render - a shop that reprices weekly stays
 	// truthful, and one that never does still looks current.
 	PriceValidUntil string
+	// PriceValidFrom is when this card last changed, which is the last moment
+	// its price could have moved. Search engines ask for it and we have no
+	// separate record of price changes; the alternative is inventing a date.
+	PriceValidFrom string
+	// SchemaName is the title cut to what structured data accepts. A quarter of
+	// an imported catalogue runs past that limit - a supplier's warehouse line
+	// is written for a stock sheet, not a search result - and the whole markup
+	// of such a page is rejected over one field. The visible heading keeps the
+	// full title: what is cut here is a prefix of it, not a different name.
+	SchemaName      string
 	MetaDescription string
 	// Specs are the measurements the owner filled in - only those. A product
 	// nobody weighed shows no specs block at all rather than a table of dashes.
@@ -688,6 +698,26 @@ func cmStr(mm int64) string {
 		fmt.Sprintf("%.1f", float64(mm)/10), "0"), ".")
 }
 
+// kMaxSchemaName is the ceiling search engines put on a product name in
+// structured data. Longer than this and the field is rejected, and the page
+// loses its rich result over a title nobody reads to the end anyway.
+const kMaxSchemaName = 150
+
+// clipName cuts on a word boundary so what remains is a shorter name rather
+// than a broken one; a title with no space inside the limit is cut where it
+// stands.
+func clipName(s string) string {
+	r := []rune(s)
+	if len(r) <= kMaxSchemaName {
+		return s
+	}
+	cut := string(r[:kMaxSchemaName])
+	if i := strings.LastIndex(cut, " "); i > 0 {
+		cut = cut[:i]
+	}
+	return strings.TrimRight(cut, " ,;:-")
+}
+
 func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	p, err := s.db.GetVisibleProductBySlug(chi.URLParam(r, "slug"))
 	if err != nil {
@@ -707,6 +737,8 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	data := pageVM{Shop: shop, BaseURL: s.baseURL,
 		CSS: template.CSS(styleCSS), P: p, Images: imgs,
 		PriceStr: priceStr(p.Price), PriceValidUntil: time.Now().AddDate(0, 1, 0).Format("2006-01-02"),
+		PriceValidFrom:  p.UpdatedAt.Format("2006-01-02"),
+		SchemaName:      clipName(p.Title),
 		OrderLinks:      orderLinks(shop, p, s.baseURL+"/p/"+p.Slug),
 		MetaDescription: desc,
 		Specs:           specs(p, s.hiddenParams()),

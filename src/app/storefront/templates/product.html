@@ -10,7 +10,7 @@
 {
   "@context": "https://schema.org",
   "@type": "Product",
-  "name": {{.P.Title}},
+  "name": {{.SchemaName}},
   "description": {{.MetaDescription}},
   {{if .Images}}"image": "{{(index .Images 0).AbsURL}}",{{end}}
   "sku": {{.P.SKU}},
@@ -34,6 +34,12 @@
     "priceCurrency": "{{.Shop.Currency}}",
     "price": "{{.PriceStr}}",
     "priceValidUntil": "{{.PriceValidUntil}}",
+    "priceSpecification": {
+      "@type": "UnitPriceSpecification",
+      "price": "{{.PriceStr}}",
+      "priceCurrency": "{{.Shop.Currency}}",
+      "validFrom": "{{.PriceValidFrom}}"
+    },
     "itemCondition": "https://schema.org/NewCondition",
     "availability": "https://schema.org/{{if gt .P.Stock 0}}InStock{{else}}OutOfStock{{end}}"
   }

@@ -60,6 +60,8 @@ Search adds the second half. Someone typing an exact model with its characterist
 - Online payments and fiscal receipts. An order is a request: the buyer leaves a name and a phone or an email, you get a letter, the deal is closed by phone.
 - Promo codes and discount campaigns.
 - Product variants: size and colour are separate products for now.
+- Customer reviews. Without them a listing carries no stars in search results, and inventing a rating is both forbidden and pointless.
+- Delivery and return terms as structured data: both live as free text on the shop's own pages, so search engines cannot read them as fields.
 - FBO stock - goods on the platform's own warehouse are counted by the platform.
 - Multi-tenancy: one installation is one shop and one owner, deliberately.
 - A mobile app. The storefront is responsive; there will be no app.
