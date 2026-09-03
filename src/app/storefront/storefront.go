@@ -234,10 +234,10 @@ type pageVM struct {
 	// its price could have moved. Search engines ask for it and we have no
 	// separate record of price changes; the alternative is inventing a date.
 	PriceValidFrom string
-	// SchemaName is the title cut to what structured data accepts. A quarter of
-	// an imported catalogue runs past that limit - a supplier's warehouse line
-	// is written for a stock sheet, not a search result - and the whole markup
-	// of such a page is rejected over one field. The visible heading keeps the
+	// SchemaName is the title cut to what structured data accepts. An imported
+	// catalogue runs past that limit often - a supplier's warehouse line is
+	// written for a stock sheet, not a search result - and the whole markup of
+	// such a page is rejected over one field. The visible heading keeps the
 	// full title: what is cut here is a prefix of it, not a different name.
 	SchemaName      string
 	MetaDescription string

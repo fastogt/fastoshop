@@ -5,9 +5,8 @@ import (
 	"testing"
 )
 
-// A quarter of a real imported catalogue carries a title past the limit search
-// engines accept in structured data, and one such field costs the whole page
-// its rich result. The visible heading keeps the full title, so what goes into
+// An imported catalogue carries titles past the limit search engines accept in
+// structured data, and one such field costs the whole page its rich result. The visible heading keeps the full title, so what goes into
 // the markup has to stay a prefix of it.
 func TestClipName(t *testing.T) {
 	short := "Чайник эмалированный 2 л"
