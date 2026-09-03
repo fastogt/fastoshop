@@ -1,3 +1,11 @@
+1.46.0 / September 3, 2026
+[Alexandr Topilski]
+- Bringing a supplier's photos in-house asks first which ones. On a live catalogue that is the difference between 23 781 files and 69 858 - a third of the disk and a third of the wait - because only the first photo of a product is shown anywhere outside the card: the catalogue grid, the feeds, and image search. The dialog carries both counts for the current selection, taken through a new `POST /products/bulk/fill/count`, and main photos are preselected
+- The product name in structured data is cut to the 150 characters search engines accept. A quarter of one live catalogue - 5 882 cards of 23 944 - ran past that, and a single rejected field costs the page its whole rich result. The visible heading keeps the full title: what goes into the markup is a prefix of it, cut on a word boundary
+- The offer states `validFrom`, taken from the card's own `updated_at`. That is the last moment its price could have moved, which beats a date nobody recorded
+- No em dash anywhere. It stands in every second sentence of generated text and reads as one whatever the sentence says, so all 801 in this repository - the READMEs, this file, Go comments and error messages, and the admin panel's Russian strings - are plain hyphens now. Ranges keep the en dash
+- Three of Google's remaining complaints about a product card are features the shop does not have rather than markup it gets wrong: customer reviews, and delivery and return terms as fields instead of free text. Both READMEs say so now
+
 1.45.0 / September 2, 2026
 [Alexandr Topilski]
 - A channel page opens on what the seller came for. Wildberries and Ozon had grown to six sections on a page-long scroll, and «Продажи на площадке» - the orders we already fetch, store and render - was the last of them, so nobody scrolled that far. Both pages now carry four tabs: Подключение, Публикация, Цены, Продажи. A channel with a key stored opens on Продажи, one without on Подключение. Nothing moved but what is shown: state, requests and tables are untouched
