@@ -20,7 +20,7 @@ type Order struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// CreateOrder inserts an order without touching stock (stock_applied = 0) — the
+// CreateOrder inserts an order without touching stock (stock_applied = 0) - the
 // state orders from before stock accounting are in. The storefront uses
 // CreateOrderWithStock; this exists so tests can produce that legacy state.
 func (d *Database) CreateOrder(o *Order) error {
@@ -41,7 +41,7 @@ func (d *Database) CreateOrder(o *Order) error {
 // stock exactly once in each direction, and orders from the days before
 // tracking (stock_applied = 0) return nothing.
 // Putting an order back to work may fail: then *OutOfStockError and the status
-// does not change — promising the buyer a product that is gone is not allowed.
+// does not change - promising the buyer a product that is gone is not allowed.
 func (d *Database) SetOrderStatus(id int64, status string) error {
 	return d.withTx(func(tx *sql.Tx) error {
 		var current string
@@ -74,7 +74,7 @@ func (d *Database) SetOrderStatus(id int64, status string) error {
 
 // kOrderSortable is the ORDER BY whitelist. The order total is not here on
 // purpose: it lives inside items_json, and sorting by it would mean either
-// parsing every row in Go or teaching SQLite to read JSON — neither is worth it
+// parsing every row in Go or teaching SQLite to read JSON - neither is worth it
 // while a shop has thousands of orders, not millions.
 var kOrderSortable = map[string]string{
 	"created": "created_at",
@@ -132,7 +132,7 @@ func (d *Database) scanOrders(query string, args ...any) ([]Order, error) {
 
 // DeleteOrders removes orders for good, with their items. An order carries a
 // buyer's name, phone and address of sorts, and the owner must be able to erase
-// it — for a mistaken order, for a test one, and because a person may ask them
+// it - for a mistaken order, for a test one, and because a person may ask them
 // to. Stock is not returned: a delete is not a cancellation, and an order that
 // still holds goods should be cancelled first.
 func (d *Database) DeleteOrders(ids []int64) (int, error) {

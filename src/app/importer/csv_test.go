@@ -123,7 +123,7 @@ func TestCSVReadsCategory(t *testing.T) {
 }
 
 // TestCSVParams: a column the shop does not know by name is a characteristic.
-// In a spreadsheet a property is a column — that is what the format already
+// In a spreadsheet a property is a column - that is what the format already
 // offers, and packing pairs into one cell would invent a second one beside it.
 func TestCSVParams(t *testing.T) {
 	c := &CSV{Data: []byte(
@@ -152,7 +152,7 @@ func TestCSVParams(t *testing.T) {
 	}
 }
 
-// TestPriceWithNote: a price list annotates a price in the same cell — a
+// TestPriceWithNote: a price list annotates a price in the same cell - a
 // discount in brackets, a footnote star, a currency. The number is the price;
 // a cell holding a second number is two prices and stays refused.
 func TestPriceWithNote(t *testing.T) {

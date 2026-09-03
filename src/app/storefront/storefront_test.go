@@ -50,7 +50,7 @@ func get(t *testing.T, h http.Handler, path string) string {
 
 // The zero-JS storefront is a promise, so an unconfigured shop must carry no
 // counter at all; a configured one must carry ids the providers can actually
-// read back — html/template escapes inside <script>, and a mangled id is a
+// read back - html/template escapes inside <script>, and a mangled id is a
 // counter that silently collects nothing.
 func TestCounters(t *testing.T) {
 	d, h := setup(t)
@@ -160,7 +160,7 @@ func ldImage(t *testing.T, body string) string {
 	return ld.Image
 }
 
-// Import no longer downloads photos — product_images.path holds the absolute
+// Import no longer downloads photos - product_images.path holds the absolute
 // source URL. It must reach <img>, og:image and JSON-LD as is.
 func TestRemoteImageURLRenderedAsIs(t *testing.T) {
 	d, h := setup(t)
@@ -463,7 +463,7 @@ func TestCartCheckoutCreatesSingleOrder(t *testing.T) {
 	if it := byTitle["Синий стакан"]; it.Price != 30000 || it.Qty != 3 {
 		t.Errorf("glass: %+v", it)
 	}
-	// The cookie is cleared — resubmitting does not create a second order.
+	// The cookie is cleared - resubmitting does not create a second order.
 	if c.cookie != nil {
 		t.Errorf("cart cookie must be cleared, got %q", c.cookie.Value)
 	}
@@ -509,7 +509,7 @@ func TestCartOutOfStockCannotBeAdded(t *testing.T) {
 	}
 }
 
-// The product ran out after it was added — the line is dropped at render time,
+// The product ran out after it was added - the line is dropped at render time,
 // what has vanished cannot be ordered.
 func TestCartDropsVanishedProduct(t *testing.T) {
 	d, h := setup(t)
@@ -543,7 +543,7 @@ func TestCartCheckoutRequiresPhoneAndItems(t *testing.T) {
 		t.Fatal("order without phone must be rejected")
 	}
 	// The refused form comes back filled: a phone user who loses their name
-	// and comment to a validation error does not retype them — they leave.
+	// and comment to a validation error does not retype them - they leave.
 	body := w.Body.String()
 	if !strings.Contains(body, `value="Иван"`) ||
 		!strings.Contains(body, "привезите к обеду") {
@@ -588,7 +588,7 @@ func TestCartHeaderCountAndProductButton(t *testing.T) {
 	}
 }
 
-// The only checkout — the old single-page /p/{slug}/order has been removed.
+// The only checkout - the old single-page /p/{slug}/order has been removed.
 func TestLegacyProductOrderRouteGone(t *testing.T) {
 	_, h := setup(t)
 	w := httptest.NewRecorder()
@@ -615,7 +615,7 @@ func TestCheckoutDecrementsStock(t *testing.T) {
 
 // Stock deduction failed at checkout: no order exists, the buyer sees the named
 // reason, the line leaves the cart. Here it is triggered by a duplicated cookie
-// line (two of 3 with a stock of 3) — the same path as two buyers racing for
+// line (two of 3 with a stock of 3) - the same path as two buyers racing for
 // the last unit, but reproducible.
 func TestCheckoutSoldOutRace(t *testing.T) {
 	d, h := setup(t)
@@ -811,7 +811,7 @@ func TestStorefrontSearch(t *testing.T) {
 		t.Error("search results must not claim a canonical URL")
 	}
 
-	// The article is searchable too — buyers paste those from a price list.
+	// The article is searchable too - buyers paste those from a price list.
 	if !strings.Contains(get(t, h, "/?q=KS-7"), "Синяя кастрюля") {
 		t.Error("search by article found nothing")
 	}
@@ -865,7 +865,7 @@ func TestSearchResultCount(t *testing.T) {
 }
 
 // The product page has to say where the buyer is and let them step back into
-// the category — and tell a search engine the same thing.
+// the category - and tell a search engine the same thing.
 func TestProductBreadcrumbsAndGallery(t *testing.T) {
 	d, h := setup(t)
 	p, err := d.GetVisibleProductBySlug("krasnyj-chajnik")
@@ -927,7 +927,7 @@ func TestCatalogUsesThumbnails(t *testing.T) {
 	if body := get(t, h, "/"); !strings.Contains(body, "/uploads/p1-abc.t.jpg") {
 		t.Error("catalogue is serving the full-size photo")
 	}
-	// The product page shows the real thing — that is where the buyer looks.
+	// The product page shows the real thing - that is where the buyer looks.
 	body := get(t, h, "/p/chajnik")
 	if !strings.Contains(body, `src="/uploads/p1-abc.jpg"`) {
 		t.Error("product page must show the original")
@@ -1029,7 +1029,7 @@ func TestRequisites(t *testing.T) {
 // Every picture sits in a frame that carries the shop's "no photo" mark behind
 // it. A product without photos gets the mark instead of a hole half a page tall;
 // a product whose supplier stopped serving a link gets it too, without anything
-// being deleted — the link may work again tomorrow. The stub is served as a file,
+// being deleted - the link may work again tomorrow. The stub is served as a file,
 // so a catalogue of sixty cards costs one request for all of them.
 func TestNoPhotoPlaceholder(t *testing.T) {
 	d, h := setup(t)
@@ -1063,7 +1063,7 @@ func TestNoPhotoPlaceholder(t *testing.T) {
 }
 
 // Yandex and Google both refuse a shop that does not publish how it ships and
-// how it takes money, so the page has to exist — and has to stay out of the
+// how it takes money, so the page has to exist - and has to stay out of the
 // footer and the sitemap while the owner has not written the terms.
 func TestInfoPage(t *testing.T) {
 	d, h := setup(t)
@@ -1080,7 +1080,7 @@ func TestInfoPage(t *testing.T) {
 		t.Error("sitemap lists /info with no terms filled in")
 	}
 
-	const terms = "Доставка курьером — 1–2 дня.\nОплата при получении."
+	const terms = "Доставка курьером - 1–2 дня.\nОплата при получении."
 	s, _ := d.GetSettings()
 	s.Terms = terms
 	if err := d.UpdateSettings(s); err != nil {
@@ -1141,7 +1141,7 @@ func TestCategoryPages(t *testing.T) {
 	}
 
 	// Two categories that render the same title or description are two pages
-	// competing for one query — the bug this whole feature exists to fix.
+	// competing for one query - the bug this whole feature exists to fix.
 	other := get(t, h, "/c/posuda")
 	if title(leaf) == title(other) {
 		t.Errorf("two categories share one title: %q", title(leaf))
@@ -1220,7 +1220,7 @@ func TestCatalogFilters(t *testing.T) {
 
 // HEAD must survive the outer router. A method-specific route registered there
 // (/admin* is GET-only) makes chi answer 405 to a HEAD of any page before the
-// mounted storefront runs its own middleware — monitoring and link checkers
+// mounted storefront runs its own middleware - monitoring and link checkers
 // then see a shop that looks broken.
 func TestHeadThroughOuterRouter(t *testing.T) {
 	_, sf := setup(t)
@@ -1328,7 +1328,7 @@ func TestCategoryRenameAndHide(t *testing.T) {
 	}
 }
 
-// A buyer leaves a phone or an email, whichever they prefer — but not neither:
+// A buyer leaves a phone or an email, whichever they prefer - but not neither:
 // an order nobody can be reached about is a lost sale that looks like a sale.
 func TestOrderContacts(t *testing.T) {
 	d, h := setup(t)
@@ -1428,7 +1428,7 @@ func TestCartRowControls(t *testing.T) {
 
 // A price change must reach a shopper and a crawler without anyone submitting
 // anything: the page is built per request, so it may not be cached. The feed is
-// allowed an hour — the provider re-fetches it on its own schedule.
+// allowed an hour - the provider re-fetches it on its own schedule.
 func TestPriceIsNeverCached(t *testing.T) {
 	d, h := setup(t)
 	p, err := d.GetVisibleProductBySlug("krasnyj-chajnik")
@@ -1490,9 +1490,9 @@ func TestFaviconICO(t *testing.T) {
 
 // A price with no validity date is eventually dropped from the search snippet as
 // stale, and an offer with no condition is incomplete. Both are things the shop
-// actually knows — unlike a rating, which it must never invent.
+// actually knows - unlike a rating, which it must never invent.
 // The measurements are the owner's, never a guess: a product nobody weighed
-// says nothing at all — no table of dashes on the page and no empty node in the
+// says nothing at all - no table of dashes on the page and no empty node in the
 // markup, which is what a shipping quote reads.
 func TestSpecsShownOnlyWhenStated(t *testing.T) {
 	d, h := setup(t)
@@ -1568,8 +1568,8 @@ func TestOfferCarriesWhatWeKnow(t *testing.T) {
 }
 
 // A shop is expected to say whom the buyer is paying, and this one had nowhere
-// to say it: only /info existed. The page writes nothing new — it renders the
-// phone and the legal details the owner already filled — so it appears exactly
+// to say it: only /info existed. The page writes nothing new - it renders the
+// phone and the legal details the owner already filled - so it appears exactly
 // when there is something on it, and 404s when there is not.
 func TestContactsAppearsOnlyWhenThereIsSomethingToShow(t *testing.T) {
 	d, h := setup(t)

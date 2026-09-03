@@ -117,7 +117,7 @@ func TestMissingAndBackfill(t *testing.T) {
 	if ok != 2 || failed != 0 {
 		t.Fatalf("ok=%d failed=%d", ok, failed)
 	}
-	// Second pass has nothing left to do — the action is repeatable.
+	// Second pass has nothing left to do - the action is repeatable.
 	again, _ := Missing(dir)
 	if len(again) != 0 {
 		t.Fatalf("still missing after a full pass: %v", again)

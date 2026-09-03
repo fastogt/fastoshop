@@ -5,8 +5,8 @@ import { useT } from "./i18n";
 const kText = {
   title: { ru: "Ваш магазин готов", en: "Your shop is ready" },
   intro: {
-    ru: "Придумайте пароль для входа в админку. Ссылка одноразовая — после этого она перестанет работать.",
-    en: "Choose a password for the admin panel. The link works once — after this it stops working.",
+    ru: "Придумайте пароль для входа в админку. Ссылка одноразовая - после этого она перестанет работать.",
+    en: "Choose a password for the admin panel. The link works once - after this it stops working.",
   },
   password: {
     ru: "Пароль (мин. 8 символов)",

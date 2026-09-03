@@ -60,7 +60,7 @@ func (w *Worker) settlePriceTasks(c *Client) error {
 //
 // Wildberries takes one price per card, and our catalogue can hold several sizes
 // of one card as separate products. Sizes that disagree are not resolved by
-// picking one — the whole card is skipped and every row of it is told why.
+// picking one - the whole card is skipped and every row of it is told why.
 func (w *Worker) pushPrices(c *Client) (pushed, failed int, err error) {
 	rows, err := w.db.WBPriceToPush()
 	if err != nil {

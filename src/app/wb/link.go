@@ -20,7 +20,7 @@ type match struct {
 // Our catalogue never carries a barcode: products come from an Excel price list,
 // a YML feed or a marketplace export, and the only thing they share with a card
 // is the seller's article. So matching goes through vendorCode, exactly like the
-// Ozon slice matches offer_id — the barcode is then read off the card, because
+// Ozon slice matches offer_id - the barcode is then read off the card, because
 // stock is set by it.
 //
 // A card with several sizes has several barcodes and cannot be resolved from one
@@ -73,7 +73,7 @@ func sizeLabel(s Size) string {
 }
 
 // key normalises an article the way the two sides are allowed to differ: case
-// and surrounding spaces, nothing else. Leading zeros are meaningful here — a
+// and surrounding spaces, nothing else. Leading zeros are meaningful here - a
 // vendorCode is whatever the seller typed into their own cabinet.
 func key(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
 

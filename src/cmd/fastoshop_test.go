@@ -54,7 +54,7 @@ func TestListenUnixSocket(t *testing.T) {
 	}
 }
 
-// A process killed with SIGKILL leaves the socket file behind — the restart
+// A process killed with SIGKILL leaves the socket file behind - the restart
 // must survive it.
 func TestListenRemovesStaleSocket(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "shop.sock")
@@ -62,7 +62,7 @@ func TestListenRemovesStaleSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Leave the file in place — that is what the socket looks like after SIGKILL.
+	// Leave the file in place - that is what the socket looks like after SIGKILL.
 	stale.(*net.UnixListener).SetUnlinkOnClose(false)
 	_ = stale.Close()
 	if _, err := os.Stat(path); err != nil {

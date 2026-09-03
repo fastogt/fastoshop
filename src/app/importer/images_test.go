@@ -24,7 +24,7 @@ func imageServer(t *testing.T) *httptest.Server {
 	mux.HandleFunc("/gone.jpg", func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	})
-	// A .jpg link that answers with an error page — the case that would leave a
+	// A .jpg link that answers with an error page - the case that would leave a
 	// broken card behind if we trusted the extension.
 	mux.HandleFunc("/liar.jpg", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("<html><body>404</body></html>"))
@@ -86,7 +86,7 @@ func TestLocalizeImages(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(uploads, got[0].Path)); err != nil {
 		t.Fatalf("file not written: %v", err)
 	}
-	// A bad hour at the supplier and a lying content type both keep the link — a
+	// A bad hour at the supplier and a lying content type both keep the link - a
 	// hotlinked picture beats no picture, and both come back.
 	if !strings.HasPrefix(got[1].Path, "http") || !strings.HasPrefix(got[2].Path, "http") {
 		t.Fatalf("failed downloads must stay links: %+v", got[1:])
@@ -123,7 +123,7 @@ func TestLocalizeImagesStop(t *testing.T) {
 			cancel()
 		}
 	})
-	// Work already in flight finishes, so the exact count is not fixed — what
+	// Work already in flight finishes, so the exact count is not fixed - what
 	// matters is that the remaining hundreds were never started.
 	if ok+failed >= len(imgs) {
 		t.Fatalf("stop did nothing: %d of %d done", ok+failed, len(imgs))
@@ -148,7 +148,7 @@ func TestLocalizeImagesProgress(t *testing.T) {
 }
 
 // The dialog offers "main photos only" as a third of the work, so the query
-// behind it must return exactly one row per product — the first position — and
+// behind it must return exactly one row per product - the first position - and
 // the counts shown next to the choice must agree with what the download gets.
 func TestListRemoteImagesMainOnly(t *testing.T) {
 	srv := imageServer(t)

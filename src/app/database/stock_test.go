@@ -79,7 +79,7 @@ func TestConcurrentCheckoutLastUnit(t *testing.T) {
 	}
 }
 
-// One of three lines fell short — no order, no lines, and no stock movement on
+// One of three lines fell short - no order, no lines, and no stock movement on
 // the neighboring products must remain.
 func TestCheckoutRollsBackWholeCart(t *testing.T) {
 	d := openFile(t)

@@ -21,15 +21,15 @@ import (
 type YML struct {
 	URL string
 	// Data is the feed itself, when the owner uploads the file instead of
-	// hosting it. Our own tools write one too — a generator that has the
+	// hosting it. Our own tools write one too - a generator that has the
 	// catalogue in hand should hand over the format the shop already reads,
 	// not invent a flat one beside it.
 	Data []byte
-	// DefaultStock — the standard carries no quantity, only an availability flag,
+	// DefaultStock - the standard carries no quantity, only an availability flag,
 	// so the seller sets the stock as one number for the whole catalogue. Used
 	// for offers that state no count of their own.
 	DefaultStock int
-	// MaxBytes — body size ceiling; 0 means kMaxFeedBytes.
+	// MaxBytes - body size ceiling; 0 means kMaxFeedBytes.
 	MaxBytes int64
 
 	errors     int
@@ -73,7 +73,7 @@ func feedCurrency(raw string) string {
 	return ""
 }
 
-// FetchErrors — cards rejected before hitting the DB (foreign currency, broken price).
+// FetchErrors - cards rejected before hitting the DB (foreign currency, broken price).
 func (y *YML) FetchErrors() int { return y.errors }
 
 type ymlOffer struct {
@@ -95,7 +95,7 @@ type ymlOffer struct {
 	Dimensions string     `xml:"dimensions"`
 }
 
-// param is the standard's own place for characteristics — colour, size,
+// param is the standard's own place for characteristics - colour, size,
 // material. Every exporter writes them: Bitrix, InSales, Tilda.
 type ymlParam struct {
 	Name  string `xml:"name,attr"`
@@ -133,7 +133,7 @@ func categoryPath(cats map[string]ymlCategory, id string) string {
 }
 
 // trimCommonRoot drops the segments every product shares. A feed's tree starts
-// at the site's own root — "Главная / Каталог товаров / …" in a Bitrix export —
+// at the site's own root - "Главная / Каталог товаров / …" in a Bitrix export -
 // and a level that holds the whole catalogue tells a buyer and a search engine
 // nothing. The leaf always survives: a shop selling one category must keep it.
 func trimCommonRoot(items []Item) {
@@ -216,7 +216,7 @@ func (y *YML) each(fn func(o *ymlOffer)) error {
 		}
 		// <categories> comes before <offers> in the format, so by the time the
 		// first offer arrives the tree is complete. Only the map is kept in
-		// memory — hundreds of nodes against tens of megabytes of offers.
+		// memory - hundreds of nodes against tens of megabytes of offers.
 		if se.Name.Local == "category" {
 			var c ymlCategory
 			if err := dec.DecodeElement(&c, &se); err != nil {
@@ -243,7 +243,7 @@ func (y *YML) each(fn func(o *ymlOffer)) error {
 	return nil
 }
 
-// Count downloads the feed again — a second download is cheaper than keeping
+// Count downloads the feed again - a second download is cheaper than keeping
 // 33 MB in process memory between "Check" and "Import".
 func (y *YML) Count() (int, error) {
 	n := 0
@@ -254,7 +254,7 @@ func (y *YML) Count() (int, error) {
 }
 
 // stock prefers the feed's own number over the one the seller typed: a feed that
-// states a quantity per offer — ours does — carries the truth, and spreading one
+// states a quantity per offer - ours does - carries the truth, and spreading one
 // number over the whole catalogue oversells everything that has less.
 func (y *YML) stock(o *ymlOffer) int {
 	if n, err := strconv.Atoi(strings.TrimSpace(o.Count)); err == nil && n >= 0 {
@@ -266,7 +266,7 @@ func (y *YML) stock(o *ymlOffer) int {
 // offerParams turns the feed's <param> list into ours. A nameless or empty param
 // is dropped rather than stored as a blank row on the card.
 //
-// The unit joins the caption — "Вес, кг" reads as well as "Вес: 1.5 кг" did and
+// The unit joins the caption - "Вес, кг" reads as well as "Вес: 1.5 кг" did and
 // leaves 1.5 a number a filter can compare. The unit is also what decides to
 // read the value as one: the feed stating a measure is the feed's own word that
 // the field is numeric, whereas the shape of the digits is a guess, and it is
@@ -305,7 +305,7 @@ func ymlWeight(raw string) *int64 {
 }
 
 // ymlDimensions reads the standard's <dimensions>: length/width/height in
-// centimetres, slash-separated ("20.1/30.5/11"). All three or nothing — a
+// centimetres, slash-separated ("20.1/30.5/11"). All three or nothing - a
 // parcel with two sides is not a parcel, and a marketplace card refuses it just
 // as a delivery quote would.
 func ymlDimensions(raw string) (l, w, h *int64) {

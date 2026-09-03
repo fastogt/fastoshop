@@ -13,7 +13,7 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// Alphabet without visually confusable characters (0/O, 1/l/I) — the password
+// Alphabet without visually confusable characters (0/O, 1/l/I) - the password
 // gets dictated over SSH or read off a screen.
 const kGeneratedPasswordAlphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
 const kGeneratedPasswordLength = 16
@@ -52,7 +52,7 @@ type Settings struct {
 	// Legal details shown in the storefront footer, free-form multiline: a shop
 	// selling in Russia or Belarus is required to publish them, and their shape
 	// differs by country and by whether the seller is a company or a sole
-	// trader — a set of typed fields would fit one case and fight the rest.
+	// trader - a set of typed fields would fit one case and fight the rest.
 	Requisites string `json:"requisites"`
 	// Delivery, payment and returns, free-form multiline, shown at /info. Yandex
 	// and Google both check that a shop publishes its terms before they let it
@@ -69,7 +69,7 @@ type Settings struct {
 	SMTPHost string `json:"smtp_host"`
 	SMTPPort int    `json:"smtp_port"`
 	SMTPUser string `json:"smtp_user"`
-	// Envelope and header sender. Empty means the login is used — the common
+	// Envelope and header sender. Empty means the login is used - the common
 	// case; a relay logs in by an API key and a Workspace alias signs in as the
 	// real mailbox, and both need the letter to come from the shop's address.
 	SMTPFrom     string `json:"smtp_from"`
@@ -113,7 +113,7 @@ func (d *Database) GetSettings() (*Settings, error) {
 
 func (d *Database) UpdateSettings(s *Settings) error {
 	currency := s.Currency
-	// Empty means "not set yet" — a shop created before the setting existed, or
+	// Empty means "not set yet" - a shop created before the setting existed, or
 	// an older admin build. Default rather than refuse to save.
 	if currency == "" {
 		currency = ShopCurrencyRUB
@@ -172,7 +172,7 @@ func (d *Database) UseToken(token string) error {
 	return err
 }
 
-// CleanupExpiredTokens deletes stale tokens; called once at startup — the
+// CleanupExpiredTokens deletes stale tokens; called once at startup - the
 // table does not grow forever on a long-lived instance.
 func (d *Database) CleanupExpiredTokens() error {
 	_, err := d.db.Exec(`DELETE FROM auth_tokens WHERE expires_at < CURRENT_TIMESTAMP`)
@@ -228,7 +228,7 @@ func generatePassword(n int) (string, error) {
 	return string(out), nil
 }
 
-// NewInviteToken — a one-time link for setting the password. Lives for a day:
+// NewInviteToken - a one-time link for setting the password. Lives for a day:
 // it is forwarded by email, and an expired link is safer than a forgotten
 // working one.
 func (d *Database) NewInviteToken() (string, error) {
@@ -252,10 +252,10 @@ func (d *Database) SetOwnerPassword(hash string) error {
 	return err
 }
 
-// ResetOwnerPassword — the recovery path via the CLI (`fastoshop
+// ResetOwnerPassword - the recovery path via the CLI (`fastoshop
 // -reset-password`): generates a new password, stores its bcrypt hash and
 // wipes all sessions in one sweep so a hijacked cookie does not survive the
-// change. Returns the plaintext password exactly once — it is stored nowhere
+// change. Returns the plaintext password exactly once - it is stored nowhere
 // and never logged.
 func (d *Database) ResetOwnerPassword() (string, error) {
 	pw, hash, err := generateCredentials()

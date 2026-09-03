@@ -96,7 +96,7 @@ func TestSettingsRoundTrip(t *testing.T) {
 		t.Fatalf("saved: %+v", got)
 	}
 
-	// api_key = nil — leave the key alone, change the rest.
+	// api_key = nil - leave the key alone, change the rest.
 	got = decode[settingsResponse](t, do(t, h, "PUT", "/settings",
 		`{"enabled":false,"client_id":"cid2","warehouse_id":"wh-2"}`))
 	if !got.APIKeySet || got.Enabled || got.ClientID != "cid2" {

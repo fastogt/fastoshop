@@ -4,7 +4,7 @@ import "testing"
 
 // The channel tab's four states come from two places at once: our link table
 // knows what is linked, and only the platform knows what has a card. The filter
-// is how that second half reaches a query which cannot see it — the tab passes
+// is how that second half reaches a query which cannot see it - the tab passes
 // the ids it learned when it opened. So what has to hold is that the id lists
 // and the linked flag combine, and that the count agrees with the list: a table
 // that counts 24 000 while listing 7 grows pages that turn out empty.
@@ -30,7 +30,7 @@ func TestCandidateFilter(t *testing.T) {
 		f    CandidateFilter
 		want int
 	}{
-		{"без фильтра — весь каталог", CandidateFilter{}, 4},
+		{"без фильтра - весь каталог", CandidateFilter{}, 4},
 		{"можно связать", CandidateFilter{IDs: ready}, 2},
 		{"связано", CandidateFilter{Linked: &yes}, 1},
 		{"нет карточки", CandidateFilter{Linked: &no, ExcludeIDs: ready}, 1},

@@ -19,7 +19,7 @@ import (
 const kPushInterval = 5 * time.Minute
 
 // ponytail: a two-step backoff ladder instead of an attempt counter, same as the
-// Ozon worker — we only tell "first failure" from "it was already bad".
+// Ozon worker - we only tell "first failure" from "it was already bad".
 const (
 	kFirstRetry = time.Minute
 	kNextRetry  = 15 * time.Minute
@@ -31,7 +31,7 @@ const (
 // for not looking like a flood.
 const kBatchPause = 200 * time.Millisecond
 
-// ErrPushBusy — the previous pass is still running. Parallel pushes of the same
+// ErrPushBusy - the previous pass is still running. Parallel pushes of the same
 // level are harmless, but the counters in the button's answer would become a lie.
 var ErrPushBusy = errors.New("wb push already running")
 
@@ -44,7 +44,7 @@ var ErrBadWarehouse = errors.New("warehouse_id must be a number")
 // value differs from it.
 type Worker struct {
 	db *database.Database
-	// Hosts overrides the API addresses — tests point every field at one mock.
+	// Hosts overrides the API addresses - tests point every field at one mock.
 	Hosts   Hosts
 	wake    chan struct{}
 	running atomic.Bool
@@ -131,7 +131,7 @@ func (w *Worker) Pass() (pushed, failed int, err error) {
 	}
 	// Polling orders goes next: a sale on the platform must lower our stock before
 	// this very pass starts pushing levels, otherwise we push up what Wildberries
-	// has just sold — an oversell of our own making.
+	// has just sold - an oversell of our own making.
 	if err := w.pollOrders(c); err != nil {
 		return 0, 0, err
 	}
@@ -141,7 +141,7 @@ func (w *Worker) Pass() (pushed, failed int, err error) {
 		pushed, failed, halt, err = w.pushStocks(c, warehouse)
 	}
 	if err != nil || halt {
-		// halt: the whole stocks call died — the platform is having a bad moment,
+		// halt: the whole stocks call died - the platform is having a bad moment,
 		// and spending the price budget in the same pass buys nothing.
 		return pushed, failed, err
 	}
@@ -204,7 +204,7 @@ func (w *Worker) pushStocks(c *Client, warehouse int64) (pushed, failed int, hal
 	return pushed, failed, false, nil
 }
 
-// callDelay: on a 429 we obey the platform's own retry hint verbatim — our
+// callDelay: on a 429 we obey the platform's own retry hint verbatim - our
 // backoff has no business arguing with the cabinet's limits.
 func callDelay(callErr error, fallback time.Duration) time.Duration {
 	var apiErr *APIError

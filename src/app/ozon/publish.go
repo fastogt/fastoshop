@@ -87,7 +87,7 @@ func idList(s string) []int64 {
 	return out
 }
 
-// Candidates lists shop products with their publication state — the table the
+// Candidates lists shop products with their publication state - the table the
 // owner ticks before pressing "Publish".
 func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))

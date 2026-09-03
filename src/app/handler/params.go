@@ -7,7 +7,7 @@ import (
 
 // One row per characteristic the catalogue states: the name as its source wrote
 // it, and whether a buyer sees it. Which of a marketplace card's fields belong
-// on a page is the owner's decision — the shop keeps all of them either way,
+// on a page is the owner's decision - the shop keeps all of them either way,
 // because a channel needs the ones a buyer does not.
 type paramRow struct {
 	Name   string `json:"name"`

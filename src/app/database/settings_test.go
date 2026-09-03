@@ -31,7 +31,7 @@ func TestShopCurrencies(t *testing.T) {
 }
 
 // The counters reach the storefront only through settings, and a shop that
-// already has data gets the columns by ALTER — so both the round-trip and the
+// already has data gets the columns by ALTER - so both the round-trip and the
 // upgrade of an older database are checked here.
 func TestSEOSettings(t *testing.T) {
 	d, _ := OpenInMemory()

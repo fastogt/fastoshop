@@ -12,8 +12,8 @@ const kText = {
   tabSecurity: { ru: "Безопасность", en: "Security" },
   paramsTitle: { ru: "Что показывать в карточке", en: "What a card shows" },
   paramsHint: {
-    ru: "Характеристики приезжают из площадок и прайсов как есть — вместе со ставкой НДС и кодом ТН ВЭД. Магазин хранит их все: без них не опубликовать карточку на Ozon. Снимите галку у того, что не нужно показывать покупателю — решение действует на весь каталог.",
-    en: "Characteristics arrive from marketplaces and price lists as they are, VAT rate and customs code included. The shop keeps all of them — a card cannot be published on Ozon without them. Untick what a buyer need not see; the choice applies to the whole catalogue.",
+    ru: "Характеристики приезжают из площадок и прайсов как есть - вместе со ставкой НДС и кодом ТН ВЭД. Магазин хранит их все: без них не опубликовать карточку на Ozon. Снимите галку у того, что не нужно показывать покупателю - решение действует на весь каталог.",
+    en: "Characteristics arrive from marketplaces and price lists as they are, VAT rate and customs code included. The shop keeps all of them - a card cannot be published on Ozon without them. Untick what a buyer need not see; the choice applies to the whole catalogue.",
   },
   paramsEmpty: {
     ru: "В каталоге пока нет характеристик. Они появятся после импорта из кабинета площадки или из фида.",
@@ -31,13 +31,13 @@ const kText = {
   telegram: { ru: "Telegram для заказов", en: "Telegram for orders" },
   whatsapp: { ru: "WhatsApp для заказов", en: "WhatsApp for orders" },
   messengerHint: {
-    ru: "Необязательно. Если заполнить, в карточке товара появится кнопка: покупатель нажимает и попадает в переписку с уже готовым текстом — название, артикул, цена и ссылка. Логин можно вставить как «@myshop» или ссылкой целиком.",
-    en: 'Optional. Filled in, it adds a button to the product page: the buyer taps it and lands in a chat with the message already written — title, article, price and a link. Paste the handle as "@myshop" or as a full link.',
+    ru: "Необязательно. Если заполнить, в карточке товара появится кнопка: покупатель нажимает и попадает в переписку с уже готовым текстом - название, артикул, цена и ссылка. Логин можно вставить как «@myshop» или ссылкой целиком.",
+    en: 'Optional. Filled in, it adds a button to the product page: the buyer taps it and lands in a chat with the message already written - title, article, price and a link. Paste the handle as "@myshop" or as a full link.',
   },
   requisites: { ru: "Реквизиты", en: "Legal details" },
   requisitesHint: {
-    ru: "Юрлицо, адрес, регистрационный номер — то, что по закону должно быть на сайте. Показываются в подвале витрины и попадают в разметку организации для поисковиков. Пишите как есть, переводы строк сохраняются.",
-    en: "Legal entity, address, registration number — what the law requires on the site. Shown in the storefront footer and put into the organisation markup for search engines. Write it as is, line breaks are kept.",
+    ru: "Юрлицо, адрес, регистрационный номер - то, что по закону должно быть на сайте. Показываются в подвале витрины и попадают в разметку организации для поисковиков. Пишите как есть, переводы строк сохраняются.",
+    en: "Legal entity, address, registration number - what the law requires on the site. Shown in the storefront footer and put into the organisation markup for search engines. Write it as is, line breaks are kept.",
   },
   requisitesPlaceholder: {
     ru: "ООО «Лавка»\nМинск, ул. Мира, 1\nУНП 123456789",
@@ -45,16 +45,16 @@ const kText = {
   },
   terms: { ru: "Доставка и оплата", en: "Delivery and payment" },
   termsHint: {
-    ru: "Сроки и стоимость доставки, способы оплаты, возврат. Открываются отдельной страницей со ссылкой в подвале витрины. Без них магазин не берут ни Яндекс, ни Google в товарную выдачу. Пустое поле — страницы нет.",
+    ru: "Сроки и стоимость доставки, способы оплаты, возврат. Открываются отдельной страницей со ссылкой в подвале витрины. Без них магазин не берут ни Яндекс, ни Google в товарную выдачу. Пустое поле - страницы нет.",
     en: "Delivery times and cost, payment methods, returns. Shown as a separate page linked from the storefront footer. Without them neither Yandex nor Google accepts the shop into shopping results. An empty field means no page.",
   },
   termsPlaceholder: {
-    ru: "Доставка курьером по Минску — 1–2 дня, 10 руб.\nПочтой по Беларуси — 3–5 дней.\nОплата наличными или картой при получении.\nВозврат в течение 14 дней.",
-    en: "Courier delivery within the city — 1–2 days.\nPost — 3–5 days.\nCash or card on delivery.\nReturns within 14 days.",
+    ru: "Доставка курьером по Минску - 1–2 дня, 10 руб.\nПочтой по Беларуси - 3–5 дней.\nОплата наличными или картой при получении.\nВозврат в течение 14 дней.",
+    en: "Courier delivery within the city - 1–2 days.\nPost - 3–5 days.\nCash or card on delivery.\nReturns within 14 days.",
   },
   logo: { ru: "Логотип", en: "Logo" },
   logoHint: {
-    ru: "Показывается в шапке витрины вместо названия и становится иконкой вкладки. JPEG, PNG, WebP или SVG, до 2 МБ. Без логотипа магазин представлен названием — это тоже нормально.",
+    ru: "Показывается в шапке витрины вместо названия и становится иконкой вкладки. JPEG, PNG, WebP или SVG, до 2 МБ. Без логотипа магазин представлен названием - это тоже нормально.",
     en: "Shown in the storefront header instead of the name, and used as the tab icon. JPEG, PNG, WebP or SVG, up to 2 MB. Without one the shop is represented by its name, which is fine too.",
   },
   logoUpload: { ru: "Загрузить логотип", en: "Upload a logo" },
@@ -65,8 +65,8 @@ const kText = {
   currencyPln: { ru: "Польский злотый (zł)", en: "Polish złoty (zł)" },
   currencyKzt: { ru: "Казахстанский тенге (₸)", en: "Kazakhstani tenge (₸)" },
   currencyHint: {
-    ru: "В ней цены видят покупатели и поисковики. Цены товаров при смене валюты не пересчитываются — меняется только подпись.",
-    en: "Prices are shown in this currency to customers and search engines. Switching it does not convert product prices — only the label changes.",
+    ru: "В ней цены видят покупатели и поисковики. Цены товаров при смене валюты не пересчитываются - меняется только подпись.",
+    en: "Prices are shown in this currency to customers and search engines. Switching it does not convert product prices - only the label changes.",
   },
   mail: {
     ru: "Почта для уведомлений о заказах",
@@ -85,7 +85,7 @@ const kText = {
   smtpPort: { ru: "Порт", en: "Port" },
   smtpFrom: { ru: "Отправитель писем", en: "Sender address" },
   smtpFromHint: {
-    ru: "Адрес в поле «От кого». Пусто — берётся логин. Заполните, если логин не адрес: сервисы рассылок пускают по API-ключу, а почта Google — по основному ящику, тогда как письмо должно приходить от адреса магазина.",
+    ru: "Адрес в поле «От кого». Пусто - берётся логин. Заполните, если логин не адрес: сервисы рассылок пускают по API-ключу, а почта Google - по основному ящику, тогда как письмо должно приходить от адреса магазина.",
     en: "The address in the From field. Empty means the login is used. Fill it in when the login is not an address: relays sign in by an API key and Google mail by the main mailbox, while the letter should come from the shop's address.",
   },
   smtpUser: { ru: "Логин (полный email)", en: "Login (full email)" },
@@ -103,8 +103,8 @@ const kText = {
   },
   testMail: { ru: "Отправить тестовое письмо", en: "Send a test email" },
   testMailOk: {
-    ru: "Письмо отправлено — проверьте почту",
-    en: "Email sent — check your inbox",
+    ru: "Письмо отправлено - проверьте почту",
+    en: "Email sent - check your inbox",
   },
   testMailFail: {
     ru: "Ошибка: письмо не отправлено, проверьте настройки",
@@ -112,8 +112,8 @@ const kText = {
   },
   seo: { ru: "Счётчики", en: "Counters" },
   seoHint: {
-    ru: "Заведите счётчик в кабинете и вставьте сюда его номер — код появится на витрине сам. Пока поля пустые, на витрине нет ни одного скрипта.",
-    en: "Create a counter in the provider's cabinet and paste its id here — the snippet appears on the storefront by itself. While the fields are empty the storefront carries no scripts at all.",
+    ru: "Заведите счётчик в кабинете и вставьте сюда его номер - код появится на витрине сам. Пока поля пустые, на витрине нет ни одного скрипта.",
+    en: "Create a counter in the provider's cabinet and paste its id here - the snippet appears on the storefront by itself. While the fields are empty the storefront carries no scripts at all.",
   },
   gaId: {
     ru: "Google Analytics (Measurement ID)",
@@ -125,7 +125,7 @@ const kText = {
   },
   feeds: { ru: "Товарные фиды", en: "Product feeds" },
   feedsHint: {
-    ru: "Готовые выгрузки каталога: вставьте ссылку в кабинет площадки, и она сама будет забирать товары. YML — для Яндекса (Вебмастер → «Товары и предложения», товарные кампании Директа), вторая — для Google Merchant Center. Скрытые товары в фиды не попадают.",
+    ru: "Готовые выгрузки каталога: вставьте ссылку в кабинет площадки, и она сама будет забирать товары. YML - для Яндекса (Вебмастер → «Товары и предложения», товарные кампании Директа), вторая - для Google Merchant Center. Скрытые товары в фиды не попадают.",
     en: "Ready-made catalogue exports: paste the link into the provider's cabinet and it will fetch the products by itself. YML is for Yandex (Webmaster → products, Direct product campaigns), the other one for Google Merchant Center. Hidden products are excluded.",
   },
   feedYandex: { ru: "Яндекс (YML)", en: "Yandex (YML)" },
@@ -140,8 +140,8 @@ const kText = {
     en: "Forgot your password? Run ",
   },
   passwordHintAfter: {
-    ru: " — команда напечатает новый.",
-    en: " on the server — it prints a new one.",
+    ru: " - команда напечатает новый.",
+    en: " on the server - it prints a new one.",
   },
   currentPassword: { ru: "Текущий пароль", en: "Current password" },
   newPassword: {

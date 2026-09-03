@@ -28,7 +28,7 @@ const apply = (next: Lang) => {
 };
 
 // The server renders errors and owner emails itself, so the language has to
-// reach it — a purely local switch would leave every message in the old one.
+// reach it - a purely local switch would leave every message in the old one.
 export const setLang = (next: Lang) => {
   apply(next);
   void fetch("/api/settings/lang", {

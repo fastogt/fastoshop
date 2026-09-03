@@ -12,7 +12,7 @@ func TestBuildMessage(t *testing.T) {
 	s := string(msg)
 	for _, want := range []string{
 		"From: shop@x.ru", "To: owner@x.ru",
-		"Subject: =?UTF-8?b?", // subject is encoded — Cyrillic breaks otherwise
+		"Subject: =?UTF-8?b?", // subject is encoded - Cyrillic breaks otherwise
 		"Content-Type: text/plain; charset=UTF-8",
 		"Иван",
 	} {
@@ -23,7 +23,7 @@ func TestBuildMessage(t *testing.T) {
 }
 
 // The sender is not the login: a relay authenticates by an API key, and a
-// Workspace alias signs in as the real mailbox — in both cases the letter must
+// Workspace alias signs in as the real mailbox - in both cases the letter must
 // come from the shop's own address, not from the credentials.
 func TestSenderFallsBackToLogin(t *testing.T) {
 	s := &database.Settings{SMTPUser: "apikey"}

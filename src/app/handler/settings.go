@@ -31,7 +31,7 @@ type settingsResponse struct {
 	Terms            string `json:"terms"`
 	// The stored AdHunters key as its last four characters ("…a1b2"), empty
 	// when there is none. Enough for the admin to show the button and for the
-	// owner to recognise which key is in — and the key itself still never
+	// owner to recognise which key is in - and the key itself still never
 	// leaves the server, because it spends their money.
 	AdHuntersAPIKey string `json:"adhunters_api_key"`
 }
@@ -151,7 +151,7 @@ type langRequest struct {
 }
 
 // SetLang is its own endpoint rather than a field of the settings form: the
-// language switch lives in the header and must not resubmit — and so overwrite —
+// language switch lives in the header and must not resubmit - and so overwrite -
 // whatever the owner happens to be editing in the profile at that moment.
 func (h *Handler) SetLang(w http.ResponseWriter, r *http.Request) {
 	var req langRequest
@@ -172,7 +172,7 @@ func (h *Handler) SetLang(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, okStatusResponse{Status: "ok"})
 }
 
-// TestSMTP sends a test email to oneself — the "Check" button in the profile.
+// TestSMTP sends a test email to oneself - the "Check" button in the profile.
 func (h *Handler) TestSMTP(w http.ResponseWriter, r *http.Request) {
 	s, err := h.db.GetSettings()
 	if err != nil {

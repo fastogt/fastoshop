@@ -1,4 +1,4 @@
-// Package app holds what the binary needs but no feature slice owns — today,
+// Package app holds what the binary needs but no feature slice owns - today,
 // the logging setup shared with our other services.
 package app
 
@@ -42,7 +42,7 @@ func (f *ProjectFormatter) Format(entry *log.Entry) ([]byte, error) {
 // SetupLogging sends the log to its file and returns the path actually used, so
 // the admin serves exactly what the logger writes. The service is a daemon: a
 // log that stays on stdout reaches journald, and the shop owner has no shell.
-// A file that cannot be opened is not fatal — a shop must still start — and then
+// A file that cannot be opened is not fatal - a shop must still start - and then
 // the returned path is empty and the admin says there is no log.
 func SetupLogging(logLevel, logPath string) string {
 	level, err := log.ParseLevel(logLevel)

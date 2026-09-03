@@ -10,7 +10,7 @@ import (
 
 // orderLinkVM is one "order in a message" button: a plain link, never a script.
 // The storefront ships no JavaScript, and a messenger deep link does not need
-// any — which is exactly why this is a link and not a widget.
+// any - which is exactly why this is a link and not a widget.
 type orderLinkVM struct {
 	// Label is what the button says; URL is already escaped and safe to print.
 	Label string
@@ -18,7 +18,7 @@ type orderLinkVM struct {
 }
 
 // telegramHandle normalises what the owner pasted. They type "@shop",
-// "shop" or the whole "https://t.me/shop" — all three mean the same account.
+// "shop" or the whole "https://t.me/shop" - all three mean the same account.
 func telegramHandle(raw string) string {
 	s := strings.TrimSpace(raw)
 	s = strings.TrimPrefix(s, "https://")

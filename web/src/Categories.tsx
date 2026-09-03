@@ -5,8 +5,8 @@ import { useT } from "./i18n";
 const kText = {
   title: { ru: "Категории", en: "Categories" },
   intro: {
-    ru: "Разделы витрины: у каждого своя страница, свой заголовок и свой текст. Дерево ведёте вы — часть разделов приезжает с импортом, остальное заводится руками.",
-    en: "The storefront sections: each has its own page, heading and text. You keep the tree yourself — some of it arrives with an import, the rest you create by hand.",
+    ru: "Разделы витрины: у каждого своя страница, свой заголовок и свой текст. Дерево ведёте вы - часть разделов приезжает с импортом, остальное заводится руками.",
+    en: "The storefront sections: each has its own page, heading and text. You keep the tree yourself - some of it arrives with an import, the rest you create by hand.",
   },
   search: { ru: "Поиск по дереву", en: "Search the tree" },
   addRoot: { ru: "+ категория", en: "+ category" },
@@ -22,7 +22,7 @@ const kText = {
   },
   name: { ru: "Название", en: "Name" },
   parent: { ru: "Родитель", en: "Parent" },
-  root: { ru: "— верхний уровень —", en: "— top level —" },
+  root: { ru: "- верхний уровень -", en: "- top level -" },
   order: { ru: "Порядок", en: "Order" },
   up: { ru: "Выше", en: "Up" },
   down: { ru: "Ниже", en: "Down" },
@@ -33,8 +33,8 @@ const kText = {
   },
   body: { ru: "Текст страницы", en: "Page text" },
   bodyHint: {
-    ru: "Что здесь продаётся, кому подходит, чем отличается — своими словами. Первые предложения станут описанием страницы для поисковика. Пустое поле — блока нет.",
-    en: "What is sold here, who it suits, what makes it different — in your own words. The first sentences become the page description for search engines. An empty field means no block.",
+    ru: "Что здесь продаётся, кому подходит, чем отличается - своими словами. Первые предложения станут описанием страницы для поисковика. Пустое поле - блока нет.",
+    en: "What is sold here, who it suits, what makes it different - in your own words. The first sentences become the page description for search engines. An empty field means no block.",
   },
   save: { ru: "Сохранить", en: "Save" },
   remove: { ru: "Удалить категорию", en: "Delete category" },

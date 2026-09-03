@@ -17,7 +17,7 @@ import (
 type Handlers struct {
 	db     *database.Database
 	worker *Worker
-	// BaseURL overrides the Seller API address — tests point a mock here. Empty
+	// BaseURL overrides the Seller API address - tests point a mock here. Empty
 	// in production: the client substitutes the live host itself.
 	BaseURL string
 }
@@ -76,7 +76,7 @@ type settingsResponse struct {
 	APIKeySet   bool   `json:"api_key_set"`
 	WarehouseID string `json:"warehouse_id"`
 	// The shop's currency, read through so the tab can label prices. Not a
-	// setting of this channel — see OzonSettings.
+	// setting of this channel - see OzonSettings.
 	Currency    string          `json:"currency"`
 	Linked      int             `json:"linked"`
 	Unlinked    int             `json:"unlinked"`
@@ -351,7 +351,7 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 	res := checkResponse{Total: len(offers)}
 	// The cabinet's currency follows from the legal entity behind it. It is
 	// reported, not stored: the shop already has a currency, and if these two
-	// disagree the shop's is wrong — the tab says so instead of us keeping a
+	// disagree the shop's is wrong - the tab says so instead of us keeping a
 	// second answer in step. A failure here must not fail the check itself.
 	if info, err := c.SellerInfo(); err != nil {
 		log.Warnf("ozon: seller info: %v", err)
@@ -452,7 +452,7 @@ func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetPrice sets the price of one product ON OZON, in kopecks. Zero switches the
-// management off — the price stays whatever the cabinet holds, we simply stop
+// management off - the price stays whatever the cabinet holds, we simply stop
 // touching it. A product without a link is a 404 and not a silently created row:
 // a price for something unlinked would never be sent anywhere.
 func (h *Handlers) SetPrice(w http.ResponseWriter, r *http.Request) {

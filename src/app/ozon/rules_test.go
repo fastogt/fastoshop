@@ -68,7 +68,7 @@ func TestFillPricesByRules(t *testing.T) {
 	}
 	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{cheap, pricey, mine}})
 	do(t, h, "POST", "/publish", string(body))
-	// A price of one's own is already set — the ladder has no right to touch it.
+	// A price of one's own is already set - the ladder has no right to touch it.
 	setPrice(t, d, mine, 111111)
 
 	body, _ = json.Marshal(priceRulesRequest{Rules: kLadder})

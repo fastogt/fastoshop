@@ -43,7 +43,7 @@ func TestSetupLoginFlow(t *testing.T) {
 		t.Fatal("setup must set session cookie")
 	}
 
-	// A second setup — 404.
+	// A second setup - 404.
 	w = httptest.NewRecorder()
 	h.Setup(w, httptest.NewRequest("POST", "/api/setup",
 		strings.NewReader(`{"email":"x@y.z","password":"hack"}`)))
@@ -51,7 +51,7 @@ func TestSetupLoginFlow(t *testing.T) {
 		t.Fatalf("second setup must 404, got %d", w.Code)
 	}
 
-	// Wrong password — 401.
+	// Wrong password - 401.
 	w = httptest.NewRecorder()
 	h.Login(w, httptest.NewRequest("POST", "/api/login",
 		strings.NewReader(`{"email":"a@b.c","password":"wrong"}`)))
@@ -59,7 +59,7 @@ func TestSetupLoginFlow(t *testing.T) {
 		t.Fatalf("bad login: %d", w.Code)
 	}
 
-	// Correct one — a cookie.
+	// Correct one - a cookie.
 	w = httptest.NewRecorder()
 	h.Login(w, httptest.NewRequest("POST", "/api/login",
 		strings.NewReader(`{"email":"a@b.c","password":"secret123"}`)))
@@ -68,7 +68,7 @@ func TestSetupLoginFlow(t *testing.T) {
 	}
 	sess := w.Result().Cookies()[0]
 
-	// Middleware: without the cookie — 401, with it — 200.
+	// Middleware: without the cookie - 401, with it - 200.
 	protected := h.SessionAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -86,7 +86,7 @@ func TestSetupLoginFlow(t *testing.T) {
 	}
 }
 
-// The session cookie must carry Secure where the connection is TLS (in prod —
+// The session cookie must carry Secure where the connection is TLS (in prod -
 // via X-Forwarded-Proto from nginx) and not carry it on local plain http,
 // otherwise login is broken.
 func TestInvite(t *testing.T) {
@@ -159,7 +159,7 @@ func TestChangePassword(t *testing.T) {
 		strings.NewReader(`{"email":"a@b.c","password":"secret123"}`)))
 	sess := w.Result().Cookies()[0]
 
-	// Wrong current password — 401, the hash stays unchanged.
+	// Wrong current password - 401, the hash stays unchanged.
 	req := httptest.NewRequest("POST", "/api/settings/password",
 		strings.NewReader(`{"current_password":"wrong","new_password":"newpass123"}`))
 	req.AddCookie(sess)
@@ -175,7 +175,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatal("old password must still work after failed change")
 	}
 
-	// Too short a new password — 400.
+	// Too short a new password - 400.
 	req = httptest.NewRequest("POST", "/api/settings/password",
 		strings.NewReader(`{"current_password":"secret123","new_password":"short"}`))
 	req.AddCookie(sess)
@@ -185,7 +185,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatalf("short new password: %d %s", w.Code, w.Body.String())
 	}
 
-	// One more session — it must expire after the password change.
+	// One more session - it must expire after the password change.
 	w = httptest.NewRecorder()
 	h.Login(w, httptest.NewRequest("POST", "/api/login",
 		strings.NewReader(`{"email":"a@b.c","password":"secret123"}`)))
@@ -281,7 +281,7 @@ func TestInternalErrorDoesNotLeakDetails(t *testing.T) {
 }
 
 // Login had no brake at all: bcrypt alone allows roughly a million guesses a
-// night. It is not a lockout on purpose — a shop has one owner and nobody to
+// night. It is not a lockout on purpose - a shop has one owner and nobody to
 // call, so refusing after N tries would let anyone who knows their address shut
 // them out of their own admin until somebody reaches the server over SSH.
 func TestLoginSlowsDownAfterRepeatedFailures(t *testing.T) {

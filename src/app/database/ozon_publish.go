@@ -7,7 +7,7 @@ import (
 
 // OzonCandidate is a shop product as the channel tab sees it: what it is called,
 // whether it is already published, and what was last pushed for it. Published is
-// the presence of a link row — the link set IS the published set.
+// the presence of a link row - the link set IS the published set.
 type OzonCandidate struct {
 	ProductID int64
 	SKU       string
@@ -21,7 +21,7 @@ type OzonCandidate struct {
 // CandidateFilter narrows the publication table to the rows the owner can act
 // on. Which state a product is in depends on the platform's article list, and
 // that list lives in the tab's one-per-open cabinet call rather than in our
-// database — so the caller passes the ids it learned there instead of the
+// database - so the caller passes the ids it learned there instead of the
 // database trying to answer a question it cannot see.
 type CandidateFilter struct {
 	Q string
@@ -40,7 +40,7 @@ type CandidateFilter struct {
 //
 // ponytail: the id lists travel in the query string, so a filter over more than
 // a few thousand ready products would outgrow the URL. The tab falls back to
-// the unfiltered table in that case — a seller with thousands of linkable
+// the unfiltered table in that case - a seller with thousands of linkable
 // articles has long since linked them, and paging the whole catalogue is what
 // this endpoint did before the filter existed.
 func (f CandidateFilter) clauses() (string, []any) {
@@ -96,7 +96,7 @@ func candidateWhere(f CandidateFilter) (string, []any) {
 
 // CountOzonCandidates counts what the same filter would list. The paged table
 // needs it to draw its page numbers, and it has to agree with the list exactly
-// — counting all products while listing a filtered subset is how a table grows
+// - counting all products while listing a filtered subset is how a table grows
 // pages that turn out empty.
 func (d *Database) CountOzonCandidates(f CandidateFilter) (int, error) {
 	where, args := candidateWhere(f)
@@ -196,7 +196,7 @@ func (d *Database) ProductsByIDs(ids []int64) ([]Product, error) {
 // hundred rows currently on screen would answer a question nobody asked, while
 // "12 of 24 000 can be published" is the one that explains the tab.
 //
-// ponytail: the whole catalogue in memory — 24 000 short strings read once when
+// ponytail: the whole catalogue in memory - 24 000 short strings read once when
 // the tab opens. An IN (…) against the platform's list would need thousands of
 // bound parameters and buys nothing at this size.
 func (d *Database) OzonSKUState() (map[string]int64, map[string]bool, error) {

@@ -11,7 +11,7 @@ import (
 // PriceRule is one band of a channel's markup ladder: everything below UpTo (in
 // kopecks) is multiplied by Multiplier. UpTo 0 is the open-ended top band.
 //
-// The ladder itself is not channel knowledge — every channel stores its bands in
+// The ladder itself is not channel knowledge - every channel stores its bands in
 // its own table, but the arithmetic and its validation are one thing, and having
 // two copies of it means the second one is wrong the day the first is fixed.
 type PriceRule struct {
@@ -62,7 +62,7 @@ func sortRules(rules []PriceRule) {
 }
 
 // ApplyRule returns the platform price for a shelf price, or 0 when no band
-// matches — the caller must not invent a price the ladder does not define.
+// matches - the caller must not invent a price the ladder does not define.
 func ApplyRule(rules []PriceRule, shelf int64) int64 {
 	for _, r := range rules {
 		if r.UpTo == 0 || shelf < r.UpTo {

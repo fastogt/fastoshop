@@ -4,7 +4,7 @@ import "strings"
 
 // CatalogParamNames lists every characteristic the catalogue states, most used
 // first. The owner decides from this list what a buyer sees, so it is the names
-// as the sources wrote them — renaming or merging them here would hide the fact
+// as the sources wrote them - renaming or merging them here would hide the fact
 // that two marketplaces call one property two things.
 //
 // json_each over a column rather than a table of its own: characteristics travel

@@ -77,9 +77,9 @@ func (d *Database) GetImage(id int64) (*ProductImage, error) {
 	return &im, nil
 }
 
-// CountRemoteImages answers both halves of the question the fill dialog asks —
+// CountRemoteImages answers both halves of the question the fill dialog asks -
 // how many photos are still on someone else's server, and how many of those are
-// the main one of their product — in a single pass.
+// the main one of their product - in a single pass.
 func (d *Database) CountRemoteImages(s Selection) (main, total int, err error) {
 	where, args, ok := s.where()
 	if !ok {
@@ -100,7 +100,7 @@ func (d *Database) CountRemoteImages(s Selection) (main, total int, err error) {
 // ListRemoteImages returns the photos still living on someone else's server for
 // the products in the selection. It is what "download the photos" works from:
 // the rows are already in the right order, and only their path changes.
-// mainOnly narrows it to the first photo of each product — the one the
+// mainOnly narrows it to the first photo of each product - the one the
 // catalogue, the feeds and image search actually show. It is a third of the
 // rows and a third of the downloads.
 func (d *Database) ListRemoteImages(s Selection, mainOnly bool) ([]ProductImage, error) {

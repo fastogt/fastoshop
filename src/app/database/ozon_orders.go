@@ -5,19 +5,19 @@ import (
 	"time"
 )
 
-// kSQLiteTime — the format SQLite emits for CURRENT_TIMESTAMP and the one the
+// kSQLiteTime - the format SQLite emits for CURRENT_TIMESTAMP and the one the
 // driver uses to parse DATETIME columns. Time is written only this way: mixing
 // in RFC3339 breaks date comparisons right inside SQL.
 const kSQLiteTime = "2006-01-02 15:04:05"
 
-// OzonPostingItem — a posting line in the marketplace's terms: matching it to
+// OzonPostingItem - a posting line in the marketplace's terms: matching it to
 // a shop product happens later, inside the apply transaction.
 type OzonPostingItem struct {
 	OfferID string
 	Qty     int
 }
 
-// OzonPosting — an Ozon posting in the shape the ladder applies it. Cancelled
+// OzonPosting - an Ozon posting in the shape the ladder applies it. Cancelled
 // is computed by the caller: the set of "cancelled" statuses is knowledge
 // about the marketplace, not about the database.
 type OzonPosting struct {
@@ -28,7 +28,7 @@ type OzonPosting struct {
 	Items         []OzonPostingItem
 }
 
-// OzonStatusCancelled — the ladder stores any cancellation under it, whichever
+// OzonStatusCancelled - the ladder stores any cancellation under it, whichever
 // of the cancelling statuses Ozon sent. Otherwise the cancelled → not_accepted
 // transition would look like a fresh cancellation and return the stock a
 // second time; this should not cost a separate "stock returned" column.
@@ -46,7 +46,7 @@ func (p *OzonPosting) storedStatus() string {
 //
 // Idempotency rests on UNIQUE(posting_number): the insert either creates the
 // row (the posting is new) or does nothing (already applied). Checking with a
-// SELECT before the insert is not an option — two sync passes would slip
+// SELECT before the insert is not an option - two sync passes would slip
 // through that gap.
 //
 // A cancellation returns stock exactly on the "applied → cancelled"
@@ -108,7 +108,7 @@ func applyNewPosting(tx *sql.Tx, id int64, p *OzonPosting) (bool, error) {
 		if have < it.Qty {
 			oversold = true
 		}
-		// MAX(0, ...) — refusing the deduction is not an option: the marketplace
+		// MAX(0, ...) - refusing the deduction is not an option: the marketplace
 		// has already sold, and negative stock on the storefront is worse than zero.
 		if _, err := tx.Exec(
 			`UPDATE products SET stock = MAX(0, stock - ?), updated_at = CURRENT_TIMESTAMP
@@ -142,7 +142,7 @@ func applySeenPosting(tx *sql.Tx, p *OzonPosting) (bool, error) {
 	}
 	moved := false
 	// Return only on the "not cancelled → cancelled" transition. A posting seen
-	// as cancelled from the start never deducted stock — there is nothing to return.
+	// as cancelled from the start never deducted stock - there is nothing to return.
 	if p.Cancelled && status != OzonStatusCancelled {
 		items, err := ozonOrderStock(tx, id)
 		if err != nil {
@@ -159,10 +159,10 @@ func applySeenPosting(tx *sql.Tx, p *OzonPosting) (bool, error) {
 
 // ozonOrderStock reads all lines before the first Exec: the transaction has a
 // single connection, and an open Rows must not be held while writing.
-// Unmatched lines drop out — there is nowhere to return their stock.
+// Unmatched lines drop out - there is nowhere to return their stock.
 //
 // ponytail: we return the ordered qty, not what was actually deducted. They can
-// diverge only on an oversell (deducted less than sold) — if that starts to
+// diverge only on an oversell (deducted less than sold) - if that starts to
 // hurt, add an applied_qty column to ozon_order_items: the table is new, no
 // ALTER TABLE on live instances will be needed.
 func ozonOrderStock(tx *sql.Tx, id int64) ([]OrderItem, error) {
@@ -184,7 +184,7 @@ func ozonOrderStock(tx *sql.Tx, id int64) ([]OrderItem, error) {
 	return out, rows.Err()
 }
 
-// resolveOffer looks up a product by the marketplace SKU. nil — no link: the
+// resolveOffer looks up a product by the marketplace SKU. nil - no link: the
 // line is recorded anyway, so the owner sees an unrecognized sale, not a blank.
 func resolveOffer(tx *sql.Tx, offerID string) (*int64, error) {
 	var id int64
@@ -221,7 +221,7 @@ func (d *Database) CountOzonOrders() (int, error) {
 	return n, err
 }
 
-// CountOzonOrderState — counters for the tab header: total sales, of those how
+// CountOzonOrderState - counters for the tab header: total sales, of those how
 // many oversold and how many with unmatched lines.
 func (d *Database) CountOzonOrderState() (total, oversold, unresolved int, err error) {
 	err = d.db.QueryRow(
@@ -296,7 +296,7 @@ func (d *Database) loadOzonOrderItems(orders []OzonOrder, byID map[int64]int) er
 	return rows.Err()
 }
 
-// OzonOrdersSince returns the zero time if polling has never run — the caller
+// OzonOrdersSince returns the zero time if polling has never run - the caller
 // decides itself which window to start with the first time.
 func (d *Database) OzonOrdersSince() (time.Time, error) {
 	var t time.Time

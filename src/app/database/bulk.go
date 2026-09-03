@@ -18,7 +18,7 @@ type Selection struct {
 }
 
 // where builds the clause for a selection. Returns ok=false when there is
-// nothing to act on — a bulk call with neither ids nor the all flag must touch
+// nothing to act on - a bulk call with neither ids nor the all flag must touch
 // no rows at all.
 func (s Selection) where() (string, []any, bool) {
 	if s.All {
@@ -64,7 +64,7 @@ func (d *Database) SetHiddenBulk(s Selection, hidden bool) (int, error) {
 	return d.bulkUpdate(s, "hidden=?", hidden)
 }
 
-// SetSupplierBulk moves products between groups — for when an article changes
+// SetSupplierBulk moves products between groups - for when an article changes
 // hands from one supplier to another.
 func (d *Database) SetSupplierBulk(s Selection, supplier string) (int, error) {
 	return d.bulkUpdate(s, "supplier=?", supplier)

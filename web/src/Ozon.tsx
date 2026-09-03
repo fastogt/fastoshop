@@ -22,7 +22,7 @@ import { IconDownload, IconUpload } from "./Icons";
 
 // Ozon posting statuses live in the same dictionary under their raw codes. An
 // unknown status is shown as is: the platform keeps adding new ones, and hiding
-// them behind "—" is worse than showing the raw code.
+// them behind "-" is worse than showing the raw code.
 const kChannelTabs = [
   "tabSetup",
   "tabPublish",
@@ -59,8 +59,8 @@ const kText = {
 
   connection: { ru: "Подключение", en: "Connection" },
   fbsOnly: {
-    ru: "Работаем по схеме FBS — товары лежат на вашем складе, и остатками управляет магазин. Товары на складе Ozon (FBO) синхронизировать нельзя: их остаток знает только площадка, и продать их с витрины вы не сможете.",
-    en: "We work with FBS — the goods are in your warehouse and the shop manages the stock. Products stored at Ozon (FBO) cannot be synced: only the platform knows their stock, and you cannot ship them from your storefront.",
+    ru: "Работаем по схеме FBS - товары лежат на вашем складе, и остатками управляет магазин. Товары на складе Ozon (FBO) синхронизировать нельзя: их остаток знает только площадка, и продать их с витрины вы не сможете.",
+    en: "We work with FBS - the goods are in your warehouse and the shop manages the stock. Products stored at Ozon (FBO) cannot be synced: only the platform knows their stock, and you cannot ship them from your storefront.",
   },
   guide: {
     ru: "Кабинет продавца Ozon → Настройки → API-ключи → «Сгенерировать ключ». Скопируйте Client-Id и Api-Key.",
@@ -75,19 +75,19 @@ const kText = {
   // stock figure, so the same number sent to two warehouses would be the same
   // goods promised twice.
   warehouseHint: {
-    ru: "Складов в кабинете может быть несколько — остатки уезжают на этот. У товара один остаток, разделить его между складами магазин не умеет.",
-    en: "A cabinet may hold several warehouses — stock travels to this one. A product carries a single stock figure, and the shop cannot split it between warehouses.",
+    ru: "Складов в кабинете может быть несколько - остатки уезжают на этот. У товара один остаток, разделить его между складами магазин не умеет.",
+    en: "A cabinet may hold several warehouses - stock travels to this one. A product carries a single stock figure, and the shop cannot split it between warehouses.",
   },
-  pickWarehouse: { ru: "— выберите склад —", en: "— pick a warehouse —" },
+  pickWarehouse: { ru: "- выберите склад -", en: "- pick a warehouse -" },
   loadWarehouses: { ru: "Загрузить склады", en: "Load warehouses" },
   noWarehouses: {
-    ru: "Складов не нашлось — впишите id вручную",
-    en: "No warehouses found — enter the id manually",
+    ru: "Складов не нашлось - впишите id вручную",
+    en: "No warehouses found - enter the id manually",
   },
   // The cabinet's currency is not ours to keep: one shop is one legal entity is
   // one money. When the check disagrees with the shop, the shop is what is wrong.
   currencyMismatch: {
-    ru: "Кабинет торгует в {cabinet}, а магазин — в {shop}. Цены уедут в валюте магазина и площадка их отобьёт. Поправьте валюту в Профиле.",
+    ru: "Кабинет торгует в {cabinet}, а магазин - в {shop}. Цены уедут в валюте магазина и площадка их отобьёт. Поправьте валюту в Профиле.",
     en: "The cabinet trades in {cabinet}, the shop in {shop}. Prices travel in the shop's currency and the platform will refuse them. Fix the currency in Profile.",
   },
   enabled: {
@@ -98,18 +98,18 @@ const kText = {
   saved: { ru: "Сохранено", en: "Saved" },
   check: { ru: "Проверить", en: "Check" },
   checked: {
-    ru: "Кабинет {name}: товаров — {n}, валюта {cur}",
-    en: "Account {name}: products — {n}, currency {cur}",
+    ru: "Кабинет {name}: товаров - {n}, валюта {cur}",
+    en: "Account {name}: products - {n}, currency {cur}",
   },
 
   publication: { ru: "Публикация", en: "Publication" },
   publicationHint: {
-    ru: "Отметьте товары, которые продаёте на Ozon. В канал уезжают только отмеченные — остальные живут на витрине и площадку не видят.",
+    ru: "Отметьте товары, которые продаёте на Ozon. В канал уезжают только отмеченные - остальные живут на витрине и площадку не видят.",
     en: "Tick the products you sell on Ozon. Only ticked ones go to the channel; the rest live on the storefront and never reach the marketplace.",
   },
   cabinetSummary: {
     // Only the cabinet's own card count: the three states below it are on the
-    // buttons, where they belong — the owner is choosing what to look at, and a
+    // buttons, where they belong - the owner is choosing what to look at, and a
     // sentence repeating the choice word for word is noise between them.
     ru: "В кабинете карточек: {cards}.",
     en: "Cards in the cabinet: {cards}.",
@@ -139,8 +139,8 @@ const kText = {
   // owner who never picked one sees "published" and then nothing happens on the
   // platform, with no error anywhere: the worker skips stocks in silence.
   noWarehouse: {
-    ru: " Остатки не поедут: не задан склад FBS. Выберите его в настройках выше, а если список пуст — заведите склад в кабинете Ozon: через API склады не создаются.",
-    en: " Stock will not travel: no FBS warehouse is set. Pick one in the settings above, and if the list is empty, create a warehouse in the Ozon cabinet — the API does not create them.",
+    ru: " Остатки не поедут: не задан склад FBS. Выберите его в настройках выше, а если список пуст - заведите склад в кабинете Ozon: через API склады не создаются.",
+    en: " Stock will not travel: no FBS warehouse is set. Pick one in the settings above, and if the list is empty, create a warehouse in the Ozon cabinet - the API does not create them.",
   },
   unpublishedResult: { ru: "Снято: {n}", en: "Unpublished: {n}" },
   noCardTitle: {
@@ -156,12 +156,12 @@ const kText = {
     en: "Could not zero the stock",
   },
   zeroFailedHint: {
-    ru: "Связь сохранена намеренно: пока на площадке остаётся наш остаток, забывать про карточку нельзя — она продолжит продавать.",
+    ru: "Связь сохранена намеренно: пока на площадке остаётся наш остаток, забывать про карточку нельзя - она продолжит продавать.",
     en: "The link is kept on purpose: while our stock is still live on the platform, forgetting the card would let it keep selling.",
   },
   linking: { ru: "Связывание", en: "Linking" },
   linkingHint: {
-    ru: "Связываем по артикулу: артикул товара в магазине должен совпадать с offer_id карточки в кабинете Ozon — символ в символ.",
+    ru: "Связываем по артикулу: артикул товара в магазине должен совпадать с offer_id карточки в кабинете Ozon - символ в символ.",
     en: "Matching goes by article: a product’s article in the shop must equal the offer_id of the Ozon listing, character for character.",
   },
   linkedNow: {
@@ -176,15 +176,15 @@ const kText = {
     en: "Missing from the Ozon account",
   },
   missingOnOzonHint: {
-    ru: "Эти товары магазина не нашлись по артикулу — заведите карточку на Ozon или поправьте артикул.",
-    en: "These shop products had no article match — create the listing on Ozon or fix the article.",
+    ru: "Эти товары магазина не нашлись по артикулу - заведите карточку на Ozon или поправьте артикул.",
+    en: "These shop products had no article match - create the listing on Ozon or fix the article.",
   },
   articleOf: { ru: "(артикул: {sku})", en: "(article: {sku})" },
   articleEmpty: { ru: "не задан", en: "not set" },
 
   linkedProducts: { ru: "Связанные товары", en: "Linked products" },
   linkedProductsHint: {
-    ru: "Цена на Ozon — ваша цена на площадке, отдельная от витринной. Пустая цена значит, что мы её не трогаем: на Ozon останется та, что стоит в кабинете.",
+    ru: "Цена на Ozon - ваша цена на площадке, отдельная от витринной. Пустая цена значит, что мы её не трогаем: на Ozon останется та, что стоит в кабинете.",
     en: "The Ozon price is your marketplace price, separate from the shop one. An empty price means we leave it alone: Ozon keeps whatever is set in the account.",
   },
   fillFromShop: {
@@ -241,8 +241,8 @@ const kText = {
     en: "…and {n} more",
   },
   extraOnOzonHint: {
-    ru: "Эти карточки Ozon не совпали ни с одним товаром — их можно перенести на вкладке «Импорт».",
-    en: "These Ozon listings matched no product — you can bring them over on the Import tab.",
+    ru: "Эти карточки Ozon не совпали ни с одним товаром - их можно перенести на вкладке «Импорт».",
+    en: "These Ozon listings matched no product - you can bring them over on the Import tab.",
   },
 
   sync: { ru: "Синхронизация", en: "Sync" },
@@ -269,8 +269,8 @@ const kText = {
 
   sales: { ru: "Продажи на Ozon", en: "Ozon sales" },
   salesHint: {
-    ru: "Заказы площадки: они списывают остаток в магазине, но в раздел «Заказы» и налоговый CSV не попадают — по ним отчитывается сам Ozon.",
-    en: "Marketplace orders: they draw down shop stock, but never show up under Orders or in the tax CSV — Ozon reports them itself.",
+    ru: "Заказы площадки: они списывают остаток в магазине, но в раздел «Заказы» и налоговый CSV не попадают - по ним отчитывается сам Ozon.",
+    en: "Marketplace orders: they draw down shop stock, but never show up under Orders or in the tax CSV - Ozon reports them itself.",
   },
   salesTotal: { ru: "Всего: {n}", en: "Total: {n}" },
   salesOversold: { ru: ", с оверселлом: {n}", en: ", oversold: {n}" },
@@ -291,8 +291,8 @@ const kText = {
   colDate: { ru: "Дата", en: "Date" },
   colItems: { ru: "Состав", en: "Items" },
   itemUnmatched: {
-    ru: "{offer} × {qty} — не смогли сопоставить товар",
-    en: "{offer} × {qty} — could not match a product",
+    ru: "{offer} × {qty} - не смогли сопоставить товар",
+    en: "{offer} × {qty} - could not match a product",
   },
   oversold: {
     ru: "продано больше, чем было у нас",
@@ -349,7 +349,7 @@ export default function Ozon() {
   );
 
   // Open on the pile with a button attached; fall back to what is already
-  // linked, and only then to everything — a shop with no cabinet answer at all
+  // linked, and only then to everything - a shop with no cabinet answer at all
   // still gets the table it had before this existed.
   const defaultView: CandidateView["kind"] = !cabinet
     ? "all"
@@ -376,7 +376,7 @@ export default function Ozon() {
 
   const loadCabinet = useCallback(
     // A shop with no keys, or a platform that will not answer, simply gets no
-    // summary — the table worked before this existed and must keep working.
+    // summary - the table worked before this existed and must keep working.
     () =>
       api
         .ozonCabinet()
@@ -430,7 +430,7 @@ export default function Ozon() {
       offer_id: e.offer_id,
       kind: t("kindStock"),
       want: String(e.stock),
-      pushed: e.pushed < 0 ? "—" : String(e.pushed),
+      pushed: e.pushed < 0 ? "-" : String(e.pushed),
       error: e.error,
     })),
     ...s.price_errors.map((e) => ({
@@ -438,7 +438,7 @@ export default function Ozon() {
       offer_id: e.offer_id,
       kind: t("kindPrice"),
       want: `${toRubles(e.price)} ${s.currency}`,
-      pushed: e.pushed < 0 ? "—" : `${toRubles(e.pushed)} ${s.currency}`,
+      pushed: e.pushed < 0 ? "-" : `${toRubles(e.pushed)} ${s.currency}`,
       error: e.error,
     })),
   ];
@@ -815,7 +815,7 @@ export default function Ozon() {
               key: "sku",
               label: t("colArticle"),
               hideMobile: true,
-              render: (p) => p.sku || "—",
+              render: (p) => p.sku || "-",
             },
             { key: "stock", label: t("colStock"), render: (p) => p.stock },
             {
@@ -908,8 +908,8 @@ export default function Ozon() {
         {/* "Связать по артикулу" lived here and did what "Опубликовать" does,
             only over the whole catalogue: both fetch the cabinet's articles and
             write the pairs that match. Worse, its own counters called the two
-            states one thing — "без связи: 105" for 104 products with no card
-            and one that only needed a click — which is the conflation the state
+            states one thing - "без связи: 105" for 104 products with no card
+            and one that only needed a click - which is the conflation the state
             buttons above exist to undo. */}
         {links && links.links.length > 0 && (
           <div className="flex flex-col gap-3">

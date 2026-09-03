@@ -15,7 +15,7 @@ import (
 )
 
 // CSV is the shop's own template: a fixed set of columns the owner fills in a
-// spreadsheet. No guessing at someone else's layout — the file's author is our
+// spreadsheet. No guessing at someone else's layout - the file's author is our
 // user, so we hand them the shape instead of trying to infer it.
 type CSV struct {
 	Data []byte
@@ -38,10 +38,10 @@ func Template() []byte {
 }
 
 // kCP1251 maps the upper half of windows-1251 to runes. A table beats pulling in
-// x/text for one legacy charset — and this one is not optional: Russian Excel
+// x/text for one legacy charset - and this one is not optional: Russian Excel
 // writes CSV in cp1251, and without it the whole catalogue arrives as mojibake.
 var kCP1251 = []rune(
-	"ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—�™љ›њќћџ" +
+	"ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–-�™љ›њќћџ" +
 		" ЎўЈ¤Ґ¦§Ё©Є«¬\u00ad®Ї°±Ііґµ¶·ё№є»јЅѕї" +
 		"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ" +
 		"абвгдежзийклмнопрстуфхцчшщъыьэюя")
@@ -160,7 +160,7 @@ var kKnownColumns = map[string]bool{
 // cell adds nothing: an empty property is a heading over nothing on the card.
 //
 // Values stay text. A spreadsheet states no types and no units, so reading a
-// cell as a number would be reading the digits and hoping — and the column that
+// cell as a number would be reading the digits and hoping - and the column that
 // finally proves it wrong is the one holding article numbers.
 func extraColumns(header, row []string) []database.Param {
 	var out []database.Param
@@ -177,8 +177,8 @@ func extraColumns(header, row []string) []database.Param {
 }
 
 // cellCategory reads the category the way price lists write it. Half of them
-// spell nesting inside one cell — "Текстиль > Спальня", sometimes with a slash
-// or a pipe — and that is data, not a guess. A cell with no separator is a
+// spell nesting inside one cell - "Текстиль > Спальня", sometimes with a slash
+// or a pipe - and that is data, not a guess. A cell with no separator is a
 // single level, which is what a spreadsheet usually holds.
 func cellCategory(raw string) string {
 	runes := []rune(raw)
@@ -211,8 +211,8 @@ func isDigitish(r rune) bool {
 // thousands grouping: "1 234,50" is what a spreadsheet produces.
 // kPriceNote is a price followed by a note to a human: a star, a currency, a
 // discount in brackets. The number is the price and the note is not, so the
-// leading number is taken. A bracket may hold digits — "4.16(-9.2%)" is one
-// price and its discount — but a bare second number is two prices, and
+// leading number is taken. A bracket may hold digits - "4.16(-9.2%)" is one
+// price and its discount - but a bare second number is two prices, and
 // choosing between them is not ours to do.
 var kPriceNote = regexp.MustCompile(`^(-?[0-9]+(?:\.[0-9]+)?)(?:\([^)]*\)|[^0-9(])*$`)
 

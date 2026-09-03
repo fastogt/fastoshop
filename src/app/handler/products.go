@@ -220,7 +220,7 @@ func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteImage removes a photo from a product, and the file with it when the
-// photo is ours. Imported photos are links to the supplier's server — there is
+// photo is ours. Imported photos are links to the supplier's server - there is
 // nothing of ours to unlink.
 type categoriesResponse struct {
 	Categories []string `json:"categories"`
@@ -299,7 +299,7 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	// enrich issues one query per product: 100 rows — 101 queries to local
+	// enrich issues one query per product: 100 rows - 101 queries to local
 	// SQLite, measured as unnoticeable. A join will be needed if per grows.
 	out := make([]productResponse, 0, len(list))
 	for _, p := range list {
@@ -364,7 +364,7 @@ type imageOrderRequest struct {
 
 // SetImageOrder is the drag and drop behind the photo strip. The first photo is
 // what a shopper sees in the catalogue and what a search engine puts next to the
-// snippet, so moving a good one to the front is a routine job, not a nicety —
+// snippet, so moving a good one to the front is a routine job, not a nicety -
 // especially on an imported catalogue, where the order came from the supplier.
 func (h *Handler) SetImageOrder(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r)

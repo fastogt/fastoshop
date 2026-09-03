@@ -6,7 +6,7 @@ import (
 )
 
 // WBPriceRow is a link whose Wildberries price is due for a push. Price is the
-// price ON WILDBERRIES in kopecks — the owner's own number, not products.price.
+// price ON WILDBERRIES in kopecks - the owner's own number, not products.price.
 type WBPriceRow struct {
 	ProductID   int64
 	NmID        int64
@@ -33,7 +33,7 @@ type WBPriceTask struct {
 
 // kWBPriceGuard: price = 0 means the owner never opted this product in, and we
 // never touch a price we were not asked to manage. A non-empty price_task means
-// an upload is still in flight — without that clause the next tick would upload
+// an upload is still in flight - without that clause the next tick would upload
 // everything again, because price_pushed only moves when the task reports back.
 const kWBPriceGuard = `nm_id != 0 AND price > 0 AND price_task = ''
 	 AND (price + 99) / 100 * 100 != price_pushed`
@@ -149,8 +149,8 @@ func (d *Database) MarkWBPriceTaskFailed(uploadID string, byNm map[int64]string,
 }
 
 // MarkWBCardError stamps every row of the given cards with one message. Price
-// lives on the card, not on the size, so a refusal — or sizes that disagree on
-// the price — belongs to all rows of that card at once.
+// lives on the card, not on the size, so a refusal - or sizes that disagree on
+// the price - belongs to all rows of that card at once.
 func (d *Database) MarkWBCardError(nmIDs []int64, msg string, retryAt time.Time) error {
 	at := retryAt.UTC().Format(kSQLiteTime)
 	return d.withTx(func(tx *sql.Tx) error {
@@ -177,7 +177,7 @@ func (d *Database) CountWBPriceState() (pending, inFlight, failed int, err error
 
 // SetWBPrice returns false when there is no link for that product: setting a
 // platform price for something we never linked is a mistake worth reporting, not
-// a row worth creating. Clearing price_error is deliberate — an edit is the
+// a row worth creating. Clearing price_error is deliberate - an edit is the
 // owner's attempt to fix whatever the platform complained about.
 func (d *Database) SetWBPrice(productID, price int64) (bool, error) {
 	res, err := d.db.Exec(
@@ -208,7 +208,7 @@ func (d *Database) FillWBPrices(markupBP int64) (int, error) {
 }
 
 // WBLinkRow is one line of the linked-products table on the tab. Title and SKU
-// are empty for a link whose product is gone — the row still matters, it is the
+// are empty for a link whose product is gone - the row still matters, it is the
 // card we keep zeroing out on the platform.
 type WBLinkRow struct {
 	ProductID   int64

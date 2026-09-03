@@ -33,7 +33,7 @@ type Product struct {
 	Hidden bool `json:"hidden"`
 	// Gross weight in grams and packed size in millimetres. Pointers, because
 	// "nobody said" and "zero" are different answers: a delivery quote must not
-	// treat an unweighed product as weightless. Absent stays absent — a price
+	// treat an unweighed product as weightless. Absent stays absent - a price
 	// list rarely states a weight, and guessing one costs real money at the
 	// counter.
 	WeightG  *int64 `json:"weight_g"`
@@ -51,21 +51,21 @@ type Product struct {
 }
 
 // Param is one characteristic. Value keeps the type its source gave it, because
-// JSON already has that notation — a second one beside it would be a second one
+// JSON already has that notation - a second one beside it would be a second one
 // to keep in sync, and every type it could name is one JSON already spells.
 // Wildberries hands us `any` for exactly this reason, and flattening it into a
 // string was throwing away a type nobody had to guess at.
 //
 // Name is both the caption and the key: all three sources state one string and
 // no identifier, so a separate key would be that same string twice. A unit
-// belongs in it — "Вес, кг" reads, and it leaves 1.5 a number.
+// belongs in it - "Вес, кг" reads, and it leaves 1.5 a number.
 type Param struct {
 	Name  string `json:"name"`
 	Value any    `json:"value"`
 }
 
 // ParamValueOK reports whether v is a value we store: one of JSON's own scalars
-// or a flat list of them. Everything else — an object, null, a blank string — is
+// or a flat list of them. Everything else - an object, null, a blank string - is
 // not a characteristic: it would put an empty row on the card, or a shape the
 // storefront's switch has no branch for. Checked on the way in and again on the
 // way out, because a database is not only written by this code.
@@ -238,7 +238,7 @@ type CatalogFilter struct {
 	InStock bool
 }
 
-// kCatalogSortable — the orders a buyer may ask for. Sorting runs in SQL over
+// kCatalogSortable - the orders a buyer may ask for. Sorting runs in SQL over
 // the whole catalogue, not over the page in the browser: 60 cards sorted out of
 // 20 000 would be a lie.
 var kCatalogSortable = map[string]string{
@@ -273,7 +273,7 @@ func productWhere(category, q, supplier string, onlyVisible bool) (string, []any
 	// catalogue written in Russian is invisible to a buyer typing in lower case
 	// without this.
 	//
-	// ponytail: a full scan per word — three words is three passes of the 46 ms
+	// ponytail: a full scan per word - three words is three passes of the 46 ms
 	// one pass already costs. FTS5 with the unicode61 tokenizer is the upgrade,
 	// and it brings ranking, which this has never had; it also brings a virtual
 	// table to keep in step with an import that writes 24 000 rows at once.
@@ -411,7 +411,7 @@ func (d *Database) Suppliers() ([]string, error) {
 	return d.distinct("supplier")
 }
 
-// distinct is safe because the column name never comes from a request — the two
+// distinct is safe because the column name never comes from a request - the two
 // callers pass a literal.
 func (d *Database) distinct(column string) ([]string, error) {
 	rows, err := d.db.Query(

@@ -67,8 +67,8 @@ const kText = {
     en: "The token has no Marketplace section: stock and orders are refused, so warehouse sync will not work. Issue a new token in the Wildberries account with that section ticked.",
   },
   warehouseHint: {
-    ru: "Склад нужен только для остатков — без него цены всё равно отправляются. Складов в кабинете может быть несколько, остатки уезжают на этот: у товара один остаток, разделить его между складами магазин не умеет.",
-    en: "The warehouse is only needed for stock — prices are sent without it. A cabinet may hold several warehouses and stock travels to this one: a product carries a single stock figure, and the shop cannot split it between warehouses.",
+    ru: "Склад нужен только для остатков - без него цены всё равно отправляются. Складов в кабинете может быть несколько, остатки уезжают на этот: у товара один остаток, разделить его между складами магазин не умеет.",
+    en: "The warehouse is only needed for stock - prices are sent without it. A cabinet may hold several warehouses and stock travels to this one: a product carries a single stock figure, and the shop cannot split it between warehouses.",
   },
   enabled: { ru: "Синхронизировать", en: "Sync enabled" },
   save: { ru: "Сохранить", en: "Save" },
@@ -92,13 +92,13 @@ const kText = {
   yes: { ru: "да", en: "yes" },
   cabinetSummary: {
     // Only the cabinet's own card count: the three states below it are on the
-    // buttons, where they belong — the owner is choosing what to look at, and a
+    // buttons, where they belong - the owner is choosing what to look at, and a
     // sentence repeating the choice word for word is noise between them.
     ru: "В кабинете карточек: {cards}.",
     en: "Cards in the cabinet: {cards}.",
   },
   cabinetAmbiguous: {
-    ru: "Ещё {n} товаров нашли карточку с несколькими размерами — её нельзя связать по одному артикулу.",
+    ru: "Ещё {n} товаров нашли карточку с несколькими размерами - её нельзя связать по одному артикулу.",
     en: "Another {n} products matched a card with several sizes, which one article cannot link.",
   },
   cabinetOrphans: {
@@ -113,8 +113,8 @@ const kText = {
   // owner who never picked one sees "linked" and then nothing happens on the
   // platform, with no error anywhere: the worker skips stocks in silence.
   noWarehouse: {
-    ru: " Остатки не поедут: не задан склад. Выберите его в настройках выше, а если список пуст — заведите склад в кабинете Wildberries: через API склады не создаются.",
-    en: " Stock will not travel: no warehouse is set. Pick one in the settings above, and if the list is empty, create a warehouse in the Wildberries cabinet — the API does not create them.",
+    ru: " Остатки не поедут: не задан склад. Выберите его в настройках выше, а если список пуст - заведите склад в кабинете Wildberries: через API склады не создаются.",
+    en: " Stock will not travel: no warehouse is set. Pick one in the settings above, and if the list is empty, create a warehouse in the Wildberries cabinet - the API does not create them.",
   },
   unpublishDone: {
     ru: "Снято с площадки: {n}",
@@ -129,8 +129,8 @@ const kText = {
   linking: { ru: "Связь с карточками", en: "Card linking" },
   moreCards: { ru: "…и ещё {n}", en: "…and {n} more" },
   linkHint: {
-    ru: "Артикул товара сверяется с артикулом продавца в карточке. Штрихкод берётся из самой карточки — в прайсе его нет и быть не должно.",
-    en: "The product article is matched against the seller's article on the card. The barcode is read off the card itself — a price list does not carry one.",
+    ru: "Артикул товара сверяется с артикулом продавца в карточке. Штрихкод берётся из самой карточки - в прайсе его нет и быть не должно.",
+    en: "The product article is matched against the seller's article on the card. The barcode is read off the card itself - a price list does not carry one.",
   },
   linkDone: { ru: "Связано: {n}", en: "Linked: {n}" },
   linkedCount: {
@@ -145,7 +145,7 @@ const kText = {
 
   ladder: { ru: "Лестница наценки", en: "Markup ladder" },
   ladderHint: {
-    ru: "До какой цены какой множитель. Последняя строка — «и выше», она обязательна.",
+    ru: "До какой цены какой множитель. Последняя строка - «и выше», она обязательна.",
     en: 'Which multiplier up to which price. The last row is "and above" and is required.',
   },
   upTo: { ru: "до", en: "up to" },
@@ -166,20 +166,20 @@ const kText = {
     en: "Pushed: {n}, failed: {m}",
   },
   stockCounters: {
-    ru: "Остатки — ждут отправки: {n}, с ошибкой: {m}",
-    en: "Stock — waiting: {n}, failed: {m}",
+    ru: "Остатки - ждут отправки: {n}, с ошибкой: {m}",
+    en: "Stock - waiting: {n}, failed: {m}",
   },
   priceCounters: {
-    ru: "Цены — ждут отправки: {n}, в пути: {f}, с ошибкой: {m}",
-    en: "Prices — waiting: {n}, in flight: {f}, failed: {m}",
+    ru: "Цены - ждут отправки: {n}, в пути: {f}, с ошибкой: {m}",
+    en: "Prices - waiting: {n}, in flight: {f}, failed: {m}",
   },
   inFlightHint: {
-    ru: "Wildberries принимает цены задачей и отвечает о результате позже, поэтому «в пути» — это нормальное состояние, а не ошибка.",
+    ru: "Wildberries принимает цены задачей и отвечает о результате позже, поэтому «в пути» - это нормальное состояние, а не ошибка.",
     en: 'Wildberries accepts prices as a task and reports the result later, so "in flight" is a normal state, not a failure.',
   },
   ordersCounters: {
-    ru: "Продажи — всего: {n}, продано сверх остатка: {o}, без товара: {u}",
-    en: "Sales — total: {n}, oversold: {o}, unmatched: {u}",
+    ru: "Продажи - всего: {n}, продано сверх остатка: {o}, без товара: {u}",
+    en: "Sales - total: {n}, oversold: {o}, unmatched: {u}",
   },
 
   sales: { ru: "Продажи на площадке", en: "Sales on the platform" },
@@ -262,7 +262,7 @@ export default function WB() {
 
   const loadCabinet = useCallback(
     // A shop with no token, or a platform that will not answer, simply gets no
-    // summary — the table worked before this existed and must keep working.
+    // summary - the table worked before this existed and must keep working.
     () =>
       api
         .wbCabinet()
@@ -515,7 +515,7 @@ export default function WB() {
                 value={s.warehouse_id}
                 onChange={(e) => setS({ ...s, warehouse_id: e.target.value })}
               >
-                <option value="">—</option>
+                <option value="">-</option>
                 {warehouses.map((wh) => (
                   <option key={wh.id} value={wh.id}>
                     {wh.name}
@@ -689,7 +689,7 @@ export default function WB() {
             <ul className="hint list-disc pl-5">
               {noCard.map((p) => (
                 <li key={p.id}>
-                  {p.sku} — {p.title}
+                  {p.sku} - {p.title}
                   {p.reason && ` (${p.reason})`}
                 </li>
               ))}
@@ -702,7 +702,7 @@ export default function WB() {
             <ul className="hint list-disc pl-5">
               {zeroFailed.map((p) => (
                 <li key={p.id}>
-                  {p.sku} — {p.title}
+                  {p.sku} - {p.title}
                 </li>
               ))}
             </ul>
@@ -739,7 +739,7 @@ export default function WB() {
 
       {tab === "tabPrices" && (<>
       {/* "Связать по артикулу" did what "Опубликовать" does, only over the whole
-          catalogue — both read the cabinet's vendor codes and write the pairs
+          catalogue - both read the cabinet's vendor codes and write the pairs
           that match. Its counters also called two states one thing, which is
           what the state buttons above exist to separate. The cards with no
           product of ours moved to their own section, filled by the cabinet call
@@ -965,7 +965,7 @@ export default function WB() {
                   o.title
                 ) : (
                   <span className="text-red-600">
-                    {o.article || o.barcode} — {t("unmatched")}
+                    {o.article || o.barcode} - {t("unmatched")}
                   </span>
                 ),
             },

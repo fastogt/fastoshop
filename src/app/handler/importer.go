@@ -24,10 +24,10 @@ type importRequest struct {
 	// would put that logic where it cannot be tested.
 	FileBase64 string `json:"file_base64"`
 	// Supplier group the import belongs to. Empty means the owner's own goods,
-	// which no feed touches — so an import into it is refused.
+	// which no feed touches - so an import into it is refused.
 	Supplier string `json:"supplier"`
 	// Multiplier from the source price to the shelf price. 0 means the client
-	// did not send one — keep whatever the shop already uses.
+	// did not send one - keep whatever the shop already uses.
 	Coefficient float64 `json:"coefficient"`
 }
 
@@ -118,7 +118,7 @@ func (h *Handler) ImportCheck(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// ponytail: the feed is fetched here and again on import — seconds on 20 000
+	// ponytail: the feed is fetched here and again on import - seconds on 20 000
 	// items, and it keeps the whole "staged upload" machinery out of the product.
 	items, err := src.Fetch()
 	if err != nil {
@@ -193,7 +193,7 @@ func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The source keeps the cabinet keys in memory for as long as the job runs and
-	// no longer — the admin promises they are never stored.
+	// no longer - the admin promises they are never stored.
 	go func() {
 		res, err := importer.Run(src, h.db, supplier, coefficient, h.uploadsDir,
 			func(stage string, done, total int) {

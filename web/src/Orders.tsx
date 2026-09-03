@@ -22,8 +22,8 @@ const kText = {
     en: "Export CSV for the accountant",
   },
   empty: {
-    ru: "Заказов пока нет. Они появятся здесь сразу после оформления на витрине — и продублируются письмом, если настроена почта.",
-    en: "No orders yet. They show up here as soon as someone checks out in the shop — and by email too, once mail is configured.",
+    ru: "Заказов пока нет. Они появятся здесь сразу после оформления на витрине - и продублируются письмом, если настроена почта.",
+    en: "No orders yet. They show up here as soon as someone checks out in the shop - and by email too, once mail is configured.",
   },
   thNumber: { ru: "#", en: "#" },
   itemsCount: { ru: "{n} позиции · {q} шт", en: "{n} item(s) · {q} pcs" },
@@ -55,22 +55,22 @@ const kText = {
   markDone: { ru: "Отметить выполненными", en: "Mark as completed" },
   bulkDelete: { ru: "Удалить", en: "Delete" },
   confirmDelete: {
-    ru: "Удалить заказы ({n})? Данные покупателя и состав заказа исчезнут навсегда. Остатки не вернутся — для этого отмените заказ.",
-    en: "Delete {n} order(s)? The buyer's details and the contents disappear for good. Stock is not returned — cancel the order for that.",
+    ru: "Удалить заказы ({n})? Данные покупателя и состав заказа исчезнут навсегда. Остатки не вернутся - для этого отмените заказ.",
+    en: "Delete {n} order(s)? The buyer's details and the contents disappear for good. Stock is not returned - cancel the order for that.",
   },
   deleted: { ru: "Удалено: {n}", en: "Deleted: {n}" },
   markCancelled: { ru: "Отменить", en: "Cancel" },
   markNew: { ru: "Вернуть в работу", en: "Reopen" },
   bulkDone: { ru: "Изменено заказов: {n}", en: "Orders changed: {n}" },
   bulkPartly: {
-    ru: "Изменено: {n}. Не удалось: {failed} — вернуть в работу можно только то, что ещё есть на складе.",
-    en: "Changed: {n}. Failed: {failed} — an order can only be reopened while the goods are still in stock.",
+    ru: "Изменено: {n}. Не удалось: {failed} - вернуть в работу можно только то, что ещё есть на складе.",
+    en: "Changed: {n}. Failed: {failed} - an order can only be reopened while the goods are still in stock.",
   },
 };
 
 // Reopening an order can hit the stock limit: the server refuses, and the shop
 // owner must see why instead of a select that silently rolls back.
-// gofastogt wraps the text in "invalid input (…)" — show only the substance.
+// gofastogt wraps the text in "invalid input (…)" - show only the substance.
 const statusError = (err: unknown, fallback: string) =>
   apiError(err)?.match(/\((.*)\)$/)?.[1] ?? fallback;
 
@@ -212,7 +212,7 @@ export default function Orders() {
             width: "110px",
             render: (o) => (
               <span className="font-semibold whitespace-nowrap">
-                {o.broken ? "—" : `${toRubles(o.total)} ${sign}`}
+                {o.broken ? "-" : `${toRubles(o.total)} ${sign}`}
               </span>
             ),
           },

@@ -18,7 +18,7 @@ import (
 type Handlers struct {
 	db     *database.Database
 	worker *Worker
-	// Hosts overrides the API addresses — tests point a mock here. Empty in
+	// Hosts overrides the API addresses - tests point a mock here. Empty in
 	// production: the client picks live or sandbox from the settings.
 	Hosts Hosts
 }
@@ -87,7 +87,7 @@ type settingsResponse struct {
 	StockErrors []stockErrorRow `json:"stock_errors"`
 	// Price counters live next to the stock ones instead of replacing them: a
 	// price the platform refused must not hide a stock that did not arrive.
-	// InFlight is what makes this channel different from Ozon — an upload is
+	// InFlight is what makes this channel different from Ozon - an upload is
 	// accepted long before it is applied, and the owner has to see the wait.
 	PricePending  int             `json:"price_pending"`
 	PriceInFlight int             `json:"price_in_flight"`
@@ -160,7 +160,7 @@ type checkResponse struct {
 	LegalName string `json:"legal_name"`
 	TradeMark string `json:"trade_mark"`
 	// NoStockScope: the token was issued without the Marketplace section, so
-	// stock can never travel. Reported here because nothing else says it — the
+	// stock can never travel. Reported here because nothing else says it - the
 	// cards and prices calls succeed, the tab looks connected, and the levels
 	// silently stay put. Measured on a live seller who pasted such a token.
 	NoStockScope bool `json:"no_stock_scope"`
@@ -399,8 +399,8 @@ func (h *Handlers) Push(w http.ResponseWriter, r *http.Request) {
 }
 
 // Orders is the platform sales log. These sales never land in the shop's orders
-// — the platform reports them itself, and duplicating would double the revenue
-// in the tax CSV — so this is the only place the owner sees them.
+// - the platform reports them itself, and duplicating would double the revenue
+// in the tax CSV - so this is the only place the owner sees them.
 func (h *Handlers) Orders(w http.ResponseWriter, r *http.Request) {
 	page := pageParam(r)
 	total, err := h.db.CountWBOrders()
@@ -462,7 +462,7 @@ func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetPrice sets the price of one product ON WILDBERRIES, in kopecks. Zero
-// switches the management off — the price stays whatever the cabinet holds, we
+// switches the management off - the price stays whatever the cabinet holds, we
 // simply stop touching it. A product without a link is a 404 and not a silently
 // created row.
 func (h *Handlers) SetPrice(w http.ResponseWriter, r *http.Request) {

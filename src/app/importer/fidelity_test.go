@@ -11,7 +11,7 @@ import (
 )
 
 // Nothing must be lost on the way in. A test that checks the fields its author
-// thought of, one line each, cannot fail for a field nobody remembered — so
+// thought of, one line each, cannot fail for a field nobody remembered - so
 // these five compare the whole result at once. Each source gets one fixture
 // with every field that source is able to state, and one reflect.DeepEqual
 // against the Items we expect. A field that stops being parsed fails a test

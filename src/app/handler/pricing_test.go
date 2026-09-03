@@ -63,7 +63,7 @@ func TestShopPriceLadder(t *testing.T) {
 	}
 
 	// A single open band is the "one markup percent" case from the Products
-	// screen — the common case, and the one a CASE with no WHEN broke.
+	// screen - the common case, and the one a CASE with no WHEN broke.
 	w = httptest.NewRecorder()
 	h.SetPriceRules(w, httptest.NewRequest("PUT", "/api/products/price-rules", strings.NewReader(
 		`{"rules":[{"up_to":0,"multiplier":1.3}]}`)))

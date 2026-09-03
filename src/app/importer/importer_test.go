@@ -75,7 +75,7 @@ func TestOzonImport(t *testing.T) {
 	if len(imgs) != 1 {
 		t.Fatalf("images: %+v", imgs)
 	}
-	// A repeat import — dedup by SKU.
+	// A repeat import - dedup by SKU.
 	res, _ = Run(imp, d, "Ромашка", 1, "", nil)
 	if res.Imported != 0 || res.Skipped != 1 {
 		t.Fatalf("dedup: %+v", res)
@@ -209,13 +209,13 @@ func TestWBImportSingleSize(t *testing.T) {
 	if err != nil || res.Imported != 1 {
 		t.Fatalf("%v %+v", err, res)
 	}
-	// A single size — title and SKU without a suffix.
+	// A single size - title and SKU without a suffix.
 	p, err := d.GetVisibleProductBySlug("kruzhka")
 	if err != nil || p.SKU != "WB-1" || p.Title != "Кружка" || p.Price != 99050 || p.Stock != 4 {
 		t.Fatalf("%v %+v", err, p)
 	}
 	// A card carries a dozen characteristics because the seller cannot publish
-	// without them — which makes an import the one way a catalogue arrives
+	// without them - which makes an import the one way a catalogue arrives
 	// already described. One name holds a string, a number or a list.
 	if len(p.Params) != 3 {
 		t.Fatalf("характеристик %d, ожидалось 3: %+v", len(p.Params), p.Params)
@@ -244,7 +244,7 @@ func TestWBImportSingleSize(t *testing.T) {
 }
 
 // param finds a characteristic by name. Characteristics are a list, so the
-// tests need a lookup the storage no longer provides — and they compare the
+// tests need a lookup the storage no longer provides - and they compare the
 // value as it is stored, which is the point of the whole exercise.
 func param(ps []database.Param, name string) any {
 	for _, p := range ps {
@@ -303,7 +303,7 @@ func TestYMLImport(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 7}
-	// available="false" is not counted — the seller cares how many will arrive.
+	// available="false" is not counted - the seller cares how many will arrive.
 	n, err := imp.Count()
 	if err != nil || n != 4 {
 		t.Fatalf("count: %v %d", err, n)
@@ -326,7 +326,7 @@ func TestYMLImport(t *testing.T) {
 	if len(imgs) != 2 {
 		t.Fatalf("images: %+v", imgs)
 	}
-	// vendorCode is empty — the offer id becomes the SKU, there is no description.
+	// vendorCode is empty - the offer id becomes the SKU, there is no description.
 	kovsh, err := d.GetVisibleProductBySlug("kovsh-emalirovannyj")
 	if err != nil || kovsh.SKU != "059144" || kovsh.Price != 120000 || kovsh.Description != "" {
 		t.Fatalf("%v %+v", err, kovsh)
@@ -344,8 +344,8 @@ func TestYMLImport(t *testing.T) {
 	}
 }
 
-// The card is the owner's work — typed by hand or paid for through the AI
-// button — and a weekly price refresh must never take it back. Only the numbers
+// The card is the owner's work - typed by hand or paid for through the AI
+// button - and a weekly price refresh must never take it back. Only the numbers
 // the supplier owns are allowed to move.
 func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	srv := ymlServer(t, kYMLFeed)
@@ -412,7 +412,7 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 }
 
 // A catalogue of twenty thousand is never weighed by hand, so the only way the
-// fields ever fill is an import — and both platforms make weight and size
+// fields ever fill is an import - and both platforms make weight and size
 // mandatory on a card. Units are theirs and differ: Ozon states its own beside
 // the number, Wildberries fixes centimetres and kilograms by contract.
 func TestUnitsConvertIntoOneStore(t *testing.T) {
@@ -453,7 +453,7 @@ func TestUnitsConvertIntoOneStore(t *testing.T) {
 
 func ptr(v int64) *int64 { return &v }
 
-// The feed fills what is empty and keeps its hands off what the owner set —
+// The feed fills what is empty and keeps its hands off what the owner set -
 // the same rule the category follows. A platform's weight is a starting point,
 // not a verdict: the owner who corrected one is the one who weighed the parcel.
 func TestImportFillsMeasurementsWithoutOverwriting(t *testing.T) {
@@ -603,8 +603,8 @@ func TestYMLFeedCurrency(t *testing.T) {
 }
 
 // A YML feed carries the shop's tree, and it is the tree that turns a catalogue
-// into landing pages. The synthetic root every Bitrix export starts with —
-// "Главная / Каталог товаров" — is not a category and must not become one.
+// into landing pages. The synthetic root every Bitrix export starts with -
+// "Главная / Каталог товаров" - is not a category and must not become one.
 const kYMLTreeFeed = `<?xml version="1.0" encoding="UTF-8"?>
 <yml_catalog><shop><categories>
 <category id="1">Главная</category>
@@ -660,7 +660,7 @@ func TestTrimCommonRootKeepsTheLeaf(t *testing.T) {
 }
 
 // The Ozon taxonomy is one request per import, not one per card, and it gives a
-// full path down to the type — the same shape as a YML tree.
+// full path down to the type - the same shape as a YML tree.
 func TestOzonCategoryTree(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v3/product/list", func(w http.ResponseWriter, r *http.Request) {
@@ -729,8 +729,8 @@ func TestOzonSurvivesTaxonomyFailure(t *testing.T) {
 
 // TestYMLParams: <param> is the standard's own place for characteristics, and
 // every exporter writes them. We read past them until v1.37, which is why no
-// imported catalogue had any. The unit belongs with the value — "12 см" reads,
-// "12" does not — and a nameless or empty param is dropped rather than shown
+// imported catalogue had any. The unit belongs with the value - "12 см" reads,
+// "12" does not - and a nameless or empty param is dropped rather than shown
 // as a blank row on the card.
 func TestYMLParams(t *testing.T) {
 	srv := ymlServer(t, kYMLFeed)
@@ -769,7 +769,7 @@ func TestYMLParams(t *testing.T) {
 	if terka.WeightG == nil || *terka.WeightG != 750 {
 		t.Errorf("вес из фида: %v", terka.WeightG)
 	}
-	// An offer without params must not gain an empty set — the storefront would
+	// An offer without params must not gain an empty set - the storefront would
 	// print a heading over nothing.
 	for _, it := range items {
 		if it.SKU == "TR-4" && it.Params != nil {

@@ -62,7 +62,7 @@ type ozonCategoryTreeRequest struct {
 }
 
 // ozonCategoryNode is one node of the Ozon taxonomy. A branch carries
-// description_category_id and a name, a leaf carries type_id and type_name —
+// description_category_id and a name, a leaf carries type_id and type_name -
 // the same structure all the way down, so one type reads the whole tree.
 type ozonCategoryNode struct {
 	CategoryID int64              `json:"description_category_id"`
@@ -123,8 +123,8 @@ func (o *Ozon) categoryPaths() map[ozonCategoryKey]string {
 //
 // Ozon splits a card's characteristics in two: /v4/product/info/attributes says
 // which attribute holds what, by numeric id, and the category's own dictionary
-// says what that id is called and what type it is. Both halves are needed — an
-// id is not a caption — which is why this costs a second call per category the
+// says what that id is called and what type it is. Both halves are needed - an
+// id is not a caption - which is why this costs a second call per category the
 // catalogue actually uses rather than one call for everything.
 //
 // The type comes from the platform, not from the shape of the value: Ozon
@@ -175,7 +175,7 @@ type ozonAttributeDictResponse struct {
 }
 
 // attributeDicts fetches the attribute dictionary for every category the
-// catalogue actually uses — one call each, not one per product. A category whose
+// catalogue actually uses - one call each, not one per product. A category whose
 // dictionary fails is not fatal: its characteristics arrive as plain strings
 // under their numeric id's name, which is worse than a caption and better than
 // nothing.
@@ -320,7 +320,7 @@ type ozonStocksResponse struct {
 // present minus reserved: what is reserved has already been sold.
 func (o *Ozon) stocks() map[int64]int {
 	var out ozonStocksResponse
-	// ponytail: one page without a cursor — the same amount list() pulls.
+	// ponytail: one page without a cursor - the same amount list() pulls.
 	if err := o.post("/v4/product/info/stocks",
 		ozonStocksRequest{Limit: 1000, Filter: ozonStocksFilter{Visibility: "ALL"}}, &out); err != nil {
 		// Stock is not critical for migrating cards: don't fail the import.

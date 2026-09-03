@@ -11,7 +11,7 @@ import (
 )
 
 // fromHeader is "Shop name <address>". The inbox shows a name, not a bare
-// address — «info» tells the owner nothing about which shop just sold
+// address - «info» tells the owner nothing about which shop just sold
 // something. Cyrillic is allowed in a header only MIME-encoded; a plain ASCII
 // name still needs quoting, or a comma in "Ivan's Shop, Ltd" would split the
 // header into two addresses.

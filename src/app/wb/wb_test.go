@@ -345,7 +345,7 @@ func TestPublishMatchesByArticle(t *testing.T) {
 	if len(res.NoCard) != 1 || res.NoCard[0].SKU != "NOPE" {
 		t.Fatalf("the unmatched product must be reported: %+v", res.NoCard)
 	}
-	// The barcode is not ours to invent — it comes off the card.
+	// The barcode is not ours to invent - it comes off the card.
 	rows, err := d.ListWBLinksPage(10, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -468,7 +468,7 @@ func TestPassOrdersPricesAfterStocks(t *testing.T) {
 // hundred rows for ninety-nine refusals. These are the numbers that stop that.
 //
 // Wildberries adds a state Ozon does not have: a card with several sizes cannot
-// be linked by vendor code alone. It must not be filed under "no card" — the
+// be linked by vendor code alone. It must not be filed under "no card" - the
 // card exists, and the owner told to create one would create a duplicate.
 func TestCabinetCountsWhatCanActuallyBeLinked(t *testing.T) {
 	h, d, _ := newTest(t,
@@ -492,7 +492,7 @@ func TestCabinetCountsWhatCanActuallyBeLinked(t *testing.T) {
 		t.Errorf("linked %d, want 1", got.Linked)
 	}
 	if got.Ambiguous != 1 {
-		t.Errorf("ambiguous %d, want 1 — a multi-size card is not a missing card",
+		t.Errorf("ambiguous %d, want 1 - a multi-size card is not a missing card",
 			got.Ambiguous)
 	}
 	if got.NoCard != 1 {

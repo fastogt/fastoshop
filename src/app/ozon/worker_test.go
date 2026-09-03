@@ -25,7 +25,7 @@ type ozonMock struct {
 	mu           sync.Mutex
 	batches      [][]StockItem
 	priceBatches [][]PriceItem
-	// order records which endpoints were hit and in what sequence — the pass has
+	// order records which endpoints were hit and in what sequence - the pass has
 	// to poll orders before it pushes, and push stocks before prices.
 	order        []string
 	status       int
@@ -34,7 +34,7 @@ type ozonMock struct {
 	itemErr      map[string]string
 	priceItemErr map[string]string
 	postings     []Posting
-	// postingsRaw replaces the /v3/posting/fbs/list answer wholesale — that is
+	// postingsRaw replaces the /v3/posting/fbs/list answer wholesale - that is
 	// how we check behaviour on a format we did not expect.
 	postingsRaw string
 	pollFilters []postingFilter
@@ -321,7 +321,7 @@ func waitIdle(t *testing.T, w *Worker) {
 	t.Fatal("sync pass did not finish")
 }
 
-// TestPushFollowsLevelBothWays: the sync runs both ways — platform sales arrive
+// TestPushFollowsLevelBothWays: the sync runs both ways - platform sales arrive
 // by polling, and a push upwards must not overwrite a sale we have not polled
 // yet.
 func TestPushFollowsLevelBothWays(t *testing.T) {
@@ -337,7 +337,7 @@ func TestPushFollowsLevelBothWays(t *testing.T) {
 		t.Fatalf("first batch: %+v", got)
 	}
 
-	// The level did not change — there must be no call.
+	// The level did not change - there must be no call.
 	if pushed, _ := pass(t, w); pushed != 0 {
 		t.Fatalf("same level pushed again")
 	}
@@ -345,7 +345,7 @@ func TestPushFollowsLevelBothWays(t *testing.T) {
 		t.Fatalf("extra calls: %+v", m.sent())
 	}
 
-	// Downwards — travels.
+	// Downwards - travels.
 	setStock(t, d, id, 3)
 	if pushed, _ := pass(t, w); pushed != 1 {
 		t.Fatal("stock decrease not pushed")
@@ -354,7 +354,7 @@ func TestPushFollowsLevelBothWays(t *testing.T) {
 		t.Fatalf("want 3: %+v", got)
 	}
 
-	// Upwards — travels too.
+	// Upwards - travels too.
 	setStock(t, d, id, 7)
 	if pushed, _ := pass(t, w); pushed != 1 {
 		t.Fatal("stock increase not pushed")
@@ -412,7 +412,7 @@ func TestPushPerItemErrorIsIsolated(t *testing.T) {
 		t.Fatalf("extra calls: %d", len(m.sent()))
 	}
 
-	// The backoff has expired — retry, successfully this time.
+	// The backoff has expired - retry, successfully this time.
 	if err := d.MarkOzonStockError(bad[0].ProductID, "склад не найден",
 		time.Now().Add(-time.Minute)); err != nil {
 		t.Fatal(err)
@@ -472,7 +472,7 @@ func TestPushHonoursRetryAfter(t *testing.T) {
 	defer func() { _ = raw.Close() }()
 	// CAST to TEXT: otherwise the driver parses a DATETIME column into a
 	// time.Time and hands it back in its own format, while what must be checked
-	// is exactly what lies in the database — the comparison against
+	// is exactly what lies in the database - the comparison against
 	// CURRENT_TIMESTAMP runs on that string.
 	rows, err := raw.Query(
 		`SELECT offer_id, CAST(retry_at AS TEXT) FROM ozon_links ORDER BY offer_id`)
@@ -525,7 +525,7 @@ func TestPushZeroForDeletedProduct(t *testing.T) {
 	if got := m.lastBatch(t); got[0].Stock != 0 {
 		t.Fatalf("want zero: %+v", got)
 	}
-	// The zero is sent — after that the link stays quiet instead of sending a
+	// The zero is sent - after that the link stays quiet instead of sending a
 	// zero every tick.
 	if pushed, _ := pass(t, w); pushed != 0 {
 		t.Fatal("zero pushed again")

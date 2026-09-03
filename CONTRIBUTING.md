@@ -17,7 +17,7 @@ printf 'settings:\n  host: "127.0.0.1:9097"\n  database: "/tmp/fastoshop.db"\n  
 cd src && go run ./cmd/fastoshop.go -config /tmp/fastoshop.conf
 ```
 
-Storefront: http://localhost:9097. Admin panel in dev — `cd web && npm run dev`, then http://localhost:5173/admin/ (`/api` requests are proxied to the backend).
+Storefront: http://localhost:9097. Admin panel in dev - `cd web && npm run dev`, then http://localhost:5173/admin/ (`/api` requests are proxied to the backend).
 
 ## Before a PR
 
@@ -39,7 +39,7 @@ The full list of conventions is in [CLAUDE.md](CLAUDE.md).
 
 ## Adding a marketplace (channel)
 
-Channels are built as vertical slices: an admin tab + an `app/<platform>` package in Go + its own tables with the platform prefix. There is deliberately no shared interface — platform rules differ (Ozon sets stock by `offer_id`, WB by the size barcode, Kufar/Avito have no stock at all). The reference is the `app/ozon` package; before writing code for a new channel, discuss the design in Issues.
+Channels are built as vertical slices: an admin tab + an `app/<platform>` package in Go + its own tables with the platform prefix. There is deliberately no shared interface - platform rules differ (Ozon sets stock by `offer_id`, WB by the size barcode, Kufar/Avito have no stock at all). The reference is the `app/ozon` package; before writing code for a new channel, discuss the design in Issues.
 
 ## Adding an import source
 
@@ -53,19 +53,19 @@ type Source interface {
 }
 ```
 
-Keep fields like `BaseURL` configurable — mocks in tests point at them. Prices are stored everywhere in minor units (kopecks).
+Keep fields like `BaseURL` configurable - mocks in tests point at them. Prices are stored everywhere in minor units (kopecks).
 
 ## Versions
 
-The version lives only in the git tag (`vMAJOR.MINOR.PATCH`); it is not in the sources, the number is injected at build time. The rule: **PATCH** — a fix with no behavior change, **MINOR** — a new compatible capability (e.g. an adapter for a new marketplace), **MAJOR** — the upgrade requires action from the shop owner (an incompatible config, a removed endpoint).
+The version lives only in the git tag (`vMAJOR.MINOR.PATCH`); it is not in the sources, the number is injected at build time. The rule: **PATCH** - a fix with no behavior change, **MINOR** - a new compatible capability (e.g. an adapter for a new marketplace), **MAJOR** - the upgrade requires action from the shop owner (an incompatible config, a removed endpoint).
 
-Changed the DB schema — that is at minimum MINOR. Until the first stable release the schema is edited directly in `CREATE TABLE` (there are no live databases); after it, the release description needs a ready-to-paste `ALTER TABLE` — there are no migrations, and an upgraded instance will not grow the new column on its own.
+Changed the DB schema - that is at minimum MINOR. Until the first stable release the schema is edited directly in `CREATE TABLE` (there are no live databases); after it, the release description needs a ready-to-paste `ALTER TABLE` - there are no migrations, and an upgraded instance will not grow the new column on its own.
 
 No release is cut for edits to documentation, screenshots, CI, or tests.
 
 ## Contacts
 
-Questions and bugs — via [Issues](https://github.com/fastogt/fastoshop/issues).
-Report vulnerabilities privately: **support@fastocloud.com** — do not open a public issue until the problem is closed.
+Questions and bugs - via [Issues](https://github.com/fastogt/fastoshop/issues).
+Report vulnerabilities privately: **support@fastocloud.com** - do not open a public issue until the problem is closed.
 
 Code is accepted under the AGPL-3.0 license.

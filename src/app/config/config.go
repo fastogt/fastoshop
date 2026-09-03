@@ -7,17 +7,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Settings — the single source of truth at deploy level. Everything the owner
+// Settings - the single source of truth at deploy level. Everything the owner
 // configures (SMTP, shop) lives in the DB (the settings table), not here.
 type Settings struct {
 	Host     string `yaml:"host"`
 	LogLevel string `yaml:"log_level"`
-	// LogPath — where the log is written so the owner can read it from the admin.
+	// LogPath - where the log is written so the owner can read it from the admin.
 	// Empty keeps the log on stdout, which is where the operator's journald picks
 	// it up; a shop owner has no shell and would never see it there.
 	LogPath  string `yaml:"log_path"`
 	Database string `yaml:"database"`
-	// BaseURL — the public storefront address (for sitemap, canonical, emails).
+	// BaseURL - the public storefront address (for sitemap, canonical, emails).
 	BaseURL string `yaml:"base_url"`
 }
 

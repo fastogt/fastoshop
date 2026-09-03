@@ -93,7 +93,7 @@ func (w *Worker) pollOrders(c *Client) error {
 	w.setPollError("")
 	if applied+returned > 0 {
 		log.Infof("wb orders: applied %d, returned %d", applied, returned)
-		// Stock levels changed — wake the push. Within the current pass it runs
+		// Stock levels changed - wake the push. Within the current pass it runs
 		// next and already sees the new stocks; the signal matters when the pass
 		// was triggered by the button and the next tick is far away.
 		w.StockChanged()
@@ -103,7 +103,7 @@ func (w *Worker) pollOrders(c *Client) error {
 
 // refreshStatuses asks about the tasks that may still change. The order list
 // carries no status of its own, so a cancellation is only visible through this
-// second call — without it a cancelled sale would hold our stock forever.
+// second call - without it a cancelled sale would hold our stock forever.
 func (w *Worker) refreshStatuses(c *Client) (int, error) {
 	ids, err := w.db.OpenWBOrderIDs(kOpenOrders)
 	if err != nil || len(ids) == 0 {

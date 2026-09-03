@@ -86,7 +86,7 @@ func TestUnpublishZeroesStockFirst(t *testing.T) {
 	}
 }
 
-// If the marketplace did not accept the zero, the link must remain — otherwise
+// If the marketplace did not accept the zero, the link must remain - otherwise
 // we forget about a card that keeps selling.
 func TestUnpublishKeepsLinkWhenZeroRejected(t *testing.T) {
 	h, d, m := publishTest(t, "A")
@@ -170,7 +170,7 @@ func TestCabinetCountsTheThreeStates(t *testing.T) {
 		t.Errorf("orphans %d, want 1", got.Orphans)
 	}
 	// The ids are what the table paints its rows from, so they must name the
-	// product that can actually be linked — not the one already linked.
+	// product that can actually be linked - not the one already linked.
 	if len(got.ReadyIDs) != 1 {
 		t.Fatalf("ready_ids %v", got.ReadyIDs)
 	}

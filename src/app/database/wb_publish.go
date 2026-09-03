@@ -3,7 +3,7 @@ package database
 import "fmt"
 
 // WBCandidate is a shop product as the channel tab sees it. Published is the
-// presence of a link row — the link set IS the published set.
+// presence of a link row - the link set IS the published set.
 type WBCandidate struct {
 	ProductID int64
 	SKU       string
@@ -89,7 +89,7 @@ func (d *Database) WBLinksByProducts(ids []int64) ([]WBLinkState, error) {
 // currently on screen would answer a question nobody asked, while "12 of 24 000
 // can be published" is the one that explains the tab.
 //
-// ponytail: the whole catalogue in memory — 24 000 short strings read once when
+// ponytail: the whole catalogue in memory - 24 000 short strings read once when
 // the tab opens. An IN (…) against the platform's list would need thousands of
 // bound parameters and buys nothing at this size.
 func (d *Database) WBSKUState() (map[string]int64, map[string]bool, error) {

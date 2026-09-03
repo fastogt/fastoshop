@@ -59,8 +59,8 @@ func TestJobSlotIsSingle(t *testing.T) {
 	}
 }
 
-// A job with several steps — what a fill becomes once more than photos can be
-// ticked — must show the earlier ones as finished and never claim a stopped run
+// A job with several steps - what a fill becomes once more than photos can be
+// ticked - must show the earlier ones as finished and never claim a stopped run
 // completed everything.
 func TestJobStagesAdvanceAndStop(t *testing.T) {
 	h := newTestHandler(t)

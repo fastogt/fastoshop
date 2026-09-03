@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// OrderItem — the working order line: a product reference and a quantity. Name
+// OrderItem - the working order line: a product reference and a quantity. Name
 // and price are deliberately absent; the orders.items_json snapshot keeps them.
 type OrderItem struct {
 	ProductID int64
@@ -68,7 +68,7 @@ func returnStock(tx *sql.Tx, items []OrderItem) error {
 
 // orderItems reads all lines before the first Exec: the transaction has a
 // single connection, and an open Rows must not be held while writing.
-// Deleted products (product_id IS NULL) drop out — there is nowhere to return
+// Deleted products (product_id IS NULL) drop out - there is nowhere to return
 // their stock.
 func orderItems(tx *sql.Tx, orderID int64) ([]OrderItem, error) {
 	rows, err := tx.Query(

@@ -6,7 +6,7 @@ import (
 )
 
 // The cabinet's currency is not stored here. One shop is one legal entity is
-// one currency, and that currency lives in settings.currency — a second copy
+// one currency, and that currency lives in settings.currency - a second copy
 // would be a second truth to keep in step.
 type OzonSettings struct {
 	ClientID    string
@@ -107,7 +107,7 @@ func (d *Database) OzonStockToPush() ([]OzonStockRow, error) {
 
 // MarkOzonStockPushed clears retry_at, which is shared with the price push: a
 // successful stock push therefore also lifts the price backoff of that row. At
-// worst the price is retried one pass early and backs off again — a wasted item
+// worst the price is retried one pass early and backs off again - a wasted item
 // in a batch we were sending anyway, which is cheaper than a second timer
 // column and the ALTER TABLE it would cost on live installs.
 func (d *Database) MarkOzonStockPushed(productID, level int64) error {
@@ -127,7 +127,7 @@ func (d *Database) MarkOzonStockError(productID int64, msg string, retryAt time.
 	return err
 }
 
-// CountOzonStockState counts pending without regard to retry_at — to the owner
+// CountOzonStockState counts pending without regard to retry_at - to the owner
 // a row in backoff is still "waiting to be sent", not gone.
 func (d *Database) CountOzonStockState() (pending, failed int, err error) {
 	err = d.db.QueryRow(

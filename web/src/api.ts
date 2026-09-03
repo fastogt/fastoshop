@@ -2,7 +2,7 @@ import axios from "axios";
 
 const http = axios.create({ baseURL: "/api" });
 
-// Wildberries. Types are not shared with Ozon: the row shapes differ — stock
+// Wildberries. Types are not shared with Ozon: the row shapes differ - stock
 // hangs off a barcode, price off a card, and an upload is accepted before it is
 // applied.
 export interface WBStockError {
@@ -225,7 +225,7 @@ export interface Settings {
   shop_name: string;
   shop_phone: string;
   // Messenger handles for the "order in one message" buttons on a product page.
-  // Empty means no button — the default.
+  // Empty means no button - the default.
   telegram: string;
   whatsapp: string;
   currency: string;
@@ -411,7 +411,7 @@ export interface CabinetState {
   no_card: number;
   orphans: number;
   // Wildberries only: the card exists but carries several sizes, so a vendor
-  // code alone cannot pick one. Not a missing card — telling the owner to
+  // code alone cannot pick one. Not a missing card - telling the owner to
   // create one would make a duplicate.
   ambiguous?: number;
   ready_ids: number[];
@@ -570,7 +570,7 @@ export const api = {
       .then(data<Product>),
   deleteImage: (productId: number, imageId: number) =>
     http.delete(`/products/${productId}/images/${imageId}`).then(data<Product>),
-  // Returns a draft only — the product is written by the ordinary save, after
+  // Returns a draft only - the product is written by the ordinary save, after
   // the owner has read what the model wrote.
   enrichProduct: (productId: number) =>
     http

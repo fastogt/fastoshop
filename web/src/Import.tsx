@@ -18,12 +18,12 @@ const kGuide: Record<Src, Phrase> = {
     en: "Wildberries account → Settings → API access → “Create token”, tick the “Content” and “Prices and discounts” scopes. Copy the token.",
   },
   csv: {
-    ru: "Файл: прайс поставщика в Excel или таблица по нашему шаблону. XLSX разбираем как есть, вместе с фотографиями внутри ячеек: колонки ищем по заголовкам, а сам заголовок — по содержимому, поэтому логотип и контакты сверху не мешают. CSV из русского Excel в кодировке Windows и с точкой с запятой тоже поймём.",
+    ru: "Файл: прайс поставщика в Excel или таблица по нашему шаблону. XLSX разбираем как есть, вместе с фотографиями внутри ячеек: колонки ищем по заголовкам, а сам заголовок - по содержимому, поэтому логотип и контакты сверху не мешают. CSV из русского Excel в кодировке Windows и с точкой с запятой тоже поймём.",
     en: "A file: a supplier price list in Excel, or a table from our template. XLSX is read as it is, pictures inside cells included: columns are found by their headers and the header row by its content, so a logo and contacts on top are no obstacle. CSV from Russian Excel, legacy encoding and semicolons, works too.",
   },
   yml: {
-    ru: "Стандартная выгрузка Битрикс/InSales/Тильды для Яндекс.Маркета — ссылка на XML. Ключи и доступы не нужны.",
-    en: "The standard Битрикс/InSales/Тильда feed for Яндекс.Маркет — just the XML link. No keys or access needed.",
+    ru: "Стандартная выгрузка Битрикс/InSales/Тильды для Яндекс.Маркета - ссылка на XML. Ключи и доступы не нужны.",
+    en: "The standard Битрикс/InSales/Тильда feed for Яндекс.Маркет - just the XML link. No keys or access needed.",
   },
 };
 
@@ -41,12 +41,12 @@ const kText = {
     en: "Example: {source} at the supplier → {shelf} on the storefront.",
   },
   coefficientRecipe: {
-    ru: "Коэффициент = курс {from}→{to} × ваша наценка. Курс мы не подставляем — возьмите его в банке: 0.0295 × 1.3 (наценка 30%) = 0.03835.",
-    en: "Coefficient = the {from}→{to} rate × your markup. We do not fetch rates — take one from your bank: 0.0295 × 1.3 (a 30% markup) = 0.03835.",
+    ru: "Коэффициент = курс {from}→{to} × ваша наценка. Курс мы не подставляем - возьмите его в банке: 0.0295 × 1.3 (наценка 30%) = 0.03835.",
+    en: "Coefficient = the {from}→{to} rate × your markup. We do not fetch rates - take one from your bank: 0.0295 × 1.3 (a 30% markup) = 0.03835.",
   },
   rateWarning: {
-    ru: "Фид отдаёт цены в {from}, а магазин продаёт в {to}. Курс мы не знаем и наружу за ним не ходим — заложите его в коэффициент, иначе цены {from} встанут на витрину со знаком {to}.",
-    en: "The feed quotes prices in {from} while the shop sells in {to}. We hold no exchange rate and fetch none — fold one into the coefficient, or {from} prices land on the storefront labelled {to}.",
+    ru: "Фид отдаёт цены в {from}, а магазин продаёт в {to}. Курс мы не знаем и наружу за ним не ходим - заложите его в коэффициент, иначе цены {from} встанут на витрину со знаком {to}.",
+    en: "The feed quotes prices in {from} while the shop sells in {to}. We hold no exchange rate and fetch none - fold one into the coefficient, or {from} prices land on the storefront labelled {to}.",
   },
   rights: {
     ru: "Фотографии и описания принадлежат поставщику: и в выгрузке, и в прайсе Excel, и в кабинете площадки. Запуская импорт, вы подтверждаете, что вправе их использовать, и поручаете разместить их в вашем магазине.",
@@ -65,13 +65,13 @@ const kText = {
     en: "Move products from a marketplace",
   },
   subtitle: {
-    ru: "Карточки с фото, ценами и описаниями переедут в ваш магазин. Ключи нужны только на время переноса — мы их не сохраняем.",
-    en: "Listings with their photos, prices and descriptions move into your shop. The keys are used only for the transfer — we never store them.",
+    ru: "Карточки с фото, ценами и описаниями переедут в ваш магазин. Ключи нужны только на время переноса - мы их не сохраняем.",
+    en: "Listings with their photos, prices and descriptions move into your shop. The keys are used only for the transfer - we never store them.",
   },
   urlLabel: { ru: "Ссылка на выгрузку", en: "Feed link" },
   stockLabel: { ru: "Остаток по умолчанию", en: "Default stock" },
   stockHint: {
-    ru: "YML не передаёт количество — только «в наличии». Укажите, сколько единиц записать каждому товару. Ноль означает «нет в наличии»: такой товар не купят. Потом можно проставить остаток всем сразу в Товарах.",
+    ru: "YML не передаёт количество - только «в наличии». Укажите, сколько единиц записать каждому товару. Ноль означает «нет в наличии»: такой товар не купят. Потом можно проставить остаток всем сразу в Товарах.",
     en: "A YML feed says only whether an item is in stock, never how many. Set the quantity to write for every product. Zero means out of stock and nobody can buy it. You can set the stock for all of them at once later, in Products.",
   },
   tokenLabel: { ru: "Токен API", en: "API token" },
@@ -80,14 +80,14 @@ const kText = {
   downloadTemplate: { ru: "Скачать шаблон", en: "Download template" },
   refresh: { ru: "Обновить из фида", en: "Refresh from the feed" },
   refreshHint: {
-    ru: "Последняя выгрузка: {url} — группа «{supplier}». Кнопка подставит ссылку и группу, останется нажать «Проверить».",
-    en: 'Last feed: {url} — group "{supplier}". The button fills in the link and the group; then press Check.',
+    ru: "Последняя выгрузка: {url} - группа «{supplier}». Кнопка подставит ссылку и группу, останется нажать «Проверить».",
+    en: 'Last feed: {url} - group "{supplier}". The button fills in the link and the group; then press Check.',
   },
   fileLabel: { ru: "Файл", en: "File" },
   supplier: { ru: "Поставщик", en: "Supplier" },
   supplierHint: {
-    ru: "Чьи это товары — назовите поставщика: «Ромашка», «Оптбаза». Загрузка обновляет только свою группу: товары другого поставщика и заведённые вами вручную она не трогает.",
-    en: 'Whose goods these are — name the supplier: "Acme", "Wholesale Co". An import only updates its own group: another supplier\'s goods and the ones you added by hand are left alone.',
+    ru: "Чьи это товары - назовите поставщика: «Ромашка», «Оптбаза». Загрузка обновляет только свою группу: товары другого поставщика и заведённые вами вручную она не трогает.",
+    en: 'Whose goods these are - name the supplier: "Acme", "Wholesale Co". An import only updates its own group: another supplier\'s goods and the ones you added by hand are left alone.',
   },
   supplierPlaceholder: { ru: "Ромашка", en: "Acme" },
   changes: { ru: "Что изменится", en: "What will change" },
@@ -102,12 +102,12 @@ const kText = {
   },
   cNoSKU: { ru: "без артикула: {n}", en: "without an article: {n}" },
   goneHint: {
-    ru: "Исчезнувшим из выгрузки остаток будет обнулён — товар и его адрес останутся, на Ozon уедет ноль.",
-    en: "Anything gone from the feed has its stock zeroed — the product and its URL stay, and Ozon gets a zero.",
+    ru: "Исчезнувшим из выгрузки остаток будет обнулён - товар и его адрес останутся, на Ozon уедет ноль.",
+    en: "Anything gone from the feed has its stock zeroed - the product and its URL stay, and Ozon gets a zero.",
   },
   conflictHint: {
-    ru: "Эти артикулы уже принадлежат другой группе. Импорт их не тронет — решите, чьи они.",
-    en: "These articles already belong to another group. The import leaves them alone — decide whose they are.",
+    ru: "Эти артикулы уже принадлежат другой группе. Импорт их не тронет - решите, чьи они.",
+    en: "These articles already belong to another group. The import leaves them alone - decide whose they are.",
   },
   listNew: { ru: "Новинки", en: "New" },
   listGone: { ru: "Исчезли из выгрузки", en: "Gone from the feed" },
@@ -124,8 +124,8 @@ const kText = {
     en: "Products found: {total}. Ready to import.",
   },
   running: {
-    ru: "Импортируем. Страницу можно закрыть — импорт идёт на сервере.",
-    en: "Importing. You can close the page — it runs on the server.",
+    ru: "Импортируем. Страницу можно закрыть - импорт идёт на сервере.",
+    en: "Importing. You can close the page - it runs on the server.",
   },
   stopped: { ru: " Остановлено вами.", en: " Stopped by you." },
   done: {
@@ -378,7 +378,7 @@ export default function Import() {
 
         {/* Only when the feed quotes another currency. A shop loading a feed in
             its own money has nothing to decide here, and the field was the
-            second place called "price coefficient" — the first being the shop's
+            second place called "price coefficient" - the first being the shop's
             own, which lives with the prices it makes, on the Products tab. */}
         {feedMoney !== currency && (
           <div>
@@ -529,7 +529,7 @@ export default function Import() {
                   {diff.new_items.map((r) => (
                     <li key={r.sku}>
                       {r.title || r.sku}
-                      <span className="text-muted"> — {toRubles(r.shelf)}</span>
+                      <span className="text-muted"> - {toRubles(r.shelf)}</span>
                     </li>
                   ))}
                 </ul>
@@ -552,7 +552,7 @@ export default function Import() {
                   {diff.gone_items.map((r) => (
                     <li key={r.sku}>
                       {r.title || r.sku}
-                      <span className="text-muted"> — {r.stock}</span>
+                      <span className="text-muted"> - {r.stock}</span>
                     </li>
                   ))}
                 </ul>

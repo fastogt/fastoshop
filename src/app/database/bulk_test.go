@@ -24,7 +24,7 @@ func bulkDB(t *testing.T) (*Database, map[string]int64) {
 	return d, ids
 }
 
-// The main scenario: the feed brought zero stock, the owner sets it in one go —
+// The main scenario: the feed brought zero stock, the owner sets it in one go -
 // but only for their own group.
 func TestSetStockForWholeGroup(t *testing.T) {
 	d, ids := bulkDB(t)

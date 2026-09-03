@@ -15,10 +15,10 @@ type Database struct {
 	path string
 }
 
-// Path — the file the database opened. For ":memory:" it returns just that.
+// Path - the file the database opened. For ":memory:" it returns just that.
 func (d *Database) Path() string { return d.path }
 
-// A second process touches the database now — the nightly backup
+// A second process touches the database now - the nightly backup
 // (`VACUUM INTO`) and `-reset-password`. In rollback-journal mode a reader
 // blocks the writer, so a backup would turn checkout into a 500. WAL makes
 // reads non-blocking, busy_timeout waits instead of returning SQLITE_BUSY at
@@ -54,7 +54,7 @@ func Open(path string) (*Database, error) {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 	// SQLite writes single-threaded, and ":memory:" hands every new connection
-	// its own empty database — a pool of one connection removes both problems.
+	// its own empty database - a pool of one connection removes both problems.
 	db.SetMaxOpenConns(1)
 	d := &Database{db: db, path: path}
 	if err := d.migrate(); err != nil {
@@ -101,14 +101,14 @@ func (d *Database) migrate() error {
 		supplier    TEXT NOT NULL DEFAULT '',
 		-- 1 hides the product from the storefront: out of the catalogue, out of
 		-- the sitemap and 404 on its own page. Phrased as "hidden" rather than
-		-- "visible" so that the zero value — of the column and of the Go struct —
+		-- "visible" so that the zero value - of the column and of the Go struct -
 		-- is the safe one: a forgotten field must not silently hide goods.
 		-- Channels are unaffected: what a shop shows and what it sells on Ozon
 		-- are separate decisions.
 		hidden      INTEGER NOT NULL DEFAULT 0,
 		-- Gross weight and packed size. NULL, not 0: a product whose weight
 		-- nobody stated must not travel through a delivery calculation as
-		-- weightless. Optional and typed rather than a bag of strings — these
+		-- weightless. Optional and typed rather than a bag of strings - these
 		-- are arithmetic, not description.
 		weight_g    INTEGER,
 		length_mm   INTEGER,
@@ -117,11 +117,11 @@ func (d *Database) migrate() error {
 		-- Characteristics: [{"name":"Цвет","value":"белый"},{"name":"Вес, кг",
 		-- "value":1.5}]. A list, not an object: the source's order is how the
 		-- seller meant the card to read. A column rather than a table because
-		-- values travel with the product — the catalogue reads sixty of them per
-		-- page and a join would earn nothing — and because writing them is one
+		-- values travel with the product - the catalogue reads sixty of them per
+		-- page and a join would earn nothing - and because writing them is one
 		-- UPDATE. Weight and size are NOT in here: the core does arithmetic with
 		-- those, and two homes for one number is one home too many. The platforms
-		-- draw the same line — Ozon's card has weight and dimensions as named
+		-- draw the same line - Ozon's card has weight and dimensions as named
 		-- fields and attributes as a list beside them.
 		-- ponytail: no index. Faceted filtering, when it comes, is a generated
 		-- column over json_extract; nothing here has to move for that.
@@ -147,7 +147,7 @@ func (d *Database) migrate() error {
 	-- describes nodes (their text, their order, whether they are hidden) and
 	-- declares the ones the owner made before any product landed in them.
 	-- Characteristics the storefront does not show. A marketplace card mixes what
-	-- a buyer reads with the seller's own paperwork — a customs code, a VAT rate —
+	-- a buyer reads with the seller's own paperwork - a customs code, a VAT rate -
 	-- and the shop needs all of it (Ozon refuses a card without the customs code)
 	-- while the page needs only part. Which part is the owner's call, so this
 	-- holds their exceptions: a name absent from here is shown.
@@ -227,7 +227,7 @@ func (d *Database) migrate() error {
 		price_coefficient REAL NOT NULL DEFAULT 1,
 		-- Last YML feed imported, so a weekly refresh is one button instead of
 		-- pasting the link again. Only the feed: Ozon and WB keys are deliberately
-		-- not stored — the admin promises the seller they are not kept.
+		-- not stored - the admin promises the seller they are not kept.
 		feed_url      TEXT NOT NULL DEFAULT '',
 		feed_supplier TEXT NOT NULL DEFAULT '',
 		-- Analytics counters. Empty means the storefront renders nothing at all:
@@ -273,14 +273,14 @@ func (d *Database) migrate() error {
 		stock_error  TEXT NOT NULL DEFAULT '',
 		price_error  TEXT NOT NULL DEFAULT '',
 		-- One retry_at for both pushes: a row's backoff postpones stock and price
-		-- alike. Splitting it buys nothing — the methods share the cabinet's
+		-- alike. Splitting it buys nothing - the methods share the cabinet's
 		-- rate budget, and a row the platform complains about is usually bad as
 		-- a whole.
 		retry_at     DATETIME
 	);
 	-- Ledger of applied Ozon postings. Idempotency rests on UNIQUE: a posting
 	-- seen twice is rejected by the constraint, not by an "did we apply it
-	-- already" check — that check can be lost between SELECT and INSERT.
+	-- already" check - that check can be lost between SELECT and INSERT.
 	-- These sales do NOT land in orders: the shop's tax CSV must not double the
 	-- revenue Ozon already reports itself.
 	CREATE TABLE IF NOT EXISTS ozon_orders (
@@ -304,7 +304,7 @@ func (d *Database) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_ozon_order_items_order
 		ON ozon_order_items(ozon_order_id);
 	-- Markup ladder for the channel: a percentage does not survive contact with
-	-- a catalogue that mixes 30-ruble and 3000-ruble goods — on the cheap end a
+	-- a catalogue that mixes 30-ruble and 3000-ruble goods - on the cheap end a
 	-- percentage does not cover the platform's fee, so resellers price by
 	-- multiples instead. up_to is the exclusive upper bound of the band in
 	-- kopecks; 0 means "and everything above".

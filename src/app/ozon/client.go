@@ -16,8 +16,8 @@ const kBaseURL = "https://api-seller.ozon.ru"
 
 const kListLimit = 1000
 
-// ponytail: ceiling of 20 pages by 1000 — 20 thousand cards in the cabinet. A
-// single sole trader never has more; if one does — drop the limit and walk the
+// ponytail: ceiling of 20 pages by 1000 - 20 thousand cards in the cabinet. A
+// single sole trader never has more; if one does - drop the limit and walk the
 // list in the background, a synchronous HTTP handler will not carry that much.
 const kMaxPages = 20
 
@@ -130,7 +130,7 @@ func (c *Client) ListProducts() ([]Offer, error) {
 		}
 		out = append(out, page.Result.Items...)
 		// Ozon leaves last_id empty on the final page, but a non-empty last_id
-		// with empty items happens too — a short page is the end as well.
+		// with empty items happens too - a short page is the end as well.
 		if page.Result.LastID == "" || len(page.Result.Items) < kListLimit {
 			break
 		}
@@ -157,7 +157,7 @@ type itemError struct {
 	Message string `json:"message"`
 }
 
-// ItemResult is one row of a stocks or prices push answer — the two calls share
+// ItemResult is one row of a stocks or prices push answer - the two calls share
 // the shape.
 type ItemResult struct {
 	OfferID string      `json:"offer_id"`
@@ -190,7 +190,7 @@ type stocksResponse struct {
 }
 
 // SetStocks sends stocks in a single call; the caller must split the list by
-// kBatchSize itself — the client will not silently truncate someone's batch.
+// kBatchSize itself - the client will not silently truncate someone's batch.
 func (c *Client) SetStocks(items []StockItem) ([]ItemResult, error) {
 	var resp stocksResponse
 	if err := c.Post("/v2/products/stocks", stocksRequest{Stocks: items}, &resp); err != nil {
@@ -203,7 +203,7 @@ func (c *Client) SetStocks(items []StockItem) ([]ItemResult, error) {
 const kPriceBatchSize = 1000
 
 // PriceItem mirrors the wire format exactly: price and old_price are STRINGS in
-// whole rubles, not kopecks. old_price "0" clears the crossed-out price — we do
+// whole rubles, not kopecks. old_price "0" clears the crossed-out price - we do
 // not invent fake discounts, so it is always "0". The two *_enabled fields say
 // "leave whatever the cabinet is set to": promotions and price strategies belong
 // to the seller, and a stock sync has no business flipping them.
@@ -217,13 +217,13 @@ type PriceItem struct {
 }
 
 // NewPriceItem builds the wire item for a price stored in kopecks and returns
-// the value to remember as pushed. The platform takes the minor unit — "25.11"
-// is accepted and stored as 25.11, verified against a live BYN cabinet — so
+// the value to remember as pushed. The platform takes the minor unit - "25.11"
+// is accepted and stored as 25.11, verified against a live BYN cabinet - so
 // nothing is rounded: a rouble rounded up is a kopeck, but a BYN rounded up on
 // a 2.53 item is eighteen percent of the price, charged to the buyer under the
 // seller's name. What we send is what we remember, so the next pass compares
 // like with like and the row does not flap between "needs push" and "pushed".
-// currency is the cabinet's trading currency — RUB for ozon.ru, BYN for ozon.by.
+// currency is the cabinet's trading currency - RUB for ozon.ru, BYN for ozon.by.
 func NewPriceItem(offerID string, kopecks int64, currency string) (PriceItem, int64) {
 	return PriceItem{
 		AutoActionEnabled:    "UNKNOWN",
@@ -262,7 +262,7 @@ func (c *Client) SetPrices(items []PriceItem) ([]ItemResult, error) {
 // kPostingLimit is the documented per-page ceiling of /v3/posting/fbs/list.
 const kPostingLimit = 50
 
-// ponytail: 40 pages by 50 — 2000 postings per pass. A five-minute tick and a
+// ponytail: 40 pages by 50 - 2000 postings per pass. A five-minute tick and a
 // poll window starting at the last cursor will not reach that even for a large
 // sole trader; if they do, the cursor simply catches up on the next pass.
 const kMaxPostingPages = 40
@@ -286,7 +286,7 @@ type PostingProduct struct {
 
 // Posting is an FBS posting. InProcessAt is a string, not a time.Time: an empty
 // or non-standard value in that field must not break parsing of the whole
-// answer — the date is here only to be shown to the owner.
+// answer - the date is here only to be shown to the owner.
 type Posting struct {
 	PostingNumber string           `json:"posting_number"`
 	Status        string           `json:"status"`

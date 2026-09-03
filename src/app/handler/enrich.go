@@ -18,7 +18,7 @@ import (
 
 // kEnrichTimeout sits just under nginx's 60-second proxy read timeout. One card
 // on the AdHunters GPU takes 15-25 seconds, so a synchronous request is honest
-// here — ponytail: a background task with progress is the answer only if this
+// here - ponytail: a background task with progress is the answer only if this
 // ever grows into "rewrite the whole catalogue".
 const kEnrichTimeout = 55 * time.Second
 
@@ -54,7 +54,7 @@ type enrichResponse struct {
 
 // kMaxCategoryBytes bounds the section list by size rather than by count: a
 // deep path runs past a hundred characters, and two hundred of them made a
-// 55 KB prompt that pushed the answer out of the model's context — it replied
+// 55 KB prompt that pushed the answer out of the model's context - it replied
 // with nothing usable in three seconds. Measured on a live 24 000-product tree.
 // ponytail: a flat budget, filled with the shallowest paths first. Narrowing
 // the list by the product's own words is the upgrade if this proves too blunt.
@@ -84,7 +84,7 @@ func upstreamMessage(body []byte) string {
 
 // EnrichProduct asks AdHunters to rewrite one card and hands the draft back to
 // the admin. Nothing is written to the database: the owner reads what the model
-// produced, edits it and saves it themselves — a generated text that saved
+// produced, edits it and saves it themselves - a generated text that saved
 // itself would put invented properties on the storefront under their name.
 func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -110,7 +110,7 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 	// The sections are sent only when the product has none. Measured on a live
 	// catalogue: the list is 36% of the prompt, it pushed four cards in ten past
 	// the gateway's sixty seconds, and the model kept the existing section every
-	// single time — so on a filed product it costs latency and buys nothing.
+	// single time - so on a filed product it costs latency and buys nothing.
 	// What is left is the case with the value: filling an empty section.
 	// The model may pick from the list, never write one of its own; guessing a
 	// tree is the onboarding tool's job, not the shop's.
@@ -176,7 +176,7 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	default:
 		// The service's own words rather than ours: it knows why it refused,
-		// and a generic "try again" left the owner — and us — guessing. Not
+		// and a generic "try again" left the owner - and us - guessing. Not
 		// translated, like every other message that came from a platform.
 		log.Warnf("enrich: product %d: AI service answered %d: %s",
 			id, resp.StatusCode, upstreamMessage(raw))

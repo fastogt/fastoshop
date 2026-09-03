@@ -3,7 +3,7 @@ package database
 import "testing"
 
 // The list is what the owner ticks boxes against, so it must hold every name the
-// catalogue states and nothing else — including from rows written before
+// catalogue states and nothing else - including from rows written before
 // characteristics were a list, which hold an object and must not crash the query.
 func TestCatalogParamNames(t *testing.T) {
 	d := openTest(t)

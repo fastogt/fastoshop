@@ -18,7 +18,7 @@ const (
 	kJobFill   = "fill"
 )
 
-// Fill job stages: the download and its second half — a downloaded photo
+// Fill job stages: the download and its second half - a downloaded photo
 // without its small copy would leave the catalogue as heavy as it was, which is
 // the whole reason for downloading it.
 const (
@@ -27,7 +27,7 @@ const (
 )
 
 // jobStage is one step of a job. A list, not a single stage, because a fill can
-// have several tasks ticked and each carries its own count — one flat "done of
+// have several tasks ticked and each carries its own count - one flat "done of
 // total" would average them into a number that means nothing.
 type jobStage struct {
 	Task  string `json:"task"`
@@ -48,7 +48,7 @@ const (
 // who cannot start an import and a fill at the same moment, so a single slot
 // with a mutex is the whole scheduler.
 //
-// ponytail: a restart loses the progress but no data — products are already
+// ponytail: a restart loses the progress but no data - products are already
 // written, photos that did not make it are still links, and running the action
 // again picks up exactly what is left. A jobs table appears when there is more
 // than one job.
@@ -90,8 +90,8 @@ func (j *job) busy() bool {
 	return j.running
 }
 
-// stop asks the running job to wind down. Work already in flight finishes — a
-// photo mid-download is cheaper to keep than to throw away — and nothing new is
+// stop asks the running job to wind down. Work already in flight finishes - a
+// photo mid-download is cheaper to keep than to throw away - and nothing new is
 // started.
 func (j *job) stop() {
 	j.mu.Lock()
@@ -147,7 +147,7 @@ type jobResponse struct {
 	Running bool       `json:"running"`
 	Kind    string     `json:"kind"`
 	Stages  []jobStage `json:"stages"`
-	// InFlight are the products being worked on at this very moment — never more
+	// InFlight are the products being worked on at this very moment - never more
 	// than the worker count, and what the table draws its spinner from.
 	InFlight []int64 `json:"in_flight"`
 	// Stopped tells a half-finished result from a complete one: the owner pressed
@@ -176,7 +176,7 @@ func (h *Handler) jobState() jobResponse {
 
 // ponytail: the stream watches the job state on a ticker instead of being woken
 // by it. A condition variable would save two wakeups a second and cost a
-// subscriber list — worth it when there is more than one job to watch.
+// subscriber list - worth it when there is more than one job to watch.
 const kJobTick = 500 * time.Millisecond
 
 // Keeps the connection alive through proxies that drop idle upstreams.

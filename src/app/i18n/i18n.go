@@ -1,6 +1,6 @@
 // Package i18n renders the text the shop owner reads: API error messages and
 // the emails we send them. A shop has exactly one owner, so the shop's language
-// setting is the owner's language — there is no per-request negotiation and no
+// setting is the owner's language - there is no per-request negotiation and no
 // need to hand error codes to the client.
 //
 // The storefront is deliberately absent from here: it speaks the language of the
@@ -98,9 +98,9 @@ var kMessages = map[string][2]string{
 	KeyOrderPhone:      {"Телефон", "Phone"},
 	KeyOrderComment:    {"Комментарий", "Comment"},
 	KeyOrderEmail:      {"Почта", "Email"},
-	// %s — the shop name.
+	// %s - the shop name.
 	KeyOrderConfirmSubject: {"Ваш заказ в «%s»", "Your order at %s"},
-	// %d — the order number.
+	// %d - the order number.
 	KeyOrderConfirmBody: {
 		"Спасибо! Мы получили ваш заказ №%d и свяжемся с вами для подтверждения.",
 		"Thank you! We have received your order #%d and will contact you to confirm it.",
@@ -151,12 +151,12 @@ var kMessages = map[string][2]string{
 		"save the AdHunters key in your profile first",
 	},
 	KeyAIKeyRejected: {
-		"ключ AdHunters не подошёл — проверьте его в профиле",
-		"the AdHunters key was rejected — check it in your profile",
+		"ключ AdHunters не подошёл - проверьте его в профиле",
+		"the AdHunters key was rejected - check it in your profile",
 	},
 	KeyAINoCredits: {
-		"на ключе AdHunters закончились запросы — пополните на adhunters.fastolead.com",
-		"the AdHunters key is out of requests — top it up at adhunters.fastolead.com",
+		"на ключе AdHunters закончились запросы - пополните на adhunters.fastolead.com",
+		"the AdHunters key is out of requests - top it up at adhunters.fastolead.com",
 	},
 	KeyAIUnavailable: {
 		"не получилось получить текст, попробуйте ещё раз",
@@ -232,8 +232,8 @@ var kMessages = map[string][2]string{
 	},
 	KeyYMLBadStatus: {"сервер выгрузки ответил %d", "the feed server answered %d"},
 	KeyYMLTooBig: {
-		"выгрузка больше %d МБ — такой каталог мы не тянем",
-		"the feed is over %d MB — we do not pull a catalogue that size",
+		"выгрузка больше %d МБ - такой каталог мы не тянем",
+		"the feed is over %d MB - we do not pull a catalogue that size",
 	},
 	KeyYMLBadXML: {"не удалось разобрать XML выгрузки", "could not parse the feed XML"},
 }
@@ -262,7 +262,7 @@ type KeyError struct {
 func (e *KeyError) Error() string { return fmt.Sprintf(T(LangEN, e.Key), e.Args...) }
 
 // Localize renders err for the owner: KeyErrors in their language, anything
-// else as is — someone else's error text is not ours to rewrite.
+// else as is - someone else's error text is not ours to rewrite.
 func Localize(lang string, err error) string {
 	var ke *KeyError
 	if errors.As(err, &ke) {
@@ -273,7 +273,7 @@ func Localize(lang string, err error) string {
 
 // TIfKey translates a string only if it is one of our keys. Errors stored in the
 // database mix two origins: our own sentinels, which must follow the owner's
-// language, and text the marketplace produced, which we pass through untouched —
+// language, and text the marketplace produced, which we pass through untouched -
 // translating someone else's error would be inventing it.
 func TIfKey(lang, s string) string {
 	if _, ok := kMessages[s]; ok {

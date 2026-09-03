@@ -135,7 +135,7 @@ func (d *Database) MarkWBStockError(productID int64, msg string, retryAt time.Ti
 	return err
 }
 
-// CountWBStockState counts pending without regard to retry_at — to the owner a
+// CountWBStockState counts pending without regard to retry_at - to the owner a
 // row in backoff is still "waiting to be sent", not gone.
 func (d *Database) CountWBStockState() (pending, failed int, err error) {
 	err = d.db.QueryRow(

@@ -283,8 +283,8 @@ func sheetNumber(name string) int {
 	return n
 }
 
-// readSheet returns the sheet as a dense grid. Cells are sparse in the file — an
-// empty cell is simply absent — so they are placed by their own column letter,
+// readSheet returns the sheet as a dense grid. Cells are sparse in the file - an
+// empty cell is simply absent - so they are placed by their own column letter,
 // otherwise every gap would shift the rest of the row left.
 func readSheet(f *zip.File, shared []string) ([][]string, error) {
 	rc, err := f.Open()

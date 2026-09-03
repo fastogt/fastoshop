@@ -24,7 +24,7 @@ func TestDiffFirstImport(t *testing.T) {
 	}
 }
 
-// Re-uploading the same feed must not look like a change — otherwise the
+// Re-uploading the same feed must not look like a change - otherwise the
 // owner sees "everything changed" every week and stops looking.
 func TestDiffSameFeedIsQuiet(t *testing.T) {
 	items := []Item{{SKU: "A", Price: 10000}, {SKU: "B", Price: 20000}}

@@ -97,7 +97,7 @@ func TestEnrichReturnsDraftWithoutWriting(t *testing.T) {
 	}
 }
 
-// Sections are offered only for a product that has none — a filed product keeps
+// Sections are offered only for a product that has none - a filed product keeps
 // what it has, and the model is never given the chance to move it. For an
 // unfiled one, a section the shop does not have cannot reach the form however
 // confidently the model writes it.

@@ -10,7 +10,7 @@ import (
 )
 
 // The log is the owner's only window into what the background did, so it has to
-// arrive as readable text — and only for someone who is logged in.
+// arrive as readable text - and only for someone who is logged in.
 func TestLogsServed(t *testing.T) {
 	h := newTestHandler(t)
 	path := filepath.Join(t.TempDir(), "fastoshop.log")

@@ -148,7 +148,7 @@ func TestMergeEmptyFeedDoesNotWipeShop(t *testing.T) {
 	}
 }
 
-// The same feed a second time — nothing gets created or updated.
+// The same feed a second time - nothing gets created or updated.
 func TestMergeSameFeedIsNoop(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{{SKU: "A", Title: "Чайник", Price: 10000, Stock: 5}}}

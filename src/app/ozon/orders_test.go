@@ -22,7 +22,7 @@ func TestPollAppliesPostingOnce(t *testing.T) {
 		t.Fatalf("B: want 3, got %d", got)
 	}
 
-	// The same posting a second time — the ledger rejects it via UNIQUE.
+	// The same posting a second time - the ledger rejects it via UNIQUE.
 	pass(t, w)
 	if stockOf(t, d, a) != 7 || stockOf(t, d, b) != 3 {
 		t.Fatalf("repeated posting shifted stock: A=%d B=%d",
@@ -132,7 +132,7 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	seedLinked(t, d, "A", 5)
 
-	// A response of unknown shape — the cursor must not be touched, or the
+	// A response of unknown shape - the cursor must not be touched, or the
 	// window with the sales drifts away forever.
 	m.mu.Lock()
 	m.postingsRaw = `{"result":{"postings":[{"status":"awaiting_deliver"}]}}`
@@ -160,7 +160,7 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	}
 	t.Logf("cursor: %s", since.Format(time.RFC3339))
 
-	// The next poll goes out with an overlap backwards — and the re-fetched
+	// The next poll goes out with an overlap backwards - and the re-fetched
 	// posting passes through as a no-op.
 	pass(t, w)
 	fs := m.filters()
@@ -178,7 +178,7 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	}
 }
 
-// TestFullCycle — the whole slice: linked, pushed a level, the marketplace sold,
+// TestFullCycle - the whole slice: linked, pushed a level, the marketplace sold,
 // the poll applied the sale, the next pass pushed the reduced level.
 func TestFullCycle(t *testing.T) {
 	h, d := newTestHandlers(t)

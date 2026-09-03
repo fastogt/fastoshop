@@ -23,7 +23,7 @@ import (
 // one no fixture can answer. A feed of twenty thousand offers where nine state
 // a weight parses correctly and is useless, and only a live run says so.
 //
-// They assert almost nothing on purpose — somebody else's catalogue is not ours
+// They assert almost nothing on purpose - somebody else's catalogue is not ours
 // to have opinions about. The two things they do insist on are that something
 // parsed and that the parser did not silently drop the majority.
 func TestLiveYML(t *testing.T) {

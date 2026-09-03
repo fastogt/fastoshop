@@ -133,7 +133,7 @@ func (s *Storefront) Cart(w http.ResponseWriter, r *http.Request) {
 		Ordered: r.URL.Query().Get("ordered") == "1"})
 }
 
-// cartSoldOut — the product ran out between rendering the cart and pressing
+// cartSoldOut - the product ran out between rendering the cart and pressing
 // "Checkout". No order was created, so instead of redirecting to "thank you" we
 // show the same cart without the vanished line: the buyer sees exactly what
 // changed and confirms the rest themselves.
@@ -219,7 +219,7 @@ func (s *Storefront) CartUpdate(w http.ResponseWriter, r *http.Request) {
 			default:
 				l.Qty = qty
 			}
-			// Down to nothing is the same as removing the row — reached by the
+			// Down to nothing is the same as removing the row - reached by the
 			// minus button, and still by a typed zero for anyone who tries.
 			if l.Qty < 1 {
 				continue
@@ -261,7 +261,7 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 			SKU: p.SKU, Title: p.Title, Price: p.Price, Qty: row.Qty})
 		stock = append(stock, database.OrderItem{ProductID: p.ID, Qty: row.Qty})
 		slugByID[p.ID] = p.Slug
-		fmt.Fprintf(&summary, "%s x%d — %s\n", p.Title, row.Qty, row.LineStr)
+		fmt.Fprintf(&summary, "%s x%d - %s\n", p.Title, row.Qty, row.LineStr)
 	}
 	shop := s.shop()
 	sign := shop.Sign()
@@ -280,7 +280,7 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	writeCart(w, nil)
 	s.stockChanged()
 	// The order email goes to the owner, not the buyer, so it follows the owner's
-	// language — unlike the storefront around it, which speaks the language of
+	// language - unlike the storefront around it, which speaks the language of
 	// the products.
 	lang := shop.Lang
 	body := fmt.Sprintf("%s%s: %s %s\n\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n\n%s/admin",

@@ -61,7 +61,7 @@ func TestRenameCategory(t *testing.T) {
 		}
 	}
 
-	// The old addresses are in the index: they must move, not die — the node
+	// The old addresses are in the index: they must move, not die - the node
 	// itself and every page under it.
 	for from, want := range map[string]string{
 		"tekstil":         "domashnij-tekstil",

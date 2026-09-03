@@ -42,7 +42,7 @@ func TestPriceOptIn(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 5)
 
-	// price = 0 — the pass pushes the stock and stays away from the price.
+	// price = 0 - the pass pushes the stock and stays away from the price.
 	pass(t, w)
 	if got := m.sentPrices(); len(got) != 0 {
 		t.Fatalf("unmanaged price went to the marketplace: %+v", got)
@@ -57,7 +57,7 @@ func TestPriceOptIn(t *testing.T) {
 		t.Fatalf("price batch: %+v", got)
 	}
 
-	// The same value — no call.
+	// The same value - no call.
 	if pushed, _ := pass(t, w); pushed != 0 {
 		t.Fatal("same price pushed again")
 	}
@@ -65,7 +65,7 @@ func TestPriceOptIn(t *testing.T) {
 		t.Fatalf("extra price calls: %+v", m.sentPrices())
 	}
 
-	// Changed — travels again.
+	// Changed - travels again.
 	setPrice(t, d, id, 120000)
 	if pushed, _ := pass(t, w); pushed != 1 {
 		t.Fatal("new price not pushed")
@@ -74,7 +74,7 @@ func TestPriceOptIn(t *testing.T) {
 		t.Fatalf("want 1200: %+v", got)
 	}
 
-	// Cleared — management stops, nothing else is sent.
+	// Cleared - management stops, nothing else is sent.
 	setPrice(t, d, id, 0)
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
 		t.Fatalf("clearing the price pushed something: %d/%d", pushed, failed)
@@ -157,7 +157,7 @@ func TestPriceErrorsDoNotMixWithStock(t *testing.T) {
 		t.Fatalf("stock flagged with an error: %+v", bad)
 	}
 
-	// The row is in backoff — the pass leaves it alone.
+	// The row is in backoff - the pass leaves it alone.
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
 		t.Fatalf("row in backoff retried immediately: %d/%d", pushed, failed)
 	}
@@ -222,7 +222,7 @@ func TestPriceCallFailureBacksOff(t *testing.T) {
 }
 
 // TestPriceCurrencyBYN: an ozon.by cabinet belongs to a Belarusian entity, and
-// so does the shop in front of it — the shop's own currency is what labels the
+// so does the shop in front of it - the shop's own currency is what labels the
 // price on the wire, because there is only one.
 func TestPriceCurrencyBYN(t *testing.T) {
 	w, d, m := newSyncTest(t)
@@ -278,7 +278,7 @@ func TestFillPricesOnlyEmpty(t *testing.T) {
 	if got.Filled != 1 {
 		t.Fatalf("filled: %+v", got)
 	}
-	// 999 * 1.25 = 1248.75 kopecks — rounded up, in the seller's favour.
+	// 999 * 1.25 = 1248.75 kopecks - rounded up, in the seller's favour.
 	if r := linkRow(t, d, filled); r.Price != 1249 {
 		t.Fatalf("markup computed incorrectly: %d", r.Price)
 	}
@@ -290,7 +290,7 @@ func TestFillPricesOnlyEmpty(t *testing.T) {
 		t.Fatalf("product without a price got one: %d", r.Price)
 	}
 
-	// Second press changes nothing — everything is filled already.
+	// Second press changes nothing - everything is filled already.
 	got = decode[fillPricesResponse](t, do(t, h, "POST", "/price/fill", `{"markup_bp":2500}`))
 	if got.Filled != 0 {
 		t.Fatalf("repeated fill: %+v", got)
@@ -396,7 +396,7 @@ func decimal(minor int64) string {
 	return fmt.Sprintf("%d.%02d", minor/100, minor%100)
 }
 
-// The cabinet may not yet have an FBS warehouse — prices don't depend on it and
+// The cabinet may not yet have an FBS warehouse - prices don't depend on it and
 // must go out, or the seller sees a silent "nothing happened".
 func TestPricesPushWithoutWarehouse(t *testing.T) {
 	w, d, m := newSyncTest(t)
@@ -418,7 +418,7 @@ func TestPricesPushWithoutWarehouse(t *testing.T) {
 	}
 }
 
-// The tab's errors are read by the owner, so they come in the owner's language —
+// The tab's errors are read by the owner, so they come in the owner's language -
 // otherwise an English-language admin shows Russian text on every failure.
 func TestErrorsFollowOwnerLanguage(t *testing.T) {
 	h, d := newTestHandlers(t)
@@ -447,7 +447,7 @@ func TestErrorsFollowOwnerLanguage(t *testing.T) {
 
 // TestPushNowIgnoresBackoff: the ticker waits out a failure, the button does
 // not. The owner presses "push now" right after fixing what the platform
-// refused — a wrong currency, say — and a backoff they cannot see answers
+// refused - a wrong currency, say - and a backoff they cannot see answers
 // "0 sent, 0 failed", which is the same silence this tab has been cured of
 // everywhere else.
 func TestPushNowIgnoresBackoff(t *testing.T) {
@@ -461,7 +461,7 @@ func TestPushNowIgnoresBackoff(t *testing.T) {
 		t.Fatalf("the price must fail first: %d/%d", pushed, failed)
 	}
 	if r := linkRow(t, d, id); r.PriceError == "" {
-		t.Fatal("no failure recorded — nothing to back off from")
+		t.Fatal("no failure recorded - nothing to back off from")
 	}
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
 		t.Fatalf("the ticker must hold off: %d/%d", pushed, failed)

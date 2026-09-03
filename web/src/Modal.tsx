@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 // Modal for editing a row without leaving the table. An inline form above the
 // list meant that opening row 49 threw the owner to the top of the page and
-// back — with twenty thousand rows that is the difference between editing and
+// back - with twenty thousand rows that is the difference between editing and
 // hunting. Native <dialog>: Escape, focus trapping and the backdrop come from
 // the browser instead of hand-rolled listeners.
 interface Props {
@@ -39,7 +39,7 @@ export default function Modal({ title, onClose, children, footer }: Props) {
       }}
       // overflow-hidden on the dialog itself: the browser gives it overflow:auto,
       // and the card's own max-height plus this padding add up to exactly the
-      // viewport — 38 pixels of overflow and a second scrollbar beside the one
+      // viewport - 38 pixels of overflow and a second scrollbar beside the one
       // the content already has. Only the body inside scrolls.
       className="m-auto w-full max-w-3xl overflow-hidden bg-transparent p-4 backdrop:bg-black/40 sm:p-8"
     >

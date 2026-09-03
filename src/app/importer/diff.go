@@ -10,7 +10,7 @@ import (
 
 // kListLimit caps each list in the diff. Three thousand changed rows is not
 // something a person reads; the counts plus the outliers are what a decision is
-// made on. The response says how many were left out — a silently truncated list
+// made on. The response says how many were left out - a silently truncated list
 // reads as a complete one.
 const kListLimit = 50
 
@@ -62,7 +62,7 @@ func shelfPrice(rules []database.PriceRule, source int64, coefficient float64) i
 
 // Compare matches the incoming catalogue against the shop by article, inside one
 // supplier group: counting another supplier's goods as "gone" would be a lie.
-// Rows without an article take no part — there is nothing to match them by, and
+// Rows without an article take no part - there is nothing to match them by, and
 // guessing by title would silently merge different goods.
 func Compare(items []Item, existing []database.Product, supplier string,
 	coefficient float64, rules []database.PriceRule) *Diff {

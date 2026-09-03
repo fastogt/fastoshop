@@ -18,7 +18,7 @@ const kSessionTTL = 30 * 24 * time.Hour
 // Login is not rate-limited by refusing: a shop has one owner and nobody to
 // call, so a lockout after N tries would let anyone who knows their address
 // shut them out of their own admin until somebody reaches the server over SSH.
-// A growing delay costs an attacker time and costs the owner nothing — they
+// A growing delay costs an attacker time and costs the owner nothing - they
 // type the right password and the counter resets.
 //
 // ponytail: one counter for the whole instance rather than a bucket per
@@ -89,7 +89,7 @@ func newToken() string {
 	return hex.EncodeToString(b)
 }
 
-// isTLS — prod sits behind nginx+certbot, which terminates TLS and proxies
+// isTLS - prod sits behind nginx+certbot, which terminates TLS and proxies
 // plain HTTP, so r.TLS is always nil there: we rely on X-Forwarded-Proto.
 // Without this the Secure cookie would break login in prod, and on local http
 // login entirely, which is why the flag is not a constant.

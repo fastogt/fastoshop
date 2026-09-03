@@ -12,7 +12,7 @@ type priceRulesResponse struct {
 	Rules []database.PriceRule `json:"rules"`
 	// Coefficient is what the catalogue actually runs on, and the form has to
 	// open with it: recomputing against a wrong one multiplies every price in
-	// the shop — a form defaulting to 1 against a shop on 0.0466 is twenty-one
+	// the shop - a form defaulting to 1 against a shop on 0.0466 is twenty-one
 	// times.
 	Coefficient float64 `json:"coefficient"`
 }
@@ -23,7 +23,7 @@ type priceRulesRequest struct {
 
 // GetPriceRules returns the shop's own markup ladder. The channels have had one
 // since they were written; the storefront made do with a single multiplier,
-// which lies at both ends of a catalogue — it leaves nothing on a seven-rouble
+// which lies at both ends of a catalogue - it leaves nothing on a seven-rouble
 // sieve and prices a steamer above the brand's own store.
 func (h *Handler) GetPriceRules(w http.ResponseWriter, r *http.Request) {
 	rules, err := h.db.ShopPriceRules()

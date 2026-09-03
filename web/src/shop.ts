@@ -15,7 +15,7 @@ const kSigns: Record<string, string> = {
   KZT: "₸",
 };
 
-// Must match Settings.Sign() in app/database/settings.go — the same price is
+// Must match Settings.Sign() in app/database/settings.go - the same price is
 // rendered here and on the storefront.
 export const signOf = (code: string) => kSigns[code] ?? code;
 
@@ -61,7 +61,7 @@ export const isRemoteImage = (path: string) => path.startsWith("http");
 // than the storefront's 220 px card does, and there are up to 500 rows on a
 // page: a hundred products meant 9.8 MB of full-size WebP at once, the browser
 // dropped two thirds of them, and onError replaced each dropped one with the
-// "no photo" stub — so the table claimed the products had no pictures at all.
+// "no photo" stub - so the table claimed the products had no pictures at all.
 //
 // The name is derived rather than asked for, because whether a small copy
 // exists is a question about the disk and the answer would have to travel in

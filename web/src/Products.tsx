@@ -67,7 +67,7 @@ const kText = {
   thSupplier: { ru: "Поставщик", en: "Supplier" },
   thArticle: { ru: "Артикул", en: "Article" },
   rowHint: {
-    ru: "Нажмите на строку, чтобы открыть товар. Отметьте строки — появятся действия над выбранными.",
+    ru: "Нажмите на строку, чтобы открыть товар. Отметьте строки - появятся действия над выбранными.",
     en: "Click a row to open the product. Tick rows and actions over the selection appear.",
   },
   bulkStock: { ru: "Проставить остаток", en: "Set stock" },
@@ -80,7 +80,7 @@ const kText = {
     en: "What stock should the selected products get?",
   },
   askGroup: {
-    ru: "В какую группу перенести? Пусто — без поставщика.",
+    ru: "В какую группу перенести? Пусто - без поставщика.",
     en: "Which group to move them to? Empty means no supplier.",
   },
   askDelete: {
@@ -109,7 +109,7 @@ const kText = {
   labelWeight: { ru: "Вес, г", en: "Weight, g" },
   labelSize: { ru: "Габариты, мм", en: "Size, mm" },
   sizeHint: {
-    ru: "Длина × ширина × высота упаковки. По весу и габаритам считается доставка, поэтому пустое поле честнее нуля: незаполненный вес — это «неизвестно», а не «невесомый».",
+    ru: "Длина × ширина × высота упаковки. По весу и габаритам считается доставка, поэтому пустое поле честнее нуля: незаполненный вес - это «неизвестно», а не «невесомый».",
     en: "Length × width × height of the parcel. Delivery is priced by weight and size, so an empty field is more honest than a zero: an unstated weight means \u201cunknown\u201d, not \u201cweightless\u201d.",
   },
   cardShop: { ru: "Витрина", en: "Storefront" },
@@ -128,23 +128,23 @@ const kText = {
     en: "The maker of the goods, not the supplier. It goes into the page markup and the product feeds: without a brand, Merchant Center shows the listing less often.",
   },
   categoryHint: {
-    ru: "Косая черта задаёт вложенность: «Посуда/Кастрюли» — это страница «Кастрюли» внутри «Посуды». У каждого уровня своя страница на витрине.",
+    ru: "Косая черта задаёт вложенность: «Посуда/Кастрюли» - это страница «Кастрюли» внутри «Посуды». У каждого уровня своя страница на витрине.",
     en: 'A slash makes a level: "Cookware/Pots" is a Pots page inside Cookware. Every level gets a page of its own on the storefront.',
   },
   skuLocked: {
-    ru: "Артикул связывает товар с выгрузкой поставщика — по нему загрузка находит, что обновлять. Чтобы изменить, сначала уберите поставщика.",
-    en: "The article is what links this product to its supplier's feed — an import finds what to update by it. To change it, clear the supplier first.",
+    ru: "Артикул связывает товар с выгрузкой поставщика - по нему загрузка находит, что обновлять. Чтобы изменить, сначала уберите поставщика.",
+    en: "The article is what links this product to its supplier's feed - an import finds what to update by it. To change it, clear the supplier first.",
   },
   enrich: { ru: "Улучшить текст (AI)", en: "Improve the text (AI)" },
   enriching: { ru: "Пишем…", en: "Writing…" },
   enrichHint: {
-    ru: "Название и описание перепишет модель — проверьте факты перед сохранением. За карточку отвечаете вы. Пока не нажали «Сохранить», в магазине ничего не изменилось.",
-    en: "A model rewrites the name and the description — check the facts before saving. The card is your responsibility. Until you press Save, nothing in the shop has changed.",
+    ru: "Название и описание перепишет модель - проверьте факты перед сохранением. За карточку отвечаете вы. Пока не нажали «Сохранить», в магазине ничего не изменилось.",
+    en: "A model rewrites the name and the description - check the facts before saving. The card is your responsibility. Until you press Save, nothing in the shop has changed.",
   },
   labelDescription: { ru: "Описание", en: "Description" },
   descriptionPlaceholder: {
-    ru: "Что это, из чего сделано, кому подойдёт — этот текст читают и покупатели, и поисковики.",
-    en: "What it is, what it is made of, who it suits — this text is read by shoppers and search engines alike.",
+    ru: "Что это, из чего сделано, кому подойдёт - этот текст читают и покупатели, и поисковики.",
+    en: "What it is, what it is made of, who it suits - this text is read by shoppers and search engines alike.",
   },
   labelPhotos: { ru: "Фотографии", en: "Photos" },
   addPhoto: { ru: "Добавить", en: "Add" },
@@ -156,12 +156,12 @@ const kText = {
   },
   rate: { ru: "Курс закупки", en: "Cost rate" },
   rateHint: {
-    ru: "Во сколько раз цена поставщика превращается в вашу валюту. Прайс в той же валюте — оставьте 1.",
+    ru: "Во сколько раз цена поставщика превращается в вашу валюту. Прайс в той же валюте - оставьте 1.",
     en: "What the supplier's price is multiplied by to become your money. A price list in your own currency needs 1.",
   },
   markup: { ru: "Наценка, %", en: "Markup, %" },
   markupHint: {
-    ru: "Сколько добавляем сверх закупки. 30 — это ×1.3.",
+    ru: "Сколько добавляем сверх закупки. 30 - это ×1.3.",
     en: "How much is added on top of the cost. 30 means ×1.3.",
   },
   bandsToggle: {
@@ -169,7 +169,7 @@ const kText = {
     en: "A different markup for cheap and dear goods",
   },
   bandsHint: {
-    ru: "На товаре за 7 рублей одна наценка ничего не оставляет, а на товаре за 300 выносит цену выше магазина бренда. Полоса — до какой закупочной цены какой множитель; последняя строка «и выше» обязательна.",
+    ru: "На товаре за 7 рублей одна наценка ничего не оставляет, а на товаре за 300 выносит цену выше магазина бренда. Полоса - до какой закупочной цены какой множитель; последняя строка «и выше» обязательна.",
     en: 'One markup leaves nothing on a 7-rouble item and prices a 300-rouble one above the brand\'s own store. A band is: up to which cost, which multiplier; the final "and above" row is required.',
   },
   bandUpTo: { ru: "до", en: "up to" },
@@ -179,8 +179,8 @@ const kText = {
   removeBand: { ru: "Удалить", en: "Remove" },
   savePricing: { ru: "Сохранить", en: "Save" },
   pricingSaved: {
-    ru: "Сохранено. Цены пока прежние — нажмите «Пересчитать цены».",
-    en: 'Saved. No price has moved yet — press "Recompute prices".',
+    ru: "Сохранено. Цены пока прежние - нажмите «Пересчитать цены».",
+    en: 'Saved. No price has moved yet - press "Recompute prices".',
   },
   recompute: { ru: "Пересчитать цены", en: "Recompute prices" },
   recomputed: {
@@ -208,14 +208,14 @@ const kText = {
     en: "The photo sits on the supplier’s server, we have no copy. Tick the products and press “Fill in” to bring the photos in.",
   },
   remotePhoto: {
-    ru: "Фото лежит на чужом сервере. Закроют его — витрина останется без картинки. «Забрать фото к себе» скачает его к нам.",
+    ru: "Фото лежит на чужом сервере. Закроют его - витрина останется без картинки. «Забрать фото к себе» скачает его к нам.",
     en: "This photo lives on someone else’s server. The day it goes, the storefront loses the picture. “Bring the photos in” downloads it to us.",
   },
   labelSupplier: { ru: "Поставщик (группа)", en: "Supplier (group)" },
   supplierPlaceholder: { ru: "без поставщика", en: "no supplier" },
   supplierHint: {
     ru: "Чей это товар: только выгрузка этой группы будет обновлять его цену и остаток. Осторожно: если в выгрузке такого артикула нет, ближайшая загрузка обнулит остаток.",
-    en: "Whose goods these are: only this group's feed updates the price and stock. Careful — if the feed has no such article, the next import zeroes the stock.",
+    en: "Whose goods these are: only this group's feed updates the price and stock. Careful - if the feed has no such article, the next import zeroes the stock.",
   },
   editTitle: { ru: "Товар", en: "Product" },
   newTitle: { ru: "Новый товар", en: "New product" },
@@ -230,8 +230,8 @@ const kText = {
     en: "Nothing matched “{q}”.",
   },
   emptyFiltered: {
-    ru: "По этому фильтру ничего нет. Товары есть в других группах — выберите «Все поставщики».",
-    en: 'Nothing under this filter. There are products in other groups — pick "All suppliers".',
+    ru: "По этому фильтру ничего нет. Товары есть в других группах - выберите «Все поставщики».",
+    en: 'Nothing under this filter. There are products in other groups - pick "All suppliers".',
   },
   empty: {
     ru: "Товаров пока нет. Добавьте вручную или перенесите каталог с Ozon/WB на вкладке «Импорт».",
@@ -246,7 +246,7 @@ const kText = {
 
 const isRemote = isRemoteImage;
 
-// An empty field is "nobody said", which the server stores as NULL — not as a
+// An empty field is "nobody said", which the server stores as NULL - not as a
 // zero a delivery quote would take for a real measurement.
 // The card is one record shown in parts, so the tabs are a view state and not
 // four forms: one Save, one request.
@@ -271,7 +271,7 @@ export default function Products() {
   // dragover and re-rendering the strip mid-drag drops the drag itself.
   const dragFrom = useRef<number | null>(null);
   // Pricing: the rate that carries a supplier's price into our money, and the
-  // markup on top. Both live here, next to the prices they produce — they used
+  // markup on top. Both live here, next to the prices they produce - they used
   // to sit on the Import tab, a tab away from anything they change.
   const [rate, setRate] = useState("1");
   const [rules, setRules] = useState<PriceRule[]>([]);
@@ -453,7 +453,7 @@ export default function Products() {
     }
   };
 
-  // The draft lands straight in the form: the dialog is already a draft —
+  // The draft lands straight in the form: the dialog is already a draft -
   // nothing reaches the database until Save, and closing the window undoes it.
   // Rows live in state as they are, blanks included: filtering on every
   // keystroke deleted the row whose name was being retyped, value and all. The
@@ -531,7 +531,7 @@ export default function Products() {
   }, []);
 
   // The percentage and the ladder are one thing stored one way: a single band
-  // "and above" is a plain markup, several bands are a ladder — and no rules
+  // "and above" is a plain markup, several bands are a ladder - and no rules
   // at all is a 0% markup that was never set, not a hidden field.
   const markup =
     rules.length <= 1
@@ -551,7 +551,7 @@ export default function Products() {
     setPriceMsg("");
     try {
       // The server recomputes from the *stored* ladder, so what is on the
-      // screen is saved first — otherwise the button reprices the catalogue
+      // screen is saved first - otherwise the button reprices the catalogue
       // by numbers the owner just replaced and reports success.
       await api.setPriceRules(rules);
       const r = await api.recomputePrices(Number(rate.replace(",", ".")) || 1);
@@ -568,7 +568,7 @@ export default function Products() {
 
       {/* Folded away: pricing is set once and then left alone, while the table
           below is the daily work. Open, it answers the one question the numbers
-          in the price column raise — where they came from. */}
+          in the price column raise - where they came from. */}
       <details className="card mb-5">
         <summary className="cursor-pointer font-bold">{t("pricing")}</summary>
         <p className="hint mt-2">{t("pricingHint")}</p>
@@ -1026,7 +1026,7 @@ export default function Products() {
                         </span>
                       ))}
                       {/* The native file input shows "No file chosen" and resists
-                    styling — we hide it behind a button-styled label. */}
+                    styling - we hide it behind a button-styled label. */}
                       <label className="btn-ghost border-line flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 border-2 border-dashed text-center text-xs">
                         <span className="text-lg leading-none">+</span>
                         {t("addPhoto")}
@@ -1184,7 +1184,7 @@ export default function Products() {
                 />
                 <span>
                   <span className="font-semibold">{o.label}</span>
-                  {" — "}
+                  {" - "}
                   {t("fillCount", { n: o.n })}
                   <span className="hint block">{o.hint}</span>
                 </span>
@@ -1210,7 +1210,7 @@ export default function Products() {
                       loading="lazy"
                       // Two steps down, not one. A missing small copy means the
                       // photo predates thumbnails, and the original is still
-                      // there — falling straight to the stub would claim the
+                      // there - falling straight to the stub would claim the
                       // product has no picture when it has one. Only when the
                       // original fails too does the row show the shop's own
                       // mark: a supplier's link can stop answering and start
@@ -1268,7 +1268,7 @@ export default function Products() {
             label: t("thArticle"),
             sortable: true,
             hideMobile: true,
-            render: (p) => p.sku || "—",
+            render: (p) => p.sku || "-",
           },
           {
             key: "price",
@@ -1313,7 +1313,7 @@ export default function Products() {
             label: t("thSupplier"),
             hideMobile: true,
             render: (p) => (
-              <span className="text-muted">{p.supplier || "—"}</span>
+              <span className="text-muted">{p.supplier || "-"}</span>
             ),
           },
         ]}

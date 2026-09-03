@@ -1,6 +1,6 @@
 // Package media makes the small copies the catalogue grid shows. A supplier's
 // photo is 1000 px and 150 KB; a card is 220 px wide. Sixty of those on one page
-// is two megabytes to draw thumbnails — the single heaviest thing about a shop
+// is two megabytes to draw thumbnails - the single heaviest thing about a shop
 // with a real catalogue.
 package media
 
@@ -31,7 +31,7 @@ const kThumbQuality = 80
 
 // ThumbName derives the small copy's name from the original instead of storing
 // it: no column, no migration, and a photo deleted by name takes its thumbnail
-// with it. Always .jpg — Go can encode JPEG and PNG, and a photo has no
+// with it. Always .jpg - Go can encode JPEG and PNG, and a photo has no
 // transparency to lose.
 func ThumbName(name string) string {
 	ext := filepath.Ext(name)
@@ -110,7 +110,7 @@ func RemoveThumb(dir, name string) {
 
 // Missing lists the photos on disk that have no small copy yet: everything
 // uploaded or downloaded before thumbnails existed. Walking the directory
-// beats asking the database — the database does not know about thumbnails, the
+// beats asking the database - the database does not know about thumbnails, the
 // filesystem does.
 func Missing(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)

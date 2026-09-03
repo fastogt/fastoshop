@@ -43,7 +43,7 @@ func listen(addr string) (net.Listener, error) {
 	if !strings.HasPrefix(addr, "/") {
 		return net.Listen("tcp", addr)
 	}
-	// systemd does not remove the socket after a process killed with SIGKILL —
+	// systemd does not remove the socket after a process killed with SIGKILL -
 	// without this the restart would fail with "address already in use".
 	if err := os.Remove(addr); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("stale socket: %w", err)
@@ -179,7 +179,7 @@ func run(cfg *config.Config) error {
 		}
 		// The file name carries a random suffix and changes with the content
 		// (p<id>-<token>.jpg), so it can be cached forever. Without this
-		// header a shopper re-downloads every catalog photo on each page —
+		// header a shopper re-downloads every catalog photo on each page -
 		// on a live shop that is megabytes of wasted traffic.
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		uploads.ServeHTTP(w, req)
@@ -249,7 +249,7 @@ func resetPassword(cfg *config.Config) error {
 	return withDB(cfg, func(dbPath string, db *database.Database) error {
 		s, err := db.GetSettings()
 		if err != nil {
-			return fmt.Errorf("no owner account yet — run -create-owner <email> instead")
+			return fmt.Errorf("no owner account yet - run -create-owner <email> instead")
 		}
 		pw, err := db.ResetOwnerPassword()
 		if err != nil {
@@ -266,8 +266,8 @@ func resetPassword(cfg *config.Config) error {
 // inviteOwner creates the owner and prints a one-time link instead of a
 // password: a password would have to be sent by email, where it would keep
 // living, while the link burns on first use and expires within a day. The
-// shop cannot send emails — SMTP is configured by the owner, who doesn't
-// exist yet — so the link goes to stdout and provisioning delivers it
+// shop cannot send emails - SMTP is configured by the owner, who doesn't
+// exist yet - so the link goes to stdout and provisioning delivers it
 // through its own channel.
 func inviteOwner(cfg *config.Config, email string) error {
 	return withDB(cfg, func(dbPath string, db *database.Database) error {

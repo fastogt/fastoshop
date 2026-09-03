@@ -74,8 +74,8 @@ func TestFeedsCatalog(t *testing.T) {
 // pointing at a 404 gets the whole feed flagged by the provider.
 // A nested path becomes an element per segment tied by parentId. Named after
 // the whole path in one flat element, the tree is lost twice over: Yandex reads
-// a shop of one level, and our own importer — a feed of ours is a valid import
-// source — rebuilds that name as a single category with the separator rewritten.
+// a shop of one level, and our own importer - a feed of ours is a valid import
+// source - rebuilds that name as a single category with the separator rewritten.
 func TestFeedsCategoryTree(t *testing.T) {
 	d, h := setup(t)
 	p := &database.Product{Title: "Кружка", SKU: "MG-1", Price: 2329, Stock: 2,

@@ -155,7 +155,7 @@ type deletedResponse struct {
 	Deleted int `json:"deleted"`
 }
 
-// BulkDeleteOrders erases orders for good. Only by an explicit list of ids —
+// BulkDeleteOrders erases orders for good. Only by an explicit list of ids -
 // deleting "everything the filter matches" is how a shop loses its journal in
 // one click. Stock is not returned: a delete is not a cancellation, and an
 // order that still holds goods should be cancelled first.
@@ -197,7 +197,7 @@ type bulkStatusResponse struct {
 
 // BulkOrderStatus moves the ticked orders. Each one goes through the same
 // single-order path rather than one UPDATE: a status change moves stock, and
-// that has to stay transactional per order — one refusal must not roll back the
+// that has to stay transactional per order - one refusal must not roll back the
 // rest, and must not silently pass either.
 func (h *Handler) BulkOrderStatus(w http.ResponseWriter, r *http.Request) {
 	var req bulkStatusRequest
@@ -244,7 +244,7 @@ func csvSafe(s string) string {
 	return s
 }
 
-// ExportOrdersCSV — the sales journal (for the tax office/accountant).
+// ExportOrdersCSV - the sales journal (for the tax office/accountant).
 func (h *Handler) ExportOrdersCSV(w http.ResponseWriter, r *http.Request) {
 	list, err := h.db.ListOrders()
 	if err != nil {

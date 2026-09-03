@@ -50,7 +50,7 @@ type ymlOffer struct {
 	Description string   `xml:"description,omitempty"`
 	// Not part of the YML standard, which carries availability as a flag and no
 	// quantity at all. Yandex ignores elements it does not know, and our own
-	// importer reads this one — without it a shop copied from another instance
+	// importer reads this one - without it a shop copied from another instance
 	// arrives with one made-up stock level for the whole catalogue.
 	Count int `xml:"count"`
 	// A feed without a parcel size is an advertising feed: Direct never asks
@@ -115,7 +115,7 @@ type gmcFeed struct {
 
 // feedData is the shared fetch for both feeds: the visible catalogue, all
 // photos in one query, and the shop currency with the same RUB fallback the
-// price sign uses — s.shop() can return settings with an empty currency.
+// price sign uses - s.shop() can return settings with an empty currency.
 func (s *Storefront) feedData() ([]database.Product, map[int64][]string, string, error) {
 	products, err := s.db.ListVisibleProductsPage(database.CatalogFilter{}, -1, 0)
 	if err != nil {
@@ -200,8 +200,8 @@ func (s *Storefront) YML(w http.ResponseWriter, r *http.Request) {
 	categories := make([]ymlCategory, 0, len(cats)+1)
 	// A segment per element, tied by parentId. Naming one element after the whole
 	// path is what a flat list forces, and it costs the tree twice: Yandex reads
-	// a shop of one level, and our own import — a feed of ours is a valid import
-	// source — rebuilds the path as a single name with the separator rewritten,
+	// a shop of one level, and our own import - a feed of ours is a valid import
+	// source - rebuilds the path as a single name with the separator rewritten,
 	// so a copied catalogue lands beside the tree instead of inside it.
 	var ensure func(path string) int
 	ensure = func(path string) int {

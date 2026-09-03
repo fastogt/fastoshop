@@ -60,7 +60,7 @@ func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 	old := s.Logo
 	s.Logo = name
 	// The logo loads on every page of the shop. Sellers upload what the designer
-	// gave them — routinely two thousand pixels wide — for a header that draws it
+	// gave them - routinely two thousand pixels wide - for a header that draws it
 	// 36 px tall.
 	if err := media.Shrink(h.uploadsDir, name); err != nil {
 		log.Warnf("shrink logo %q: %v", name, err)
@@ -74,7 +74,7 @@ func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteLogo puts the shop back to showing its name, which is what a storefront
-// without a logo should do — an empty header would be worse than plain text.
+// without a logo should do - an empty header would be worse than plain text.
 func (h *Handler) DeleteLogo(w http.ResponseWriter, r *http.Request) {
 	s, err := h.db.GetSettings()
 	if err != nil {

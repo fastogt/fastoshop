@@ -9,7 +9,7 @@ import (
 )
 
 // Category is a node of the catalogue tree. What a product belongs to is still
-// the path in products.category — this row describes the node: the owner's text
+// the path in products.category - this row describes the node: the owner's text
 // for its page, where it stands among its siblings and whether the storefront
 // shows it at all. A node with no products of its own is a node the owner
 // declared before filling it.
@@ -19,18 +19,18 @@ type Category struct {
 	Position int    `json:"position"`
 	Hidden   bool   `json:"hidden"`
 	// Count is filled by Tree: how many visible products hang at or below the
-	// node. Not stored — a counter kept in a column drifts from the truth.
+	// node. Not stored - a counter kept in a column drifts from the truth.
 	Count int `json:"count"`
 	// LastMod is the date of the newest product below the node, "2006-01-02":
 	// the sitemap needs one, and an ISO date compares as a string.
 	LastMod string `json:"-"`
 }
 
-// ErrCategoryExists — two nodes cannot share a path, and two names that
+// ErrCategoryExists - two nodes cannot share a path, and two names that
 // transliterate into one slug cannot share an address either.
 var ErrCategoryExists = errors.New("category exists")
 
-// ErrCategorySlugTaken — different names, one URL: "КПБ" and "К.П.Б." both
+// ErrCategorySlugTaken - different names, one URL: "КПБ" and "К.П.Б." both
 // become "kpb", and the second page would quietly replace the first.
 var ErrCategorySlugTaken = errors.New("category slug taken")
 
@@ -65,7 +65,7 @@ func (d *Database) CategoryTextOf(path string) (string, error) {
 }
 
 // CreateCategory declares a node that has no products yet. The storefront still
-// ignores it until something is in it — an empty listing is a soft 404 — but the
+// ignores it until something is in it - an empty listing is a soft 404 - but the
 // owner can build the tree first and fill it after.
 func (d *Database) CreateCategory(path string) error {
 	path = NormalizePath(path)
@@ -122,7 +122,7 @@ func NormalizePath(path string) string {
 	return CategoryPath(strings.Split(path, CategorySep)...)
 }
 
-// JoinCategory puts a new name under a parent path — the shape the admin works
+// JoinCategory puts a new name under a parent path - the shape the admin works
 // in: the parent is a path, the name is one level.
 func JoinCategory(parent, name string) string {
 	return CategoryPath(append(strings.Split(NormalizePath(parent), CategorySep), name)...)
@@ -232,7 +232,7 @@ func sortCategories(nodes []Category) {
 }
 
 // VisibleCategories is what the storefront may show: hidden nodes and
-// everything below them are gone, and so are nodes with no goods — an empty
+// everything below them are gone, and so are nodes with no goods - an empty
 // listing is a soft 404 and spends the crawl budget on nothing.
 func (d *Database) VisibleCategories() ([]Category, error) {
 	nodes, err := d.Tree()
@@ -262,7 +262,7 @@ func underAny(path string, prefixes []string) bool {
 	return false
 }
 
-// RenameCategory moves a node — a rename and a re-parent are the same operation
+// RenameCategory moves a node - a rename and a re-parent are the same operation
 // on a path. Products and descendants travel with it in one transaction, and
 // the old address is remembered so a page that already earns search traffic
 // answers 301 instead of 404.
@@ -315,7 +315,7 @@ func ParentPath(path string) string {
 
 // movePath rewrites the prefix everywhere it is stored: on the products, on the
 // nodes and in the redirects that already pointed at the old address. Deleting a
-// root node moves its goods to "" — they keep selling, they just lose a shelf.
+// root node moves its goods to "" - they keep selling, they just lose a shelf.
 func movePath(tx *sql.Tx, from, to string) error {
 	// substr() is 1-based and counts characters, not bytes: a Cyrillic prefix is
 	// twice as long in bytes, and len() here would cut the path in the middle.

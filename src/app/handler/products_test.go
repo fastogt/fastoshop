@@ -54,7 +54,7 @@ func TestProductAPI(t *testing.T) {
 		t.Fatalf("create must return real created_at: %s", w.Body.String())
 	}
 
-	// Empty title — 400.
+	// Empty title - 400.
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("POST", "/api/products", strings.NewReader(`{"title":""}`)))
 	if w.Code != http.StatusBadRequest {
@@ -137,7 +137,7 @@ func TestListProductsPaginationAndSearch(t *testing.T) {
 		return got.Data
 	}
 
-	// No parameters — the first page of the default size.
+	// No parameters - the first page of the default size.
 	def := list("")
 	if len(def.Products) != kAdminPageSize || def.Total != seeded || def.Page != 1 {
 		t.Fatalf("default page: %d items %+v", len(def.Products), def)
@@ -245,7 +245,7 @@ func TestUpdateProductStockOptional(t *testing.T) {
 	}
 }
 
-// A photo can be removed, not just added — otherwise a mistaken upload stays
+// A photo can be removed, not just added - otherwise a mistaken upload stays
 // on the card forever. A file from our own upload leaves the disk.
 func TestUploadAndDeleteImage(t *testing.T) {
 	h := newTestHandler(t)
@@ -293,7 +293,7 @@ func TestUploadAndDeleteImage(t *testing.T) {
 	}
 }
 
-// TestProductParams: characteristics are the shop's own data — every importer
+// TestProductParams: characteristics are the shop's own data - every importer
 // writes them, so the form has to be able to correct them. A set arrives whole:
 // a body without the field leaves the stored one alone, an empty list clears it.
 func TestProductParams(t *testing.T) {

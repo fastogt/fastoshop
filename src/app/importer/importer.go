@@ -24,7 +24,7 @@ type Item struct {
 	// fills every segment; one without (a WB subject) fills a single one.
 	Category string
 	// Gross weight in grams and packed size in millimetres, as the platform
-	// stated them. nil means the source said nothing — the one thing a delivery
+	// stated them. nil means the source said nothing - the one thing a delivery
 	// quote must tell apart from a zero. Marketplaces make both mandatory on a
 	// card, which is why an import is the only way a catalogue of twenty
 	// thousand ever gets weighed: nobody types that in by hand.
@@ -37,7 +37,7 @@ type Item struct {
 	// one of them means the maker of the goods.
 	Brand string
 	// Characteristics as the source stated them: colour, size, material. Weight
-	// and dimensions are deliberately NOT in here — the core does arithmetic
+	// and dimensions are deliberately NOT in here - the core does arithmetic
 	// with those, and two homes for one number is one home too many.
 	Params []database.Param
 }
@@ -100,14 +100,14 @@ type Source interface {
 	Fetch() ([]Item, error)
 }
 
-// SourceErrors — a source may reject a card before it is ever written to the
+// SourceErrors - a source may reject a card before it is ever written to the
 // DB (e.g. a foreign currency in YML). Such losses must make it into Result,
 // or the seller sees "20 migrated" without learning about the 3 lost.
 type SourceErrors interface {
 	FetchErrors() int
 }
 
-// SourceCurrency — the source knows which currency its prices came in. An empty
+// SourceCurrency - the source knows which currency its prices came in. An empty
 // string means "unknown" (our own CSV), where the owner fills the prices in
 // themselves.
 type SourceCurrency interface {
@@ -116,7 +116,7 @@ type SourceCurrency interface {
 
 // FeedCurrency answers the one question worth asking before an import: does the
 // feed quote the same money the shop sells in. We hold no exchange rate and
-// fetch none — it goes into the coefficient.
+// fetch none - it goes into the coefficient.
 func FeedCurrency(src Source) string {
 	if c, ok := src.(SourceCurrency); ok {
 		return c.Currency()
@@ -252,7 +252,7 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 	progress(StageProducts, len(items), len(items))
 
 	// A feed that came back empty is a supplier's outage, not a decision to
-	// withdraw the entire catalogue — zeroing everything on it would take the
+	// withdraw the entire catalogue - zeroing everything on it would take the
 	// shop off sale, and on Ozon too.
 	if len(items) > 0 {
 		zeroed, err := zeroMissing(db, existing, seen, supplier)
@@ -264,7 +264,7 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 	return res, nil
 }
 
-// merge updates what the source owns — its price and the stock — and leaves
+// merge updates what the source owns - its price and the stock - and leaves
 // alone what the owner owns: the title, the description and the photos are
 // their SEO work, and a weekly feed must not undo it. A price the owner typed
 // keeps its manual mark and its value.
@@ -284,14 +284,14 @@ func merge(db *database.Database, old database.Product, it Item, coefficient flo
 	// Measurements follow the same rule as the category: an empty one is filled,
 	// a stated one is left alone. A catalogue imported before this existed picks
 	// up its weights on the next refresh, and an owner who corrected one keeps
-	// the correction — the platform's number is a starting point, not a verdict.
+	// the correction - the platform's number is a starting point, not a verdict.
 	weight, filled := fill(old.WeightG, it.WeightG)
 	length, l := fill(old.LengthMM, it.LengthMM)
 	width, w := fill(old.WidthMM, it.WidthMM)
 	height, hh := fill(old.HeightMM, it.HeightMM)
 	measured := filled || l || w || hh
 	// Characteristics follow the category: an empty set is filled, a set the
-	// owner has touched is theirs. We do not merge key by key — a half-owned
+	// owner has touched is theirs. We do not merge key by key - a half-owned
 	// set is a set nobody can reason about.
 	params, gained := old.Params, false
 	if len(params) == 0 && len(it.Params) > 0 {

@@ -85,7 +85,7 @@ func TestParamsKeepTheirTypes(t *testing.T) {
 	}
 }
 
-// TestParamsDropTheUnreadable: the column is not written by this code alone —
+// TestParamsDropTheUnreadable: the column is not written by this code alone -
 // an older row, a hand-edited database, a source that starts sending objects.
 // A characteristic nobody can render is dropped; the ones beside it survive,
 // because a card is not worth losing over a colour.

@@ -15,7 +15,7 @@ const kFaviconAccent = "#b4532a"
 // to the seller, not to us, so putting the fastoshop mark on their tab would be
 // branding their shop with someone else's logo. A generated letter needs no
 // upload flow and no asset to ship, and it beats the blank square a browser
-// shows today — Google puts this icon next to the snippet on mobile.
+// shows today - Google puts this icon next to the snippet on mobile.
 //
 // ponytail: a real logo upload is the obvious next step; until a seller asks,
 // the initial is what a shop with no designer would have anyway.

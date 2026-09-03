@@ -3,7 +3,7 @@ package database
 import "time"
 
 // OzonPriceRow is a link whose Ozon price is due for a push. Price is the price
-// ON OZON in kopecks — the owner's own number, not products.price.
+// ON OZON in kopecks - the owner's own number, not products.price.
 type OzonPriceRow struct {
 	ProductID   int64
 	OfferID     string
@@ -17,7 +17,7 @@ type OzonPriceRow struct {
 // baseline yet", so the first push of a set price always goes.
 // price_pushed holds exactly what was sent, down to the kopeck, so the wanted
 // price is compared to it as it stands. A price of zero is not "free", it is
-// "not managed here" — those rows never travel.
+// "not managed here" - those rows never travel.
 const kOzonPriceGuard = `offer_id != '' AND price > 0
 	 AND price != price_pushed`
 
@@ -63,7 +63,7 @@ func (d *Database) MarkOzonPricePushed(productID, level int64) error {
 	return err
 }
 
-// MarkOzonPriceError writes retry_at in the same UTC format as the stock side —
+// MarkOzonPriceError writes retry_at in the same UTC format as the stock side -
 // the column is shared, and so is the comparison against CURRENT_TIMESTAMP.
 func (d *Database) MarkOzonPriceError(productID int64, msg string, retryAt time.Time) error {
 	_, err := d.db.Exec(
@@ -83,7 +83,7 @@ func (d *Database) CountOzonPriceState() (pending, failed int, err error) {
 
 // SetOzonPrice returns false when there is no link for that product: setting a
 // platform price for something we never linked is a mistake worth reporting,
-// not a row worth creating. Clearing price_error is deliberate — an edit is the
+// not a row worth creating. Clearing price_error is deliberate - an edit is the
 // owner's attempt to fix whatever Ozon complained about, and the stale message
 // must not outlive it.
 func (d *Database) SetOzonPrice(productID, price int64) (bool, error) {
@@ -116,7 +116,7 @@ func (d *Database) FillOzonPrices(markupBP int64) (int, error) {
 }
 
 // OzonLinkRow is one line of the linked-products table on the tab. Title and SKU
-// are empty for a link whose product is gone — the row still matters, it is the
+// are empty for a link whose product is gone - the row still matters, it is the
 // card we keep zeroing out on the platform.
 type OzonLinkRow struct {
 	ProductID   int64

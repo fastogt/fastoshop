@@ -34,7 +34,7 @@ func (d *Database) SetPriceCoefficient(c float64) error {
 }
 
 // ApplyPriceCoefficient recomputes shelf prices from the source prices in one
-// statement — 20 000 rows is a single UPDATE, not twenty thousand round trips.
+// statement - 20 000 rows is a single UPDATE, not twenty thousand round trips.
 // Rows the owner priced by hand and rows with no source are left alone.
 func (d *Database) ApplyPriceCoefficient(c float64) (int, error) {
 	rules, err := d.ShopPriceRules()

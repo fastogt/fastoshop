@@ -51,7 +51,7 @@ func decodeBulk(w http.ResponseWriter, r *http.Request) (bulkRequest, bool) {
 	return req, true
 }
 
-// BulkStock writes one stock level across the selection — the way out of a feed
+// BulkStock writes one stock level across the selection - the way out of a feed
 // that carried availability but no quantity.
 func (h *Handler) BulkStock(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeBulk(w, r)
@@ -114,7 +114,7 @@ type startedResponse struct {
 }
 
 // BulkFill pulls the supplier's photos onto our own disk over the selection, in
-// the background — no feed and no keys are involved, the URLs are already in
+// the background - no feed and no keys are involved, the URLs are already in
 // product_images from the import, so a catalogue brought in months ago is fixed
 // by the same button as one imported a minute ago.
 //

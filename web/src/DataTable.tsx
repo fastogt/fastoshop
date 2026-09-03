@@ -17,7 +17,7 @@ interface Column<T> {
 }
 
 // Selection is what a bulk action receives. `all` means "everything the current
-// filter matches", not the ticked rows — twenty thousand rows cannot be ticked,
+// filter matches", not the ticked rows - twenty thousand rows cannot be ticked,
 // so that case travels to the server as a filter.
 export interface Selection {
   ids: number[];
@@ -44,7 +44,7 @@ export interface Sort {
 interface Props<T> {
   columns: Column<T>[];
   rows: T[];
-  // string is allowed because not every list is keyed by a number — Ozon
+  // string is allowed because not every list is keyed by a number - Ozon
   // postings are identified by their posting number. Only numeric ids reach a
   // bulk action; a table keyed by strings is a read-only one.
   rowId: (row: T) => string | number;
@@ -56,7 +56,7 @@ interface Props<T> {
   sort?: Sort;
   onSort?: (sort: Sort) => void;
   selectable?: boolean;
-  // Off where no action can be applied to a filter — offering "select all" and
+  // Off where no action can be applied to a filter - offering "select all" and
   // then greying out every button is worse than not offering it.
   allowAll?: boolean;
   bulkActions?: BulkAction[];

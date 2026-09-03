@@ -22,7 +22,7 @@ func TestOrdersAndSettings(t *testing.T) {
 	r.Get("/api/settings", h.GetSettings)
 	r.Put("/api/settings", h.UpdateSettings)
 
-	// Orders are created by the storefront (Task 10); here — directly in the DB.
+	// Orders are created by the storefront (Task 10); here - directly in the DB.
 	_ = h.db.CreateOrder(&database.Order{Name: "Иван", Phone: "+7999",
 		ItemsJSON: `[{"sku":"T-1","title":"Чайник","price":250000,"qty":2}]`})
 
@@ -39,7 +39,7 @@ func TestOrdersAndSettings(t *testing.T) {
 		t.Fatalf("status: %d", w.Code)
 	}
 
-	// Invalid status — 400.
+	// Invalid status - 400.
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("PUT", "/api/orders/1/status",
 		strings.NewReader(`{"status":"hacked"}`)))
@@ -56,7 +56,7 @@ func TestOrdersAndSettings(t *testing.T) {
 		t.Fatalf("csv: %s", csv)
 	}
 
-	// Settings: before setup — 404; after — secrets are masked.
+	// Settings: before setup - 404; after - secrets are masked.
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/settings", nil))
 	if w.Code != http.StatusNotFound {
@@ -109,7 +109,7 @@ func TestExportOrdersCSVSafety(t *testing.T) {
 }
 
 // An order carries a person's name and phone, so the owner must be able to
-// erase it — and only by an explicit list: "delete everything the filter
+// erase it - and only by an explicit list: "delete everything the filter
 // matches" is how a shop loses its journal in one click.
 func TestBulkDeleteOrders(t *testing.T) {
 	h := newTestHandler(t)

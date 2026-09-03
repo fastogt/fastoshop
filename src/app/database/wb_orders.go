@@ -42,7 +42,7 @@ func (o *WBOrder) storedStatus() string {
 //
 // Idempotency rests on UNIQUE(order_id): the insert either creates the row (the
 // task is new) or does nothing (already applied). A SELECT before the insert is
-// not an option — two sync passes would slip through that gap.
+// not an option - two sync passes would slip through that gap.
 //
 // A task first seen already cancelled is only recorded: deducting and returning
 // the same product is a stock movement out of thin air.
@@ -82,7 +82,7 @@ func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 				return err
 			}
 		}
-		// MAX(0, ...) — refusing the deduction is not an option: the marketplace has
+		// MAX(0, ...) - refusing the deduction is not an option: the marketplace has
 		// already sold, and negative stock on the storefront is worse than zero.
 		if _, err := tx.Exec(
 			`UPDATE products SET stock = MAX(0, stock - ?), updated_at = CURRENT_TIMESTAMP
@@ -104,7 +104,7 @@ func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 // nothing.
 //
 // ponytail: we return the ordered qty, not what was actually deducted. They can
-// diverge only on an oversell — if that starts to hurt, add an applied_qty
+// diverge only on an oversell - if that starts to hurt, add an applied_qty
 // column, the table is new and no live instance has to be migrated.
 func (d *Database) SetWBOrderStatus(orderID int64, status string, cancelled bool) (moved bool, err error) {
 	err = d.withTx(func(tx *sql.Tx) error {
@@ -143,7 +143,7 @@ func (d *Database) SetWBOrderStatus(orderID int64, status string, cancelled bool
 	return moved, nil
 }
 
-// resolveBarcode looks up a product by the platform barcode. nil — no link: the
+// resolveBarcode looks up a product by the platform barcode. nil - no link: the
 // sale is recorded anyway, so the owner sees an unrecognized order, not a blank.
 func resolveBarcode(tx *sql.Tx, barcode string) (*int64, error) {
 	if barcode == "" {

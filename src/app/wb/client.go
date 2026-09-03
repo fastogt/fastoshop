@@ -36,7 +36,7 @@ var kProd = Hosts{
 //
 // Common is deliberately empty: there is no common-api-sandbox host, the name
 // does not even resolve. Checked against a live test token on 2026-08-17. The
-// seller name is a nicety on the check screen, so its absence costs nothing —
+// seller name is a nicety on the check screen, so its absence costs nothing -
 // but a request to a host that does not exist costs a DNS timeout every time.
 var kSandbox = Hosts{
 	Content:     "https://content-api-sandbox.wildberries.ru",
@@ -48,7 +48,7 @@ var kSandbox = Hosts{
 // kCardsLimit is what /content/v2/get/cards/list takes per page.
 const kCardsLimit = 100
 
-// ponytail: ceiling of 200 pages by 100 — 20 thousand cards in the cabinet. Same
+// ponytail: ceiling of 200 pages by 100 - 20 thousand cards in the cabinet. Same
 // ceiling as the Ozon client, and the same upgrade path if a cabinet outgrows it.
 const kMaxPages = 200
 
@@ -149,7 +149,7 @@ func (c *Client) do(method, url string, body, out any) error {
 const kMaxErrorText = 500
 
 // safe prepares a platform message for a log and for the database. The token
-// travels in a header and never in a URL, so it cannot leak by itself — but an
+// travels in a header and never in a URL, so it cannot leak by itself - but an
 // API that echoes the request back would carry it into our logs, and one line
 // here is cheaper than finding out that it does.
 func (c *Client) safe(text string) string {
@@ -270,7 +270,7 @@ type SellerInfo struct {
 }
 
 func (c *Client) SellerInfo() (*SellerInfo, error) {
-	// Hosts set with an empty Common means "this contour has no such host" — the
+	// Hosts set with an empty Common means "this contour has no such host" - the
 	// sandbox is exactly that case. Falling back to production would send a test
 	// token where it does not belong and wait out a refusal for nothing.
 	if c.Hosts != (Hosts{}) && c.Hosts.Common == "" {
@@ -349,7 +349,7 @@ func (c *Client) SetStocks(warehouseID int64, items []StockItem) (map[string]str
 // Prices -----------------------------------------------------------------
 
 // PriceItem is one card's price in whole roubles: the platform takes no
-// fractions here, and discount is deliberately absent — promotions are the
+// fractions here, and discount is deliberately absent - promotions are the
 // seller's business, and sending a zero would reprice the whole catalogue.
 type PriceItem struct {
 	NmID  int64 `json:"nmID"`
@@ -422,7 +422,7 @@ const (
 	kTaskStatusRejected  = 5
 )
 
-// PriceTaskStatus reports how a task ended and, for a failure, why — per card
+// PriceTaskStatus reports how a task ended and, for a failure, why - per card
 // where the platform said so.
 func (c *Client) PriceTaskStatus(uploadID string) (TaskState, map[int64]string, error) {
 	var resp taskStatusResponse

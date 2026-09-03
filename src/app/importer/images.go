@@ -100,7 +100,7 @@ func fetchImage(im database.ProductImage, uploadsDir string) (string, error) {
 // photos started by mistake.
 //
 // onProgress is called after every photo with the number finished and the ids
-// being downloaded right now — that is what the admin draws its spinner from.
+// being downloaded right now - that is what the admin draws its spinner from.
 func LocalizeImages(ctx context.Context, db *database.Database, uploadsDir string,
 	imgs []database.ProductImage, onProgress func(done int, inFlight []int64)) (ok, failed int) {
 	var (
@@ -133,7 +133,7 @@ func LocalizeImages(ctx context.Context, db *database.Database, uploadsDir strin
 				name, err := fetchImage(im, uploadsDir)
 				if err == nil {
 					if err = db.SetImagePath(im.ID, name); err != nil {
-						// The file is on disk but nothing points at it — remove it
+						// The file is on disk but nothing points at it - remove it
 						// rather than leave the uploads dir growing invisibly.
 						_ = os.Remove(filepath.Join(uploadsDir, name))
 					}

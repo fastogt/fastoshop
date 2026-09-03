@@ -37,8 +37,8 @@ const kText = {
   openShop: { ru: "Открыть магазин ↗", en: "Open shop ↗" },
   logout: { ru: "Выйти", en: "Log out" },
   source: {
-    ru: "FastoShop — открытый код, AGPL-3.0",
-    en: "FastoShop — open source, AGPL-3.0",
+    ru: "FastoShop - открытый код, AGPL-3.0",
+    en: "FastoShop - open source, AGPL-3.0",
   },
 };
 
@@ -88,7 +88,7 @@ export default function App() {
   if (screen === "loading") return null;
   // enter() and not setScreen: the shop's currency and the owner's language come
   // from the server, and until they are loaded the admin shows roubles and the
-  // browser's language — so every way into the app has to go through here.
+  // browser's language - so every way into the app has to go through here.
   const enter = () => {
     loadShop();
     setScreen("app");

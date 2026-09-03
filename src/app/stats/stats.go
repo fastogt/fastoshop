@@ -32,7 +32,7 @@ var (
 )
 
 // host.Info() reads files in /sys and /etc on every call, and this data does
-// not change between requests — compute it once per process lifetime.
+// not change between requests - compute it once per process lifetime.
 func sysHost() *host.InfoStat {
 	hostOnce.Do(func() { hostInfo, _ = host.Info() })
 	return hostInfo
@@ -66,7 +66,7 @@ func Get() Machine {
 	hddTotal, hddFree := Hdd()
 	totalIn, totalOut, speedIn, speedOut := Network()
 
-	// ponytail: cost is always 0 — the shop has no resource-based billing.
+	// ponytail: cost is always 0 - the shop has no resource-based billing.
 	mach := gofastogt.NewMachine(CPUPercent(), 0, LoadAverage(),
 		memTotal, memFree, hddTotal, hddFree,
 		speedIn, speedOut, gofastogt.NewUTCTimestamp(), Uptime(),

@@ -80,7 +80,7 @@ func (w *Worker) pollOrders(c *Client) error {
 	w.setPollError("")
 	if applied > 0 {
 		log.Infof("ozon orders: applied %d postings", applied)
-		// Stock levels changed — wake the push. Within the current pass it runs
+		// Stock levels changed - wake the push. Within the current pass it runs
 		// next and already sees the new stocks; the signal matters when the pass
 		// was triggered by the button and the next tick is far away.
 		w.StockChanged()

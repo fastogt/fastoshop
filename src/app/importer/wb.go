@@ -15,7 +15,7 @@ import (
 )
 
 // WB: Content API (cards) + Prices API (prices) + Marketplace API (stock on
-// the seller's warehouses) — three different hosts. https://dev.wildberries.ru/
+// the seller's warehouses) - three different hosts. https://dev.wildberries.ru/
 type WB struct {
 	Token          string
 	ContentURL     string // defaults to https://content-api.wildberries.ru
@@ -88,7 +88,7 @@ type wbCardsResponse struct {
 		Photos      []struct {
 			Big string `json:"big"`
 		} `json:"photos"`
-		// Wildberries states no units: the contract fixes them — centimetres for
+		// Wildberries states no units: the contract fixes them - centimetres for
 		// the sides, kilograms for the weight. weightBrutto is the packed weight,
 		// which is the one a courier charges for.
 		Dimensions struct {
@@ -105,7 +105,7 @@ type wbCardsResponse struct {
 		} `json:"sizes"`
 		// The seller fills these to publish at all, so a card carries a dozen
 		// of them. Value is a string, a number or a list depending on the
-		// characteristic — Wildberries states no type, only the payload.
+		// characteristic - Wildberries states no type, only the payload.
 		Characteristics []struct {
 			Name  string `json:"name"`
 			Value any    `json:"value"`
@@ -237,7 +237,7 @@ type wbSubjectsResponse struct {
 	} `json:"data"`
 }
 
-// kWBSubjectsPageSize — the directory method's ceiling per request.
+// kWBSubjectsPageSize - the directory method's ceiling per request.
 const kWBSubjectsPageSize = 1000
 
 // subjectParents maps a card's subject onto its parent, so a WB catalogue gets
@@ -277,7 +277,7 @@ func (w *WB) Fetch() ([]Item, error) {
 	var barcodes []string
 	for _, card := range c.Cards {
 		for _, s := range card.Sizes {
-			// ponytail: a size may have several barcodes; take the first —
+			// ponytail: a size may have several barcodes; take the first -
 			// it is the same one we ask the stock for.
 			if len(s.Skus) > 0 {
 				barcodes = append(barcodes, s.Skus[0])
@@ -294,7 +294,7 @@ func (w *WB) Fetch() ([]Item, error) {
 			urls = append(urls, ph.Big)
 		}
 		category := database.CategoryPath(subjectParents[card.SubjectID], card.SubjectName)
-		// The value goes through as Wildberries decoded it — a number stays a
+		// The value goes through as Wildberries decoded it - a number stays a
 		// number, a list stays a list. This is the one place a whole catalogue
 		// arrives already described, and it arrives typed; flattening it here
 		// would be discarding a type nobody would then be able to recover.
