@@ -114,14 +114,6 @@ type startedResponse struct {
 	Total   int  `json:"total"`
 }
 
-// BulkFill pulls the supplier's photos onto our own disk over the selection, in
-// the background - no feed and no keys are involved, the URLs are already in
-// product_images from the import, so a catalogue brought in months ago is fixed
-// by the same button as one imported a minute ago.
-//
-// r.Context() would cancel the download the moment the response is written.
-//
-//nolint:contextcheck // the job outlives the request on purpose: inheriting
 type fillCountResponse struct {
 	Main  int `json:"main"`
 	Total int `json:"total"`
@@ -143,6 +135,14 @@ func (h *Handler) BulkFillCount(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, fillCountResponse{Main: main, Total: total})
 }
 
+// BulkFill pulls the supplier's photos onto our own disk over the selection, in
+// the background - no feed and no keys are involved, the URLs are already in
+// product_images from the import, so a catalogue brought in months ago is fixed
+// by the same button as one imported a minute ago.
+//
+// r.Context() would cancel the download the moment the response is written.
+//
+//nolint:contextcheck // the job outlives the request on purpose
 func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeBulk(w, r)
 	if !ok {
