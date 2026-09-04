@@ -32,6 +32,7 @@ type Storefront struct {
 	product  *template.Template
 	cart     *template.Template
 	info     *template.Template
+	privacy  *template.Template
 	contacts *template.Template
 	// Named with a suffix: the handlers are Category and Categories, and a field
 	// may not share a name with a method.
@@ -56,6 +57,7 @@ func New(db *database.Database, baseURL, uploadsDir string) *Storefront {
 		product:       template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/product.html")),
 		cart:          template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/cart.html")),
 		info:          template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/info.html")),
+		privacy:       template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/privacy.html")),
 		contacts:      template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/contacts.html")),
 		categoryTpl:   template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/category.html")),
 		categoriesTpl: template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/categories.html")),
@@ -90,6 +92,7 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/p/{slug}", s.Product)
 	r.Get("/cart", s.Cart)
 	r.Get("/info", s.Info)
+	r.Get("/privacy", s.Privacy)
 	r.Get("/contacts", s.Contacts)
 	r.Get("/c", s.Categories)
 	r.Get("/c/*", s.Category)
@@ -783,6 +786,22 @@ func (s *Storefront) Info(w http.ResponseWriter, r *http.Request) {
 // what a search engine counts. Secrecy of a login is not a defence anyway: the
 // password is, and guessing it is now slowed down deliberately (see the login
 // throttle in app/handler).
+// Privacy is the one page every shop needs and no owner wants to write. The
+// text is fixed and only the shop's own name and contacts are filled in: a
+// policy assembled from a settings field would be published unread, and an
+// unread policy is worse than none. Unlike /info it has no switch - a shop
+// collecting a name and a phone owes this page whether its owner thought about
+// it or not.
+// ponytail: hardcoded. A settings field the day a shop needs different terms,
+// a retention period of its own or a processor we do not know about.
+func (s *Storefront) Privacy(w http.ResponseWriter, r *http.Request) {
+	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL, CSS: template.CSS(styleCSS),
+		CartCount: cartCount(r), Canonical: s.baseURL + "/privacy"}
+	if err := s.privacy.ExecuteTemplate(w, "base", data); err != nil {
+		log.Errorf("render privacy: %v", err)
+	}
+}
+
 func (s *Storefront) Contacts(w http.ResponseWriter, r *http.Request) {
 	shop := s.shop()
 	if shop.ShopPhone == "" && shop.Requisites == "" {
@@ -821,6 +840,7 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 	if s.shop().Terms != "" {
 		set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/info"})
 	}
+	set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/privacy"})
 	// Category pages are the landing pages of the shop: a crawler that never
 	// sees them in the map indexes cards and nothing to hold them together.
 	if nodes, err := s.db.VisibleCategories(); err == nil && len(nodes) > 0 {

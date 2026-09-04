@@ -61,6 +61,11 @@
       <textarea id="comment" name="comment" placeholder="Удобное время для звонка, пожелания к доставке">{{.FormComment}}</textarea>
     </div>
     <button type="submit">Оформить заказ</button>
+    {{/* The consent has to sit where the data is handed over, not on a page
+         nobody opens: the buyer types a name and a phone into this form, and
+         this line is the moment they agree to it being used. */}}
+    <p class="oos">Оформляя заказ, вы соглашаетесь на
+      <a href="/privacy">обработку персональных данных</a>.</p>
   </form>
 </div>
 {{else}}

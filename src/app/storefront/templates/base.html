@@ -82,6 +82,7 @@
 <span>© {{.Shop.ShopName}}</span>
 {{if .Shop.Requisites}}<div class="requisites">{{.Shop.Requisites}}</div>{{end}}
 {{if .Shop.Terms}}<a href="/info">Доставка и оплата</a>{{end}}
+<a href="/privacy">Обработка данных</a>
 {{if or .Shop.ShopPhone .Shop.Requisites}}<a href="/contacts">Контакты</a>{{end}}
 {{if .Shop.ShopPhone}}<a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a>{{end}}
 </footer>
