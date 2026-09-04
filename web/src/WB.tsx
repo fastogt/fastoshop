@@ -2,40 +2,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   api,
-  apiError,
   type PriceRule,
-  type WBCandidate,
+  type Candidate,
   type CabinetState,
   type WBLink,
   type WBOrder,
   type WBSettings,
-  type WBUnlinkedProduct,
-  type WBWarehouse,
+  type UnlinkedProduct,
+  type Warehouse,
   type CandidateView,
 } from "./api";
+import { ChannelTabs, WarehousePicker, type ChannelTab } from "./Channel";
 import DataTable from "./DataTable";
-import { IconDownload, IconUpload } from "./Icons";
+import { useFeedback } from "./feedback";
 import { useLang, useT } from "./i18n";
 import { toMinor, toRubles } from "./money";
-
-const kChannelTabs = [
-  "tabSetup",
-  "tabPublish",
-  "tabPrices",
-  "tabSales",
-] as const;
-type ChannelTab = (typeof kChannelTabs)[number];
+import PriceLadder from "./PriceLadder";
+import PublicationPanel from "./PublicationPanel";
 
 const kText = {
   heading: { ru: "Wildberries", en: "Wildberries" },
-  tabSetup: { ru: "Подключение", en: "Connection" },
-  tabPublish: { ru: "Публикация", en: "Publishing" },
-  tabPrices: { ru: "Цены", en: "Prices" },
-  tabSales: { ru: "Продажи", en: "Sales" },
-  viewReady: { ru: "Можно связать", en: "Ready to link" },
-  viewLinked: { ru: "Связано", en: "Linked" },
-  viewNoCard: { ru: "Нет карточки", en: "No card" },
-  viewAll: { ru: "Все товары", en: "All products" },
 
   lead: {
     ru: "Витрина и кабинет Wildberries обмениваются остатками и ценами. Карточки заводит продавец в кабинете, мы связываемся с ними по артикулу.",
@@ -55,10 +41,6 @@ const kText = {
     en: "Requests go to the Wildberries test hosts and touch no real goods, orders or balance.",
   },
   warehouse: { ru: "Склад", en: "Warehouse" },
-  loadWarehouses: { ru: "Загрузить склады", en: "Load warehouses" },
-  // Why one field and not a choice per product: a product carries a single
-  // stock figure, so the same number sent to two warehouses would be the same
-  // goods promised twice.
   // A token is issued per section. One without «Маркетплейс» answers every
   // stock call with 403 while cards and prices keep working, so the tab looks
   // connected and the levels quietly stay put.
@@ -66,6 +48,9 @@ const kText = {
     ru: "Но в токене нет раздела «Маркетплейс»: остатки и заказы закрыты, синхронизация склада работать не будет. Выпустите токен заново в кабинете Wildberries, отметив этот раздел.",
     en: "The token has no Marketplace section: stock and orders are refused, so warehouse sync will not work. Issue a new token in the Wildberries account with that section ticked.",
   },
+  // Why one field and not a choice per product: a product carries a single
+  // stock figure, so the same number sent to two warehouses would be the same
+  // goods promised twice.
   warehouseHint: {
     ru: "Склад нужен только для остатков - без него цены всё равно отправляются. Складов в кабинете может быть несколько, остатки уезжают на этот: у товара один остаток, разделить его между складами магазин не умеет.",
     en: "The warehouse is only needed for stock - prices are sent without it. A cabinet may hold several warehouses and stock travels to this one: a product carries a single stock figure, and the shop cannot split it between warehouses.",
@@ -78,36 +63,12 @@ const kText = {
     en: "The account answers. Cards: {n}",
   },
   checkWho: { ru: "Продавец: {name}", en: "Seller: {name}" },
-  errorPrefix: { ru: "Ошибка", en: "Error" },
   errorCheckToken: { ru: "проверьте токен", en: "check the token" },
 
-  publication: { ru: "Публикация", en: "Publication" },
-  searchPlaceholder: {
-    ru: "Поиск по названию или артикулу",
-    en: "Search by title or article",
-  },
-  publish: { ru: "Опубликовать", en: "Publish" },
-  unpublish: { ru: "Снять", en: "Unpublish" },
-  published: { ru: "На площадке", en: "On the platform" },
-  yes: { ru: "да", en: "yes" },
-  cabinetSummary: {
-    // Only the cabinet's own card count: the three states below it are on the
-    // buttons, where they belong - the owner is choosing what to look at, and a
-    // sentence repeating the choice word for word is noise between them.
-    ru: "В кабинете карточек: {cards}.",
-    en: "Cards in the cabinet: {cards}.",
-  },
   cabinetAmbiguous: {
     ru: "Ещё {n} товаров нашли карточку с несколькими размерами - её нельзя связать по одному артикулу.",
     en: "Another {n} products matched a card with several sizes, which one article cannot link.",
   },
-  cabinetOrphans: {
-    ru: "Ещё {n} карточек на площадке не совпали ни с одним товаром.",
-    en: "Another {n} cards on the platform matched no product of yours.",
-  },
-  stateReady: { ru: "можно связать", en: "ready to link" },
-  stateNoCard: { ru: "нет карточки", en: "no card" },
-  no: { ru: "нет", en: "no" },
   publishDone: { ru: "Связано карточек: {n}", en: "Cards linked: {n}" },
   // Publishing writes the link, but stock travels only from a warehouse. An
   // owner who never picked one sees "linked" and then nothing happens on the
@@ -120,39 +81,12 @@ const kText = {
     ru: "Снято с площадки: {n}",
     en: "Taken off the platform: {n}",
   },
-  noCard: { ru: "Карточка не найдена:", en: "No card found:" },
-  zeroFailed: {
-    ru: "Не удалось обнулить остаток, связь оставлена:",
-    en: "The stock could not be zeroed, the link was kept:",
-  },
-
-  linking: { ru: "Связь с карточками", en: "Card linking" },
-  moreCards: { ru: "…и ещё {n}", en: "…and {n} more" },
-  linkHint: {
-    ru: "Артикул товара сверяется с артикулом продавца в карточке. Штрихкод берётся из самой карточки - в прайсе его нет и быть не должно.",
-    en: "The product article is matched against the seller's article on the card. The barcode is read off the card itself - a price list does not carry one.",
-  },
-  linkDone: { ru: "Связано: {n}", en: "Linked: {n}" },
-  linkedCount: {
-    ru: "Связано товаров: {n}, без карточки: {m}",
-    en: "Linked: {n}, without a card: {m}",
-  },
-  unlinkedProducts: {
-    ru: "Товары без карточки:",
-    en: "Products without a card:",
-  },
-  unlinkedCards: { ru: "Карточки без товара:", en: "Cards without a product:" },
 
   ladder: { ru: "Лестница наценки", en: "Markup ladder" },
   ladderHint: {
     ru: "До какой цены какой множитель. Последняя строка - «и выше», она обязательна.",
     en: 'Which multiplier up to which price. The last row is "and above" and is required.',
   },
-  upTo: { ru: "до", en: "up to" },
-  andAbove: { ru: "и выше", en: "and above" },
-  multiplier: { ru: "множитель", en: "multiplier" },
-  addBand: { ru: "Добавить строку", en: "Add a row" },
-  removeBand: { ru: "Удалить", en: "Remove" },
   saveLadder: { ru: "Сохранить лестницу", en: "Save the ladder" },
   applyLadder: { ru: "Заполнить по лестнице", en: "Fill by the ladder" },
   markup: { ru: "Наценка, %", en: "Markup, %" },
@@ -181,6 +115,11 @@ const kText = {
     ru: "Продажи - всего: {n}, продано сверх остатка: {o}, без товара: {u}",
     en: "Sales - total: {n}, oversold: {o}, unmatched: {u}",
   },
+  kindStock: { ru: "остаток", en: "stock" },
+  kindPrice: { ru: "цена", en: "price" },
+  thWhat: { ru: "Что", en: "What" },
+  thOurs: { ru: "У нас", en: "Ours" },
+  thSent: { ru: "Отправлено", en: "Sent" },
 
   sales: { ru: "Продажи на площадке", en: "Sales on the platform" },
   salesHint: {
@@ -203,23 +142,22 @@ const kText = {
   inFlight: { ru: "в пути", en: "in flight" },
   oversold: { ru: "сверх остатка", en: "oversold" },
   unmatched: { ru: "нет товара", en: "no product" },
-  hidden: { ru: "скрыт", en: "hidden" },
   emptyLinks: { ru: "Пока ничего не связано", en: "Nothing linked yet" },
   salesOff: {
     ru: "Заказы не загружаются: синхронизация выключена на вкладке «Подключение».",
     en: "Orders are not being fetched: sync is off on the Connection tab.",
   },
   emptyOrders: { ru: "Продаж пока нет", en: "No sales yet" },
-  emptyProducts: { ru: "Товаров нет", en: "No products" },
 };
 
 export default function WB() {
   const t = useT(kText);
   const lang = useLang();
+  const { fail, line } = useFeedback(kText.errorCheckToken);
 
   const [s, setS] = useState<WBSettings | null>(null);
   const [token, setToken] = useState("");
-  const [warehouses, setWarehouses] = useState<WBWarehouse[] | null>(null);
+  const [warehouses, setWarehouses] = useState<Warehouse[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [priceMsg, setPriceMsg] = useState("");
@@ -236,20 +174,20 @@ export default function WB() {
   const [orderPage, setOrderPage] = useState(1);
   const [orderTotal, setOrderTotal] = useState(0);
 
-  const [candidates, setCandidates] = useState<WBCandidate[]>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [candPage, setCandPage] = useState(1);
   const [candTotal, setCandTotal] = useState(0);
   const [candSearch, setCandSearch] = useState("");
   const [candQuery, setCandQuery] = useState("");
   // Which slice the table shows. The tab opens on the only state with an action
-  // attached: on a live shop the catalogue is 24 000 rows and the cabinet holds
-  // a few dozen cards, so "everything" was a wall to scroll past.
+  // attached: a live catalogue is a wall of rows and the cabinet holds a few
+  // dozen cards, so "everything" was a wall to scroll past.
   const [view, setView] = useState<CandidateView["kind"] | null>(null);
 
   const [rules, setRules] = useState<PriceRule[]>([]);
   const [markup, setMarkup] = useState("");
-  const [noCard, setNoCard] = useState<WBUnlinkedProduct[]>([]);
-  const [zeroFailed, setZeroFailed] = useState<WBUnlinkedProduct[]>([]);
+  const [noCard, setNoCard] = useState<UnlinkedProduct[]>([]);
+  const [zeroFailed, setZeroFailed] = useState<UnlinkedProduct[]>([]);
   // Asked once when the tab opens, and again after publishing changed the
   // answer. Deliberately not part of the paged candidates call: that one runs
   // per page of a hundred rows and would re-read the cabinet every time.
@@ -257,8 +195,6 @@ export default function WB() {
   // A configured channel is opened to see what sold, not to retype the token.
   const [tab, setTab] = useState<ChannelTab>("tabSetup");
   const tabPicked = useRef(false);
-
-  const ready = useMemo(() => new Set(cabinet?.ready_ids ?? []), [cabinet]);
 
   const loadCabinet = useCallback(
     // A shop with no token, or a platform that will not answer, simply gets no
@@ -335,14 +271,6 @@ export default function WB() {
   }
 
   if (!s) return null;
-
-  const fail = (e: unknown) =>
-    `${t("errorPrefix")}: ${apiError(e) ?? t("errorCheckToken")}`;
-  const isError = (m: string) => m.startsWith(t("errorPrefix"));
-  const line = (m: string) =>
-    m ? (
-      <p className={isError(m) ? "text-red-600" : "text-green-700"}>{m}</p>
-    ) : null;
 
   const refresh = async () => setS(await api.wbSettings());
 
@@ -453,6 +381,27 @@ export default function WB() {
   const when = (iso: string | null) =>
     iso ? t("retryAt", { time: new Date(iso).toLocaleTimeString(lang) }) : "";
 
+  // Both push kinds in one table: the owner cares about the row that did not
+  // reach the platform, not about which of the two calls carried it.
+  const syncErrors = [
+    ...s.stock_errors.map((e) => ({
+      key: `stock-${e.product_id}`,
+      ref: e.barcode,
+      kind: t("kindStock"),
+      want: String(e.stock),
+      pushed: e.pushed < 0 ? "-" : String(e.pushed),
+      error: `${e.error} ${when(e.retry_at)}`.trim(),
+    })),
+    ...s.price_errors.map((e) => ({
+      key: `price-${e.product_id}`,
+      ref: `nmID ${e.nm_id}`,
+      kind: t("kindPrice"),
+      want: toRubles(e.price),
+      pushed: e.pushed < 0 ? "-" : toRubles(e.pushed),
+      error: `${e.error} ${when(e.retry_at)}`.trim(),
+    })),
+  ];
+
   return (
     <div className="page flex flex-col gap-6">
       <div>
@@ -460,547 +409,336 @@ export default function WB() {
         <p className="hint mt-1">{t("lead")}</p>
       </div>
 
-      <div className="border-line flex flex-wrap gap-1 border-b">
-        {kChannelTabs.map((k) => (
-          <button
-            key={k}
-            onClick={() => setTab(k)}
-            className={
-              "-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors " +
-              (tab === k
-                ? "border-brand text-brand"
-                : "text-muted hover:text-ink border-transparent")
-            }
-          >
-            {t(k)}
-          </button>
-        ))}
-      </div>
+      <ChannelTabs active={tab} onSelect={setTab} />
 
       {tab === "tabSetup" && (
-      <section className="card flex flex-col gap-4">
-        <h2 className="font-bold">{t("connection")}</h2>
-        <div>
-          <label className="label" htmlFor="wb-token">
-            {t("token")}
-          </label>
-          {/* The browser reads "text + password" as a login form and offers the
+        <section className="card flex flex-col gap-4">
+          <h2 className="font-bold">{t("connection")}</h2>
+          <div>
+            <label className="label" htmlFor="wb-token">
+              {t("token")}
+            </label>
+            {/* The browser reads "text + password" as a login form and offers the
               admin password; an accepted suggestion would be saved to the shop
               database in clear text. */}
-          <input
-            id="wb-token"
-            className="field"
-            type="password"
-            name="wb-api-token"
-            autoComplete="new-password"
-            placeholder={s.token_set ? "••••••••" : ""}
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-          />
-          <p className="hint mt-1">{t("tokenHint")}</p>
-          {s.token_set && !token && (
-            <p className="hint text-green-700">{t("tokenSet")}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="label" htmlFor="wb-warehouse">
-            {t("warehouse")}
-          </label>
-          <div className="flex items-center gap-2">
-            {warehouses ? (
-              <select
-                id="wb-warehouse"
-                className="field"
-                value={s.warehouse_id}
-                onChange={(e) => setS({ ...s, warehouse_id: e.target.value })}
-              >
-                <option value="">-</option>
-                {warehouses.map((wh) => (
-                  <option key={wh.id} value={wh.id}>
-                    {wh.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id="wb-warehouse"
-                className="field"
-                name="wb-warehouse"
-                autoComplete="off"
-                value={s.warehouse_id}
-                onChange={(e) => setS({ ...s, warehouse_id: e.target.value })}
-              />
+            <input
+              id="wb-token"
+              className="field"
+              type="password"
+              name="wb-api-token"
+              autoComplete="new-password"
+              placeholder={s.token_set ? "••••••••" : ""}
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+            />
+            <p className="hint mt-1">{t("tokenHint")}</p>
+            {s.token_set && !token && (
+              <p className="hint text-green-700">{t("tokenSet")}</p>
             )}
-            <button
-              className="btn-ghost"
-              disabled={busy}
-              onClick={loadWarehouses}
-            >
-              {t("loadWarehouses")}
+          </div>
+
+          <WarehousePicker
+            name="wb-warehouse"
+            label={t("warehouse")}
+            hint={t("warehouseHint")}
+            value={s.warehouse_id}
+            onChange={(id) => setS({ ...s, warehouse_id: id })}
+            warehouses={warehouses}
+            onLoad={loadWarehouses}
+            busy={busy}
+          />
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={s.sandbox}
+              onChange={(e) => setS({ ...s, sandbox: e.target.checked })}
+            />
+            {t("sandbox")}
+          </label>
+          <p className="hint -mt-2">{t("sandboxHint")}</p>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={s.enabled}
+              onChange={(e) => setS({ ...s, enabled: e.target.checked })}
+            />
+            {t("enabled")}
+          </label>
+
+          <div className="flex gap-2">
+            <button className="btn" disabled={busy} onClick={save}>
+              {t("save")}
+            </button>
+            <button className="btn-ghost" disabled={busy} onClick={check}>
+              {t("check")}
             </button>
           </div>
-          <p className="hint mt-1">{t("warehouseHint")}</p>
-        </div>
-
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={s.sandbox}
-            onChange={(e) => setS({ ...s, sandbox: e.target.checked })}
-          />
-          {t("sandbox")}
-        </label>
-        <p className="hint -mt-2">{t("sandboxHint")}</p>
-
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={s.enabled}
-            onChange={(e) => setS({ ...s, enabled: e.target.checked })}
-          />
-          {t("enabled")}
-        </label>
-
-        <div className="flex gap-2">
-          <button className="btn" disabled={busy} onClick={save}>
-            {t("save")}
-          </button>
-          <button className="btn-ghost" disabled={busy} onClick={check}>
-            {t("check")}
-          </button>
-        </div>
-        {line(msg)}
-      </section>
+          {line(msg)}
+        </section>
       )}
 
-      {tab === "tabPublish" && (<>
-      <section className="card flex flex-col gap-4">
-        <h2 className="font-bold">{t("publication")}</h2>
-        {cabinet && (
-          <p className="hint">
-            {t("cabinetSummary", { cards: cabinet.cards })}
-            {!!cabinet.ambiguous &&
-              " " + t("cabinetAmbiguous", { n: cabinet.ambiguous })}
-          </p>
-        )}
-        {cabinet && (
-          // The counts sit on the buttons rather than in a sentence above them:
-          // the owner is choosing what to look at, and the size of each pile is
-          // the whole basis for that choice.
-          <div className="flex flex-wrap items-center gap-2">
-            {(
-              [
-                ["ready", t("viewReady"), cabinet.ready],
-                ["linked", t("viewLinked"), cabinet.linked],
-                ["nocard", t("viewNoCard"), cabinet.no_card],
-                ["all", t("viewAll"), cabinet.products],
-              ] as const
-            ).map(([kind, label, n]) => (
-              <button
-                key={kind}
-                onClick={() => {
-                  setView(kind);
-                  setCandPage(1);
-                }}
-                className={
-                  "rounded-full border px-3 py-1 text-sm " +
-                  ((view ?? defaultView) === kind
-                    ? "border-brand text-brand font-semibold"
-                    : "border-line text-muted")
-                }
-              >
-                {label} {n}
-              </button>
-            ))}
-          </div>
-        )}
-        <input
-          className="field w-64"
-          placeholder={t("searchPlaceholder")}
-          value={candSearch}
-          onChange={(e) => setCandSearch(e.target.value)}
-        />
-        <DataTable<WBCandidate>
-          columns={[
-            {
-              key: "title",
-              label: t("thProduct"),
-              render: (p) => (
-                <span>
-                  {p.title}
-                  {p.hidden && (
-                    <span className="text-muted ml-2 text-xs">
-                      {t("hidden")}
-                    </span>
-                  )}
-                </span>
-              ),
-            },
-            { key: "sku", label: t("thArticle"), render: (p) => p.sku },
-            { key: "stock", label: t("thStock"), render: (p) => p.stock },
-            {
-              key: "published",
-              label: t("published"),
-              render: (p) => {
-                if (p.published) return t("yes");
-                // Without the cabinet we know nothing and say nothing: a row
-                // guessing "no card" would send the owner to create one that
-                // may already exist.
-                if (!cabinet) return t("no");
-                return ready.has(p.product_id) ? (
-                  <span className="text-green-700">{t("stateReady")}</span>
-                ) : (
-                  <span className="text-muted">{t("stateNoCard")}</span>
-                );
-              },
-            },
-          ]}
-          rows={candidates}
-          rowId={(p) => p.product_id}
+      {tab === "tabPublish" && (
+        <PublicationPanel
+          summaryExtra={
+            cabinet?.ambiguous
+              ? t("cabinetAmbiguous", { n: cabinet.ambiguous })
+              : undefined
+          }
+          cabinet={cabinet}
+          view={view ?? defaultView}
+          onView={(kind) => {
+            setView(kind);
+            setCandPage(1);
+          }}
+          search={candSearch}
+          onSearch={setCandSearch}
+          candidates={candidates}
           total={candTotal}
           page={candPage}
           pageSize={100}
           onPage={setCandPage}
-          selectable
-          // "All matching" is off: which goods go to a marketplace is a decision,
-          // and a filter is not one.
-          allowAll={false}
-          bulkActions={[
-            {
-              label: t("publish"),
-              icon: <IconUpload />,
-              idsOnly: true,
-              onClick: (sel) => void publish(sel.ids),
-            },
-            {
-              label: t("unpublish"),
-              icon: <IconDownload />,
-              idsOnly: true,
-              onClick: (sel) => void unpublish(sel.ids),
-            },
-          ]}
-          emptyTitle={t("emptyProducts")}
+          onPublish={(ids) => void publish(ids)}
+          onUnpublish={(ids) => void unpublish(ids)}
+          message={line(pubMsg)}
+          noCard={noCard}
+          zeroFailed={zeroFailed}
         />
-        {line(pubMsg)}
-        {noCard.length > 0 && (
-          <div>
-            <p className="hint">{t("noCard")}</p>
-            <ul className="hint list-disc pl-5">
-              {noCard.map((p) => (
-                <li key={p.id}>
-                  {p.sku} - {p.title}
-                  {p.reason && ` (${p.reason})`}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {zeroFailed.length > 0 && (
-          <div>
-            <p className="hint">{t("zeroFailed")}</p>
-            <ul className="hint list-disc pl-5">
-              {zeroFailed.map((p) => (
-                <li key={p.id}>
-                  {p.sku} - {p.title}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
+      )}
 
-      {!!cabinet?.orphan_skus?.length && (
-        <section className="card flex flex-col gap-2">
-          <div>
-            <h2 className="font-bold">{t("unlinkedCards")}</h2>
+      {tab === "tabPrices" && (
+        <section className="card flex flex-col gap-4">
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <label className="label" htmlFor="wb-markup">
+                {t("markup")}
+              </label>
+              <input
+                id="wb-markup"
+                className="field w-28"
+                value={markup}
+                onChange={(e) => setMarkup(e.target.value)}
+              />
+            </div>
+            <button className="btn-ghost" disabled={busy} onClick={fillPrices}>
+              {t("fillPrices")}
+            </button>
           </div>
-          <ul className="flex flex-wrap gap-2">
-            {cabinet.orphan_skus.map((c) => (
-              <li
-                key={c}
-                className="border-line rounded border px-2 py-1 text-sm"
+          {line(priceMsg)}
+
+          <div>
+            <h3 className="font-medium">{t("ladder")}</h3>
+            <p className="hint mt-1">{t("ladderHint")}</p>
+            <div className="mt-2">
+              <PriceLadder rules={rules} onChange={setRules} />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                className="btn-ghost"
+                disabled={busy}
+                onClick={saveLadder}
               >
-                {c}
-              </li>
-            ))}
-          </ul>
-          {cabinet.orphans > cabinet.orphan_skus.length && (
-            <p className="hint">
-              {t("moreCards", {
-                n: cabinet.orphans - cabinet.orphan_skus.length,
-              })}
-            </p>
-          )}
+                {t("saveLadder")}
+              </button>
+              <button
+                className="btn-ghost"
+                disabled={busy}
+                onClick={applyLadder}
+              >
+                {t("applyLadder")}
+              </button>
+            </div>
+            {line(ladderMsg)}
+          </div>
+
+          <DataTable<WBLink>
+            columns={[
+              { key: "title", label: t("thProduct"), render: (l) => l.title },
+              { key: "sku", label: t("thArticle"), render: (l) => l.sku },
+              {
+                key: "nm_id",
+                label: t("thCard"),
+                hideMobile: true,
+                render: (l) => l.nm_id,
+              },
+              {
+                key: "barcode",
+                label: t("thBarcode"),
+                hideMobile: true,
+                render: (l) => l.barcode,
+              },
+              { key: "stock", label: t("thStock"), render: (l) => l.stock },
+              {
+                key: "shop_price",
+                label: t("thShopPrice"),
+                hideMobile: true,
+                render: (l) => toRubles(l.shop_price),
+              },
+              {
+                key: "price",
+                label: t("thPrice"),
+                render: (l) => (
+                  <input
+                    className="field w-28"
+                    value={priceDraft[l.product_id] ?? toRubles(l.price)}
+                    onChange={(e) =>
+                      setPriceDraft({
+                        ...priceDraft,
+                        [l.product_id]: e.target.value,
+                      })
+                    }
+                    onBlur={(e) => void savePrice(l, e.target.value)}
+                  />
+                ),
+              },
+              {
+                key: "state",
+                label: t("thError"),
+                render: (l) => (
+                  <span className="text-xs">
+                    {l.in_flight && (
+                      <span className="text-muted mr-2">{t("inFlight")}</span>
+                    )}
+                    {(l.stock_error || l.price_error) && (
+                      <span className="text-red-600">
+                        {l.stock_error || l.price_error}
+                      </span>
+                    )}
+                  </span>
+                ),
+              },
+            ]}
+            rows={links}
+            rowId={(l) => l.product_id}
+            total={linkTotal}
+            page={linkPage}
+            pageSize={100}
+            onPage={setLinkPage}
+            emptyTitle={t("emptyLinks")}
+          />
         </section>
       )}
 
-      </>)}
+      {tab === "tabSales" && (
+        <>
+          <section className="card flex flex-col gap-4">
+            <h2 className="font-bold">{t("sync")}</h2>
+            <p className="hint">
+              {t("stockCounters", { n: s.pending, m: s.failed })}
+            </p>
+            <p className="hint">
+              {t("priceCounters", {
+                n: s.price_pending,
+                f: s.price_in_flight,
+                m: s.price_failed,
+              })}
+            </p>
+            <p className="hint">{t("inFlightHint")}</p>
+            <p className="hint">
+              {t("ordersCounters", {
+                n: s.orders_total,
+                o: s.orders_oversold,
+                u: s.orders_unresolved,
+              })}
+            </p>
+            {s.poll_error && <p className="text-red-600">{s.poll_error}</p>}
+            <div>
+              <button className="btn" disabled={busy} onClick={push}>
+                {t("pushNow")}
+              </button>
+            </div>
+            {line(syncMsg)}
+            {syncErrors.length > 0 && (
+              <DataTable<(typeof syncErrors)[number]>
+                columns={[
+                  { key: "ref", label: t("thCard"), render: (e) => e.ref },
+                  { key: "kind", label: t("thWhat"), render: (e) => e.kind },
+                  { key: "want", label: t("thOurs"), render: (e) => e.want },
+                  {
+                    key: "pushed",
+                    label: t("thSent"),
+                    hideMobile: true,
+                    render: (e) => e.pushed,
+                  },
+                  {
+                    key: "error",
+                    label: t("thError"),
+                    render: (e) => (
+                      <span className="text-red-600">{e.error}</span>
+                    ),
+                  },
+                ]}
+                rows={syncErrors}
+                rowId={(e) => e.key}
+                total={syncErrors.length}
+                page={1}
+                pageSize={syncErrors.length}
+                onPage={() => {}}
+                emptyTitle=""
+              />
+            )}
+          </section>
 
-      {tab === "tabPrices" && (<>
-      {/* "Связать по артикулу" did what "Опубликовать" does, only over the whole
-          catalogue - both read the cabinet's vendor codes and write the pairs
-          that match. Its counters also called two states one thing, which is
-          what the state buttons above exist to separate. The cards with no
-          product of ours moved to their own section, filled by the cabinet call
-          the tab already makes instead of by pressing a button. */}
-      <section className="card flex flex-col gap-4">
-        <div className="flex flex-wrap items-end gap-2">
-          <div>
-            <label className="label" htmlFor="wb-markup">
-              {t("markup")}
-            </label>
-            <input
-              id="wb-markup"
-              className="field w-28"
-              value={markup}
-              onChange={(e) => setMarkup(e.target.value)}
+          <section className="card flex flex-col gap-4">
+            <h2 className="font-bold">{t("sales")}</h2>
+            <p className="hint">{t("salesHint")}</p>
+            {s.token_set && !s.enabled && (
+              <p className="hint">{t("salesOff")}</p>
+            )}
+            <DataTable<WBOrder>
+              columns={[
+                {
+                  key: "created_at",
+                  label: t("thDate"),
+                  render: (o) =>
+                    new Date(o.created_at).toLocaleDateString(lang),
+                },
+                {
+                  key: "title",
+                  label: t("thProduct"),
+                  render: (o) =>
+                    o.product_id ? (
+                      o.title
+                    ) : (
+                      <span className="text-red-600">
+                        {o.article || o.barcode} - {t("unmatched")}
+                      </span>
+                    ),
+                },
+                {
+                  key: "barcode",
+                  label: t("thBarcode"),
+                  hideMobile: true,
+                  render: (o) => o.barcode,
+                },
+                { key: "qty", label: t("thQty"), render: (o) => o.qty },
+                {
+                  key: "status",
+                  label: t("thStatus"),
+                  render: (o) => (
+                    <span>
+                      {o.status}
+                      {o.oversold && (
+                        <span className="ml-2 text-xs text-red-600">
+                          {t("oversold")}
+                        </span>
+                      )}
+                    </span>
+                  ),
+                },
+              ]}
+              rows={orders}
+              rowId={(o) => o.order_id}
+              total={orderTotal}
+              page={orderPage}
+              pageSize={50}
+              onPage={setOrderPage}
+              emptyTitle={t("emptyOrders")}
             />
-          </div>
-          <button className="btn-ghost" disabled={busy} onClick={fillPrices}>
-            {t("fillPrices")}
-          </button>
-        </div>
-        {line(priceMsg)}
-
-        <div>
-          <h3 className="font-medium">{t("ladder")}</h3>
-          <p className="hint mt-1">{t("ladderHint")}</p>
-          <div className="mt-2 flex flex-col gap-2">
-            {rules.map((r, i) => (
-              <div key={i} className="flex items-center gap-2">
-                {r.up_to === 0 ? (
-                  <span className="text-muted w-40 text-sm">
-                    {t("andAbove")}
-                  </span>
-                ) : (
-                  <>
-                    <span className="text-muted text-sm">{t("upTo")}</span>
-                    <input
-                      className="field w-28"
-                      value={toRubles(r.up_to)}
-                      onChange={(e) => {
-                        const next = [...rules];
-                        next[i] = { ...r, up_to: toMinor(e.target.value) };
-                        setRules(next);
-                      }}
-                    />
-                  </>
-                )}
-                <span className="text-muted text-sm">{t("multiplier")}</span>
-                <input
-                  className="field w-24"
-                  value={String(r.multiplier)}
-                  onChange={(e) => {
-                    const next = [...rules];
-                    next[i] = {
-                      ...r,
-                      multiplier: Number(e.target.value.replace(",", ".")),
-                    };
-                    setRules(next);
-                  }}
-                />
-                <button
-                  className="text-muted cursor-pointer text-sm hover:text-red-600"
-                  onClick={() => setRules(rules.filter((_, j) => j !== i))}
-                >
-                  {t("removeBand")}
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              className="btn-ghost"
-              onClick={() => {
-                // The open-ended row stays last, whatever order the owner typed.
-                const bands = rules.filter((r) => r.up_to !== 0);
-                const open = rules.find((r) => r.up_to === 0) ?? {
-                  up_to: 0,
-                  multiplier: 2,
-                };
-                setRules([...bands, { up_to: 100000, multiplier: 2 }, open]);
-              }}
-            >
-              {t("addBand")}
-            </button>
-            <button className="btn-ghost" disabled={busy} onClick={saveLadder}>
-              {t("saveLadder")}
-            </button>
-            <button className="btn-ghost" disabled={busy} onClick={applyLadder}>
-              {t("applyLadder")}
-            </button>
-          </div>
-          {line(ladderMsg)}
-        </div>
-
-        <DataTable<WBLink>
-          columns={[
-            { key: "title", label: t("thProduct"), render: (l) => l.title },
-            { key: "sku", label: t("thArticle"), render: (l) => l.sku },
-            {
-              key: "nm_id",
-              label: t("thCard"),
-              hideMobile: true,
-              render: (l) => l.nm_id,
-            },
-            {
-              key: "barcode",
-              label: t("thBarcode"),
-              hideMobile: true,
-              render: (l) => l.barcode,
-            },
-            { key: "stock", label: t("thStock"), render: (l) => l.stock },
-            {
-              key: "shop_price",
-              label: t("thShopPrice"),
-              hideMobile: true,
-              render: (l) => toRubles(l.shop_price),
-            },
-            {
-              key: "price",
-              label: t("thPrice"),
-              render: (l) => (
-                <input
-                  className="field w-28"
-                  value={priceDraft[l.product_id] ?? toRubles(l.price)}
-                  onChange={(e) =>
-                    setPriceDraft({
-                      ...priceDraft,
-                      [l.product_id]: e.target.value,
-                    })
-                  }
-                  onBlur={(e) => void savePrice(l, e.target.value)}
-                />
-              ),
-            },
-            {
-              key: "state",
-              label: t("thError"),
-              render: (l) => (
-                <span className="text-xs">
-                  {l.in_flight && (
-                    <span className="text-muted mr-2">{t("inFlight")}</span>
-                  )}
-                  {(l.stock_error || l.price_error) && (
-                    <span className="text-red-600">
-                      {l.stock_error || l.price_error}
-                    </span>
-                  )}
-                </span>
-              ),
-            },
-          ]}
-          rows={links}
-          rowId={(l) => l.product_id}
-          total={linkTotal}
-          page={linkPage}
-          pageSize={100}
-          onPage={setLinkPage}
-          emptyTitle={t("emptyLinks")}
-        />
-      </section>
-      </>)}
-
-      {tab === "tabSales" && (<>
-      <section className="card flex flex-col gap-4">
-        <h2 className="font-bold">{t("sync")}</h2>
-        <p className="hint">
-          {t("stockCounters", { n: s.pending, m: s.failed })}
-        </p>
-        <p className="hint">
-          {t("priceCounters", {
-            n: s.price_pending,
-            f: s.price_in_flight,
-            m: s.price_failed,
-          })}
-        </p>
-        <p className="hint">{t("inFlightHint")}</p>
-        <p className="hint">
-          {t("ordersCounters", {
-            n: s.orders_total,
-            o: s.orders_oversold,
-            u: s.orders_unresolved,
-          })}
-        </p>
-        {s.poll_error && <p className="text-red-600">{s.poll_error}</p>}
-        <div>
-          <button className="btn" disabled={busy} onClick={push}>
-            {t("pushNow")}
-          </button>
-        </div>
-        {line(syncMsg)}
-        {(s.stock_errors.length > 0 || s.price_errors.length > 0) && (
-          <ul className="hint list-disc pl-5">
-            {s.stock_errors.map((e) => (
-              <li key={`s${e.product_id}`}>
-                {e.barcode}: {e.error} {when(e.retry_at)}
-              </li>
-            ))}
-            {s.price_errors.map((e) => (
-              <li key={`p${e.product_id}`}>
-                nmID {e.nm_id}: {e.error} {when(e.retry_at)}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="card flex flex-col gap-4">
-        <h2 className="font-bold">{t("sales")}</h2>
-        <p className="hint">{t("salesHint")}</p>
-        {s.token_set && !s.enabled && <p className="hint">{t("salesOff")}</p>}
-        <DataTable<WBOrder>
-          columns={[
-            {
-              key: "created_at",
-              label: t("thDate"),
-              render: (o) => new Date(o.created_at).toLocaleDateString(lang),
-            },
-            {
-              key: "title",
-              label: t("thProduct"),
-              render: (o) =>
-                o.product_id ? (
-                  o.title
-                ) : (
-                  <span className="text-red-600">
-                    {o.article || o.barcode} - {t("unmatched")}
-                  </span>
-                ),
-            },
-            {
-              key: "barcode",
-              label: t("thBarcode"),
-              hideMobile: true,
-              render: (o) => o.barcode,
-            },
-            { key: "qty", label: t("thQty"), render: (o) => o.qty },
-            {
-              key: "status",
-              label: t("thStatus"),
-              render: (o) => (
-                <span>
-                  {o.status}
-                  {o.oversold && (
-                    <span className="ml-2 text-xs text-red-600">
-                      {t("oversold")}
-                    </span>
-                  )}
-                </span>
-              ),
-            },
-          ]}
-          rows={orders}
-          rowId={(o) => o.order_id}
-          total={orderTotal}
-          page={orderPage}
-          pageSize={50}
-          onPage={setOrderPage}
-          emptyTitle={t("emptyOrders")}
-        />
-      </section>
-      </>)}
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -1,41 +1,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
-  apiError,
   type OzonSettings,
   type OzonLinkPage,
-  type OzonWarehouse,
+  type Warehouse,
   type OzonOrderPage,
-  type OzonCandidatePage,
   type PriceRule,
-  type OzonCandidate,
+  type Candidate,
   type CabinetState,
   type OzonLink,
   type OzonOrder,
   type CandidateView,
+  type UnlinkedProduct,
 } from "./api";
 import { useLang, useT } from "./i18n";
 import { toRubles, toMinor } from "./money";
 import { useSign } from "./shop";
+import { useFeedback } from "./feedback";
+import { ChannelTabs, WarehousePicker, type ChannelTab } from "./Channel";
+import PublicationPanel from "./PublicationPanel";
 import DataTable from "./DataTable";
-import { IconDownload, IconUpload } from "./Icons";
+import PriceLadder from "./PriceLadder";
 
 // Ozon posting statuses live in the same dictionary under their raw codes. An
 // unknown status is shown as is: the platform keeps adding new ones, and hiding
 // them behind "-" is worse than showing the raw code.
-const kChannelTabs = [
-  "tabSetup",
-  "tabPublish",
-  "tabPrices",
-  "tabSales",
-] as const;
-type ChannelTab = (typeof kChannelTabs)[number];
-
 const kText = {
-  tabSetup: { ru: "Подключение", en: "Connection" },
-  tabPublish: { ru: "Публикация", en: "Publishing" },
-  tabPrices: { ru: "Цены", en: "Prices" },
-  tabSales: { ru: "Продажи", en: "Sales" },
   awaiting_registration: {
     ru: "ожидает регистрации",
     en: "awaiting registration",
@@ -49,7 +39,6 @@ const kText = {
   arbitration: { ru: "спор", en: "dispute" },
   cancelled: { ru: "отменено", en: "cancelled" },
 
-  errorPrefix: { ru: "Ошибка", en: "Error" },
   errorCheckKeys: { ru: "проверьте ключи", en: "check your keys" },
 
   intro: {
@@ -78,8 +67,6 @@ const kText = {
     ru: "Складов в кабинете может быть несколько - остатки уезжают на этот. У товара один остаток, разделить его между складами магазин не умеет.",
     en: "A cabinet may hold several warehouses - stock travels to this one. A product carries a single stock figure, and the shop cannot split it between warehouses.",
   },
-  pickWarehouse: { ru: "- выберите склад -", en: "- pick a warehouse -" },
-  loadWarehouses: { ru: "Загрузить склады", en: "Load warehouses" },
   noWarehouses: {
     ru: "Складов не нашлось - впишите id вручную",
     en: "No warehouses found - enter the id manually",
@@ -102,38 +89,10 @@ const kText = {
     en: "Account {name}: products - {n}, currency {cur}",
   },
 
-  publication: { ru: "Публикация", en: "Publication" },
   publicationHint: {
     ru: "Отметьте товары, которые продаёте на Ozon. В канал уезжают только отмеченные - остальные живут на витрине и площадку не видят.",
     en: "Tick the products you sell on Ozon. Only ticked ones go to the channel; the rest live on the storefront and never reach the marketplace.",
   },
-  cabinetSummary: {
-    // Only the cabinet's own card count: the three states below it are on the
-    // buttons, where they belong - the owner is choosing what to look at, and a
-    // sentence repeating the choice word for word is noise between them.
-    ru: "В кабинете карточек: {cards}.",
-    en: "Cards in the cabinet: {cards}.",
-  },
-  cabinetOrphans: {
-    ru: "Ещё {n} карточек на площадке не совпали ни с одним товаром.",
-    en: "Another {n} cards on the platform matched no product of yours.",
-  },
-  stateReady: { ru: "можно связать", en: "ready to link" },
-  stateNoCard: { ru: "нет карточки", en: "no card" },
-  searchProducts: {
-    ru: "Поиск по названию или артикулу",
-    en: "Search by title or article",
-  },
-  publish: { ru: "Опубликовать", en: "Publish" },
-  unpublish: { ru: "Снять с публикации", en: "Unpublish" },
-  noCandidates: {
-    ru: "Товаров нет. Заведите их вручную или перенесите каталог на вкладке «Импорт».",
-    en: "No products yet. Add them by hand or bring a catalogue over on the Import tab.",
-  },
-  colPublished: { ru: "На площадке", en: "On the platform" },
-  yes: { ru: "да", en: "yes" },
-  no: { ru: "нет", en: "no" },
-  hiddenBadge: { ru: "скрыт с витрины", en: "hidden from storefront" },
   publishedResult: { ru: "Опубликовано: {n}", en: "Published: {n}" },
   // Publishing writes the link, but stock travels only from a warehouse. An
   // owner who never picked one sees "published" and then nothing happens on the
@@ -143,44 +102,6 @@ const kText = {
     en: " Stock will not travel: no FBS warehouse is set. Pick one in the settings above, and if the list is empty, create a warehouse in the Ozon cabinet - the API does not create them.",
   },
   unpublishedResult: { ru: "Снято: {n}", en: "Unpublished: {n}" },
-  noCardTitle: {
-    ru: "Нет карточки на Ozon",
-    en: "No card on Ozon",
-  },
-  noCardHint: {
-    ru: "Эти товары не нашлись в кабинете по артикулу. Заведите карточку на Ozon с тем же артикулом и повторите.",
-    en: "These products had no article match in the cabinet. Create the card on Ozon with the same article and try again.",
-  },
-  zeroFailedTitle: {
-    ru: "Не удалось обнулить остаток",
-    en: "Could not zero the stock",
-  },
-  zeroFailedHint: {
-    ru: "Связь сохранена намеренно: пока на площадке остаётся наш остаток, забывать про карточку нельзя - она продолжит продавать.",
-    en: "The link is kept on purpose: while our stock is still live on the platform, forgetting the card would let it keep selling.",
-  },
-  linking: { ru: "Связывание", en: "Linking" },
-  linkingHint: {
-    ru: "Связываем по артикулу: артикул товара в магазине должен совпадать с offer_id карточки в кабинете Ozon - символ в символ.",
-    en: "Matching goes by article: a product’s article in the shop must equal the offer_id of the Ozon listing, character for character.",
-  },
-  linkedNow: {
-    ru: "Сейчас связано: {linked}, без связи: {unlinked}.",
-    en: "Currently linked: {linked}, not linked: {unlinked}.",
-  },
-  linkByArticle: { ru: "Связать по артикулу", en: "Link by article" },
-  linkedResult: { ru: "Связано: {n}", en: "Linked: {n}" },
-
-  missingOnOzon: {
-    ru: "Нет в кабинете Ozon",
-    en: "Missing from the Ozon account",
-  },
-  missingOnOzonHint: {
-    ru: "Эти товары магазина не нашлись по артикулу - заведите карточку на Ozon или поправьте артикул.",
-    en: "These shop products had no article match - create the listing on Ozon or fix the article.",
-  },
-  articleOf: { ru: "(артикул: {sku})", en: "(article: {sku})" },
-  articleEmpty: { ru: "не задан", en: "not set" },
 
   linkedProducts: { ru: "Связанные товары", en: "Linked products" },
   linkedProductsHint: {
@@ -197,11 +118,6 @@ const kText = {
     ru: "Один процент не работает на каталоге, где есть и товар за 30, и за 3000: на дешёвом он не отбивает комиссию площадки. Задайте полосы: до какой цены витрины какой множитель. Последняя строка «и выше» обязательна.",
     en: 'A single percentage does not work on a catalogue with both 30-ruble and 3000-ruble goods: on the cheap end it does not cover the platform fee. Set bands: up to which shelf price which multiplier. The final "and above" row is required.',
   },
-  bandUpTo: { ru: "До цены", en: "Up to" },
-  bandAbove: { ru: "и выше", en: "and above" },
-  bandMultiplier: { ru: "Множитель", en: "Multiplier" },
-  addBand: { ru: "+ Полоса", en: "+ Band" },
-  removeBand: { ru: "Удалить", en: "Remove" },
   saveLadder: { ru: "Сохранить лестницу", en: "Save ladder" },
   applyLadder: { ru: "Применить к пустым ценам", en: "Apply to empty prices" },
   ladderSaved: { ru: "Лестница сохранена", en: "Ladder saved" },
@@ -211,14 +127,6 @@ const kText = {
   },
   filled: { ru: "Заполнено цен: {n}", en: "Prices filled: {n}" },
 
-  viewReady: { ru: "Можно связать", en: "Ready to link" },
-  viewLinked: { ru: "Связано", en: "Linked" },
-  viewNoCard: { ru: "Нет карточки", en: "No card" },
-  viewAll: { ru: "Все товары", en: "All products" },
-  orphanList: {
-    ru: "Карточки в кабинете, которым не нашлось товара: {list}",
-    en: "Cards in the cabinet with no product of ours: {list}",
-  },
   colProduct: { ru: "Товар", en: "Product" },
   colArticle: { ru: "Артикул", en: "Article" },
   colStock: { ru: "Остаток", en: "Stock" },
@@ -231,19 +139,6 @@ const kText = {
   priceNotManaged: { ru: "ценой не управляем", en: "price not managed" },
   priceQueued: { ru: "цена ждёт отправки", en: "price queued to send" },
   priceSent: { ru: "отправлено {price} {cur}", en: "sent {price} {cur}" },
-
-  extraOnOzon: {
-    ru: "Есть в кабинете, нет в магазине",
-    en: "In the account, not in the shop",
-  },
-  extraOnOzonMore: {
-    ru: "…и ещё {n}",
-    en: "…and {n} more",
-  },
-  extraOnOzonHint: {
-    ru: "Эти карточки Ozon не совпали ни с одним товаром - их можно перенести на вкладке «Импорт».",
-    en: "These Ozon listings matched no product - you can bring them over on the Import tab.",
-  },
 
   sync: { ru: "Синхронизация", en: "Sync" },
   syncHint: {
@@ -304,11 +199,12 @@ export default function Ozon() {
   const t = useT(kText);
   const sign = useSign();
   const lang = useLang();
+  const { fail, line } = useFeedback(kText.errorCheckKeys);
   const [s, setS] = useState<OzonSettings | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const [warehouses, setWarehouses] = useState<OzonWarehouse[] | null>(null);
+  const [warehouses, setWarehouses] = useState<Warehouse[] | null>(null);
   const [stockMsg, setStockMsg] = useState("");
   const [orders, setOrders] = useState<OzonOrderPage | null>(null);
   const [page, setPage] = useState(1);
@@ -321,17 +217,18 @@ export default function Ozon() {
   const [rules, setRules] = useState<PriceRule[]>([]);
   const [ladderMsg, setLadderMsg] = useState("");
   const [priceMsg, setPriceMsg] = useState("");
-  const [candidates, setCandidates] = useState<OzonCandidatePage | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [candTotal, setCandTotal] = useState(0);
   const [candPage, setCandPage] = useState(1);
   const [candSearch, setCandSearch] = useState("");
   const [candQuery, setCandQuery] = useState("");
   // Which slice the table shows. The tab opens on the only state with an action
-  // attached: on a live shop the catalogue is 24 000 rows and the cabinet holds
-  // a few dozen cards, so "everything" was a wall the owner had to scroll past
-  // to find the seven products a button could do anything with.
+  // attached: a live catalogue is a wall of rows and the cabinet holds a few
+  // dozen cards, so "everything" hid the handful a button could do anything
+  // with.
   const [view, setView] = useState<CandidateView["kind"] | null>(null);
   const [pubMsg, setPubMsg] = useState("");
-  const [noCard, setNoCard] = useState<{ id: number; sku: string }[]>([]);
+  const [noCard, setNoCard] = useState<UnlinkedProduct[]>([]);
   // Asked once when the tab opens, and again after publishing changed the
   // answer. Deliberately not part of the paged candidates call: that one runs
   // per page of a hundred rows and would re-read the cabinet every time.
@@ -339,9 +236,7 @@ export default function Ozon() {
   // A configured channel is opened to see what sold, not to retype the key.
   const [tab, setTab] = useState<ChannelTab>("tabSetup");
   const tabPicked = useRef(false);
-  const [zeroFailed, setZeroFailed] = useState<
-    { id: number; sku: string; title: string }[]
-  >([]);
+  const [zeroFailed, setZeroFailed] = useState<UnlinkedProduct[]>([]);
 
   const loadLinks = useCallback(
     () => api.ozonLinks(linkPage).then(setLinks),
@@ -361,18 +256,14 @@ export default function Ozon() {
 
   const readyIDs = useMemo(() => cabinet?.ready_ids ?? [], [cabinet]);
 
-  const loadCandidates = useCallback(
-    () =>
-      api
-        .ozonCandidates(candPage, candQuery, {
-          kind: view ?? defaultView,
-          readyIDs,
-        })
-        .then(setCandidates),
-    [candPage, candQuery, view, defaultView, readyIDs],
-  );
-
-  const ready = useMemo(() => new Set(cabinet?.ready_ids ?? []), [cabinet]);
+  const loadCandidates = useCallback(async () => {
+    const page = await api.ozonCandidates(candPage, candQuery, {
+      kind: view ?? defaultView,
+      readyIDs,
+    });
+    setCandidates(page.products);
+    setCandTotal(page.total);
+  }, [candPage, candQuery, view, defaultView, readyIDs]);
 
   const loadCabinet = useCallback(
     // A shop with no keys, or a platform that will not answer, simply gets no
@@ -397,7 +288,7 @@ export default function Ozon() {
     loadLinks();
   }, [loadLinks]);
   useEffect(() => {
-    loadCandidates();
+    void loadCandidates();
   }, [loadCandidates]);
   // Typing in the picker must not hit the API on every keystroke.
   useEffect(() => {
@@ -416,11 +307,6 @@ export default function Ozon() {
   }
 
   if (!s) return null;
-
-  const fail = (e: unknown) =>
-    t("errorPrefix") + ": " + (apiError(e) ?? t("errorCheckKeys"));
-
-  const isError = (m: string) => m.startsWith(t("errorPrefix"));
 
   // Both push kinds in one table: the owner cares about the row that did not
   // reach Ozon, not about which of the two calls carried it.
@@ -443,6 +329,24 @@ export default function Ozon() {
     })),
   ];
 
+  const refresh = async () => setS(await api.ozonSettings());
+
+  const run = async (
+    setMessage: (m: string) => void,
+    action: () => Promise<string>,
+  ) => {
+    setBusy(true);
+    setMessage("");
+    try {
+      setMessage(await action());
+      await refresh();
+    } catch (e) {
+      setMessage(fail(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // Saving on blur: a per-row button would double the width of the table, and
   // leaving the tab without saving what was typed is worse than one extra
   // request on a field the owner merely tabbed through.
@@ -456,80 +360,44 @@ export default function Ozon() {
     });
     const minor = toMinor(draft);
     if (!Number.isFinite(minor) || minor < 0 || minor === current) return;
-    setPriceMsg("");
-    try {
+    await run(setPriceMsg, async () => {
       await api.ozonSetPrice(productId, minor);
       await loadLinks();
-      setS(await api.ozonSettings());
-    } catch (e) {
-      setPriceMsg(fail(e));
-    }
+      return "";
+    });
   };
 
-  const saveLadder = async () => {
-    setBusy(true);
-    setLadderMsg("");
-    try {
-      const r = await api.ozonSetPriceRules(rules);
-      setRules(r.rules);
-      setLadderMsg(t("ladderSaved"));
-    } catch (e) {
-      setLadderMsg(fail(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const saveLadder = () =>
+    run(setLadderMsg, async () => {
+      setRules((await api.ozonSetPriceRules(rules)).rules);
+      return t("ladderSaved");
+    });
 
-  const applyLadder = async () => {
-    setBusy(true);
-    setLadderMsg("");
-    try {
+  const applyLadder = () =>
+    run(setLadderMsg, async () => {
       const r = await api.ozonFillByRules();
-      setLadderMsg(t("filled", { n: r.filled }));
       await loadLinks();
-      setS(await api.ozonSettings());
-    } catch (e) {
-      setLadderMsg(fail(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+      return t("filled", { n: r.filled });
+    });
 
-  const fillPrices = async () => {
-    setBusy(true);
-    setPriceMsg("");
-    try {
+  const fillPrices = () =>
+    run(setPriceMsg, async () => {
       const r = await api.ozonFillPrices(Math.round(Number(markup) * 100));
-      setPriceMsg(t("filled", { n: r.filled }));
       await loadLinks();
-      setS(await api.ozonSettings());
-    } catch (e) {
-      setPriceMsg(fail(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+      return t("filled", { n: r.filled });
+    });
 
-  const save = async () => {
-    setBusy(true);
-    setMsg("");
-    try {
+  const save = () =>
+    run(setMsg, async () => {
       const body: Record<string, unknown> = { ...s };
       if (apiKey) body.api_key = apiKey;
       setS(await api.saveOzonSettings(body));
       setApiKey("");
-      setMsg(t("saved"));
-    } catch (e) {
-      setMsg(fail(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+      return t("saved");
+    });
 
-  const check = async () => {
-    setBusy(true);
-    setMsg("");
-    try {
+  const check = () =>
+    run(setMsg, async () => {
       const r = await api.ozonCheck();
       const checked = t("checked", {
         name: r.legal_name || "",
@@ -541,89 +409,54 @@ export default function Ozon() {
           ? " " +
             t("currencyMismatch", { cabinet: r.currency, shop: s.currency })
           : "";
-      setMsg(checked + clash);
-    } catch (e) {
-      setMsg(fail(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+      return checked + clash;
+    });
 
-  const afterPublishChange = async () => {
-    setS(await api.ozonSettings());
-    await Promise.all([loadLinks(), loadCandidates(), loadCabinet()]);
-  };
+  const afterPublishChange = () =>
+    Promise.all([loadLinks(), loadCandidates(), loadCabinet()]);
 
-  const publish = async (ids: number[]) => {
-    setBusy(true);
-    setPubMsg("");
-    setNoCard([]);
-    setZeroFailed([]);
-    try {
+  const publish = (ids: number[]) =>
+    run(setPubMsg, async () => {
+      setNoCard([]);
+      setZeroFailed([]);
       const r = await api.ozonPublish(ids);
-      setPubMsg(
-        t("publishedResult", { n: r.published }) +
-          (r.published > 0 && !s.warehouse_id ? t("noWarehouse") : ""),
-      );
       setNoCard(r.no_card);
       await afterPublishChange();
-    } catch (e) {
-      setPubMsg(fail(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+      return (
+        t("publishedResult", { n: r.published }) +
+        (r.published > 0 && !s.warehouse_id ? t("noWarehouse") : "")
+      );
+    });
 
-  const unpublish = async (ids: number[]) => {
-    setBusy(true);
-    setPubMsg("");
-    setNoCard([]);
-    setZeroFailed([]);
-    try {
+  const unpublish = (ids: number[]) =>
+    run(setPubMsg, async () => {
+      setNoCard([]);
+      setZeroFailed([]);
       const r = await api.ozonUnpublish(ids);
-      setPubMsg(t("unpublishedResult", { n: r.unpublished }));
       setZeroFailed(r.failed);
       await afterPublishChange();
-    } catch (e) {
-      setPubMsg(fail(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+      return t("unpublishedResult", { n: r.unpublished });
+    });
 
-  // The warehouse list is a convenience, not an obligation: if the method
-  // answers in a way we did not expect, the field stays manual and the owner
-  // sees why.
-  const loadWarehouses = async () => {
-    setBusy(true);
-    setMsg("");
-    try {
-      const list = await api.ozonWarehouses();
+  // If the method answers in a way we did not expect, the field stays manual
+  // and the owner sees why.
+  const loadWarehouses = () =>
+    run(setMsg, async () => {
+      const list = await api.ozonWarehouses().catch((e: unknown) => {
+        setWarehouses(null);
+        throw e;
+      });
       setWarehouses(list);
-      if (list.length === 0) setMsg(t("noWarehouses"));
-    } catch (e) {
-      setWarehouses(null);
-      setMsg(fail(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+      return list.length === 0 ? t("noWarehouses") : "";
+    });
 
-  const push = async () => {
-    setBusy(true);
-    setStockMsg("");
-    try {
+  const push = () =>
+    run(setStockMsg, async () => {
       const r = await api.ozonPush();
-      setStockMsg(t("pushed", { pushed: r.pushed, failed: r.failed }));
-      setS(await api.ozonSettings());
       setOrders(await api.ozonOrders(page));
       await loadLinks();
-    } catch (e) {
-      setStockMsg(fail(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+      return t("pushed", { pushed: r.pushed, failed: r.failed });
+    });
 
   return (
     <div className="page flex flex-col gap-6">
@@ -632,673 +465,381 @@ export default function Ozon() {
         <p className="hint mt-1">{t("intro")}</p>
       </div>
 
-      <div className="border-line flex flex-wrap gap-1 border-b">
-        {kChannelTabs.map((k) => (
-          <button
-            key={k}
-            onClick={() => setTab(k)}
-            className={
-              "-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors " +
-              (tab === k
-                ? "border-brand text-brand"
-                : "text-muted hover:text-ink border-transparent")
-            }
-          >
-            {t(k)}
-          </button>
-        ))}
-      </div>
+      <ChannelTabs active={tab} onSelect={setTab} />
 
       {tab === "tabSetup" && (
-      <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("connection")}</h2>
-          <p className="hint">{t("fbsOnly")}</p>
-          <p className="hint mt-1">{t("guide")}</p>
-        </div>
-        <div>
-          <label className="label">Client-Id</label>
-          <input
-            className="field"
-            // The browser mistakes a "text + password" pair for a login form
-            // and autofills the saved admin login and password here. Saving
-            // them, the owner would put their password into the DB as the Ozon
-            // key.
-            name="ozon-client-id"
-            autoComplete="off"
-            value={s.client_id}
-            onChange={(e) => setS({ ...s, client_id: e.target.value })}
+        <section className="card flex flex-col gap-4">
+          <div>
+            <h2 className="font-bold">{t("connection")}</h2>
+            <p className="hint">{t("fbsOnly")}</p>
+            <p className="hint mt-1">{t("guide")}</p>
+          </div>
+          <div>
+            <label className="label">Client-Id</label>
+            <input
+              className="field"
+              // The browser mistakes a "text + password" pair for a login form
+              // and autofills the saved admin login and password here. Saving
+              // them, the owner would put their password into the DB as the Ozon
+              // key.
+              name="ozon-client-id"
+              autoComplete="off"
+              value={s.client_id}
+              onChange={(e) => setS({ ...s, client_id: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">Api-Key</label>
+            <input
+              className="field"
+              type="password"
+              name="ozon-api-key"
+              autoComplete="new-password"
+              placeholder={s.api_key_set ? t("apiKeySaved") : ""}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+          </div>
+          <WarehousePicker
+            name="ozon-warehouse"
+            label={t("warehouse")}
+            hint={t("warehouseHint")}
+            value={s.warehouse_id}
+            onChange={(id) => setS({ ...s, warehouse_id: id })}
+            warehouses={warehouses}
+            onLoad={loadWarehouses}
+            busy={busy}
           />
-        </div>
-        <div>
-          <label className="label">Api-Key</label>
-          <input
-            className="field"
-            type="password"
-            name="ozon-api-key"
-            autoComplete="new-password"
-            placeholder={s.api_key_set ? t("apiKeySaved") : ""}
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="label">{t("warehouse")}</label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={s.enabled}
+              onChange={(e) => setS({ ...s, enabled: e.target.checked })}
+            />
+            <span>{t("enabled")}</span>
+          </label>
           <div className="flex items-center gap-3">
-            {warehouses && warehouses.length > 0 ? (
-              <select
-                className="field"
-                name="ozon-warehouse"
-                autoComplete="off"
-                value={s.warehouse_id}
-                onChange={(e) => setS({ ...s, warehouse_id: e.target.value })}
-              >
-                <option value="">{t("pickWarehouse")}</option>
-                {warehouses.map((wh) => (
-                  <option key={wh.id} value={wh.id}>
-                    {wh.name} ({wh.id})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                className="field"
-                name="ozon-warehouse"
-                autoComplete="off"
-                value={s.warehouse_id}
-                onChange={(e) => setS({ ...s, warehouse_id: e.target.value })}
-              />
-            )}
-            <button
-              className="btn-ghost"
-              disabled={busy}
-              onClick={loadWarehouses}
-            >
-              {t("loadWarehouses")}
+            <button className="btn" disabled={busy} onClick={save}>
+              {t("save")}
+            </button>
+            <button className="btn-ghost" disabled={busy} onClick={check}>
+              {t("check")}
             </button>
           </div>
-          <p className="hint">{t("warehouseHint")}</p>
-        </div>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={s.enabled}
-            onChange={(e) => setS({ ...s, enabled: e.target.checked })}
-          />
-          <span>{t("enabled")}</span>
-        </label>
-        <div className="flex items-center gap-3">
-          <button className="btn" disabled={busy} onClick={save}>
-            {t("save")}
-          </button>
-          <button className="btn-ghost" disabled={busy} onClick={check}>
-            {t("check")}
-          </button>
-        </div>
-        {msg && (
-          <p className={isError(msg) ? "text-red-600" : "text-green-700"}>
-            {msg}
-          </p>
-        )}
-      </section>
-
+          {line(msg)}
+        </section>
       )}
 
       {tab === "tabPublish" && (
-      <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("publication")}</h2>
-          <p className="hint">{t("publicationHint")}</p>
-          {cabinet && (
-            <p className="hint mt-1">
-              {t("cabinetSummary", { cards: cabinet.cards })}
-            </p>
-          )}
-        </div>
-        {cabinet && (
-          // The counts sit on the buttons rather than in a sentence above them:
-          // the owner is choosing what to look at, and the size of each pile is
-          // the whole basis for that choice.
-          <div className="flex flex-wrap items-center gap-2">
-            {(
-              [
-                ["ready", t("viewReady"), cabinet.ready],
-                ["linked", t("viewLinked"), cabinet.linked],
-                ["nocard", t("viewNoCard"), cabinet.no_card],
-                ["all", t("viewAll"), cabinet.products],
-              ] as const
-            ).map(([kind, label, n]) => (
-              <button
-                key={kind}
-                onClick={() => {
-                  setView(kind);
-                  setCandPage(1);
-                }}
-                className={
-                  "rounded-full border px-3 py-1 text-sm " +
-                  ((view ?? defaultView) === kind
-                    ? "border-brand text-brand font-semibold"
-                    : "border-line text-muted")
-                }
-              >
-                {label} {n}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            className="field w-64"
-            placeholder={t("searchProducts")}
-            value={candSearch}
-            onChange={(e) => setCandSearch(e.target.value)}
-          />
-        </div>
-
-        <DataTable<OzonCandidate>
-          columns={[
-            {
-              key: "title",
-              label: t("colProduct"),
-              render: (p) => (
-                <>
-                  {p.title}
-                  {p.hidden && (
-                    <span className="text-muted ml-2 text-xs">
-                      {t("hiddenBadge")}
-                    </span>
-                  )}
-                </>
-              ),
-            },
-            {
-              key: "sku",
-              label: t("colArticle"),
-              hideMobile: true,
-              render: (p) => p.sku || "-",
-            },
-            { key: "stock", label: t("colStock"), render: (p) => p.stock },
-            {
-              key: "published",
-              label: t("colPublished"),
-              render: (p) => {
-                if (p.published) return t("yes");
-                // Without the cabinet we know nothing and say nothing: a row
-                // guessing "no card" would send the owner to create one that
-                // may already exist.
-                if (!cabinet)
-                  return <span className="text-muted">{t("no")}</span>;
-                return ready.has(p.product_id) ? (
-                  <span className="text-green-700">{t("stateReady")}</span>
-                ) : (
-                  <span className="text-muted">{t("stateNoCard")}</span>
-                );
-              },
-            },
-          ]}
-          rows={candidates?.products ?? []}
-          rowId={(p) => p.product_id}
-          total={candidates?.total ?? 0}
+        <PublicationPanel
+          hint={t("publicationHint")}
+          cabinet={cabinet}
+          view={view ?? defaultView}
+          onView={(kind) => {
+            setView(kind);
+            setCandPage(1);
+          }}
+          search={candSearch}
+          onSearch={setCandSearch}
+          candidates={candidates}
+          total={candTotal}
           page={candPage}
-          pageSize={candidates?.page_size ?? 100}
+          pageSize={100}
           onPage={setCandPage}
-          selectable
-          // Publishing pulls the cabinet's card list and matches SKUs, so it
-          // works off an explicit list; "everything by filter" here would mean
-          // a non-stop sweep over the catalogue on the marketplace side.
-          allowAll={false}
-          bulkActions={[
-            {
-              label: t("publish"),
-              icon: <IconUpload />,
-              idsOnly: true,
-              onClick: (sel) => publish(sel.ids),
-            },
-            {
-              label: t("unpublish"),
-              icon: <IconDownload />,
-              danger: true,
-              idsOnly: true,
-              onClick: (sel) => unpublish(sel.ids),
-            },
-          ]}
-          emptyTitle={t("noCandidates")}
+          onPublish={publish}
+          onUnpublish={unpublish}
+          message={line(pubMsg)}
+          noCard={noCard}
+          zeroFailed={zeroFailed}
         />
-
-        {pubMsg && (
-          <p className={isError(pubMsg) ? "text-red-600" : "text-green-700"}>
-            {pubMsg}
-          </p>
-        )}
-
-        {noCard.length > 0 && (
-          <div>
-            <h3 className="font-semibold">{t("noCardTitle")}</h3>
-            <p className="hint">{t("noCardHint")}</p>
-            <ul className="mt-2 flex flex-col gap-1">
-              {noCard.map((p) => (
-                <li key={p.id} className="text-sm">
-                  {p.sku || t("articleEmpty")}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {zeroFailed.length > 0 && (
-          <div>
-            <h3 className="font-semibold text-red-600">
-              {t("zeroFailedTitle")}
-            </h3>
-            <p className="hint">{t("zeroFailedHint")}</p>
-            <ul className="mt-2 flex flex-col gap-1">
-              {zeroFailed.map((p) => (
-                <li key={p.id} className="text-sm">
-                  {p.sku}: {p.title}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
       )}
 
       {tab === "tabPrices" && (
-      <section className="card flex flex-col gap-4">
-        {/* "Связать по артикулу" lived here and did what "Опубликовать" does,
-            only over the whole catalogue: both fetch the cabinet's articles and
-            write the pairs that match. Worse, its own counters called the two
-            states one thing - "без связи: 105" for 104 products with no card
-            and one that only needed a click - which is the conflation the state
-            buttons above exist to undo. */}
-        {links && links.links.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <div>
-              <h3 className="font-semibold">{t("linkedProducts")}</h3>
-              <p className="hint">{t("linkedProductsHint")}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="hint">{t("fillFromShop")}</span>
-              <input
-                className="field w-20"
-                value={markup}
-                onChange={(e) => setMarkup(e.target.value)}
-              />
-              <span className="hint">%</span>
-              <button
-                className="btn-ghost"
-                disabled={busy}
-                onClick={fillPrices}
-              >
-                {t("fill")}
-              </button>
-              <span className="hint">{t("fillHint")}</span>
-            </div>
-
-            <div className="border-line flex flex-col gap-3 border-t pt-4">
+        <section className="card flex flex-col gap-4">
+          {links && links.links.length > 0 && (
+            <div className="flex flex-col gap-3">
               <div>
-                <h3 className="font-semibold">{t("ladder")}</h3>
-                <p className="hint">{t("ladderHint")}</p>
+                <h3 className="font-semibold">{t("linkedProducts")}</h3>
+                <p className="hint">{t("linkedProductsHint")}</p>
               </div>
-              <div className="flex flex-col gap-2">
-                {rules.map((rule, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="hint w-20">{t("bandUpTo")}</span>
-                    {rule.up_to === 0 ? (
-                      <span className="w-28 font-semibold">
-                        {t("bandAbove")}
-                      </span>
-                    ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="hint">{t("fillFromShop")}</span>
+                <input
+                  className="field w-20"
+                  value={markup}
+                  onChange={(e) => setMarkup(e.target.value)}
+                />
+                <span className="hint">%</span>
+                <button
+                  className="btn-ghost"
+                  disabled={busy}
+                  onClick={fillPrices}
+                >
+                  {t("fill")}
+                </button>
+                <span className="hint">{t("fillHint")}</span>
+              </div>
+
+              <div className="border-line flex flex-col gap-3 border-t pt-4">
+                <div>
+                  <h3 className="font-semibold">{t("ladder")}</h3>
+                  <p className="hint">{t("ladderHint")}</p>
+                </div>
+                <PriceLadder rules={rules} onChange={setRules} />
+                <div className="flex flex-wrap items-center gap-3">
+                  <button className="btn" disabled={busy} onClick={saveLadder}>
+                    {t("saveLadder")}
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    disabled={busy || rules.length === 0}
+                    onClick={applyLadder}
+                  >
+                    {t("applyLadder")}
+                  </button>
+                </div>
+                {line(ladderMsg)}
+              </div>
+              <DataTable<OzonLink>
+                columns={[
+                  {
+                    key: "title",
+                    label: t("colProduct"),
+                    render: (l) =>
+                      l.title || (
+                        <span className="text-muted">
+                          {t("productDeleted")}
+                        </span>
+                      ),
+                  },
+                  {
+                    key: "offer_id",
+                    label: t("colArticle"),
+                    hideMobile: true,
+                    render: (l) => l.offer_id,
+                  },
+                  {
+                    key: "stock",
+                    label: t("colStock"),
+                    render: (l) => l.stock,
+                  },
+                  {
+                    key: "shop_price",
+                    label: t("colShopPrice"),
+                    hideMobile: true,
+                    render: (l) => `${toRubles(l.shop_price)} ${sign}`,
+                  },
+                  {
+                    key: "price",
+                    label: t("colOzonPrice"),
+                    render: (l) => (
                       <input
                         className="field w-28"
-                        inputMode="decimal"
-                        value={toRubles(rule.up_to)}
+                        value={priceDraft[l.product_id] ?? toRubles(l.price)}
                         onChange={(e) =>
-                          setRules(
-                            rules.map((x, j) =>
-                              j === i
-                                ? { ...x, up_to: toMinor(e.target.value) }
-                                : x,
-                            ),
-                          )
+                          setPriceDraft({
+                            ...priceDraft,
+                            [l.product_id]: e.target.value,
+                          })
                         }
+                        onBlur={() => savePrice(l.product_id, l.price)}
                       />
-                    )}
-                    <span className="hint">{t("bandMultiplier")}</span>
-                    <input
-                      className="field w-20"
-                      inputMode="decimal"
-                      value={String(rule.multiplier)}
-                      onChange={(e) =>
-                        setRules(
-                          rules.map((x, j) =>
-                            j === i
-                              ? {
-                                  ...x,
-                                  multiplier:
-                                    Number(e.target.value.replace(",", ".")) ||
-                                    0,
-                                }
-                              : x,
-                          ),
-                        )
-                      }
-                    />
-                    <button
-                      className="text-muted cursor-pointer text-sm hover:text-red-600"
-                      onClick={() => setRules(rules.filter((_, j) => j !== i))}
-                    >
-                      {t("removeBand")}
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  className="btn-ghost"
-                  onClick={() =>
-                    setRules([
-                      ...rules.filter((r) => r.up_to !== 0),
-                      { up_to: 100000, multiplier: 2 },
-                      ...(rules.some((r) => r.up_to === 0)
-                        ? rules.filter((r) => r.up_to === 0)
-                        : [{ up_to: 0, multiplier: 1.5 }]),
-                    ])
-                  }
-                >
-                  {t("addBand")}
-                </button>
-                <button className="btn" disabled={busy} onClick={saveLadder}>
-                  {t("saveLadder")}
-                </button>
-                <button
-                  className="btn-ghost"
-                  disabled={busy || rules.length === 0}
-                  onClick={applyLadder}
-                >
-                  {t("applyLadder")}
-                </button>
-                {ladderMsg && (
-                  <span
-                    className={
-                      isError(ladderMsg) ? "text-red-600" : "text-green-700"
-                    }
-                  >
-                    {ladderMsg}
-                  </span>
-                )}
-              </div>
-            </div>
-            <DataTable<OzonLink>
-              columns={[
-                {
-                  key: "title",
-                  label: t("colProduct"),
-                  render: (l) =>
-                    l.title || (
-                      <span className="text-muted">{t("productDeleted")}</span>
                     ),
-                },
-                {
-                  key: "offer_id",
-                  label: t("colArticle"),
-                  hideMobile: true,
-                  render: (l) => l.offer_id,
-                },
-                { key: "stock", label: t("colStock"), render: (l) => l.stock },
-                {
-                  key: "shop_price",
-                  label: t("colShopPrice"),
-                  hideMobile: true,
-                  render: (l) => `${toRubles(l.shop_price)} ${sign}`,
-                },
-                {
-                  key: "price",
-                  label: t("colOzonPrice"),
-                  render: (l) => (
-                    <input
-                      className="field w-28"
-                      value={priceDraft[l.product_id] ?? toRubles(l.price)}
-                      onChange={(e) =>
-                        setPriceDraft({
-                          ...priceDraft,
-                          [l.product_id]: e.target.value,
-                        })
-                      }
-                      onBlur={() => savePrice(l.product_id, l.price)}
-                    />
-                  ),
-                },
-                {
-                  key: "status",
-                  label: t("colStatus"),
-                  render: (l) => (
-                    <>
-                      {l.stock_error && (
-                        <div className="text-red-600">
-                          {t("rowStockError", { err: l.stock_error })}
-                        </div>
-                      )}
-                      {l.price_error && (
-                        <div className="text-red-600">
-                          {t("rowPriceError", { err: l.price_error })}
-                        </div>
-                      )}
-                      {!l.stock_error &&
-                        !l.price_error &&
-                        (l.price === 0 ? (
-                          <span className="text-muted">
-                            {t("priceNotManaged")}
-                          </span>
-                        ) : (
-                          <span className="text-muted">
-                            {l.price_pushed < 0
-                              ? t("priceQueued")
-                              : t("priceSent", {
-                                  price: toRubles(l.price_pushed),
-                                  cur: s.currency,
-                                })}
-                          </span>
-                        ))}
-                    </>
-                  ),
-                },
-              ]}
-              rows={links.links}
-              rowId={(l) => l.product_id}
-              total={links.total}
-              page={linkPage}
-              pageSize={links.page_size}
-              onPage={setLinkPage}
-              emptyTitle={t("linkedProducts")}
-            />
-            {priceMsg && (
-              <p
-                className={
-                  isError(priceMsg) ? "text-red-600" : "text-green-700"
-                }
-              >
-                {priceMsg}
-              </p>
-            )}
-          </div>
-        )}
-      </section>
-      )}
-
-      {/* Cards in the cabinet with no product of ours. This used to appear only
-          after pressing a button; the cabinet call the tab already makes on open
-          answers it for free, so the owner sees it without asking. */}
-      {tab === "tabPublish" && !!cabinet?.orphan_skus?.length && (
-        <section className="card flex flex-col gap-2">
-          <div>
-            <h2 className="font-bold">{t("extraOnOzon")}</h2>
-            <p className="hint">{t("extraOnOzonHint")}</p>
-          </div>
-          <ul className="flex flex-wrap gap-2">
-            {cabinet.orphan_skus.map((o) => (
-              <li
-                key={o}
-                className="border-line rounded border px-2 py-1 text-sm"
-              >
-                {o}
-              </li>
-            ))}
-          </ul>
-          {cabinet.orphans > cabinet.orphan_skus.length && (
-            <p className="hint">
-              {t("extraOnOzonMore", {
-                n: cabinet.orphans - cabinet.orphan_skus.length,
-              })}
-            </p>
+                  },
+                  {
+                    key: "status",
+                    label: t("colStatus"),
+                    render: (l) => (
+                      <>
+                        {l.stock_error && (
+                          <div className="text-red-600">
+                            {t("rowStockError", { err: l.stock_error })}
+                          </div>
+                        )}
+                        {l.price_error && (
+                          <div className="text-red-600">
+                            {t("rowPriceError", { err: l.price_error })}
+                          </div>
+                        )}
+                        {!l.stock_error &&
+                          !l.price_error &&
+                          (l.price === 0 ? (
+                            <span className="text-muted">
+                              {t("priceNotManaged")}
+                            </span>
+                          ) : (
+                            <span className="text-muted">
+                              {l.price_pushed < 0
+                                ? t("priceQueued")
+                                : t("priceSent", {
+                                    price: toRubles(l.price_pushed),
+                                    cur: s.currency,
+                                  })}
+                            </span>
+                          ))}
+                      </>
+                    ),
+                  },
+                ]}
+                rows={links.links}
+                rowId={(l) => l.product_id}
+                total={links.total}
+                page={linkPage}
+                pageSize={links.page_size}
+                onPage={setLinkPage}
+                emptyTitle={t("linkedProducts")}
+              />
+              {line(priceMsg)}
+            </div>
           )}
         </section>
       )}
 
       {tab === "tabSales" && (
-      <>
-      <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("sync")}</h2>
-          <p className="hint">{t("syncHint")}</p>
-          <p className="hint mt-1">
-            {t("syncCounts", {
-              linked: s.linked,
-              pending: s.pending,
-              failed: s.failed,
-              pricePending: s.price_pending,
-              priceFailed: s.price_failed,
-            })}
-            {!s.enabled && t("syncOff")}
-          </p>
-        </div>
-        <div>
-          <button className="btn" disabled={busy} onClick={push}>
-            {t("pushNow")}
-          </button>
-        </div>
+        <>
+          <section className="card flex flex-col gap-4">
+            <div>
+              <h2 className="font-bold">{t("sync")}</h2>
+              <p className="hint">{t("syncHint")}</p>
+              <p className="hint mt-1">
+                {t("syncCounts", {
+                  linked: s.linked,
+                  pending: s.pending,
+                  failed: s.failed,
+                  pricePending: s.price_pending,
+                  priceFailed: s.price_failed,
+                })}
+                {!s.enabled && t("syncOff")}
+              </p>
+            </div>
+            <div>
+              <button className="btn" disabled={busy} onClick={push}>
+                {t("pushNow")}
+              </button>
+            </div>
 
-        {stockMsg && (
-          <p className={isError(stockMsg) ? "text-red-600" : "text-green-700"}>
-            {stockMsg}
-          </p>
-        )}
+            {line(stockMsg)}
 
-        {syncErrors.length > 0 && (
-          <DataTable<(typeof syncErrors)[number]>
-            columns={[
-              {
-                key: "offer_id",
-                label: t("colArticle"),
-                render: (e) => e.offer_id,
-              },
-              { key: "kind", label: t("colWhat"), render: (e) => e.kind },
-              { key: "want", label: t("colOurs"), render: (e) => e.want },
-              {
-                key: "pushed",
-                label: t("colSent"),
-                hideMobile: true,
-                render: (e) => e.pushed,
-              },
-              {
-                key: "error",
-                label: t("colError"),
-                render: (e) => <span className="text-red-600">{e.error}</span>,
-              },
-            ]}
-            rows={syncErrors}
-            rowId={(e) => e.key}
-            total={syncErrors.length}
-            page={1}
-            pageSize={syncErrors.length}
-            onPage={() => {}}
-            emptyTitle=""
-          />
-        )}
-      </section>
+            {syncErrors.length > 0 && (
+              <DataTable<(typeof syncErrors)[number]>
+                columns={[
+                  {
+                    key: "offer_id",
+                    label: t("colArticle"),
+                    render: (e) => e.offer_id,
+                  },
+                  { key: "kind", label: t("colWhat"), render: (e) => e.kind },
+                  { key: "want", label: t("colOurs"), render: (e) => e.want },
+                  {
+                    key: "pushed",
+                    label: t("colSent"),
+                    hideMobile: true,
+                    render: (e) => e.pushed,
+                  },
+                  {
+                    key: "error",
+                    label: t("colError"),
+                    render: (e) => (
+                      <span className="text-red-600">{e.error}</span>
+                    ),
+                  },
+                ]}
+                rows={syncErrors}
+                rowId={(e) => e.key}
+                total={syncErrors.length}
+                page={1}
+                pageSize={syncErrors.length}
+                onPage={() => {}}
+                emptyTitle=""
+              />
+            )}
+          </section>
 
-      <section className="card flex flex-col gap-4">
-        <div>
-          <h2 className="font-bold">{t("sales")}</h2>
-          <p className="hint">{t("salesHint")}</p>
-        {s.api_key_set && !s.enabled && <p className="hint">{t("salesOff")}</p>}
-          <p className="hint mt-1">
-            {t("salesTotal", { n: s.orders_total })}
-            {s.orders_oversold > 0 &&
-              t("salesOversold", { n: s.orders_oversold })}
-            {s.orders_unresolved > 0 &&
-              t("salesUnresolved", { n: s.orders_unresolved })}
-            .
-          </p>
-        </div>
+          <section className="card flex flex-col gap-4">
+            <div>
+              <h2 className="font-bold">{t("sales")}</h2>
+              <p className="hint">{t("salesHint")}</p>
+              {s.api_key_set && !s.enabled && (
+                <p className="hint">{t("salesOff")}</p>
+              )}
+              <p className="hint mt-1">
+                {t("salesTotal", { n: s.orders_total })}
+                {s.orders_oversold > 0 &&
+                  t("salesOversold", { n: s.orders_oversold })}
+                {s.orders_unresolved > 0 &&
+                  t("salesUnresolved", { n: s.orders_unresolved })}
+                .
+              </p>
+            </div>
 
-        {s.poll_error && (
-          <p className="text-red-600">
-            {t("pollError", { err: s.poll_error })}
-          </p>
-        )}
+            {s.poll_error && (
+              <p className="text-red-600">
+                {t("pollError", { err: s.poll_error })}
+              </p>
+            )}
 
-        <DataTable<OzonOrder>
-          columns={[
-            {
-              key: "posting_number",
-              label: t("colPosting"),
-              render: (o) => o.posting_number,
-            },
-            {
-              key: "created_at",
-              label: t("colDate"),
-              hideMobile: true,
-              render: (o) => new Date(o.created_at).toLocaleDateString(lang),
-            },
-            {
-              key: "status",
-              label: t("colStatus"),
-              render: (o) =>
-                o.status in kText
-                  ? t(o.status as keyof typeof kText)
-                  : o.status,
-            },
-            {
-              key: "items",
-              label: t("colItems"),
-              render: (o) => (
-                <>
-                  <ul className="flex flex-col gap-1">
-                    {o.items.map((it, i) => (
-                      <li key={`${it.offer_id}-${i}`}>
-                        {it.product_id === null ? (
-                          <span className="text-red-600">
-                            {t("itemUnmatched", {
-                              offer: it.offer_id,
-                              qty: it.qty,
-                            })}
-                          </span>
-                        ) : (
-                          <span>
-                            {it.title} × {it.qty}
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                  {o.oversold && (
-                    <span className="text-red-600">{t("oversold")}</span>
-                  )}
-                </>
-              ),
-            },
-          ]}
-          rows={orders?.orders ?? []}
-          rowId={(o) => o.posting_number}
-          total={orders?.total ?? 0}
-          page={page}
-          pageSize={orders?.page_size ?? 50}
-          onPage={setPage}
-          emptyTitle={t("noSales")}
-        />
-      </section>
-      </>
+            <DataTable<OzonOrder>
+              columns={[
+                {
+                  key: "posting_number",
+                  label: t("colPosting"),
+                  render: (o) => o.posting_number,
+                },
+                {
+                  key: "created_at",
+                  label: t("colDate"),
+                  hideMobile: true,
+                  render: (o) =>
+                    new Date(o.created_at).toLocaleDateString(lang),
+                },
+                {
+                  key: "status",
+                  label: t("colStatus"),
+                  render: (o) =>
+                    o.status in kText
+                      ? t(o.status as keyof typeof kText)
+                      : o.status,
+                },
+                {
+                  key: "items",
+                  label: t("colItems"),
+                  render: (o) => (
+                    <>
+                      <ul className="flex flex-col gap-1">
+                        {o.items.map((it, i) => (
+                          <li key={`${it.offer_id}-${i}`}>
+                            {it.product_id === null ? (
+                              <span className="text-red-600">
+                                {t("itemUnmatched", {
+                                  offer: it.offer_id,
+                                  qty: it.qty,
+                                })}
+                              </span>
+                            ) : (
+                              <span>
+                                {it.title} × {it.qty}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                      {o.oversold && (
+                        <span className="text-red-600">{t("oversold")}</span>
+                      )}
+                    </>
+                  ),
+                },
+              ]}
+              rows={orders?.orders ?? []}
+              rowId={(o) => o.posting_number}
+              total={orders?.total ?? 0}
+              page={page}
+              pageSize={orders?.page_size ?? 50}
+              onPage={setPage}
+              emptyTitle={t("noSales")}
+            />
+          </section>
+        </>
       )}
     </div>
   );

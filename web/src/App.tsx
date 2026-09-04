@@ -75,10 +75,12 @@ export default function App() {
         setScreen("setup");
         return;
       }
+      // The settings call doubles as the session probe: a 401 means login, an
+      // answer is the currency and language the app needs anyway.
       api
-        .products()
-        .then(() => {
-          loadShop();
+        .settings()
+        .then((s) => {
+          loadShop(s);
           setScreen("app");
         })
         .catch(() => setScreen("login"));

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, apiError, type ImportDiff } from "./api";
+import DataTable from "./DataTable";
 import { toRubles } from "./money";
 import { useT, type Phrase } from "./i18n";
 import { useJob } from "./useJob";
@@ -115,6 +116,9 @@ const kText = {
     ru: "Сильнее всего изменилась цена",
     en: "Biggest price moves",
   },
+  colProduct: { ru: "Товар", en: "Product" },
+  colPrice: { ru: "Было → станет", en: "Was → will be" },
+  colChange: { ru: "Изменение", en: "Change" },
   shownOf: {
     ru: "показано {shown} из {total}",
     en: "showing {shown} of {total}",
@@ -485,31 +489,47 @@ export default function Import() {
 
             {diff.price_changes.length > 0 && (
               <div>
-                <h3 className="font-semibold">{t("listPrices")}</h3>
-                <table className="mt-1 w-full text-left text-sm">
-                  <tbody>
-                    {diff.price_changes.map((r) => (
-                      <tr
-                        key={r.sku}
-                        className="border-line border-b last:border-0"
-                      >
-                        <td className="py-1">{r.title || r.sku}</td>
-                        <td className="text-muted py-1 whitespace-nowrap">
+                <h3 className="mb-2 font-semibold">{t("listPrices")}</h3>
+                <DataTable<(typeof diff.price_changes)[number]>
+                  columns={[
+                    {
+                      key: "title",
+                      label: t("colProduct"),
+                      render: (r) => r.title || r.sku,
+                    },
+                    {
+                      key: "price",
+                      label: t("colPrice"),
+                      render: (r) => (
+                        <span className="text-muted whitespace-nowrap">
                           {toRubles(r.was)} → {toRubles(r.now)}
-                        </td>
-                        <td
+                        </span>
+                      ),
+                    },
+                    {
+                      key: "percent",
+                      label: t("colChange"),
+                      render: (r) => (
+                        <span
                           className={
-                            "py-1 text-right whitespace-nowrap " +
+                            "whitespace-nowrap " +
                             (r.percent > 0 ? "text-red-600" : "text-green-700")
                           }
                         >
                           {r.percent > 0 ? "+" : ""}
                           {r.percent.toFixed(0)}%
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </span>
+                      ),
+                    },
+                  ]}
+                  rows={diff.price_changes}
+                  rowId={(r) => r.sku}
+                  total={diff.price_changes.length}
+                  page={1}
+                  pageSize={diff.price_changes.length}
+                  onPage={() => {}}
+                  emptyTitle=""
+                />
                 {diff.price_up + diff.price_down >
                   diff.price_changes.length && (
                   <p className="hint mt-1">

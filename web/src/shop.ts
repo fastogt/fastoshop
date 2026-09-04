@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { api } from "./api";
+import { api, type Settings } from "./api";
 import { adoptLang } from "./i18n";
 
 // The shop's own money, loaded once for the whole admin. Screens that show a
@@ -35,14 +35,17 @@ const subscribe = (fn: () => void) => {
 };
 
 // The admin's language lives on the server too, so one request answers both
-// questions.
-export const loadShop = () => {
+// questions. A caller that already holds the settings (the session probe on
+// start-up does) passes them in instead of paying for the request twice.
+export const loadShop = (known?: Settings) => {
   if (loaded) return;
   loaded = true;
-  api.settings().then((s) => {
+  const adopt = (s: Settings) => {
     adoptLang(s.lang);
     setCurrency(s.currency);
-  });
+  };
+  if (known) adopt(known);
+  else api.settings().then(adopt);
 };
 
 const useCurrency = () =>

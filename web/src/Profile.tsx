@@ -1,7 +1,59 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from "react";
 import { api, type Settings } from "./api";
 import { useT } from "./i18n";
 import { setCurrency } from "./shop";
+
+// One labelled input with an optional hint under it. The autofill shielding
+// (name + autoComplete) is passed through untouched: a "text + password" pair
+// with browser defaults gets the admin password filled in and then saved.
+function Field({
+  label,
+  hint,
+  value,
+  onChange,
+  rows,
+  className,
+  ...input
+}: {
+  label: string;
+  hint?: ReactNode;
+  value: string | number;
+  onChange: (value: string) => void;
+  rows?: number;
+  className?: string;
+} & Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "className"
+>) {
+  return (
+    <div className={className}>
+      <label className="label">{label}</label>
+      {rows ? (
+        <textarea
+          className="field"
+          rows={rows}
+          autoComplete={input.autoComplete}
+          placeholder={input.placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : (
+        <input
+          className="field"
+          {...input}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+      {hint && <p className="hint mt-1">{hint}</p>}
+    </div>
+  );
+}
 
 const kText = {
   title: { ru: "Профиль", en: "Profile" },
@@ -292,73 +344,55 @@ export default function Profile() {
               <h2 className="font-bold">{t("shop")}</h2>
               <p className="hint">{t("shopHint")}</p>
             </div>
-            <div>
-              <label className="label">{t("shopName")}</label>
-              <input
-                className="field"
-                placeholder={t("shopNamePlaceholder")}
-                value={s.shop_name}
-                onChange={(e) => setS({ ...s, shop_name: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">{t("shopPhone")}</label>
-              <input
-                className="field"
-                name="shop-phone"
-                autoComplete="off"
-                placeholder="+7 999 000-00-00"
-                value={s.shop_phone}
-                onChange={(e) => setS({ ...s, shop_phone: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">{t("telegram")}</label>
-              <input
-                className="field"
-                name="shop-telegram"
-                autoComplete="off"
-                placeholder="@myshop"
-                value={s.telegram}
-                onChange={(e) => setS({ ...s, telegram: e.target.value })}
-              />
-              <p className="hint">{t("messengerHint")}</p>
-            </div>
-            <div>
-              <label className="label">{t("whatsapp")}</label>
-              <input
-                className="field"
-                name="shop-whatsapp"
-                autoComplete="off"
-                placeholder="+7 999 000-00-00"
-                value={s.whatsapp}
-                onChange={(e) => setS({ ...s, whatsapp: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">{t("requisites")}</label>
-              <textarea
-                className="field"
-                rows={4}
-                autoComplete="off"
-                placeholder={t("requisitesPlaceholder")}
-                value={s.requisites}
-                onChange={(e) => setS({ ...s, requisites: e.target.value })}
-              />
-              <p className="hint mt-1">{t("requisitesHint")}</p>
-            </div>
-            <div>
-              <label className="label">{t("terms")}</label>
-              <textarea
-                className="field"
-                rows={5}
-                autoComplete="off"
-                placeholder={t("termsPlaceholder")}
-                value={s.terms}
-                onChange={(e) => setS({ ...s, terms: e.target.value })}
-              />
-              <p className="hint mt-1">{t("termsHint")}</p>
-            </div>
+            <Field
+              label={t("shopName")}
+              placeholder={t("shopNamePlaceholder")}
+              value={s.shop_name}
+              onChange={(v) => setS({ ...s, shop_name: v })}
+            />
+            <Field
+              label={t("shopPhone")}
+              name="shop-phone"
+              autoComplete="off"
+              placeholder="+7 999 000-00-00"
+              value={s.shop_phone}
+              onChange={(v) => setS({ ...s, shop_phone: v })}
+            />
+            <Field
+              label={t("telegram")}
+              hint={t("messengerHint")}
+              name="shop-telegram"
+              autoComplete="off"
+              placeholder="@myshop"
+              value={s.telegram}
+              onChange={(v) => setS({ ...s, telegram: v })}
+            />
+            <Field
+              label={t("whatsapp")}
+              name="shop-whatsapp"
+              autoComplete="off"
+              placeholder="+7 999 000-00-00"
+              value={s.whatsapp}
+              onChange={(v) => setS({ ...s, whatsapp: v })}
+            />
+            <Field
+              label={t("requisites")}
+              hint={t("requisitesHint")}
+              rows={4}
+              autoComplete="off"
+              placeholder={t("requisitesPlaceholder")}
+              value={s.requisites}
+              onChange={(v) => setS({ ...s, requisites: v })}
+            />
+            <Field
+              label={t("terms")}
+              hint={t("termsHint")}
+              rows={5}
+              autoComplete="off"
+              placeholder={t("termsPlaceholder")}
+              value={s.terms}
+              onChange={(v) => setS({ ...s, terms: v })}
+            />
             <div>
               <label className="label">{t("logo")}</label>
               <div className="flex flex-wrap items-center gap-3">
@@ -414,29 +448,28 @@ export default function Profile() {
               <h2 className="font-bold">{t("ai")}</h2>
               <p className="hint">{t("aiHint")}</p>
             </div>
-            <div>
-              <label className="label">{t("aiKey")}</label>
-              <input
-                className="field"
-                type="password"
-                name="adhunters-key"
-                autoComplete="new-password"
-                placeholder={s.adhunters_api_key || ""}
-                value={aiKey}
-                onChange={(e) => setAiKey(e.target.value)}
-              />
-              <p className="hint mt-1">
-                {t("aiKeyHint")}{" "}
-                <a
-                  className="text-brand underline"
-                  href="https://adhunters.fastolead.com"
-                  target="_blank"
-                  rel="noopener"
-                >
-                  adhunters.fastolead.com
-                </a>
-              </p>
-            </div>
+            <Field
+              label={t("aiKey")}
+              hint={
+                <>
+                  {t("aiKeyHint")}{" "}
+                  <a
+                    className="text-brand underline"
+                    href="https://adhunters.fastolead.com"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    adhunters.fastolead.com
+                  </a>
+                </>
+              }
+              type="password"
+              name="adhunters-key"
+              autoComplete="new-password"
+              placeholder={s.adhunters_api_key || ""}
+              value={aiKey}
+              onChange={setAiKey}
+            />
           </section>
         </>
       )}
@@ -452,62 +485,47 @@ export default function Profile() {
               </p>
             </div>
             <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="label">{t("smtpHost")}</label>
-                <input
-                  className="field"
-                  placeholder="smtp.yandex.ru"
-                  value={s.smtp_host}
-                  onChange={(e) => setS({ ...s, smtp_host: e.target.value })}
-                />
-              </div>
-              <div className="w-28">
-                <label className="label">{t("smtpPort")}</label>
-                <input
-                  className="field"
-                  type="number"
-                  value={s.smtp_port}
-                  onChange={(e) =>
-                    setS({ ...s, smtp_port: Number(e.target.value) })
-                  }
-                />
-              </div>
-            </div>
-            <div>
-              <label className="label">{t("smtpUser")}</label>
-              <input
-                className="field"
-                name="smtp-login"
-                autoComplete="off"
-                placeholder="shop@example.ru"
-                value={s.smtp_user}
-                onChange={(e) => setS({ ...s, smtp_user: e.target.value })}
+              <Field
+                className="flex-1"
+                label={t("smtpHost")}
+                placeholder="smtp.yandex.ru"
+                value={s.smtp_host}
+                onChange={(v) => setS({ ...s, smtp_host: v })}
+              />
+              <Field
+                className="w-28"
+                label={t("smtpPort")}
+                type="number"
+                value={s.smtp_port}
+                onChange={(v) => setS({ ...s, smtp_port: Number(v) })}
               />
             </div>
-            <div>
-              <label className="label">{t("smtpFrom")}</label>
-              <input
-                className="field"
-                name="smtp-from"
-                autoComplete="off"
-                placeholder={s.smtp_user || "shop@example.ru"}
-                value={s.smtp_from}
-                onChange={(e) => setS({ ...s, smtp_from: e.target.value })}
-              />
-              <p className="hint mt-1">{t("smtpFromHint")}</p>
-            </div>
-            <div>
-              <label className="label">{t("smtpPassword")}</label>
-              <input
-                className="field"
-                type="password"
-                name="smtp-app-password"
-                autoComplete="new-password"
-                placeholder={s.smtp_password_set ? t("smtpPasswordSet") : ""}
-                value={smtpPassword}
-                onChange={(e) => setSmtpPassword(e.target.value)}
-              />
-            </div>
+            <Field
+              label={t("smtpUser")}
+              name="smtp-login"
+              autoComplete="off"
+              placeholder="shop@example.ru"
+              value={s.smtp_user}
+              onChange={(v) => setS({ ...s, smtp_user: v })}
+            />
+            <Field
+              label={t("smtpFrom")}
+              hint={t("smtpFromHint")}
+              name="smtp-from"
+              autoComplete="off"
+              placeholder={s.smtp_user || "shop@example.ru"}
+              value={s.smtp_from}
+              onChange={(v) => setS({ ...s, smtp_from: v })}
+            />
+            <Field
+              label={t("smtpPassword")}
+              type="password"
+              name="smtp-app-password"
+              autoComplete="new-password"
+              placeholder={s.smtp_password_set ? t("smtpPasswordSet") : ""}
+              value={smtpPassword}
+              onChange={setSmtpPassword}
+            />
             <div>
               <button
                 className="btn-ghost"
@@ -532,30 +550,22 @@ export default function Profile() {
               <p className="hint">{t("seoHint")}</p>
             </div>
             <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="label">{t("gaId")}</label>
-                <input
-                  className="field"
-                  autoComplete="off"
-                  placeholder="G-XXXXXXXXXX"
-                  value={s.ga_measurement_id}
-                  onChange={(e) =>
-                    setS({ ...s, ga_measurement_id: e.target.value })
-                  }
-                />
-              </div>
-              <div className="flex-1">
-                <label className="label">{t("metrikaId")}</label>
-                <input
-                  className="field"
-                  autoComplete="off"
-                  placeholder="12345678"
-                  value={s.metrika_counter_id}
-                  onChange={(e) =>
-                    setS({ ...s, metrika_counter_id: e.target.value })
-                  }
-                />
-              </div>
+              <Field
+                className="flex-1"
+                label={t("gaId")}
+                autoComplete="off"
+                placeholder="G-XXXXXXXXXX"
+                value={s.ga_measurement_id}
+                onChange={(v) => setS({ ...s, ga_measurement_id: v })}
+              />
+              <Field
+                className="flex-1"
+                label={t("metrikaId")}
+                autoComplete="off"
+                placeholder="12345678"
+                value={s.metrika_counter_id}
+                onChange={(v) => setS({ ...s, metrika_counter_id: v })}
+              />
             </div>
           </section>
 
@@ -627,26 +637,20 @@ export default function Profile() {
                 {t("passwordHintAfter")}
               </p>
             </div>
-            <div>
-              <label className="label">{t("currentPassword")}</label>
-              <input
-                className="field"
-                type="password"
-                autoComplete="current-password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">{t("newPassword")}</label>
-              <input
-                className="field"
-                type="password"
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
+            <Field
+              label={t("currentPassword")}
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={setCurrentPassword}
+            />
+            <Field
+              label={t("newPassword")}
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={setNewPassword}
+            />
             <div className="flex items-center gap-4">
               <button className="btn-ghost" onClick={changePassword}>
                 {t("changePassword")}

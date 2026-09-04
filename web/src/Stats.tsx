@@ -35,6 +35,10 @@ const kText = {
     en: "Could not load the stats",
   },
   free: { ru: "свободно", en: "free" },
+  // Glued to the number, so no space and no plural: "3д 4ч", "2d 4h".
+  unitDay: { ru: "д", en: "d" },
+  unitHour: { ru: "ч", en: "h" },
+  unitMinute: { ru: "мин", en: "m" },
   expert: { ru: "Экспертный режим", en: "Expert mode" },
   expertHint: {
     ru: "Журнал магазина: что делали фоновые задачи, какие фотографии не скачались, ушло ли письмо по заказу.",
@@ -64,12 +68,10 @@ const bytes = (n: number, lang: string): string => {
   return `${new Intl.NumberFormat(lang, { maximumFractionDigits: digits }).format(n)} ${kUnits[i]}`;
 };
 
-function duration(sec: number, lang: string): string {
+function duration(sec: number, u: { d: string; h: string; m: string }): string {
   const d = Math.floor(sec / 86400);
   const h = Math.floor((sec % 86400) / 3600);
   const m = Math.floor((sec % 3600) / 60);
-  const u =
-    lang === "ru" ? { d: "д", h: "ч", m: "мин" } : { d: "d", h: "h", m: "m" };
   if (d > 0) return `${d}${u.d} ${h}${u.h}`;
   if (h > 0) return `${h}${u.h} ${m}${u.m}`;
   return `${m}${u.m}`;
@@ -112,6 +114,7 @@ export default function Stats() {
   const shop = s.shop;
   const used = (total: number, free: number) =>
     `${bytes(total - free, lang)} / ${bytes(total, lang)}`;
+  const units = { d: t("unitDay"), h: t("unitHour"), m: t("unitMinute") };
 
   return (
     <div className="form-page">
@@ -134,7 +137,7 @@ export default function Stats() {
         />
         <Row
           label={t("process")}
-          value={`${bytes(shop.process_rss_bytes, lang)} · ${shop.process_cpu.toFixed(1)}% · ${duration(shop.process_uptime, lang)}`}
+          value={`${bytes(shop.process_rss_bytes, lang)} · ${shop.process_cpu.toFixed(1)}% · ${duration(shop.process_uptime, units)}`}
         />
         <Row label={t("version")} value={shop.version} />
       </section>
@@ -156,7 +159,7 @@ export default function Stats() {
           label={t("network")}
           value={`↓ ${bytes(srv.bandwidth_in, lang)}/s · ↑ ${bytes(srv.bandwidth_out, lang)}/s`}
         />
-        <Row label={t("uptime")} value={duration(srv.uptime, lang)} />
+        <Row label={t("uptime")} value={duration(srv.uptime, units)} />
         <Row
           label={t("os")}
           value={`${srv.os.name} ${srv.os.arch} · ${srv.os.version}`}

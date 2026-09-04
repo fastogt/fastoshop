@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, apiError, type PriceRule, type Product } from "./api";
-import { toRubles, toMinor } from "./money";
+import { api, type Product } from "./api";
+import { toRubles } from "./money";
 import DataTable, { type Selection, type Sort } from "./DataTable";
 import Modal from "./Modal";
+import PricingPanel from "./PricingPanel";
+import ProductCard from "./ProductCard";
 import {
   IconBox,
   IconEye,
@@ -26,14 +28,6 @@ const kEmpty = {
 };
 
 const kText = {
-  showOnStorefront: {
-    ru: "Показывать на витрине",
-    en: "Show on the storefront",
-  },
-  hiddenHint: {
-    ru: "Скрытый товар пропадает из каталога, из карты сайта и не открывается по прямой ссылке. На публикацию в каналах это не влияет.",
-    en: "A hidden product disappears from the catalogue and the sitemap, and its page stops opening. Channel publication is not affected.",
-  },
   hiddenBadge: { ru: "скрыт", en: "hidden" },
   bulkFill: { ru: "Заполнить", en: "Fill in" },
   fillPhotos: { ru: "Забрать фото к себе", en: "Bring the photos in" },
@@ -98,107 +92,6 @@ const kText = {
     en: "Search by name or SKU",
   },
   add: { ru: "+ Добавить товар", en: "+ Add product" },
-  labelTitle: { ru: "Название *", en: "Name *" },
-  titlePlaceholder: {
-    ru: "Чайник эмалированный 2 л",
-    en: "Enamel kettle, 2 L",
-  },
-  labelSku: { ru: "Артикул (SKU)", en: "SKU" },
-  labelPrice: { ru: "Цена, {sign}", en: "Price, {sign}" },
-  labelStock: { ru: "Остаток", en: "In stock" },
-  labelWeight: { ru: "Вес, г", en: "Weight, g" },
-  labelSize: { ru: "Габариты, мм", en: "Size, mm" },
-  sizeHint: {
-    ru: "Длина × ширина × высота упаковки. По весу и габаритам считается доставка, поэтому пустое поле честнее нуля: незаполненный вес - это «неизвестно», а не «невесомый».",
-    en: "Length × width × height of the parcel. Delivery is priced by weight and size, so an empty field is more honest than a zero: an unstated weight means \u201cunknown\u201d, not \u201cweightless\u201d.",
-  },
-  cardShop: { ru: "Витрина", en: "Storefront" },
-  cardStock: { ru: "Цена и склад", en: "Price and stock" },
-  cardPhotos: { ru: "Фото", en: "Photos" },
-  cardChannels: { ru: "Для площадок", en: "For marketplaces" },
-  paramAdd: { ru: "+ Свойство", en: "+ Property" },
-  paramRemove: { ru: "Убрать", en: "Remove" },
-  labelParams: { ru: "Характеристики", en: "Characteristics" },
-  paramName: { ru: "Свойство", en: "Property" },
-  paramValue: { ru: "Значение", en: "Value" },
-  labelCategory: { ru: "Категория", en: "Category" },
-  labelBrand: { ru: "Бренд", en: "Brand" },
-  brandHint: {
-    ru: "Производитель товара, а не поставщик. Уходит в разметку страницы и в товарные фиды: без бренда Google Merchant Center показывает карточку реже.",
-    en: "The maker of the goods, not the supplier. It goes into the page markup and the product feeds: without a brand, Merchant Center shows the listing less often.",
-  },
-  categoryHint: {
-    ru: "Косая черта задаёт вложенность: «Посуда/Кастрюли» - это страница «Кастрюли» внутри «Посуды». У каждого уровня своя страница на витрине.",
-    en: 'A slash makes a level: "Cookware/Pots" is a Pots page inside Cookware. Every level gets a page of its own on the storefront.',
-  },
-  skuLocked: {
-    ru: "Артикул связывает товар с выгрузкой поставщика - по нему загрузка находит, что обновлять. Чтобы изменить, сначала уберите поставщика.",
-    en: "The article is what links this product to its supplier's feed - an import finds what to update by it. To change it, clear the supplier first.",
-  },
-  enrich: { ru: "Улучшить текст (AI)", en: "Improve the text (AI)" },
-  enriching: { ru: "Пишем…", en: "Writing…" },
-  enrichHint: {
-    ru: "Название и описание перепишет модель - проверьте факты перед сохранением. За карточку отвечаете вы. Пока не нажали «Сохранить», в магазине ничего не изменилось.",
-    en: "A model rewrites the name and the description - check the facts before saving. The card is your responsibility. Until you press Save, nothing in the shop has changed.",
-  },
-  labelDescription: { ru: "Описание", en: "Description" },
-  descriptionPlaceholder: {
-    ru: "Что это, из чего сделано, кому подойдёт - этот текст читают и покупатели, и поисковики.",
-    en: "What it is, what it is made of, who it suits - this text is read by shoppers and search engines alike.",
-  },
-  labelPhotos: { ru: "Фотографии", en: "Photos" },
-  addPhoto: { ru: "Добавить", en: "Add" },
-  removePhoto: { ru: "Удалить фото", en: "Remove photo" },
-  pricing: { ru: "Цены", en: "Prices" },
-  pricingHint: {
-    ru: "Как из цены поставщика получается цена на витрине. Цены, которые вы правили руками, пересчёт не трогает.",
-    en: "How a supplier's price becomes the one on the shelf. Prices you edited by hand are left alone.",
-  },
-  rate: { ru: "Курс закупки", en: "Cost rate" },
-  rateHint: {
-    ru: "Во сколько раз цена поставщика превращается в вашу валюту. Прайс в той же валюте - оставьте 1.",
-    en: "What the supplier's price is multiplied by to become your money. A price list in your own currency needs 1.",
-  },
-  markup: { ru: "Наценка, %", en: "Markup, %" },
-  markupHint: {
-    ru: "Сколько добавляем сверх закупки. 30 - это ×1.3.",
-    en: "How much is added on top of the cost. 30 means ×1.3.",
-  },
-  bandsToggle: {
-    ru: "Разная наценка для дешёвых и дорогих товаров",
-    en: "A different markup for cheap and dear goods",
-  },
-  bandsHint: {
-    ru: "На товаре за 7 рублей одна наценка ничего не оставляет, а на товаре за 300 выносит цену выше магазина бренда. Полоса - до какой закупочной цены какой множитель; последняя строка «и выше» обязательна.",
-    en: 'One markup leaves nothing on a 7-rouble item and prices a 300-rouble one above the brand\'s own store. A band is: up to which cost, which multiplier; the final "and above" row is required.',
-  },
-  bandUpTo: { ru: "до", en: "up to" },
-  bandAbove: { ru: "и выше", en: "and above" },
-  bandMultiplier: { ru: "множитель", en: "multiplier" },
-  addBand: { ru: "Добавить полосу", en: "Add a band" },
-  removeBand: { ru: "Удалить", en: "Remove" },
-  savePricing: { ru: "Сохранить", en: "Save" },
-  pricingSaved: {
-    ru: "Сохранено. Цены пока прежние - нажмите «Пересчитать цены».",
-    en: 'Saved. No price has moved yet - press "Recompute prices".',
-  },
-  recompute: { ru: "Пересчитать цены", en: "Recompute prices" },
-  recomputed: {
-    ru: "Пересчитано товаров: {n}",
-    en: "Products recomputed: {n}",
-  },
-  chainExample: {
-    ru: "Закупка {source} → курс {rate} → {cost} → наценка → {shelf}",
-    en: "Cost {source} → rate {rate} → {cost} → markup → {shelf}",
-  },
-  dragHint: {
-    ru: "Фотографии можно перетаскивать: первая уходит в поиск, в каталог и в карточку канала.",
-    en: "Photos can be dragged: the first one goes to search, to the catalogue and to a channel listing.",
-  },
-  photosHint: {
-    ru: "JPEG, PNG или WebP, до 10 МБ. Первое фото попадает в поисковую выдачу и в карточку канала.",
-    en: "JPEG, PNG or WebP, up to 10 MB. The first photo is what search results and the channel card show.",
-  },
   noPhoto: {
     ru: "Фотографии нет. На витрине товар показывается заглушкой.",
     en: "No photo. The storefront shows a stub for this product.",
@@ -211,19 +104,6 @@ const kText = {
     ru: "Фото лежит на чужом сервере. Закроют его - витрина останется без картинки. «Забрать фото к себе» скачает его к нам.",
     en: "This photo lives on someone else’s server. The day it goes, the storefront loses the picture. “Bring the photos in” downloads it to us.",
   },
-  labelSupplier: { ru: "Поставщик (группа)", en: "Supplier (group)" },
-  supplierPlaceholder: { ru: "без поставщика", en: "no supplier" },
-  supplierHint: {
-    ru: "Чей это товар: только выгрузка этой группы будет обновлять его цену и остаток. Осторожно: если в выгрузке такого артикула нет, ближайшая загрузка обнулит остаток.",
-    en: "Whose goods these are: only this group's feed updates the price and stock. Careful - if the feed has no such article, the next import zeroes the stock.",
-  },
-  editTitle: { ru: "Товар", en: "Product" },
-  newTitle: { ru: "Новый товар", en: "New product" },
-  photosAfterSave: {
-    ru: "Фотографии можно добавить после сохранения.",
-    en: "You can add photos once the product is saved.",
-  },
-  save: { ru: "Сохранить", en: "Save" },
   cancel: { ru: "Отмена", en: "Cancel" },
   nothingFound: {
     ru: "По запросу «{q}» ничего не нашлось.",
@@ -246,45 +126,12 @@ const kText = {
 
 const isRemote = isRemoteImage;
 
-// An empty field is "nobody said", which the server stores as NULL - not as a
-// zero a delivery quote would take for a real measurement.
-// The card is one record shown in parts, so the tabs are a view state and not
-// four forms: one Save, one request.
-const kCardTabs = [
-  "cardShop",
-  "cardStock",
-  "cardPhotos",
-  "cardChannels",
-] as const;
-type CardTab = (typeof kCardTabs)[number];
-
-const numOrNull = (v: string): number | null => {
-  const n = Number(v.trim());
-  return v.trim() === "" || !Number.isFinite(n) || n <= 0 ? null : n;
-};
-
 export default function Products() {
   const [list, setList] = useState<Product[]>([]);
   const [edit, setEdit] = useState<Partial<Product> | null>(null);
-  const [cardTab, setCardTab] = useState<CardTab>("cardShop");
-  // Index of the photo being dragged. A ref, not state: it changes on every
-  // dragover and re-rendering the strip mid-drag drops the drag itself.
-  const dragFrom = useRef<number | null>(null);
-  // Pricing: the rate that carries a supplier's price into our money, and the
-  // markup on top. Both live here, next to the prices they produce - they used
-  // to sit on the Import tab, a tab away from anything they change.
-  const [rate, setRate] = useState("1");
-  const [rules, setRules] = useState<PriceRule[]>([]);
-  const [priceMsg, setPriceMsg] = useState("");
   // Whether the shop has an AdHunters key: the button is not offered without
   // one, because there is nothing to pay the rewriting with.
   const [hasAIKey, setHasAIKey] = useState(false);
-  const [enriching, setEnriching] = useState(false);
-  const [enrichMsg, setEnrichMsg] = useState("");
-  const [priceRub, setPriceRub] = useState("0");
-  // null = the stock field was never touched. Sending it means re-declaring the
-  // physical stock: a form opened before a sale would resurrect sold units.
-  const [stock, setStock] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [per, setPer] = useState(100);
   const [sort, setSort] = useState<Sort>({ key: "created", desc: true });
@@ -345,13 +192,6 @@ export default function Products() {
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
-
-  const open = (p: Partial<Product>) => {
-    setCardTab("cardShop");
-    setEdit(p);
-    setPriceRub(toRubles(p.price ?? 0));
-    setStock(null);
-  };
 
   // One job per instance, so both the bar and the per-row spinners come from a
   // single state; when it finishes we re-read the page.
@@ -453,67 +293,7 @@ export default function Products() {
     }
   };
 
-  // The draft lands straight in the form: the dialog is already a draft -
-  // nothing reaches the database until Save, and closing the window undoes it.
-  // Rows live in state as they are, blanks included: filtering on every
-  // keystroke deleted the row whose name was being retyped, value and all. The
-  // server drops nameless rows on save, so the screen and the record agree.
-  const setParam = (i: number, name?: string, value?: string) =>
-    setEdit((prev) => {
-      if (!prev) return prev;
-      const rows = [...(prev.params ?? [])];
-      rows[i] = { name: name ?? rows[i].name, value: value ?? rows[i].value };
-      return { ...prev, params: rows };
-    });
-
-  const addParam = () =>
-    setEdit((prev) =>
-      prev
-        ? { ...prev, params: [...(prev.params ?? []), { name: "", value: "" }] }
-        : prev,
-    );
-
-  const removeParam = (i: number) =>
-    setEdit((prev) =>
-      prev
-        ? { ...prev, params: (prev.params ?? []).filter((_, n) => n !== i) }
-        : prev,
-    );
-
-  const enrich = async () => {
-    if (!edit?.id) return;
-    setEnrichMsg("");
-    setEnriching(true);
-    try {
-      const d = await api.enrichProduct(edit.id);
-      setEdit((prev) =>
-        prev
-          ? {
-              ...prev,
-              title: d.title,
-              description: d.description,
-              category: d.category || prev.category,
-            }
-          : prev,
-      );
-    } catch (e) {
-      setEnrichMsg(apiError(e) ?? t("bulkFailed"));
-    } finally {
-      setEnriching(false);
-    }
-  };
-
-  const save = async () => {
-    if (!edit?.title) return;
-    const p = { ...edit, price: toMinor(priceRub) };
-    delete p.stock;
-    if (stock !== null) p.stock = stock;
-    // supplier is always sent explicitly: the field is in the form, and an
-    // empty value is a deliberate "no supplier" choice, not "leave as is".
-    p.supplier = edit.supplier ?? "";
-    if (edit.id) await api.updateProduct(edit.id, p);
-    else await api.createProduct(p);
-    setEdit(null);
+  const afterSave = async () => {
     await reload();
     const [sup, cat] = await Promise.all([
       api.importSuppliers(),
@@ -523,202 +303,11 @@ export default function Products() {
     setCategories(cat.categories);
   };
 
-  useEffect(() => {
-    api.priceRules().then((r) => {
-      setRate(String(r.coefficient || 1));
-      setRules(r.rules);
-    });
-  }, []);
-
-  // The percentage and the ladder are one thing stored one way: a single band
-  // "and above" is a plain markup, several bands are a ladder - and no rules
-  // at all is a 0% markup that was never set, not a hidden field.
-  const markup =
-    rules.length <= 1
-      ? Math.round(((rules[0]?.multiplier ?? 1) - 1) * 100)
-      : null;
-  const savePricing = async (next: PriceRule[]) => {
-    setPriceMsg("");
-    try {
-      const r = await api.setPriceRules(next);
-      setRules(r.rules);
-      setPriceMsg(t("pricingSaved"));
-    } catch (e) {
-      setPriceMsg(apiError(e) ?? t("bulkFailed"));
-    }
-  };
-  const recompute = async () => {
-    setPriceMsg("");
-    try {
-      // The server recomputes from the *stored* ladder, so what is on the
-      // screen is saved first - otherwise the button reprices the catalogue
-      // by numbers the owner just replaced and reports success.
-      await api.setPriceRules(rules);
-      const r = await api.recomputePrices(Number(rate.replace(",", ".")) || 1);
-      setPriceMsg(t("recomputed", { n: r.updated }));
-      await reload();
-    } catch (e) {
-      setPriceMsg(apiError(e) ?? t("bulkFailed"));
-    }
-  };
-
   return (
     <div>
       <JobBar job={job} />
 
-      {/* Folded away: pricing is set once and then left alone, while the table
-          below is the daily work. Open, it answers the one question the numbers
-          in the price column raise - where they came from. */}
-      <details className="card mb-5">
-        <summary className="cursor-pointer font-bold">{t("pricing")}</summary>
-        <p className="hint mt-2">{t("pricingHint")}</p>
-
-        <div className="mt-3 flex flex-wrap items-start gap-6">
-          <div>
-            <label className="label">{t("rate")}</label>
-            <input
-              className="field w-32"
-              inputMode="decimal"
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
-            />
-            <p className="hint mt-1 max-w-xs">{t("rateHint")}</p>
-          </div>
-
-          {markup !== null && (
-            <div>
-              <label className="label">{t("markup")}</label>
-              <input
-                className="field w-24"
-                inputMode="decimal"
-                value={String(markup)}
-                onChange={(e) =>
-                  setRules([
-                    {
-                      up_to: 0,
-                      multiplier:
-                        1 +
-                        (Number(e.target.value.replace(",", ".")) || 0) / 100,
-                    },
-                  ])
-                }
-              />
-              <p className="hint mt-1 max-w-xs">{t("markupHint")}</p>
-            </div>
-          )}
-        </div>
-
-        {/* The chain on a real row: three arrows say more than a paragraph, and
-            they show that the number in the price column is not an accident. */}
-        {list[0]?.source_price ? (
-          <p className="hint mt-3">
-            {t("chainExample", {
-              source: String(toRubles(list[0].source_price)),
-              rate,
-              cost: `${toRubles(Math.round(list[0].source_price * (Number(rate.replace(",", ".")) || 1)))} ${sign}`,
-              shelf: `${toRubles(list[0].price ?? 0)} ${sign}`,
-            })}
-          </p>
-        ) : null}
-
-        {/* The editor follows the data, not a toggle of its own: bands on
-            screen mean bands in the ladder, and deleting down to one row
-            brings the plain percent field back. A hidden multi-band ladder
-            would still be saved and still price the catalogue. */}
-        {rules.length <= 1 && (
-          <div className="mt-4">
-            <button
-              className="text-brand cursor-pointer text-sm underline"
-              onClick={() =>
-                setRules([
-                  { up_to: 5000, multiplier: 1.5 },
-                  ...(rules.length ? rules : [{ up_to: 0, multiplier: 1.3 }]),
-                ])
-              }
-            >
-              {t("bandsToggle")}
-            </button>
-          </div>
-        )}
-
-        {rules.length > 1 && (
-          <div className="border-line mt-3 flex flex-col gap-2 border-t pt-3">
-            <p className="hint max-w-2xl">{t("bandsHint")}</p>
-            {rules.map((rule, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="hint w-10">{t("bandUpTo")}</span>
-                {rule.up_to === 0 ? (
-                  <span className="w-28 font-semibold">{t("bandAbove")}</span>
-                ) : (
-                  <input
-                    className="field w-28"
-                    inputMode="decimal"
-                    value={toRubles(rule.up_to)}
-                    onChange={(e) =>
-                      setRules(
-                        rules.map((x, j) =>
-                          j === i
-                            ? { ...x, up_to: toMinor(e.target.value) }
-                            : x,
-                        ),
-                      )
-                    }
-                  />
-                )}
-                <span className="hint">{t("bandMultiplier")}</span>
-                <input
-                  className="field w-20"
-                  inputMode="decimal"
-                  value={String(rule.multiplier)}
-                  onChange={(e) =>
-                    setRules(
-                      rules.map((x, j) =>
-                        j === i
-                          ? {
-                              ...x,
-                              multiplier:
-                                Number(e.target.value.replace(",", ".")) || 0,
-                            }
-                          : x,
-                      ),
-                    )
-                  }
-                />
-                <button
-                  className="text-muted cursor-pointer text-sm hover:text-red-600"
-                  onClick={() => setRules(rules.filter((_, j) => j !== i))}
-                >
-                  {t("removeBand")}
-                </button>
-              </div>
-            ))}
-            <div>
-              <button
-                className="btn-ghost"
-                onClick={() =>
-                  setRules([
-                    ...rules.filter((r) => r.up_to !== 0),
-                    { up_to: 5000, multiplier: 1.5 },
-                    ...rules.filter((r) => r.up_to === 0),
-                  ])
-                }
-              >
-                {t("addBand")}
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button className="btn-ghost" onClick={() => void savePricing(rules)}>
-            {t("savePricing")}
-          </button>
-          <button className="btn" onClick={() => void recompute()}>
-            {t("recompute")}
-          </button>
-          {priceMsg && <span className="text-green-700">{priceMsg}</span>}
-        </div>
-      </details>
+      <PricingPanel sample={list[0]} onRecomputed={reload} />
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -762,380 +351,23 @@ export default function Products() {
               ))}
             </select>
           )}
-          <button className="btn" onClick={() => open({ ...kEmpty })}>
+          <button className="btn" onClick={() => setEdit({ ...kEmpty })}>
             {t("add")}
           </button>
         </div>
       </div>
 
       {edit && (
-        <Modal
-          title={edit.id ? t("editTitle") : t("newTitle")}
+        <ProductCard
+          initial={edit}
+          suppliers={suppliers}
+          categories={categories}
+          brands={brands}
+          hasAIKey={hasAIKey}
           onClose={() => setEdit(null)}
-          footer={
-            <>
-              <button className="btn" onClick={save}>
-                {t("save")}
-              </button>
-              <button className="btn-ghost" onClick={() => setEdit(null)}>
-                {t("cancel")}
-              </button>
-            </>
-          }
-        >
-          <div className="flex flex-col gap-4">
-            {/* Same tab markup as the admin header: a row of buttons with an
-                underline on the active one. Wrapping, because four of them do
-                not fit a 390px screen in one line. */}
-            <div className="border-line -mt-2 flex flex-wrap gap-1 border-b">
-              {kCardTabs.map((k) => (
-                <button
-                  key={k}
-                  onClick={() => setCardTab(k)}
-                  className={
-                    "-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors " +
-                    (cardTab === k
-                      ? "border-brand text-brand"
-                      : "text-muted hover:text-ink border-transparent")
-                  }
-                >
-                  {t(k)}
-                </button>
-              ))}
-            </div>
-            {cardTab === "cardShop" && (
-              <>
-                <div>
-                  <label className="label">{t("labelTitle")}</label>
-                  <input
-                    className="field"
-                    placeholder={t("titlePlaceholder")}
-                    value={edit.title ?? ""}
-                    onChange={(e) =>
-                      setEdit({ ...edit, title: e.target.value })
-                    }
-                  />
-                </div>
-                {/* A category is a path, and paths are long: its own full-width row,
-                not a quarter of a row next to the price. */}
-                <div>
-                  <label className="label">{t("labelCategory")}</label>
-                  <input
-                    className="field"
-                    list="product-categories"
-                    placeholder="Посуда/Кастрюли"
-                    value={edit.category ?? ""}
-                    onChange={(e) =>
-                      setEdit({ ...edit, category: e.target.value })
-                    }
-                  />
-                  <datalist id="product-categories">
-                    {categories.map((c) => (
-                      <option key={c} value={c} />
-                    ))}
-                  </datalist>
-                  <p className="hint mt-1">{t("categoryHint")}</p>
-                </div>
-                <div>
-                  <label className="label">{t("labelBrand")}</label>
-                  <input
-                    className="field"
-                    list="product-brands"
-                    value={edit.brand ?? ""}
-                    onChange={(e) =>
-                      setEdit({ ...edit, brand: e.target.value })
-                    }
-                  />
-                  <datalist id="product-brands">
-                    {brands.map((b) => (
-                      <option key={b} value={b} />
-                    ))}
-                  </datalist>
-                  <p className="hint mt-1">{t("brandHint")}</p>
-                </div>
-                <div>
-                  <label className="label">{t("labelDescription")}</label>
-                  <textarea
-                    className="field"
-                    rows={4}
-                    placeholder={t("descriptionPlaceholder")}
-                    value={edit.description ?? ""}
-                    onChange={(e) =>
-                      setEdit({ ...edit, description: e.target.value })
-                    }
-                  />
-                  {hasAIKey && edit.id && (
-                    <div className="mt-2">
-                      <button
-                        className="btn-ai"
-                        disabled={enriching}
-                        onClick={() => void enrich()}
-                      >
-                        {enriching && (
-                          <span className="border-brand h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
-                        )}
-                        {enriching ? t("enriching") : `✨ ${t("enrich")}`}
-                      </button>
-                      <p className="hint mt-1">{t("enrichHint")}</p>
-                      {enrichMsg && (
-                        <p className="mt-1 text-sm text-red-600">{enrichMsg}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-            {cardTab === "cardStock" && (
-              <>
-                <div className="flex flex-wrap gap-3">
-                  <div className="min-w-40 flex-1">
-                    <label className="label">{t("labelSku")}</label>
-                    {/* The article is what an import matches a product by. Change
-                    it on a supplier's goods and the next feed finds no match:
-                    it creates a duplicate and zeroes this product's stock, a
-                    week later and silently. Own goods have no feed to break. */}
-                    <input
-                      className="field"
-                      placeholder="CH-201"
-                      readOnly={!!edit.supplier}
-                      value={edit.sku ?? ""}
-                      onChange={(e) =>
-                        setEdit({ ...edit, sku: e.target.value })
-                      }
-                    />
-                    {edit.supplier && (
-                      <p className="hint mt-1">{t("skuLocked")}</p>
-                    )}
-                  </div>
-                  <div className="w-36">
-                    <label className="label">{t("labelPrice", { sign })}</label>
-                    <input
-                      className="field"
-                      inputMode="decimal"
-                      value={priceRub}
-                      onChange={(e) => setPriceRub(e.target.value)}
-                    />
-                  </div>
-                  <div className="w-28">
-                    <label className="label">{t("labelStock")}</label>
-                    <input
-                      className="field"
-                      type="number"
-                      value={stock ?? edit.stock ?? 0}
-                      onChange={(e) => setStock(Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="min-w-40 flex-1">
-                    <label className="label">{t("labelSupplier")}</label>
-                    <input
-                      className="field"
-                      list="product-suppliers"
-                      placeholder={t("supplierPlaceholder")}
-                      value={edit.supplier ?? ""}
-                      onChange={(e) =>
-                        setEdit({ ...edit, supplier: e.target.value })
-                      }
-                    />
-                    <datalist id="product-suppliers">
-                      {suppliers.map((x) => (
-                        <option key={x} value={x} />
-                      ))}
-                    </datalist>
-                  </div>
-                  <p className="hint mt-1">{t("supplierHint")}</p>
-                </div>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={!edit.hidden}
-                    onChange={(e) =>
-                      setEdit({ ...edit, hidden: !e.target.checked })
-                    }
-                  />
-                  <span>{t("showOnStorefront")}</span>
-                </label>
-                <p className="hint -mt-2">{t("hiddenHint")}</p>
-              </>
-            )}
-            {cardTab === "cardPhotos" && (
-              <>
-                {edit.id ? (
-                  <div>
-                    <label className="label">{t("labelPhotos")}</label>
-                    {(edit.images?.length ?? 0) > 1 && (
-                      <p className="hint mb-2">{t("dragHint")}</p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-3">
-                      {edit.images?.map((im, i) => (
-                        <span
-                          key={im.id}
-                          className="group relative cursor-grab active:cursor-grabbing"
-                          draggable
-                          onDragStart={() => (dragFrom.current = i)}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={() => {
-                            const from = dragFrom.current;
-                            dragFrom.current = null;
-                            if (from === null || from === i || !edit.images)
-                              return;
-                            const next = [...edit.images];
-                            next.splice(i, 0, ...next.splice(from, 1));
-                            setEdit({ ...edit, images: next });
-                            // Saved at once: the order is a property of the product,
-                            // not of the form, and losing it to a cancelled dialog
-                            // would be its own surprise.
-                            void api
-                              .setImageOrder(
-                                edit.id!,
-                                next.map((x) => x.id),
-                              )
-                              .then(() => reload())
-                              .catch(() => setEdit({ ...edit }));
-                          }}
-                        >
-                          <img
-                            src={imageURL(im.path)}
-                            alt=""
-                            // Same rule as the list: a supplier's link that stops
-                            // answering shows the shop's mark, and starts working
-                            // again by itself the day the link does.
-                            onError={(e) => {
-                              e.currentTarget.src = "/nophoto.svg";
-                              e.currentTarget.classList.add("opacity-60");
-                            }}
-                            className="border-line h-20 w-20 rounded-lg border object-cover"
-                          />
-                          {isRemote(im.path) && (
-                            <span
-                              title={t("remotePhoto")}
-                              className="absolute -top-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white"
-                            >
-                              !
-                            </span>
-                          )}
-                          <button
-                            title={t("removePhoto")}
-                            className="border-line absolute -top-2 -right-2 hidden h-6 w-6 cursor-pointer rounded-full border bg-white text-sm text-red-600 group-hover:block"
-                            onClick={async () => {
-                              if (edit.id)
-                                setEdit(await api.deleteImage(edit.id, im.id));
-                            }}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                      {/* The native file input shows "No file chosen" and resists
-                    styling - we hide it behind a button-styled label. */}
-                      <label className="btn-ghost border-line flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 border-2 border-dashed text-center text-xs">
-                        <span className="text-lg leading-none">+</span>
-                        {t("addPhoto")}
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          multiple
-                          className="hidden"
-                          onChange={async (e) => {
-                            const files = Array.from(e.target.files ?? []);
-                            e.target.value = "";
-                            const id = edit.id;
-                            if (!id) return;
-                            // One at a time: position decides which photo is the
-                            // main one, and parallel uploads would land in
-                            // whatever order the server happened to finish.
-                            for (const f of files)
-                              setEdit(await api.uploadImage(id, f));
-                          }}
-                        />
-                      </label>
-                    </div>
-                    <p className="hint mt-1">{t("photosHint")}</p>
-                  </div>
-                ) : (
-                  <p className="hint">{t("photosAfterSave")}</p>
-                )}
-              </>
-            )}
-            {cardTab === "cardChannels" && (
-              <>
-                <div className="w-28">
-                  <label className="label">{t("labelWeight")}</label>
-                  <input
-                    className="field"
-                    type="number"
-                    min="0"
-                    value={edit.weight_g ?? ""}
-                    onChange={(e) =>
-                      setEdit({ ...edit, weight_g: numOrNull(e.target.value) })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="label">{t("labelSize")}</label>
-                  <div className="flex items-center gap-2">
-                    {(["length_mm", "width_mm", "height_mm"] as const).map(
-                      (k, i) => (
-                        <div key={k} className="flex items-center gap-2">
-                          {i > 0 && <span className="text-muted">×</span>}
-                          <input
-                            className="field w-24"
-                            type="number"
-                            min="0"
-                            value={edit[k] ?? ""}
-                            onChange={(e) =>
-                              setEdit({
-                                ...edit,
-                                [k]: numOrNull(e.target.value),
-                              })
-                            }
-                          />
-                        </div>
-                      ),
-                    )}
-                  </div>
-                  <p className="hint mt-1">{t("sizeHint")}</p>
-                </div>
-                <div>
-                  <label className="label">{t("labelParams")}</label>
-                  <div className="flex flex-col gap-2">
-                    {(edit.params ?? []).map((p, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <input
-                          className="field w-1/3"
-                          placeholder={t("paramName")}
-                          value={p.name}
-                          onChange={(e) =>
-                            setParam(i, e.target.value, undefined)
-                          }
-                        />
-                        <input
-                          className="field flex-1"
-                          placeholder={t("paramValue")}
-                          value={String(p.value ?? "")}
-                          onChange={(e) =>
-                            setParam(i, undefined, e.target.value)
-                          }
-                        />
-                        <button
-                          className="btn-ghost px-2"
-                          title={t("paramRemove")}
-                          onClick={() => removeParam(i)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                    <div>
-                      <button className="btn-ghost" onClick={addParam}>
-                        {t("paramAdd")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </Modal>
+          onSaved={afterSave}
+          onReload={reload}
+        />
       )}
 
       {fill && (
@@ -1370,7 +602,7 @@ export default function Products() {
             onClick: (sel) => bulk("delete", sel),
           },
         ]}
-        onRowClick={open}
+        onRowClick={setEdit}
         emptyTitle={
           query
             ? t("nothingFound", { q: query })

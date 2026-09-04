@@ -2,10 +2,52 @@ import axios from "axios";
 
 const http = axios.create({ baseURL: "/api" });
 
-// Wildberries. Types are not shared with Ozon: the row shapes differ - stock
-// hangs off a barcode, price off a card, and an upload is accepted before it is
-// applied.
-export interface WBStockError {
+// Shared between the channels: what the shop offers a marketplace and what it
+// hears back is the same shape on every platform. The link and error rows are
+// not shared - Wildberries hangs stock off a barcode and price off a card, and
+// accepts an upload before it is applied.
+export interface Candidate {
+  product_id: number;
+  sku: string;
+  title: string;
+  stock: number;
+  price: number;
+  hidden: boolean;
+  published: boolean;
+}
+
+interface CandidatePage {
+  products: Candidate[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// reason is only stated by Wildberries: Ozon has one way for a card to be
+// missing, WB also has a card with several sizes that one article cannot pick.
+export interface UnlinkedProduct {
+  id: number;
+  title: string;
+  sku: string;
+  reason?: string;
+}
+
+interface PublishResult {
+  published: number;
+  no_card: UnlinkedProduct[];
+}
+
+interface UnpublishResult {
+  unpublished: number;
+  failed: UnlinkedProduct[];
+}
+
+export interface Warehouse {
+  id: string;
+  name: string;
+}
+
+interface WBStockError {
   product_id: number;
   barcode: string;
   stock: number;
@@ -14,7 +56,7 @@ export interface WBStockError {
   retry_at: string | null;
 }
 
-export interface WBPriceError {
+interface WBPriceError {
   product_id: number;
   nm_id: number;
   price: number;
@@ -61,7 +103,7 @@ export interface WBLink {
   price_error: string;
 }
 
-export interface WBLinkPage {
+interface WBLinkPage {
   links: WBLink[];
   total: number;
   page: number;
@@ -81,50 +123,11 @@ export interface WBOrder {
   created_at: string;
 }
 
-export interface WBOrderPage {
+interface WBOrderPage {
   orders: WBOrder[];
   total: number;
   page: number;
   page_size: number;
-}
-
-export interface WBCandidate {
-  product_id: number;
-  sku: string;
-  title: string;
-  stock: number;
-  price: number;
-  hidden: boolean;
-  published: boolean;
-}
-
-export interface WBCandidatePage {
-  products: WBCandidate[];
-  total: number;
-  page: number;
-  page_size: number;
-}
-
-export interface WBUnlinkedProduct {
-  id: number;
-  title: string;
-  sku: string;
-  reason: string;
-}
-
-export interface WBPublishResult {
-  published: number;
-  no_card: WBUnlinkedProduct[];
-}
-
-export interface WBUnpublishResult {
-  unpublished: number;
-  failed: WBUnlinkedProduct[];
-}
-
-export interface WBWarehouse {
-  id: string;
-  name: string;
 }
 
 // apiError digs the server's message out of the gofastogt error envelope;
@@ -178,7 +181,7 @@ export interface CategoryNode {
 
 // What may change on a category. The move fields are optional on purpose: a
 // request that only hides a node must not rename it back to its old name.
-export interface CategoryPatch {
+interface CategoryPatch {
   name?: string;
   parent?: string;
   position?: number;
@@ -186,7 +189,7 @@ export interface CategoryPatch {
   body?: string;
 }
 
-export interface ProductsPage {
+interface ProductsPage {
   products: Product[];
   total: number;
   page: number;
@@ -195,7 +198,7 @@ export interface ProductsPage {
 
 // A line of the order as it was placed: the price is the one the buyer saw, not
 // today's.
-export interface OrderItem {
+interface OrderItem {
   sku: string;
   title: string;
   price: number;
@@ -245,7 +248,7 @@ export interface Settings {
   adhunters_api_key: string;
 }
 
-export interface ImportDiffRow {
+interface ImportDiffRow {
   sku: string;
   title: string;
   was: number;
@@ -256,7 +259,7 @@ export interface ImportDiffRow {
 }
 
 // Sent by GET /job and, live, by the /job/stream event source.
-export interface JobStage {
+interface JobStage {
   task: string;
   done: number;
   total: number;
@@ -288,7 +291,7 @@ export interface ImportDiff {
   price_changes: ImportDiffRow[];
 }
 
-export interface ImportResult {
+interface ImportResult {
   imported: number;
   updated: number;
   skipped: number;
@@ -300,7 +303,7 @@ export interface ImportResult {
   errors: number;
 }
 
-export interface OzonStockError {
+interface OzonStockError {
   product_id: number;
   offer_id: string;
   stock: number;
@@ -308,7 +311,7 @@ export interface OzonStockError {
   error: string;
 }
 
-export interface OzonPriceError {
+interface OzonPriceError {
   product_id: number;
   offer_id: string;
   price: number;
@@ -361,7 +364,7 @@ export interface OzonLinkPage {
 }
 
 // product_id === null: the item could not be matched to a shop product.
-export interface OzonOrderItem {
+interface OzonOrderItem {
   product_id: number | null;
   offer_id: string;
   title: string;
@@ -378,23 +381,6 @@ export interface OzonOrder {
 
 export interface OzonOrderPage {
   orders: OzonOrder[];
-  total: number;
-  page: number;
-  page_size: number;
-}
-
-export interface OzonCandidate {
-  product_id: number;
-  sku: string;
-  title: string;
-  stock: number;
-  price: number;
-  hidden: boolean;
-  published: boolean;
-}
-
-export interface OzonCandidatePage {
-  products: OzonCandidate[];
   total: number;
   page: number;
   page_size: number;
@@ -420,24 +406,9 @@ export interface CabinetState {
   orphan_skus: string[];
 }
 
-export interface OzonPublishResult {
-  published: number;
-  no_card: { id: number; title: string; sku: string }[];
-}
-
-export interface OzonUnpublishResult {
-  unpublished: number;
-  failed: { id: number; title: string; sku: string }[];
-}
-
 export interface PriceRule {
   up_to: number;
   multiplier: number;
-}
-
-export interface OzonWarehouse {
-  id: string;
-  name: string;
 }
 
 const data = <T>(r: { data: { data: T } }) => r.data.data;
@@ -629,7 +600,7 @@ export const api = {
   ozonWarehouses: () =>
     http
       .post("/ozon/warehouses")
-      .then(data<{ warehouses: OzonWarehouse[] }>)
+      .then(data<{ warehouses: Warehouse[] }>)
       .then((r) => r.warehouses),
   ozonPush: () =>
     http.post("/ozon/push").then(data<{ pushed: number; failed: number }>),
@@ -640,16 +611,14 @@ export const api = {
   ozonCandidates: (page: number, q: string, view?: CandidateView) =>
     http
       .get(`/ozon/candidates`, { params: { page, q, ...viewParams(view) } })
-      .then(data<OzonCandidatePage>),
+      .then(data<CandidatePage>),
   ozonCabinet: () => http.get(`/ozon/cabinet`).then(data<CabinetState>),
   ozonPublish: (ids: number[]) =>
-    http
-      .post("/ozon/publish", { product_ids: ids })
-      .then(data<OzonPublishResult>),
+    http.post("/ozon/publish", { product_ids: ids }).then(data<PublishResult>),
   ozonUnpublish: (ids: number[]) =>
     http
       .post("/ozon/unpublish", { product_ids: ids })
-      .then(data<OzonUnpublishResult>),
+      .then(data<UnpublishResult>),
   ozonSetPrice: (productId: number, price: number) =>
     http.put(`/ozon/price/${productId}`, { price }),
   priceRules: () =>
@@ -685,7 +654,7 @@ export const api = {
   wbWarehouses: () =>
     http
       .post("/wb/warehouses")
-      .then(data<{ warehouses: WBWarehouse[] }>)
+      .then(data<{ warehouses: Warehouse[] }>)
       .then((r) => r.warehouses),
   wbPush: () =>
     http.post("/wb/push").then(data<{ pushed: number; failed: number }>),
@@ -697,13 +666,13 @@ export const api = {
   wbCandidates: (page: number, q: string, view?: CandidateView) =>
     http
       .get(`/wb/candidates`, { params: { page, q, ...viewParams(view) } })
-      .then(data<WBCandidatePage>),
+      .then(data<CandidatePage>),
   wbPublish: (ids: number[]) =>
-    http.post("/wb/publish", { product_ids: ids }).then(data<WBPublishResult>),
+    http.post("/wb/publish", { product_ids: ids }).then(data<PublishResult>),
   wbUnpublish: (ids: number[]) =>
     http
       .post("/wb/unpublish", { product_ids: ids })
-      .then(data<WBUnpublishResult>),
+      .then(data<UnpublishResult>),
   wbSetPrice: (productId: number, price: number) =>
     http.put(`/wb/price/${productId}`, { price }),
   wbPriceRules: () =>
