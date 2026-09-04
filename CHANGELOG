@@ -1,3 +1,9 @@
+1.47.0 / September 4, 2026
+[Alexandr Topilski]
+- Every shop now has a privacy policy page. A shop taking a name and a phone is processing personal data, and the seller usually learns this from an accountant months later. The page sits at `/privacy`, in the footer and in the sitemap, with no switch to forget: the text is fixed and only the shop's own name, contacts and requisites are filled in. The paragraph about visitor counters appears only where Metrika or Google Analytics is actually configured
+- Consent sits under the order button, where the buyer hands the data over, rather than on a page nobody opens
+- The policy is deliberately not a settings field: one assembled from a blank textarea gets published unread, and an unread policy is worse than none. A field appears the day a shop needs a retention period of its own or a processor we do not know about
+
 1.46.0 / September 3, 2026
 [Alexandr Topilski]
 - Bringing a supplier's photos in-house asks first which ones. Only the first photo of a product is shown anywhere outside the card - the catalogue grid, the feeds, and image search - so taking those alone is a fraction of the disk and of the wait. The dialog carries both counts for the current selection, taken through a new `POST /products/bulk/fill/count`, and main photos are preselected
