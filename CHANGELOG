@@ -1,3 +1,12 @@
+1.48.0 / September 4, 2026
+[Alexandr Topilski]
+- Import writes in chunks of one transaction instead of a commit per row. Every product used to cost a slug lookup, an insert and one insert per photo, each committed on its own; the writer now answers slug uniqueness from memory, stores a product's photos in one statement and takes withdrawn products off sale in one update. On a file-backed database a fresh import runs several times faster, and between chunks the storefront still gets its reads in
+- Ozon descriptions are fetched a few at a time. The description endpoint has no batch form, and one serial call per card was the slowest step of an Ozon import by a wide margin
+- Indexes on the columns every list sorts or looks up by: the article, the price and the creation date of a product, the Ozon offer of a link, and the date of a platform sale. They are created on start, so an existing database picks them up on upgrade with nothing to run by hand
+- The catalogue page, the admin product list and the cart read a page's photos in one query rather than one per card
+- What the Ozon and Wildberries tabs share with no platform meaning - page and filter parsing, retry delays, the response structs, the worker's wake-up signals - moved into `app/channel`; on the web side the markup-ladder editor and the publication panel are one component each. A third channel copies only its own part. The channel tables and sync logic are untouched
+- Dead code out: the `Count()` step of import sources, an unused upload-directory argument, three files of response aliases, a second copy of the ladder arithmetic, six duplicated admin-panel messages, and dictionary keys of a linking feature that no longer exists
+
 1.47.0 / September 4, 2026
 [Alexandr Topilski]
 - Every shop now has a privacy policy page. A shop taking a name and a phone is processing personal data, and the seller usually learns this from an accountant months later. The page sits at `/privacy`, in the footer and in the sitemap, with no switch to forget: the text is fixed and only the shop's own name, contacts and requisites are filled in. The paragraph about visitor counters appears only where Metrika or Google Analytics is actually configured
