@@ -142,14 +142,6 @@ func (w *WB) cards() (*wbCardsResponse, error) {
 	return &out, err
 }
 
-func (w *WB) Count() (int, error) {
-	c, err := w.cards()
-	if err != nil {
-		return 0, err
-	}
-	return c.Cursor.Total, nil
-}
-
 type wbWarehouse struct {
 	ID int64 `json:"id"`
 }

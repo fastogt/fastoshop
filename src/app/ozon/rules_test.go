@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 )
 
@@ -30,7 +31,7 @@ func TestPriceLadderBands(t *testing.T) {
 		{150000, 375000}, // and above: ×2.5
 	}
 	for _, c := range cases {
-		if got := database.ApplyRule(rules, c.shelf); got != c.want {
+		if got := database.ShelfPrice(rules, c.shelf, 1); got != c.want {
 			t.Errorf("price %d: got %d, want %d", c.shelf, got, c.want)
 		}
 	}
@@ -40,13 +41,13 @@ func TestPriceLadderBands(t *testing.T) {
 // a price, and that would look like "the ladder didn't work".
 func TestPriceRulesRequireOpenBand(t *testing.T) {
 	h, _, _ := publishTest(t)
-	body, _ := json.Marshal(priceRulesRequest{Rules: []database.PriceRule{
+	body, _ := json.Marshal(channel.PriceRulesRequest{Rules: []database.PriceRule{
 		{UpTo: 5000, Multiplier: 2},
 	}})
 	if w := do(t, h, "PUT", "/price/rules", string(body)); w.Code != http.StatusBadRequest {
 		t.Fatalf("ladder without an open band accepted: %d", w.Code)
 	}
-	body, _ = json.Marshal(priceRulesRequest{Rules: []database.PriceRule{
+	body, _ = json.Marshal(channel.PriceRulesRequest{Rules: []database.PriceRule{
 		{UpTo: 0, Multiplier: 0},
 	}})
 	if w := do(t, h, "PUT", "/price/rules", string(body)); w.Code != http.StatusBadRequest {
@@ -66,16 +67,16 @@ func TestFillPricesByRules(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{cheap, pricey, mine}})
+	body, _ := json.Marshal(channel.PublishRequest{ProductIDs: []int64{cheap, pricey, mine}})
 	do(t, h, "POST", "/publish", string(body))
 	// A price of one's own is already set - the ladder has no right to touch it.
 	setPrice(t, d, mine, 111111)
 
-	body, _ = json.Marshal(priceRulesRequest{Rules: kLadder})
+	body, _ = json.Marshal(channel.PriceRulesRequest{Rules: kLadder})
 	if w := do(t, h, "PUT", "/price/rules", string(body)); w.Code != http.StatusOK {
 		t.Fatalf("saving the ladder: %d %s", w.Code, w.Body.String())
 	}
-	got := decode[fillPricesResponse](t, do(t, h, "POST", "/price/fill-by-rules", ""))
+	got := decode[channel.FillPricesResponse](t, do(t, h, "POST", "/price/fill-by-rules", ""))
 	if got.Filled != 2 {
 		t.Fatalf("filled: %d, want 2", got.Filled)
 	}
@@ -98,7 +99,7 @@ func TestPriceRulesSortedOnSave(t *testing.T) {
 		{UpTo: 10000, Multiplier: 8},
 		{UpTo: 5000, Multiplier: 13},
 	}
-	body, _ := json.Marshal(priceRulesRequest{Rules: shuffled})
+	body, _ := json.Marshal(channel.PriceRulesRequest{Rules: shuffled})
 	do(t, h, "PUT", "/price/rules", string(body))
 	rules, err := d.OzonPriceRules()
 	if err != nil {

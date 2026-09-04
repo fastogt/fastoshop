@@ -5,6 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/i18n"
 )
@@ -38,7 +39,7 @@ func (w *Worker) settlePriceTasks(c *Client) error {
 			}
 		case TaskFailed:
 			if err := w.db.MarkWBPriceTaskFailed(t.UploadID, byNm,
-				i18n.KeyWBUnknownReply, time.Now().Add(kNextRetry)); err != nil {
+				i18n.KeyWBUnknownReply, time.Now().Add(channel.NextRetry)); err != nil {
 				return err
 			}
 		case TaskPending:
@@ -46,7 +47,7 @@ func (w *Worker) settlePriceTasks(c *Client) error {
 				continue
 			}
 			if err := w.db.MarkWBPriceTaskFailed(t.UploadID, nil,
-				i18n.KeyWBPriceTaskStuck, time.Now().Add(kNextRetry)); err != nil {
+				i18n.KeyWBPriceTaskStuck, time.Now().Add(channel.NextRetry)); err != nil {
 				return err
 			}
 		}
@@ -69,7 +70,7 @@ func (w *Worker) pushPrices(c *Client) (pushed, failed int, err error) {
 	agreed, conflicted := groupByCard(rows)
 	if len(conflicted) > 0 {
 		if err := w.db.MarkWBCardError(cardIDs(conflicted), i18n.KeyWBPriceConflict,
-			time.Now().Add(kNextRetry)); err != nil {
+			time.Now().Add(channel.NextRetry)); err != nil {
 			return 0, 0, err
 		}
 		for _, g := range conflicted {
@@ -97,7 +98,7 @@ func (w *Worker) pushPrices(c *Client) (pushed, failed int, err error) {
 		uploadID, callErr := c.UploadPrices(items)
 		if callErr != nil {
 			if err := w.db.MarkWBCardError(cardIDs(batch), callErr.Error(),
-				time.Now().Add(callDelay(callErr, kNextRetry))); err != nil {
+				time.Now().Add(callDelay(callErr, channel.NextRetry))); err != nil {
 				return pushed, failed, err
 			}
 			return pushed, failed + len(sent), nil

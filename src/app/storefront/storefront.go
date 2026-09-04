@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"html/template"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -13,9 +14,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	log "github.com/sirupsen/logrus"
 
+	"time"
+
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/media"
-	"time"
 )
 
 //go:embed templates/*.html
@@ -301,11 +303,7 @@ func categoryURL(path string) string {
 	if path == "" {
 		return "/"
 	}
-	segments := strings.Split(path, database.CategorySep)
-	for i, seg := range segments {
-		segments[i] = database.Slugify(seg)
-	}
-	return "/c/" + strings.Join(segments, "/")
+	return "/c/" + database.SlugPath(path)
 }
 
 // catalogURL is the catalogue page address with everything the buyer chose kept
@@ -544,10 +542,11 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
+	images, _ := s.db.ImagesFor(productIDs(products))
 	cards := make([]cardVM, 0, len(products))
 	for _, p := range products {
 		vm := cardVM{Product: p, PriceStr: priceStr(p.Price)}
-		if imgs, _ := s.db.ListImages(p.ID); len(imgs) > 0 {
+		if imgs := images[p.ID]; len(imgs) > 0 {
 			vm.ImageURL = s.thumbURL(imgs[0].Path)
 		}
 		cards = append(cards, vm)
@@ -690,15 +689,13 @@ func value(v *int64) int64 {
 
 func weightStr(g int64) string {
 	if g >= 1000 {
-		return strings.TrimSuffix(strings.TrimRight(
-			fmt.Sprintf("%.2f", float64(g)/1000), "0"), ".") + " кг"
+		return strconv.FormatFloat(math.Round(float64(g)/10)/100, 'f', -1, 64) + " кг"
 	}
 	return fmt.Sprintf("%d г", g)
 }
 
 func cmStr(mm int64) string {
-	return strings.TrimSuffix(strings.TrimRight(
-		fmt.Sprintf("%.1f", float64(mm)/10), "0"), ".")
+	return strconv.FormatFloat(float64(mm)/10, 'f', -1, 64)
 }
 
 // kMaxSchemaName is the ceiling search engines put on a product name in
@@ -732,18 +729,14 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	for _, im := range raw {
 		imgs = append(imgs, imageVM{URL: imageURL(im.Path), AbsURL: s.absImageURL(im.Path)})
 	}
-	desc := p.Description
-	if len([]rune(desc)) > 160 {
-		desc = string([]rune(desc)[:157]) + "…"
-	}
 	shop := s.shop()
 	data := pageVM{Shop: shop, BaseURL: s.baseURL,
 		CSS: template.CSS(styleCSS), P: p, Images: imgs,
-		PriceStr: priceStr(p.Price), PriceValidUntil: time.Now().AddDate(0, 1, 0).Format("2006-01-02"),
-		PriceValidFrom:  p.UpdatedAt.Format("2006-01-02"),
+		PriceStr: priceStr(p.Price), PriceValidUntil: time.Now().AddDate(0, 1, 0).Format(time.DateOnly),
+		PriceValidFrom:  p.UpdatedAt.Format(time.DateOnly),
 		SchemaName:      clipName(p.Title),
 		OrderLinks:      orderLinks(shop, p, s.baseURL+"/p/"+p.Slug),
-		MetaDescription: desc,
+		MetaDescription: metaFrom(p.Description),
 		Specs:           specs(p, s.hiddenParams()),
 		CartCount:       cartCount(r)}
 	data.WeightG, data.LengthMM = value(p.WeightG), value(p.LengthMM)
@@ -834,10 +827,11 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 	}
 	set := sitemapSet{NS: "http://www.sitemaps.org/schemas/sitemap/0.9",
 		URLs: []sitemapURL{{Loc: s.baseURL + "/"}}}
-	if shop := s.shop(); shop.ShopPhone != "" || shop.Requisites != "" {
+	shop := s.shop()
+	if shop.ShopPhone != "" || shop.Requisites != "" {
 		set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/contacts"})
 	}
-	if s.shop().Terms != "" {
+	if shop.Terms != "" {
 		set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/info"})
 	}
 	set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/privacy"})
@@ -852,7 +846,7 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, p := range products {
 		set.URLs = append(set.URLs, sitemapURL{
-			Loc: s.baseURL + "/p/" + p.Slug, LastMod: p.UpdatedAt.Format("2006-01-02")})
+			Loc: s.baseURL + "/p/" + p.Slug, LastMod: p.UpdatedAt.Format(time.DateOnly)})
 	}
 	w.Header().Set("Content-Type", "application/xml")
 	_, _ = w.Write([]byte(xml.Header))

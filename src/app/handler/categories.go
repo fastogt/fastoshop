@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
@@ -20,10 +21,10 @@ type categoryListResponse struct {
 func (h *Handler) CategoryList(w http.ResponseWriter, r *http.Request) {
 	nodes, err := h.db.Tree()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, categoryListResponse{Categories: nodes})
+	httpjson.WriteOK(w, categoryListResponse{Categories: nodes})
 }
 
 type categoryCreateRequest struct {
@@ -35,19 +36,19 @@ type categoryCreateRequest struct {
 func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 	var req categoryCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "bad json")
+		httpjson.WriteBadRequest(w, "bad json")
 		return
 	}
 	path := database.JoinCategory(req.Parent, req.Name)
 	if strings.TrimSpace(req.Name) == "" || path == "" {
-		writeBadRequest(w, h.msg(i18n.KeyCategoryNoName))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyCategoryNoName))
 		return
 	}
 	if err := h.db.CreateCategory(path); err != nil {
 		h.writeCategoryError(w, err)
 		return
 	}
-	writeOK(w, categoryPathResponse{Path: path})
+	httpjson.WriteOK(w, categoryPathResponse{Path: path})
 }
 
 // categoryUpdateRequest carries only what changed: the fields are pointers so
@@ -66,12 +67,12 @@ type categoryUpdateRequest struct {
 func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	var req categoryUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "bad json")
+		httpjson.WriteBadRequest(w, "bad json")
 		return
 	}
 	path := database.NormalizePath(req.Path)
 	if path == "" {
-		writeBadRequest(w, "empty path")
+		httpjson.WriteBadRequest(w, "empty path")
 		return
 	}
 	// The move goes first: everything after it is written to the new address.
@@ -86,7 +87,7 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 		}
 		to := database.JoinCategory(parent, name)
 		if to == "" {
-			writeBadRequest(w, h.msg(i18n.KeyCategoryNoName))
+			httpjson.WriteBadRequest(w, h.msg(i18n.KeyCategoryNoName))
 			return
 		}
 		if err := h.db.RenameCategory(path, to); err != nil {
@@ -97,23 +98,23 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Position != nil {
 		if err := h.db.SetCategoryPosition(path, *req.Position); err != nil {
-			writeInternalError(w, err)
+			httpjson.WriteInternalError(w, err)
 			return
 		}
 	}
 	if req.Hidden != nil {
 		if err := h.db.SetCategoryHidden(path, *req.Hidden); err != nil {
-			writeInternalError(w, err)
+			httpjson.WriteInternalError(w, err)
 			return
 		}
 	}
 	if req.Body != nil {
 		if err := h.db.SetCategoryText(path, *req.Body); err != nil {
-			writeInternalError(w, err)
+			httpjson.WriteInternalError(w, err)
 			return
 		}
 	}
-	writeOK(w, categoryPathResponse{Path: path})
+	httpjson.WriteOK(w, categoryPathResponse{Path: path})
 }
 
 func leafName(path string) string {
@@ -132,14 +133,14 @@ type categoryPathResponse struct {
 func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	path := database.NormalizePath(r.URL.Query().Get("path"))
 	if path == "" {
-		writeBadRequest(w, "empty path")
+		httpjson.WriteBadRequest(w, "empty path")
 		return
 	}
 	if err := h.db.DeleteCategory(path); err != nil {
 		h.writeCategoryError(w, err)
 		return
 	}
-	writeOK(w, okStatusResponse{Status: "deleted"})
+	httpjson.WriteOK(w, okStatusResponse{Status: "deleted"})
 }
 
 // writeCategoryError renders the two conflicts the owner can cause in their own
@@ -147,10 +148,10 @@ func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) writeCategoryError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, database.ErrCategoryExists):
-		writeBadRequest(w, h.msg(i18n.KeyCategoryExists))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyCategoryExists))
 	case errors.Is(err, database.ErrCategorySlugTaken):
-		writeBadRequest(w, h.msg(i18n.KeyCategorySlugTaken))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyCategorySlugTaken))
 	default:
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
@@ -28,7 +29,7 @@ type priceRulesRequest struct {
 func (h *Handler) GetPriceRules(w http.ResponseWriter, r *http.Request) {
 	rules, err := h.db.ShopPriceRules()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	if rules == nil {
@@ -36,10 +37,10 @@ func (h *Handler) GetPriceRules(w http.ResponseWriter, r *http.Request) {
 	}
 	c, err := h.db.PriceCoefficient()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, priceRulesResponse{Rules: rules, Coefficient: c})
+	httpjson.WriteOK(w, priceRulesResponse{Rules: rules, Coefficient: c})
 }
 
 // SetPriceRules stores the ladder without touching a single price: applying it
@@ -48,15 +49,15 @@ func (h *Handler) GetPriceRules(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) SetPriceRules(w http.ResponseWriter, r *http.Request) {
 	var req priceRulesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "invalid body")
+		httpjson.WriteBadRequest(w, "invalid body")
 		return
 	}
 	if err := database.ValidPriceRules(req.Rules); err != nil {
-		writeBadRequest(w, h.msg(i18n.KeyBadPriceRules))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadPriceRules))
 		return
 	}
 	if err := h.db.SetShopPriceRules(req.Rules); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	h.GetPriceRules(w, r)

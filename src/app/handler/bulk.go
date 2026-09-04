@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/i18n"
 	"github.com/fastogt/fastoshop/app/importer"
 	"github.com/fastogt/fastoshop/app/media"
@@ -45,7 +46,7 @@ func (h *Handler) selection(req bulkRequest) database.Selection {
 func decodeBulk(w http.ResponseWriter, r *http.Request) (bulkRequest, bool) {
 	var req bulkRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "invalid body")
+		httpjson.WriteBadRequest(w, "invalid body")
 		return req, false
 	}
 	return req, true
@@ -59,16 +60,16 @@ func (h *Handler) BulkStock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Stock == nil || *req.Stock < 0 {
-		writeBadRequest(w, h.msg(i18n.KeyBadStock))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadStock))
 		return
 	}
 	n, err := h.db.SetStockBulk(h.selection(req), *req.Stock)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	h.stockChanged()
-	writeOK(w, bulkResponse{Updated: n})
+	httpjson.WriteOK(w, bulkResponse{Updated: n})
 }
 
 // BulkVisibility takes products off the storefront or puts them back. The
@@ -79,15 +80,15 @@ func (h *Handler) BulkVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Hidden == nil {
-		writeBadRequest(w, "hidden required")
+		httpjson.WriteBadRequest(w, "hidden required")
 		return
 	}
 	n, err := h.db.SetHiddenBulk(h.selection(req), *req.Hidden)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, bulkResponse{Updated: n})
+	httpjson.WriteOK(w, bulkResponse{Updated: n})
 }
 
 // BulkSupplier moves products between groups, for when an article changes hands.
@@ -97,15 +98,15 @@ func (h *Handler) BulkSupplier(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.NewSupplier == nil {
-		writeBadRequest(w, h.msg(i18n.KeySupplierRequired))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeySupplierRequired))
 		return
 	}
 	n, err := h.db.SetSupplierBulk(h.selection(req), *req.NewSupplier)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, bulkResponse{Updated: n})
+	httpjson.WriteOK(w, bulkResponse{Updated: n})
 }
 
 type startedResponse struct {
@@ -136,10 +137,10 @@ func (h *Handler) BulkFillCount(w http.ResponseWriter, r *http.Request) {
 	}
 	main, total, err := h.db.CountRemoteImages(h.selection(req))
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, fillCountResponse{Main: main, Total: total})
+	httpjson.WriteOK(w, fillCountResponse{Main: main, Total: total})
 }
 
 func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
@@ -150,21 +151,21 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 	// Checked before the query: a busy slot is the answer whether or not there
 	// turns out to be anything to do.
 	if h.job.busy() {
-		writeBadRequest(w, h.msg(i18n.KeyJobBusy))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyJobBusy))
 		return
 	}
 	imgs, err := h.db.ListRemoteImages(h.selection(req), req.MainOnly)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	missing, err := media.Missing(h.uploadsDir)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	if len(imgs) == 0 && len(missing) == 0 {
-		writeOK(w, startedResponse{})
+		httpjson.WriteOK(w, startedResponse{})
 		return
 	}
 	ctx, ok := h.job.start(kJobFill, []jobStage{
@@ -174,7 +175,7 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 		{Task: kStageThumbs, Total: len(missing)},
 	})
 	if !ok {
-		writeBadRequest(w, h.msg(i18n.KeyJobBusy))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyJobBusy))
 		return
 	}
 	go func() {
@@ -200,7 +201,7 @@ func (h *Handler) BulkFill(w http.ResponseWriter, r *http.Request) {
 			Imported: okCount, Updated: thumbs, Errors: failed + thumbErrors,
 		}, nil)
 	}()
-	writeOK(w, startedResponse{Started: true, Total: len(imgs) + len(missing)})
+	httpjson.WriteOK(w, startedResponse{Started: true, Total: len(imgs) + len(missing)})
 }
 
 // BulkDelete takes an explicit list only: there is deliberately no "delete
@@ -212,14 +213,14 @@ func (h *Handler) BulkDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.IDs) == 0 {
-		writeBadRequest(w, h.msg(i18n.KeyNothingSelected))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyNothingSelected))
 		return
 	}
 	n, err := h.db.DeleteProductsBulk(req.IDs)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	h.stockChanged()
-	writeOK(w, bulkResponse{Updated: n})
+	httpjson.WriteOK(w, bulkResponse{Updated: n})
 }

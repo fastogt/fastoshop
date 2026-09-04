@@ -142,6 +142,12 @@ func (d *Database) migrate() error {
 	-- Every category page filters by this column, and a catalogue has hundreds
 	-- of them.
 	CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+	-- The import matches the feed against the shop by article, and the orders
+	-- page resolves its lines the same way.
+	CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
+	-- The two orders the admin and the catalogue sort a whole catalogue by.
+	CREATE INDEX IF NOT EXISTS idx_products_price ON products(price);
+	CREATE INDEX IF NOT EXISTS idx_products_created ON products(created_at);
 	-- A category node. Keyed by the path rather than by an id, because what a
 	-- product belongs to is still the path in products.category: this table
 	-- describes nodes (their text, their order, whether they are hidden) and
@@ -278,6 +284,8 @@ func (d *Database) migrate() error {
 		-- a whole.
 		retry_at     DATETIME
 	);
+	-- A posting's lines are resolved by offer_id inside the apply transaction.
+	CREATE INDEX IF NOT EXISTS idx_ozon_links_offer ON ozon_links(offer_id);
 	-- Ledger of applied Ozon postings. Idempotency rests on UNIQUE: a posting
 	-- seen twice is rejected by the constraint, not by an "did we apply it
 	-- already" check - that check can be lost between SELECT and INSERT.
@@ -292,6 +300,7 @@ func (d *Database) migrate() error {
 		oversold       INTEGER NOT NULL DEFAULT 0,
 		created_at     DATETIME NOT NULL
 	);
+	CREATE INDEX IF NOT EXISTS idx_ozon_orders_created ON ozon_orders(created_at);
 	-- Deliberately without an FK on products: the row must outlive the product,
 	-- and an unmatched item (product_id IS NULL) must reach the owner's eyes
 	-- instead of getting lost.
@@ -388,6 +397,7 @@ func (d *Database) migrate() error {
 		oversold   INTEGER NOT NULL DEFAULT 0,
 		created_at DATETIME NOT NULL
 	);
+	CREATE INDEX IF NOT EXISTS idx_wb_orders_created ON wb_orders(created_at);
 	CREATE TABLE IF NOT EXISTS wb_price_rules (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
 		up_to      INTEGER NOT NULL,

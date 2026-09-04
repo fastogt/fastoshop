@@ -11,7 +11,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
@@ -135,26 +137,6 @@ type wbLinksResponse struct {
 	PageSize int         `json:"page_size"`
 }
 
-type setPriceRequest struct {
-	Price int64 `json:"price"`
-}
-
-type fillPricesRequest struct {
-	MarkupBP int64 `json:"markup_bp"`
-}
-
-type fillPricesResponse struct {
-	Filled int `json:"filled"`
-}
-
-type priceRulesResponse struct {
-	Rules []database.PriceRule `json:"rules"`
-}
-
-type priceRulesRequest struct {
-	Rules []database.PriceRule `json:"rules"`
-}
-
 type checkResponse struct {
 	Total     int    `json:"total"`
 	LegalName string `json:"legal_name"`
@@ -173,26 +155,6 @@ type unlinkedProduct struct {
 	Title     string `json:"title"`
 	SKU       string `json:"sku"`
 	Reason    string `json:"reason"`
-}
-
-type okStatusResponse struct {
-	Status string `json:"status"`
-}
-
-// ID as a string: warehouse_id is stored as text in the settings, and turning it
-// into a number for a dropdown only to turn it back is pointless.
-type warehouseRow struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-type warehousesResponse struct {
-	Warehouses []warehouseRow `json:"warehouses"`
-}
-
-type pushResponse struct {
-	Pushed int `json:"pushed"`
-	Failed int `json:"failed"`
 }
 
 // ProductID nil means the sale could not be matched to a shop product; the front
@@ -220,22 +182,22 @@ type wbOrdersResponse struct {
 func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 	s, err := h.db.GetWBSettings()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	linked, unlinked, err := h.db.CountWBLinks()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	pending, failed, err := h.db.CountWBStockState()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	bad, err := h.db.ListWBStockErrors()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	lang := h.db.Lang()
@@ -247,12 +209,12 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	pricePending, priceInFlight, priceFailed, err := h.db.CountWBPriceState()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	badPrices, err := h.db.ListWBPriceErrors()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	priceErrs := make([]priceErrorRow, 0, len(badPrices))
@@ -263,10 +225,10 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	total, oversold, unresolved, err := h.db.CountWBOrderState()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, settingsResponse{
+	httpjson.WriteOK(w, settingsResponse{
 		Enabled: s.Enabled, TokenSet: s.Token != "", Sandbox: s.Sandbox,
 		WarehouseID: s.WarehouseID, Linked: linked, Unlinked: unlinked,
 		Pending: pending, Failed: failed, StockErrors: errs,
@@ -280,12 +242,12 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	s, err := h.db.GetWBSettings()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	var req settingsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "invalid body")
+		httpjson.WriteBadRequest(w, "invalid body")
 		return
 	}
 	s.Enabled, s.Sandbox, s.WarehouseID = req.Enabled, req.Sandbox, req.WarehouseID
@@ -293,7 +255,7 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 		s.Token = *req.Token
 	}
 	if err := h.db.SaveWBSettings(s); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	h.GetSettings(w, r)
@@ -306,11 +268,11 @@ func (h *Handlers) msg(key string) string { return i18n.T(h.db.Lang(), key) }
 func (h *Handlers) client(w http.ResponseWriter) (*Client, bool) {
 	s, err := h.db.GetWBSettings()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return nil, false
 	}
 	if s.Token == "" {
-		writeBadRequest(w, h.msg(i18n.KeyWBNoToken))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyWBNoToken))
 		return nil, false
 	}
 	c := &Client{Token: s.Token, Hosts: h.Hosts}
@@ -329,7 +291,7 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 	}
 	cards, err := c.ListCards()
 	if err != nil {
-		writeBadRequest(w, err.Error())
+		httpjson.WriteBadRequest(w, err.Error())
 		return
 	}
 	res := checkResponse{Total: len(cards)}
@@ -347,7 +309,7 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 		var apiErr *APIError
 		res.NoStockScope = errors.As(err, &apiErr) && apiErr.Status == http.StatusForbidden
 	}
-	writeOK(w, res)
+	httpjson.WriteOK(w, res)
 }
 
 // Warehouses fills the warehouse dropdown. The error goes to the owner as text:
@@ -360,15 +322,15 @@ func (h *Handlers) Warehouses(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := c.ListWarehouses()
 	if err != nil {
-		writeBadRequest(w, err.Error())
+		httpjson.WriteBadRequest(w, err.Error())
 		return
 	}
-	res := warehousesResponse{Warehouses: make([]warehouseRow, 0, len(list))}
+	res := channel.WarehousesResponse{Warehouses: make([]channel.WarehouseRow, 0, len(list))}
 	for _, wh := range list {
 		res.Warehouses = append(res.Warehouses,
-			warehouseRow{ID: strconv.FormatInt(wh.ID, 10), Name: wh.Name})
+			channel.WarehouseRow{ID: strconv.FormatInt(wh.ID, 10), Name: wh.Name})
 	}
-	writeOK(w, res)
+	httpjson.WriteOK(w, res)
 }
 
 // pushError turns our own sentinels into the owner's language and leaves
@@ -387,30 +349,30 @@ func (h *Handlers) pushError(err error) string {
 // and with the counters in the answer.
 func (h *Handlers) Push(w http.ResponseWriter, r *http.Request) {
 	if err := h.db.ClearWBBackoff(); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	pushed, failed, err := h.worker.Pass()
 	if err != nil {
-		writeBadRequest(w, h.pushError(err))
+		httpjson.WriteBadRequest(w, h.pushError(err))
 		return
 	}
-	writeOK(w, pushResponse{Pushed: pushed, Failed: failed})
+	httpjson.WriteOK(w, channel.PushResponse{Pushed: pushed, Failed: failed})
 }
 
 // Orders is the platform sales log. These sales never land in the shop's orders
 // - the platform reports them itself, and duplicating would double the revenue
 // in the tax CSV - so this is the only place the owner sees them.
 func (h *Handlers) Orders(w http.ResponseWriter, r *http.Request) {
-	page := pageParam(r)
+	page := channel.PageParam(r)
 	total, err := h.db.CountWBOrders()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	list, err := h.db.ListWBOrdersPage(kOrdersPageSize, (page-1)*kOrdersPageSize)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	res := wbOrdersResponse{
@@ -424,22 +386,22 @@ func (h *Handlers) Orders(w http.ResponseWriter, r *http.Request) {
 			Qty: o.Qty, Oversold: o.Oversold, CreatedAt: o.CreatedAt,
 		})
 	}
-	writeOK(w, res)
+	httpjson.WriteOK(w, res)
 }
 
 // Links is the linked-products table: what we know about every link, including
 // the price the owner set for the platform. Paged, because a shop of 20 000
 // products would otherwise send its whole catalogue into the browser.
 func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
-	page := pageParam(r)
+	page := channel.PageParam(r)
 	total, err := h.db.CountWBLinkRows()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	list, err := h.db.ListWBLinksPage(kLinksPageSize, (page-1)*kLinksPageSize)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	lang := h.db.Lang()
@@ -458,7 +420,7 @@ func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 			PriceError: i18n.TIfKey(lang, l.PriceError),
 		})
 	}
-	writeOK(w, res)
+	httpjson.WriteOK(w, res)
 }
 
 // SetPrice sets the price of one product ON WILDBERRIES, in kopecks. Zero
@@ -468,75 +430,75 @@ func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) SetPrice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "productID"), 10, 64)
 	if err != nil {
-		writeBadRequest(w, "invalid product id")
+		httpjson.WriteBadRequest(w, "invalid product id")
 		return
 	}
-	var req setPriceRequest
+	var req channel.SetPriceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "invalid body")
+		httpjson.WriteBadRequest(w, "invalid body")
 		return
 	}
 	if req.Price < 0 {
-		writeBadRequest(w, h.msg(i18n.KeyWBNegativePrice))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyNegativePrice))
 		return
 	}
 	found, err := h.db.SetWBPrice(id, req.Price)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	if !found {
-		writeNotFound(w, h.msg(i18n.KeyWBNotLinked))
+		httpjson.WriteNotFound(w, h.msg(i18n.KeyWBNotLinked))
 		return
 	}
-	writeOK(w, okStatusResponse{Status: "ok"})
+	httpjson.WriteOK(w, channel.OKStatusResponse{Status: "ok"})
 }
 
 // FillPrices is the bulk helper "shelf price + N%". It fills only links whose
 // price is still zero: the owner's own numbers are never overwritten in bulk, so
 // the button is safe to press twice.
 func (h *Handlers) FillPrices(w http.ResponseWriter, r *http.Request) {
-	var req fillPricesRequest
+	var req channel.FillPricesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "invalid body")
+		httpjson.WriteBadRequest(w, "invalid body")
 		return
 	}
 	if req.MarkupBP < 0 {
-		writeBadRequest(w, h.msg(i18n.KeyWBNegativeMarkup))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyNegativeMarkup))
 		return
 	}
 	filled, err := h.db.FillWBPrices(req.MarkupBP)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, fillPricesResponse{Filled: filled})
+	httpjson.WriteOK(w, channel.FillPricesResponse{Filled: filled})
 }
 
 func (h *Handlers) GetPriceRules(w http.ResponseWriter, r *http.Request) {
 	rules, err := h.db.WBPriceRules()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	if rules == nil {
 		rules = []database.PriceRule{}
 	}
-	writeOK(w, priceRulesResponse{Rules: rules})
+	httpjson.WriteOK(w, channel.PriceRulesResponse{Rules: rules})
 }
 
 func (h *Handlers) SetPriceRules(w http.ResponseWriter, r *http.Request) {
-	var req priceRulesRequest
+	var req channel.PriceRulesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "invalid body")
+		httpjson.WriteBadRequest(w, "invalid body")
 		return
 	}
 	if err := database.ValidPriceRules(req.Rules); err != nil {
-		writeBadRequest(w, h.msg(i18n.KeyWBBadRules))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadPriceRules))
 		return
 	}
 	if err := h.db.SetWBPriceRules(req.Rules); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	h.GetPriceRules(w, r)
@@ -546,11 +508,11 @@ func (h *Handlers) SetPriceRules(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) FillPricesByRules(w http.ResponseWriter, r *http.Request) {
 	n, err := h.db.FillWBPricesByRules()
 	if err != nil {
-		writeBadRequest(w, h.msg(i18n.KeyWBBadRules))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadPriceRules))
 		return
 	}
 	h.worker.StockChanged()
-	writeOK(w, fillPricesResponse{Filled: n})
+	httpjson.WriteOK(w, channel.FillPricesResponse{Filled: n})
 }
 
 func nullTime(t sql.NullTime) *time.Time {
@@ -558,12 +520,4 @@ func nullTime(t sql.NullTime) *time.Time {
 		return nil
 	}
 	return &t.Time
-}
-
-func pageParam(r *http.Request) int {
-	page, err := strconv.Atoi(r.URL.Query().Get("page"))
-	if err != nil || page < 1 {
-		return 1
-	}
-	return page
 }

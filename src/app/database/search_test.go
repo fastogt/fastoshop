@@ -25,7 +25,7 @@ func TestSearchIgnoresCyrillicCase(t *testing.T) {
 	}
 
 	for _, q := range []string{"кастрюля", "Кастрюля", "КАСТРЮЛЯ", "кАсТрЮлЯ"} {
-		n, err := d.CountProducts(q, supplierAny)
+		n, err := d.CountProducts(q, AnySupplier)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -36,10 +36,10 @@ func TestSearchIgnoresCyrillicCase(t *testing.T) {
 
 	// An article is matched the same way, and a word that is not there is still
 	// not there.
-	if n, _ := d.CountProducts("чайник", supplierAny); n != 1 {
+	if n, _ := d.CountProducts("чайник", AnySupplier); n != 1 {
 		t.Errorf("kettle: %d, want 1", n)
 	}
-	if n, _ := d.CountProducts("сковорода", supplierAny); n != 0 {
+	if n, _ := d.CountProducts("сковорода", AnySupplier); n != 0 {
 		t.Errorf("a word nobody wrote found %d", n)
 	}
 }
@@ -77,7 +77,7 @@ func TestSearchMatchesEveryWordInAnyOrder(t *testing.T) {
 		{"кастрюля крышка", 0}, // every word must be there, not just one
 		{"  кпб   евро  ", 1},  // stray spaces are not empty words
 	} {
-		n, err := d.CountProducts(c.q, supplierAny)
+		n, err := d.CountProducts(c.q, AnySupplier)
 		if err != nil {
 			t.Fatal(err)
 		}

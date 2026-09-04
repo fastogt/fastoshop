@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -254,12 +255,7 @@ func (d *Database) VisibleCategories() ([]Category, error) {
 }
 
 func underAny(path string, prefixes []string) bool {
-	for _, p := range prefixes {
-		if strings.HasPrefix(path, p) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(prefixes, func(p string) bool { return strings.HasPrefix(path, p) })
 }
 
 // RenameCategory moves a node - a rename and a re-parent are the same operation

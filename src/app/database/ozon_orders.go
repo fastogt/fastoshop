@@ -5,11 +5,6 @@ import (
 	"time"
 )
 
-// kSQLiteTime - the format SQLite emits for CURRENT_TIMESTAMP and the one the
-// driver uses to parse DATETIME columns. Time is written only this way: mixing
-// in RFC3339 breaks date comparisons right inside SQL.
-const kSQLiteTime = "2006-01-02 15:04:05"
-
 // OzonPostingItem - a posting line in the marketplace's terms: matching it to
 // a shop product happens later, inside the apply transaction.
 type OzonPostingItem struct {
@@ -57,7 +52,7 @@ func (d *Database) ApplyOzonPosting(p *OzonPosting) (moved bool, err error) {
 		res, err := tx.Exec(
 			`INSERT INTO ozon_orders (posting_number, status, created_at)
 			 VALUES (?, ?, ?) ON CONFLICT(posting_number) DO NOTHING`,
-			p.PostingNumber, p.storedStatus(), p.CreatedAt.UTC().Format(kSQLiteTime))
+			p.PostingNumber, p.storedStatus(), p.CreatedAt.UTC().Format(time.DateTime))
 		if err != nil {
 			return err
 		}
@@ -314,6 +309,6 @@ func (d *Database) SetOzonOrdersSince(t time.Time) error {
 	_, err := d.db.Exec(
 		`INSERT INTO ozon_cursor (id, orders_since) VALUES (1, ?)
 		 ON CONFLICT(id) DO UPDATE SET orders_since = excluded.orders_since`,
-		t.UTC().Format(kSQLiteTime))
+		t.UTC().Format(time.DateTime))
 	return err
 }

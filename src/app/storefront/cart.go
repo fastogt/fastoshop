@@ -90,6 +90,7 @@ type cartRowVM struct {
 // be rewritten.
 func (s *Storefront) resolveCart(lines []cartLine) ([]cartRowVM, int64, bool) {
 	rows := make([]cartRowVM, 0, len(lines))
+	var products []database.Product
 	var total int64
 	changed := false
 	for _, l := range lines {
@@ -105,12 +106,15 @@ func (s *Storefront) resolveCart(lines []cartLine) ([]cartRowVM, int64, bool) {
 		}
 		line := p.Price * int64(qty)
 		total += line
-		row := cartRowVM{Slug: p.Slug, Title: p.Title, Qty: qty, Stock: p.Stock,
-			PriceStr: priceStr(p.Price), LineStr: priceStr(line)}
-		if imgs, _ := s.db.ListImages(p.ID); len(imgs) > 0 {
-			row.ImageURL = imageURL(imgs[0].Path)
+		rows = append(rows, cartRowVM{Slug: p.Slug, Title: p.Title, Qty: qty, Stock: p.Stock,
+			PriceStr: priceStr(p.Price), LineStr: priceStr(line)})
+		products = append(products, *p)
+	}
+	images, _ := s.db.ImagesFor(productIDs(products))
+	for i, p := range products {
+		if imgs := images[p.ID]; len(imgs) > 0 {
+			rows[i].ImageURL = imageURL(imgs[0].Path)
 		}
-		rows = append(rows, row)
 	}
 	return rows, total, changed
 }
@@ -314,4 +318,12 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	http.Redirect(w, r, "/cart?ordered=1", http.StatusSeeOther)
+}
+
+func productIDs(products []database.Product) []int64 {
+	ids := make([]int64, 0, len(products))
+	for _, p := range products {
+		ids = append(ids, p.ID)
+	}
+	return ids
 }

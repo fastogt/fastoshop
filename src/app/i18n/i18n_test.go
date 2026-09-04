@@ -3,11 +3,11 @@ package i18n
 import "testing"
 
 func TestTranslations(t *testing.T) {
-	if got := T(LangEN, KeyOzonNegativePrice); got != "price cannot be negative" {
+	if got := T(LangEN, KeyNegativePrice); got != "price cannot be negative" {
 		t.Errorf("en: %q", got)
 	}
 	// An unknown language is not a reason to lose the message.
-	if T("de", KeyOzonNegativePrice) != T(LangRU, KeyOzonNegativePrice) {
+	if T("de", KeyNegativePrice) != T(LangRU, KeyNegativePrice) {
 		t.Error("unknown language must fall back to the default")
 	}
 	// Every key must exist in both languages, or one of them silently ships empty.

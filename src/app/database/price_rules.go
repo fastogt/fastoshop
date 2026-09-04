@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"database/sql"
 	"fmt"
-	"math"
 	"slices"
 )
 
@@ -59,17 +58,6 @@ func sortRules(rules []PriceRule) {
 		}
 		return cmp.Compare(a.UpTo, b.UpTo)
 	})
-}
-
-// ApplyRule returns the platform price for a shelf price, or 0 when no band
-// matches - the caller must not invent a price the ladder does not define.
-func ApplyRule(rules []PriceRule, shelf int64) int64 {
-	for _, r := range rules {
-		if r.UpTo == 0 || shelf < r.UpTo {
-			return int64(math.Round(float64(shelf) * r.Multiplier))
-		}
-	}
-	return 0
 }
 
 // The helpers below interpolate table names and predicates into the SQL:
@@ -162,7 +150,7 @@ func (d *Database) fillPricesByRules(rulesTable, linksTable, linkedPred string) 
 	n := 0
 	err = d.withTx(func(tx *sql.Tx) error {
 		for _, t := range targets {
-			price := ApplyRule(rules, t.price)
+			price := ShelfPrice(rules, t.price, 1)
 			if price <= 0 {
 				continue
 			}

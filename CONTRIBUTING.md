@@ -39,7 +39,16 @@ The full list of conventions is in [CLAUDE.md](CLAUDE.md).
 
 ## Adding a marketplace (channel)
 
-Channels are built as vertical slices: an admin tab + an `app/<platform>` package in Go + its own tables with the platform prefix. There is deliberately no shared interface - platform rules differ (Ozon sets stock by `offer_id`, WB by the size barcode, Kufar/Avito have no stock at all). The reference is the `app/ozon` package; before writing code for a new channel, discuss the design in Issues.
+Channels are built as vertical slices: an admin tab + an `app/<platform>` package in Go + its own tables with the platform prefix. There is deliberately no shared interface - platform rules differ (Ozon sets stock by `offer_id`, WB by the size barcode, Kufar/Avito have no stock at all). What carries no platform meaning lives in `app/channel` (request parsing, retry delays, response structs, worker signals) and in `web/src/PriceLadder.tsx` / `PublicationPanel.tsx`; a new channel takes those as they are. The reference is the `app/ozon` package; before writing code for a new channel, discuss the design in Issues.
+
+A finished channel brings:
+
+- tables `<platform>_settings`, `<platform>_links`, `<platform>_price_rules`, `<platform>_cursor`, `<platform>_orders` in `database.go`, and the queries for them in `database/<platform>*.go`;
+- secrets answered as `*_set` flags, never as values;
+- a worker with backoff on `retry_at`, woken through `channel.Signals`;
+- an admin tab built on `DataTable` with its own `{ru, en}` dictionary.
+
+The catalogue has no barcode column of its own. A platform that keys stock or price on an EAN keeps it in its link table, the way `wb_links.barcode` does.
 
 ## Adding an import source
 
@@ -48,7 +57,6 @@ A one-time catalog transfer, the `Source` interface (`src/app/importer/`):
 ```go
 type Source interface {
     Name() string
-    Count() (int, error)      // the "Check" button: how many products were found
     Fetch() ([]Item, error)
 }
 ```

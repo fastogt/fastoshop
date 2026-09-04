@@ -243,16 +243,6 @@ func (y *YML) each(fn func(o *ymlOffer)) error {
 	return nil
 }
 
-// Count downloads the feed again - a second download is cheaper than keeping
-// 33 MB in process memory between "Check" and "Import".
-func (y *YML) Count() (int, error) {
-	n := 0
-	if err := y.each(func(*ymlOffer) { n++ }); err != nil {
-		return 0, err
-	}
-	return n, nil
-}
-
 // stock prefers the feed's own number over the one the seller typed: a feed that
 // states a quantity per offer - ours does - carries the truth, and spreading one
 // number over the whole catalogue oversells everything that has less.

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 )
 
@@ -34,7 +35,7 @@ func TestPublishOnlySelected(t *testing.T) {
 	idA := seedProduct(t, d, "A", 5)
 	seedProduct(t, d, "B", 7)
 
-	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{idA}})
+	body, _ := json.Marshal(channel.PublishRequest{ProductIDs: []int64{idA}})
 	got := decode[publishResponse](t, do(t, h, "POST", "/publish", string(body)))
 	if got.Published != 1 || len(got.NoCard) != 0 {
 		t.Fatalf("publish: %+v", got)
@@ -51,7 +52,7 @@ func TestPublishReportsMissingCard(t *testing.T) {
 	idA := seedProduct(t, d, "A", 5)
 	idNo := seedProduct(t, d, "NOPE", 1)
 
-	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{idA, idNo}})
+	body, _ := json.Marshal(channel.PublishRequest{ProductIDs: []int64{idA, idNo}})
 	got := decode[publishResponse](t, do(t, h, "POST", "/publish", string(body)))
 	if got.Published != 1 || len(got.NoCard) != 1 || got.NoCard[0].SKU != "NOPE" {
 		t.Fatalf("publish: %+v", got)
@@ -65,7 +66,7 @@ func TestUnpublishZeroesStockFirst(t *testing.T) {
 	h, d, m := publishTest(t, "A")
 	id := seedProduct(t, d, "A", 5)
 
-	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{id}})
+	body, _ := json.Marshal(channel.PublishRequest{ProductIDs: []int64{id}})
 	do(t, h, "POST", "/publish", string(body))
 	if _, _, err := h.worker.Pass(); err != nil {
 		t.Fatal(err)
@@ -91,7 +92,7 @@ func TestUnpublishZeroesStockFirst(t *testing.T) {
 func TestUnpublishKeepsLinkWhenZeroRejected(t *testing.T) {
 	h, d, m := publishTest(t, "A")
 	id := seedProduct(t, d, "A", 5)
-	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{id}})
+	body, _ := json.Marshal(channel.PublishRequest{ProductIDs: []int64{id}})
 	do(t, h, "POST", "/publish", string(body))
 	if _, _, err := h.worker.Pass(); err != nil {
 		t.Fatal(err)
@@ -111,7 +112,7 @@ func TestUnpublishKeepsLinkWhenZeroRejected(t *testing.T) {
 func TestUnpublishNeverPushedNeedsNoCall(t *testing.T) {
 	h, d, m := publishTest(t, "A")
 	id := seedProduct(t, d, "A", 5)
-	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{id}})
+	body, _ := json.Marshal(channel.PublishRequest{ProductIDs: []int64{id}})
 	do(t, h, "POST", "/publish", string(body))
 
 	before := len(m.sent())
@@ -134,7 +135,7 @@ func TestCandidatesIncludeHidden(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := decode[candidatesResponse](t, do(t, h, "GET", "/candidates?page=1", ""))
+	got := decode[channel.CandidatesResponse](t, do(t, h, "GET", "/candidates?page=1", ""))
 	if len(got.Products) != 1 || !got.Products[0].Hidden || got.Products[0].Published {
 		t.Fatalf("candidates: %+v", got.Products)
 	}
@@ -154,7 +155,7 @@ func TestCabinetCountsTheThreeStates(t *testing.T) {
 	seedProduct(t, d, "NOPE", 1)
 	seedProduct(t, d, "ALSO-NOPE", 1)
 
-	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{idA}})
+	body, _ := json.Marshal(channel.PublishRequest{ProductIDs: []int64{idA}})
 	do(t, h, "POST", "/publish", string(body))
 
 	got := decode[cabinetResponse](t, do(t, h, "GET", "/cabinet", ""))

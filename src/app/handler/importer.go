@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/i18n"
 	"github.com/fastogt/fastoshop/app/importer"
 )
@@ -49,10 +50,10 @@ type suppliersResponse struct {
 func (h *Handler) Suppliers(w http.ResponseWriter, r *http.Request) {
 	list, err := h.db.Suppliers()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, suppliersResponse{Suppliers: list})
+	httpjson.WriteOK(w, suppliersResponse{Suppliers: list})
 }
 
 type recomputeRequest struct {
@@ -106,12 +107,12 @@ func makeSource(req importRequest) (importer.Source, bool) {
 func (h *Handler) ImportCheck(w http.ResponseWriter, r *http.Request) {
 	var req importRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "invalid body")
+		httpjson.WriteBadRequest(w, "invalid body")
 		return
 	}
 	src, ok := makeSource(req)
 	if !ok {
-		writeBadRequest(w, "source and credentials required")
+		httpjson.WriteBadRequest(w, "source and credentials required")
 		return
 	}
 	coefficient, ok := h.coefficient(w, req.Coefficient)
@@ -122,22 +123,22 @@ func (h *Handler) ImportCheck(w http.ResponseWriter, r *http.Request) {
 	// items, and it keeps the whole "staged upload" machinery out of the product.
 	items, err := src.Fetch()
 	if err != nil {
-		writeBadRequest(w, i18n.Localize(h.db.Lang(), err))
+		httpjson.WriteBadRequest(w, i18n.Localize(h.db.Lang(), err))
 		return
 	}
 	existing, err := h.db.ListProducts()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	rules, err := h.db.ShopPriceRules()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	diff := importer.Compare(items, existing, strings.TrimSpace(req.Supplier), coefficient, rules)
 	diff.Currency = importer.FeedCurrency(src)
-	writeOK(w, diff)
+	httpjson.WriteOK(w, diff)
 }
 
 // coefficient resolves what the client sent against what the shop remembers:
@@ -147,12 +148,12 @@ func (h *Handler) coefficient(w http.ResponseWriter, sent float64) (float64, boo
 	if c == 0 {
 		var err error
 		if c, err = h.db.PriceCoefficient(); err != nil {
-			writeInternalError(w, err)
+			httpjson.WriteInternalError(w, err)
 			return 0, false
 		}
 	}
 	if !database.ValidCoefficient(c) {
-		writeBadRequest(w, h.msg(i18n.KeyBadCoefficient))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadCoefficient))
 		return 0, false
 	}
 	return c, true
@@ -165,12 +166,12 @@ func (h *Handler) coefficient(w http.ResponseWriter, sent float64) (float64, boo
 func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 	var req importRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "invalid body")
+		httpjson.WriteBadRequest(w, "invalid body")
 		return
 	}
 	src, ok := makeSource(req)
 	if !ok {
-		writeBadRequest(w, "source and credentials required")
+		httpjson.WriteBadRequest(w, "source and credentials required")
 		return
 	}
 	coefficient, ok := h.coefficient(w, req.Coefficient)
@@ -183,19 +184,19 @@ func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 	// else's goods on their next import.
 	supplier := strings.TrimSpace(req.Supplier)
 	if supplier == "" {
-		writeBadRequest(w, h.msg(i18n.KeySupplierRequired))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeySupplierRequired))
 		return
 	}
 	if _, ok := h.job.start(kJobImport, []jobStage{
 		{Task: importer.StageFetch}, {Task: importer.StageProducts},
 	}); !ok {
-		writeBadRequest(w, h.msg(i18n.KeyJobBusy))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyJobBusy))
 		return
 	}
 	// The source keeps the cabinet keys in memory for as long as the job runs and
 	// no longer - the admin promises they are never stored.
 	go func() {
-		res, err := importer.Run(src, h.db, supplier, coefficient, h.uploadsDir,
+		res, err := importer.Run(src, h.db, supplier, coefficient,
 			func(stage string, done, total int) {
 				h.job.progress(stage, done, total, nil)
 			})
@@ -211,7 +212,7 @@ func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 		}
 		h.job.finish(res, err)
 	}()
-	writeOK(w, startedResponse{Started: true})
+	httpjson.WriteOK(w, startedResponse{Started: true})
 }
 
 type feedResponse struct {
@@ -224,14 +225,14 @@ type feedResponse struct {
 func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	f, err := h.db.GetFeed()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	if f == nil {
-		writeOK(w, feedResponse{})
+		httpjson.WriteOK(w, feedResponse{})
 		return
 	}
-	writeOK(w, feedResponse{URL: f.URL, Supplier: f.Supplier})
+	httpjson.WriteOK(w, feedResponse{URL: f.URL, Supplier: f.Supplier})
 }
 
 // RecomputePrices re-derives every imported shelf price from the source price.
@@ -240,14 +241,14 @@ func (h *Handler) RecomputePrices(w http.ResponseWriter, r *http.Request) {
 	var req recomputeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil ||
 		!database.ValidCoefficient(req.Coefficient) {
-		writeBadRequest(w, h.msg(i18n.KeyBadCoefficient))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadCoefficient))
 		return
 	}
 	n, err := h.db.ApplyPriceCoefficient(req.Coefficient)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	h.stockChanged()
-	writeOK(w, recomputeResponse{Updated: n})
+	httpjson.WriteOK(w, recomputeResponse{Updated: n})
 }

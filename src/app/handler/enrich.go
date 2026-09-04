@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
@@ -89,7 +90,7 @@ func upstreamMessage(body []byte) string {
 func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		writeBadRequest(w, "bad id")
+		httpjson.WriteBadRequest(w, "bad id")
 		return
 	}
 	p, err := h.db.GetProduct(id)
@@ -99,11 +100,11 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	s, err := h.db.GetSettings()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	if s.AdHuntersAPIKey == "" {
-		writeBadRequest(w, h.msg(i18n.KeyNoAIKey))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyNoAIKey))
 		return
 	}
 
@@ -142,13 +143,13 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 		WidthMM: p.WidthMM, HeightMM: p.HeightMM,
 	})
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost,
 		adHuntersEnrichURL, bytes.NewReader(body))
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -160,7 +161,7 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 		// The transport error itself is not shown or logged: it carries the
 		// request back, headers included, and the key must not leak either way.
 		log.Warnf("enrich: product %d: request to the AI service failed", id)
-		writeBadRequest(w, h.msg(i18n.KeyAIUnavailable))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyAIUnavailable))
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -169,10 +170,10 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 	case http.StatusUnauthorized, http.StatusForbidden:
-		writeBadRequest(w, h.msg(i18n.KeyAIKeyRejected))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyAIKeyRejected))
 		return
 	case http.StatusPaymentRequired:
-		writeBadRequest(w, h.msg(i18n.KeyAINoCredits))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyAINoCredits))
 		return
 	default:
 		// The service's own words rather than ours: it knows why it refused,
@@ -180,7 +181,7 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 		// translated, like every other message that came from a platform.
 		log.Warnf("enrich: product %d: AI service answered %d: %s",
 			id, resp.StatusCode, upstreamMessage(raw))
-		writeBadRequest(w, h.msg(i18n.KeyAIUnavailable)+": "+upstreamMessage(raw))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyAIUnavailable)+": "+upstreamMessage(raw))
 		return
 	}
 
@@ -188,7 +189,7 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(raw, &env); err != nil ||
 		env.Data.Title == "" || env.Data.Description == "" {
 		log.Warnf("enrich: product %d: unusable answer from the AI service", id)
-		writeBadRequest(w, h.msg(i18n.KeyAIUnavailable))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyAIUnavailable))
 		return
 	}
 	// Checked here too, not only on the other side: this is the shop's own
@@ -196,5 +197,5 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 	if !slices.Contains(offered, env.Data.Category) {
 		env.Data.Category = ""
 	}
-	writeOK(w, env.Data)
+	httpjson.WriteOK(w, env.Data)
 }

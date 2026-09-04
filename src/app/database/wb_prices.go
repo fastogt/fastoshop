@@ -77,7 +77,7 @@ func (d *Database) MarkWBPriceSent(uploadID string, at time.Time, sent []WBPrice
 		if _, err := tx.Exec(
 			`INSERT INTO wb_price_tasks (upload_id, created_at) VALUES (?, ?)
 			 ON CONFLICT(upload_id) DO UPDATE SET created_at=excluded.created_at`,
-			uploadID, at.UTC().Format(kSQLiteTime)); err != nil {
+			uploadID, at.UTC().Format(time.DateTime)); err != nil {
 			return err
 		}
 		for _, s := range sent {
@@ -129,7 +129,7 @@ func (d *Database) MarkWBPriceTaskDone(uploadID string) error {
 // gets fallback, so no row is released without a reason the owner can read.
 func (d *Database) MarkWBPriceTaskFailed(uploadID string, byNm map[int64]string,
 	fallback string, retryAt time.Time) error {
-	at := retryAt.UTC().Format(kSQLiteTime)
+	at := retryAt.UTC().Format(time.DateTime)
 	return d.withTx(func(tx *sql.Tx) error {
 		for nm, msg := range byNm {
 			if _, err := tx.Exec(
@@ -152,7 +152,7 @@ func (d *Database) MarkWBPriceTaskFailed(uploadID string, byNm map[int64]string,
 // lives on the card, not on the size, so a refusal - or sizes that disagree on
 // the price - belongs to all rows of that card at once.
 func (d *Database) MarkWBCardError(nmIDs []int64, msg string, retryAt time.Time) error {
-	at := retryAt.UTC().Format(kSQLiteTime)
+	at := retryAt.UTC().Format(time.DateTime)
 	return d.withTx(func(tx *sql.Tx) error {
 		for _, nm := range nmIDs {
 			if _, err := tx.Exec(

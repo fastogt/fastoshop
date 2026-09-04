@@ -33,11 +33,6 @@ type XLSX struct {
 
 func (x *XLSX) Name() string { return "xlsx" }
 
-func (x *XLSX) Count() (int, error) {
-	x.parse()
-	return len(x.rows), nil
-}
-
 func (x *XLSX) Fetch() ([]Item, error) {
 	x.parse()
 	return x.rows, nil

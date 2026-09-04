@@ -10,6 +10,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/media"
 )
 
@@ -30,7 +31,7 @@ func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, kLogoMaxSize)
 	f, hdr, err := r.FormFile("file")
 	if err != nil {
-		writeBadRequest(w, "file required (max 2MB)")
+		httpjson.WriteBadRequest(w, "file required (max 2MB)")
 		return
 	}
 	defer func() { _ = f.Close() }()
@@ -39,22 +40,22 @@ func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 	// size and shown at another, and a raster mark goes soft on retina screens.
 	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" &&
 		ext != ".webp" && ext != ".svg" {
-		writeBadRequest(w, "only jpeg/png/webp/svg")
+		httpjson.WriteBadRequest(w, "only jpeg/png/webp/svg")
 		return
 	}
 	if err := os.MkdirAll(h.uploadsDir, 0755); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	name := fmt.Sprintf("logo-%s%s", newToken()[:8], ext)
 	dst, err := os.Create(filepath.Join(h.uploadsDir, name))
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	defer func() { _ = dst.Close() }()
 	if _, err := io.Copy(dst, f); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	old := s.Logo
@@ -66,7 +67,7 @@ func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 		log.Warnf("shrink logo %q: %v", name, err)
 	}
 	if err := h.db.UpdateSettings(s); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	removeLogoFile(h.uploadsDir, old)
@@ -84,7 +85,7 @@ func (h *Handler) DeleteLogo(w http.ResponseWriter, r *http.Request) {
 	old := s.Logo
 	s.Logo = ""
 	if err := h.db.UpdateSettings(s); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	removeLogoFile(h.uploadsDir, old)

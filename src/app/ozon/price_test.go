@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/i18n"
 )
@@ -274,7 +275,7 @@ func TestFillPricesOnlyEmpty(t *testing.T) {
 	}
 	setPrice(t, d, kept, 500000)
 
-	got := decode[fillPricesResponse](t, do(t, h, "POST", "/price/fill", `{"markup_bp":2500}`))
+	got := decode[channel.FillPricesResponse](t, do(t, h, "POST", "/price/fill", `{"markup_bp":2500}`))
 	if got.Filled != 1 {
 		t.Fatalf("filled: %+v", got)
 	}
@@ -291,7 +292,7 @@ func TestFillPricesOnlyEmpty(t *testing.T) {
 	}
 
 	// Second press changes nothing - everything is filled already.
-	got = decode[fillPricesResponse](t, do(t, h, "POST", "/price/fill", `{"markup_bp":2500}`))
+	got = decode[channel.FillPricesResponse](t, do(t, h, "POST", "/price/fill", `{"markup_bp":2500}`))
 	if got.Filled != 0 {
 		t.Fatalf("repeated fill: %+v", got)
 	}
@@ -352,34 +353,34 @@ func TestSmokePriceSlice(t *testing.T) {
 	}
 	t.Logf("linked 2 products: A (storefront 1000.00 ₽), B (storefront 1288.50 ₽)")
 
-	filled := decode[fillPricesResponse](t, do(t, h, "POST", "/price/fill", `{"markup_bp":2500}`))
+	filled := decode[channel.FillPricesResponse](t, do(t, h, "POST", "/price/fill", `{"markup_bp":2500}`))
 	t.Logf("fill +25%%: filled=%d", filled.Filled)
 	for _, id := range []int64{a, b} {
 		r := linkRow(t, d, id)
 		t.Logf("  %s: Ozon price %s ₽", r.OfferID, decimal(r.Price))
 	}
 
-	res := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	res := decode[channel.PushResponse](t, do(t, h, "POST", "/push", ""))
 	t.Logf("pass: pushed=%d failed=%d, call order %v",
 		res.Pushed, res.Failed, m.callOrder())
 	for _, it := range m.lastPriceBatch(t) {
 		t.Logf("  cabinet received %s: price=%q old_price=%q", it.OfferID, it.Price, it.OldPrice)
 	}
 
-	res = decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	res = decode[channel.PushResponse](t, do(t, h, "POST", "/push", ""))
 	t.Logf("second pass: pushed=%d failed=%d, price calls %d",
 		res.Pushed, res.Failed, len(m.sentPrices()))
 
 	do(t, h, "PUT", "/price/"+strconv.FormatInt(a, 10), `{"price":149900}`)
 	m.failPriceOffer("B", "цена ниже минимальной")
-	res = decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	res = decode[channel.PushResponse](t, do(t, h, "POST", "/push", ""))
 	t.Logf("after editing price A: pushed=%d failed=%d", res.Pushed, res.Failed)
 	for _, it := range m.lastPriceBatch(t) {
 		t.Logf("  cabinet received %s: price=%q", it.OfferID, it.Price)
 	}
 
 	setPrice(t, d, b, 200000)
-	res = decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	res = decode[channel.PushResponse](t, do(t, h, "POST", "/push", ""))
 	t.Logf("after rejection on B: pushed=%d failed=%d", res.Pushed, res.Failed)
 	s := decode[settingsResponse](t, do(t, h, "GET", "/settings", ""))
 	t.Logf("tab: prices pending %d, failed %d; stocks pending %d, failed %d",
@@ -468,7 +469,7 @@ func TestPushNowIgnoresBackoff(t *testing.T) {
 	}
 
 	m.failPriceStatus(0, "")
-	res := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	res := decode[channel.PushResponse](t, do(t, h, "POST", "/push", ""))
 	if res.Pushed != 1 {
 		t.Fatalf("push now sent %d, want the fixed price to travel", res.Pushed)
 	}

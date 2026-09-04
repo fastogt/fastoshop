@@ -237,11 +237,6 @@ func parseMoney(s string) (int64, error) {
 	return int64(v*100 + 0.5), nil
 }
 
-func (c *CSV) Count() (int, error) {
-	c.parse()
-	return len(c.rows), nil
-}
-
 func (c *CSV) Fetch() ([]Item, error) {
 	c.parse()
 	return c.rows, nil

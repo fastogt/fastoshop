@@ -11,6 +11,7 @@ import (
 	"github.com/shirou/gopsutil/v3/process"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/stats"
 	"github.com/fastogt/fastoshop/app/version"
 )
@@ -110,5 +111,5 @@ func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeOK(w, statsResponse{Server: stats.Get(), Shop: shop})
+	httpjson.WriteOK(w, statsResponse{Server: stats.Get(), Shop: shop})
 }

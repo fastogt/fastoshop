@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/importer"
 )
 
@@ -160,7 +161,7 @@ type jobResponse struct {
 // Job is the snapshot the admin reads on page load, and the fallback when the
 // stream is not available. Live updates come from JobStream.
 func (h *Handler) Job(w http.ResponseWriter, r *http.Request) {
-	writeOK(w, h.jobState())
+	httpjson.WriteOK(w, h.jobState())
 }
 
 // state is what both the snapshot and the stream answer with.
@@ -233,5 +234,5 @@ func (h *Handler) JobStream(w http.ResponseWriter, r *http.Request) {
 // mistake. Without it the only stop is a service restart.
 func (h *Handler) JobStop(w http.ResponseWriter, r *http.Request) {
 	h.job.stop()
-	writeOK(w, okStatusResponse{Status: "ok"})
+	httpjson.WriteOK(w, okStatusResponse{Status: "ok"})
 }

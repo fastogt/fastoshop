@@ -10,6 +10,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 )
 
@@ -17,13 +18,6 @@ import (
 // every minute costs four times the method budget and buys nothing: sales within
 // a tick collapse into a single level push anyway.
 const kPushInterval = 5 * time.Minute
-
-// ponytail: a two-step backoff ladder instead of an attempt counter, same as the
-// Ozon worker - we only tell "first failure" from "it was already bad".
-const (
-	kFirstRetry = time.Minute
-	kNextRetry  = 15 * time.Minute
-)
 
 // kBatchPause spaces consecutive calls out. Wildberries meters per method and
 // answers a burst with a 429 that costs far more than this wait: a catalogue of
@@ -43,36 +37,15 @@ var ErrBadWarehouse = errors.New("warehouse_id must be a number")
 // row remembers the last value pushed, and a push happens only when the wanted
 // value differs from it.
 type Worker struct {
+	*channel.Signals
 	db *database.Database
 	// Hosts overrides the API addresses - tests point every field at one mock.
 	Hosts   Hosts
-	wake    chan struct{}
 	running atomic.Bool
-	// pollErr is why the last order poll did not happen. In memory rather than in
-	// the database: the next tick fills it in again after a restart anyway.
-	pollErr atomic.Pointer[string]
 }
 
 func NewWorker(db *database.Database) *Worker {
-	return &Worker{db: db, wake: make(chan struct{}, 1)}
-}
-
-func (w *Worker) PollError() string {
-	if p := w.pollErr.Load(); p != nil {
-		return *p
-	}
-	return ""
-}
-
-func (w *Worker) setPollError(msg string) { w.pollErr.Store(&msg) }
-
-// StockChanged wakes the worker without blocking the caller: a buffer of one and
-// a non-blocking send make it a "something changed" signal, not an event queue.
-func (w *Worker) StockChanged() {
-	select {
-	case w.wake <- struct{}{}:
-	default:
-	}
+	return &Worker{Signals: channel.NewSignals(), db: db}
 }
 
 // Run reads the settings on every pass rather than at start: the owner enables
@@ -86,7 +59,7 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-		case <-w.wake:
+		case <-w.Wake():
 		}
 		pushed, failed, err := w.Pass()
 		switch {
@@ -184,13 +157,13 @@ func (w *Worker) pushStocks(c *Client, warehouse int64) (pushed, failed int, hal
 		refused, callErr := c.SetStocks(warehouse, items)
 		if callErr != nil {
 			for _, r := range batch {
-				w.markStockError(r, callErr.Error(), callDelay(callErr, retryDelay(r.Error)))
+				w.markStockError(r, callErr.Error(), callDelay(callErr, channel.RetryDelay(r.Error)))
 			}
 			return pushed, failed + len(batch), true, nil
 		}
 		for _, r := range batch {
 			if msg, bad := refused[r.Barcode]; bad {
-				w.markStockError(r, msg, retryDelay(r.Error))
+				w.markStockError(r, msg, channel.RetryDelay(r.Error))
 				failed++
 				continue
 			}
@@ -218,11 +191,4 @@ func (w *Worker) markStockError(r database.WBStockRow, msg string, delay time.Du
 	if err := w.db.MarkWBStockError(r.ProductID, msg, time.Now().Add(delay)); err != nil {
 		log.Warnf("wb stock sync: mark error %s: %v", r.Barcode, err)
 	}
-}
-
-func retryDelay(prevError string) time.Duration {
-	if prevError != "" {
-		return kNextRetry
-	}
-	return kFirstRetry
 }

@@ -39,6 +39,31 @@ func (d *Database) ListImages(productID int64) ([]ProductImage, error) {
 	return out, rows.Err()
 }
 
+// ImagesFor returns the photos of the given products keyed by product id, in
+// position order: one query for a page instead of one per card.
+func (d *Database) ImagesFor(ids []int64) (map[int64][]ProductImage, error) {
+	out := map[int64][]ProductImage{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	in, args := inClause(ids)
+	rows, err := d.db.Query(
+		`SELECT id, product_id, path, position FROM product_images
+		 WHERE product_id IN (`+in+`) ORDER BY product_id, position`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var im ProductImage
+		if err := rows.Scan(&im.ID, &im.ProductID, &im.Path, &im.Position); err != nil {
+			return nil, err
+		}
+		out[im.ProductID] = append(out[im.ProductID], im)
+	}
+	return out, rows.Err()
+}
+
 // AllImages returns every product's photo paths keyed by product id, in
 // position order. The feeds render the whole catalogue in one response, and
 // per-product ListImages calls would be 20 000 round trips.

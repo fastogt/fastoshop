@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 )
 
@@ -192,7 +193,7 @@ func TestFullCycle(t *testing.T) {
 
 	step := func(format string, args ...any) { t.Logf("· "+format, args...) }
 
-	got := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	got := decode[channel.PushResponse](t, do(t, h, "POST", "/push", ""))
 	step("first push: pushed=%d, marketplace level %d",
 		got.Pushed, m.lastBatch(t)[0].Stock)
 	if got.Pushed != 1 || m.lastBatch(t)[0].Stock != 10 {
@@ -200,7 +201,7 @@ func TestFullCycle(t *testing.T) {
 	}
 
 	m.setPostings(posting("0007-1", "awaiting_deliver", line("A", 4)))
-	got = decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	got = decode[channel.PushResponse](t, do(t, h, "POST", "/push", ""))
 	step("after selling 4 pcs: our stock %d, pushed %d, marketplace level %d",
 		stockOf(t, d, id), got.Pushed, m.lastBatch(t)[0].Stock)
 	if stockOf(t, d, id) != 6 || got.Pushed != 1 || m.lastBatch(t)[0].Stock != 6 {

@@ -96,7 +96,6 @@ func positive(v float64) *int64 {
 // Source is a one-off catalogue source (Ozon, WB). Not a Channel: read-only.
 type Source interface {
 	Name() string
-	Count() (int, error) // the "Check" button: how many products were found
 	Fetch() ([]Item, error)
 }
 
@@ -157,10 +156,8 @@ var kHTTP = &http.Client{Timeout: 60 * time.Second}
 // one feed must never reprice or zero out another's.
 // onProgress may be nil. It reports the stage and how far along it is, so the
 // admin can show a bar instead of a spinner that says nothing for two minutes.
-// uploadsDir is where pictures that came inside the source file are written; a
-// source without them never touches it.
 func Run(src Source, db *database.Database, supplier string, coefficient float64,
-	uploadsDir string, onProgress func(stage string, done, total int)) (*Result, error) {
+	onProgress func(stage string, done, total int)) (*Result, error) {
 	progress := func(stage string, done, total int) {
 		if onProgress != nil {
 			onProgress(stage, done, total)
@@ -193,6 +190,10 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 	if se, ok := src.(SourceErrors); ok {
 		res.Errors += se.FetchErrors()
 	}
+	w, err := db.NewImportWriter()
+	if err != nil {
+		return nil, err
+	}
 	for i, it := range items {
 		progress(StageProducts, i, len(items))
 		if it.SKU == "" || seen[it.SKU] {
@@ -207,7 +208,7 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 				res.Skipped++
 				continue
 			}
-			changed, err := merge(db, old, it, coefficient, rules)
+			changed, err := merge(w, old, it, coefficient, rules)
 			if err != nil {
 				log.Warnf("import %s: update %q: %v", src.Name(), it.Title, err)
 				res.Errors++
@@ -233,19 +234,17 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 			WeightG: it.WeightG, LengthMM: it.LengthMM,
 			WidthMM: it.WidthMM, HeightMM: it.HeightMM,
 			Params: it.Params}
-		if err := db.CreateProduct(p); err != nil {
+		if err := w.CreateProduct(p); err != nil {
 			log.Warnf("import %s: create %q: %v", src.Name(), it.Title, err)
 			res.Errors++
 			continue
 		}
-		// The supplier's link is stored, not the file: 20 000 cards mean 60 000
-		// downloads, and the import would take hours instead of a minute. The
-		// storefront renders an absolute URL from product_images.path as happily
-		// as a local name, and the owner pulls the photos onto our disk when they
-		// want to, with "Download photos" in the products table.
-		for _, u := range it.ImageURLs {
-			_ = db.AddImage(p.ID, u)
-		}
+		// The supplier's link is stored, not the file: a large catalogue means
+		// several photos per card, and the import would take hours instead of a
+		// minute. The storefront renders an absolute URL from product_images.path
+		// as happily as a local name, and the owner pulls the photos onto our
+		// disk when they want to, with "Download photos" in the products table.
+		_ = w.AddImages(p.ID, it.ImageURLs)
 		res.Imported++
 	}
 
@@ -255,20 +254,21 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 	// withdraw the entire catalogue - zeroing everything on it would take the
 	// shop off sale, and on Ozon too.
 	if len(items) > 0 {
-		zeroed, err := zeroMissing(db, existing, seen, supplier)
-		if err != nil {
+		gone := missing(existing, seen, supplier)
+		if err := w.Close(w.ZeroStock(gone)); err != nil {
 			return nil, err
 		}
-		res.Zeroed = zeroed
+		res.Zeroed = len(gone)
+		return res, nil
 	}
-	return res, nil
+	return res, w.Close(nil)
 }
 
 // merge updates what the source owns - its price and the stock - and leaves
 // alone what the owner owns: the title, the description and the photos are
 // their SEO work, and a weekly feed must not undo it. A price the owner typed
 // keeps its manual mark and its value.
-func merge(db *database.Database, old database.Product, it Item, coefficient float64,
+func merge(wr *database.ImportWriter, old database.Product, it Item, coefficient float64,
 	rules []database.PriceRule) (bool, error) {
 	price := old.Price
 	if !old.PriceManual {
@@ -314,22 +314,18 @@ func merge(db *database.Database, old database.Product, it Item, coefficient flo
 	old.Stock = max(it.Stock, 0)
 	old.Price = price
 	old.Category = category
-	return true, db.UpdateProduct(&old)
+	return true, wr.UpdateProduct(&old)
 }
 
-// zeroMissing takes off sale what this group's feed stopped listing. Other
-// groups and the owner's own goods are none of its business.
-func zeroMissing(db *database.Database, existing []database.Product, seen map[string]bool, supplier string) (int, error) {
-	n := 0
+// missing is what this group's feed stopped listing and still has stock: the
+// products to take off sale. Other groups and the owner's own goods are none of
+// its business.
+func missing(existing []database.Product, seen map[string]bool, supplier string) []int64 {
+	var ids []int64
 	for _, p := range existing {
-		if p.SKU == "" || p.Supplier != supplier || seen[p.SKU] || p.Stock == 0 {
-			continue
+		if p.SKU != "" && p.Supplier == supplier && !seen[p.SKU] && p.Stock != 0 {
+			ids = append(ids, p.ID)
 		}
-		p.Stock = 0
-		if err := db.UpdateProduct(&p); err != nil {
-			return n, err
-		}
-		n++
 	}
-	return n, nil
+	return ids
 }

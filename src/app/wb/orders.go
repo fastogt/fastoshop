@@ -52,7 +52,7 @@ func (w *Worker) pollOrders(c *Client) error {
 
 	orders, err := c.ListOrders(since.Add(-kPollOverlap))
 	if err != nil {
-		w.setPollError(err.Error())
+		w.SetPollError(err.Error())
 		return err
 	}
 
@@ -73,7 +73,7 @@ func (w *Worker) pollOrders(c *Client) error {
 			CreatedAt: created,
 		})
 		if err != nil {
-			w.setPollError(err.Error())
+			w.SetPollError(err.Error())
 			return err
 		}
 		if moved {
@@ -83,14 +83,14 @@ func (w *Worker) pollOrders(c *Client) error {
 
 	returned, err := w.refreshStatuses(c)
 	if err != nil {
-		w.setPollError(err.Error())
+		w.SetPollError(err.Error())
 		return err
 	}
 
 	if err := w.db.SetWBOrdersSince(to); err != nil {
 		return err
 	}
-	w.setPollError("")
+	w.SetPollError("")
 	if applied+returned > 0 {
 		log.Infof("wb orders: applied %d, returned %d", applied, returned)
 		// Stock levels changed - wake the push. Within the current pass it runs

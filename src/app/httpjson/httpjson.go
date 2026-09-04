@@ -17,7 +17,7 @@ func WriteOK(w http.ResponseWriter, data any) {
 	_ = json.NewEncoder(w).Encode(gofastogt.NewOkResponse(data))
 }
 
-func WriteError(w http.ResponseWriter, status int, err gofastogt.ErrorJson) {
+func writeError(w http.ResponseWriter, status int, err gofastogt.ErrorJson) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(gofastogt.NewErrorResponse(err))
@@ -28,18 +28,18 @@ func WriteError(w http.ResponseWriter, status int, err gofastogt.ErrorJson) {
 func WriteInternalError(w http.ResponseWriter, err error) {
 	log.Errorf("internal error: %v", err)
 	details := "internal error"
-	WriteError(w, http.StatusInternalServerError, errorgt.MakeErrorJsonInternal(&details))
+	writeError(w, http.StatusInternalServerError, errorgt.MakeErrorJsonInternal(&details))
 }
 
 func WriteBadRequest(w http.ResponseWriter, msg string) {
-	WriteError(w, http.StatusBadRequest, errorgt.MakeErrorJsonInvalidInput(&msg))
+	writeError(w, http.StatusBadRequest, errorgt.MakeErrorJsonInvalidInput(&msg))
 }
 
 func WriteUnauthorized(w http.ResponseWriter) {
 	msg := "unauthorized"
-	WriteError(w, http.StatusUnauthorized, errorgt.MakeErrorJsonInvalidInput(&msg))
+	writeError(w, http.StatusUnauthorized, errorgt.MakeErrorJsonInvalidInput(&msg))
 }
 
 func WriteNotFound(w http.ResponseWriter, msg string) {
-	WriteError(w, http.StatusNotFound, errorgt.MakeErrorJsonInvalidInput(&msg))
+	writeError(w, http.StatusNotFound, errorgt.MakeErrorJsonInvalidInput(&msg))
 }

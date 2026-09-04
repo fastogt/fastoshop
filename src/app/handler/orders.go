@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
@@ -72,17 +72,10 @@ func orderLines(o database.Order) (items []orderItem, total int64, ok bool) {
 func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	status := q.Get("status")
-	per := kOrdersPageSize
-	if n, err := strconv.Atoi(q.Get("per")); err == nil && n > 0 {
-		per = min(n, kOrdersMaxPageSize)
-	}
-	page := 1
-	if n, err := strconv.Atoi(q.Get("page")); err == nil && n > 1 {
-		page = n
-	}
+	per, page := pageParams(q, kOrdersPageSize, kOrdersMaxPageSize)
 	total, err := h.db.CountOrders(status)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	pages := max((total+per-1)/per, 1)
@@ -92,7 +85,7 @@ func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 	list, err := h.db.ListOrdersPage(status, q.Get("sort"), q.Get("dir") == "desc",
 		per, (page-1)*per)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	orders := make([]orderResponse, 0, len(list))
@@ -108,7 +101,7 @@ func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 	// to draw one screen.
 	links, err := h.db.LinksBySKU(skus)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	for i := range orders {
@@ -118,33 +111,33 @@ func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 			orders[i].Items[j].Image = link.Image
 		}
 	}
-	writeOK(w, listOrdersResponse{Orders: orders, Total: total, Page: page, Pages: pages})
+	httpjson.WriteOK(w, listOrdersResponse{Orders: orders, Total: total, Page: page, Pages: pages})
 }
 
 func (h *Handler) SetOrderStatus(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r)
 	if err != nil {
-		writeBadRequest(w, "bad id")
+		httpjson.WriteBadRequest(w, "bad id")
 		return
 	}
 	var req orderStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil ||
 		(req.Status != "new" && req.Status != "done" && req.Status != "cancelled") {
-		writeBadRequest(w, "status must be new|done|cancelled")
+		httpjson.WriteBadRequest(w, "status must be new|done|cancelled")
 		return
 	}
 	if err := h.db.SetOrderStatus(id, req.Status); err != nil {
 		var oos *database.OutOfStockError
 		if errors.As(err, &oos) {
-			writeBadRequest(w, fmt.Sprintf(
+			httpjson.WriteBadRequest(w, fmt.Sprintf(
 				h.msg(i18n.KeyOrderStockGone), oos.Name()))
 			return
 		}
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	h.stockChanged()
-	writeOK(w, okStatusResponse(req))
+	httpjson.WriteOK(w, okStatusResponse(req))
 }
 
 type bulkIDsRequest struct {
@@ -162,19 +155,19 @@ type deletedResponse struct {
 func (h *Handler) BulkDeleteOrders(w http.ResponseWriter, r *http.Request) {
 	var req bulkIDsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "bad json")
+		httpjson.WriteBadRequest(w, "bad json")
 		return
 	}
 	if len(req.IDs) == 0 {
-		writeBadRequest(w, h.msg(i18n.KeyNothingSelected))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyNothingSelected))
 		return
 	}
 	n, err := h.db.DeleteOrders(req.IDs)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, deletedResponse{Deleted: n})
+	httpjson.WriteOK(w, deletedResponse{Deleted: n})
 }
 
 type bulkStatusRequest struct {
@@ -203,11 +196,11 @@ func (h *Handler) BulkOrderStatus(w http.ResponseWriter, r *http.Request) {
 	var req bulkStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil ||
 		(req.Status != "new" && req.Status != "done" && req.Status != "cancelled") {
-		writeBadRequest(w, "status must be new|done|cancelled")
+		httpjson.WriteBadRequest(w, "status must be new|done|cancelled")
 		return
 	}
 	if len(req.IDs) == 0 {
-		writeBadRequest(w, h.msg(i18n.KeyNothingSelected))
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyNothingSelected))
 		return
 	}
 	res := bulkStatusResponse{Failed: []bulkStatusFailure{}}
@@ -224,11 +217,11 @@ func (h *Handler) BulkOrderStatus(w http.ResponseWriter, r *http.Request) {
 			})
 			continue
 		}
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	h.stockChanged()
-	writeOK(w, res)
+	httpjson.WriteOK(w, res)
 }
 
 // csvSafe neutralizes formula injection: name/phone/titles come from the public
@@ -248,7 +241,7 @@ func csvSafe(s string) string {
 func (h *Handler) ExportOrdersCSV(w http.ResponseWriter, r *http.Request) {
 	list, err := h.db.ListOrders()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")

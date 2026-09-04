@@ -10,6 +10,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/i18n"
 )
@@ -18,16 +19,6 @@ import (
 // every minute costs four times the method budget and buys nothing: sales within
 // a tick collapse into a single level push anyway.
 const kPushInterval = 5 * time.Minute
-
-// ponytail: a two-step backoff ladder instead of an attempt counter - it needs
-// no new column in the schema (and any schema change here costs a MINOR release
-// and a manual ALTER TABLE on live installs). We only tell "first failure" from
-// "it was already bad". If a third class of errors shows up that this cannot
-// serve - add attempts INTEGER and count for real.
-const (
-	kFirstRetry = time.Minute
-	kNextRetry  = 15 * time.Minute
-)
 
 // ErrPushBusy - the previous pass is still running. Parallel pushes of the same
 // level are harmless, but the counters in the button's answer would become a lie.
@@ -42,37 +33,15 @@ var ErrBadWarehouse = errors.New("warehouse_id must be a number")
 // value differs from it. A lost push is repaired by the next tick, and N sales
 // within one tick collapse into a single call.
 type Worker struct {
+	*channel.Signals
 	db *database.Database
 	// BaseURL overrides the Seller API address - tests point it at a mock.
 	BaseURL string
-	wake    chan struct{}
 	running atomic.Bool
-	// pollErr is why the last order poll did not happen. In memory rather than
-	// in the database: a column would cost an ALTER TABLE on live installs, and
-	// after a restart the next tick fills it in again anyway.
-	pollErr atomic.Pointer[string]
 }
 
 func NewWorker(db *database.Database) *Worker {
-	return &Worker{db: db, wake: make(chan struct{}, 1)}
-}
-
-func (w *Worker) PollError() string {
-	if p := w.pollErr.Load(); p != nil {
-		return *p
-	}
-	return ""
-}
-
-func (w *Worker) setPollError(msg string) { w.pollErr.Store(&msg) }
-
-// StockChanged wakes the worker without blocking the caller: a buffer of one and
-// a non-blocking send make it a "something changed" signal, not an event queue.
-func (w *Worker) StockChanged() {
-	select {
-	case w.wake <- struct{}{}:
-	default:
-	}
+	return &Worker{Signals: channel.NewSignals(), db: db}
 }
 
 // Run reads the settings on every pass rather than at start: the owner enables
@@ -86,7 +55,7 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-		case <-w.wake:
+		case <-w.Wake():
 		}
 		pushed, failed, err := w.Pass()
 		switch {
@@ -188,7 +157,7 @@ func (w *Worker) pushStocks(c *Client, warehouse int64) (pushed, failed int, hal
 				msg = i18n.KeyOzonNoAnswer
 			}
 			if msg != "" {
-				w.markStockError(r, msg, retryDelay(r.Error))
+				w.markStockError(r, msg, channel.RetryDelay(r.Error))
 				failed++
 				continue
 			}
@@ -238,7 +207,7 @@ func (w *Worker) pushPrices(c *Client, currency string) (pushed, failed int, err
 				msg = i18n.KeyOzonNoAnswer
 			}
 			if msg != "" {
-				w.markPriceError(r, msg, retryDelay(r.Error))
+				w.markPriceError(r, msg, channel.RetryDelay(r.Error))
 				failed++
 				continue
 			}
@@ -264,13 +233,13 @@ func callDelay(callErr error, fallback time.Duration) time.Duration {
 
 func (w *Worker) backoffStocks(batch []database.OzonStockRow, callErr error) {
 	for _, r := range batch {
-		w.markStockError(r, callErr.Error(), callDelay(callErr, retryDelay(r.Error)))
+		w.markStockError(r, callErr.Error(), callDelay(callErr, channel.RetryDelay(r.Error)))
 	}
 }
 
 func (w *Worker) backoffPrices(batch []database.OzonPriceRow, callErr error) {
 	for _, r := range batch {
-		w.markPriceError(r, callErr.Error(), callDelay(callErr, retryDelay(r.Error)))
+		w.markPriceError(r, callErr.Error(), callDelay(callErr, channel.RetryDelay(r.Error)))
 	}
 }
 
@@ -284,11 +253,4 @@ func (w *Worker) markPriceError(r database.OzonPriceRow, msg string, delay time.
 	if err := w.db.MarkOzonPriceError(r.ProductID, msg, time.Now().Add(delay)); err != nil {
 		log.Warnf("ozon price sync: mark error %s: %v", r.OfferID, err)
 	}
-}
-
-func retryDelay(prevError string) time.Duration {
-	if prevError != "" {
-		return kNextRetry
-	}
-	return kFirstRetry
 }

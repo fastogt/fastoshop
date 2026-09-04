@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 )
 
@@ -322,7 +323,7 @@ func selection(t *testing.T, d *database.Database) string {
 	for _, p := range products {
 		ids = append(ids, p.ID)
 	}
-	b, err := json.Marshal(publishRequest{ProductIDs: ids})
+	b, err := json.Marshal(channel.PublishRequest{ProductIDs: ids})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -398,7 +399,7 @@ func TestStockPushCreditsTheWholeBatch(t *testing.T) {
 	seedProduct(t, d, "ART-1", 12, 1000)
 	do(t, h, "POST", "/publish", selection(t, d))
 
-	res := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	res := decode[channel.PushResponse](t, do(t, h, "POST", "/push", ""))
 	if res.Pushed != 1 || res.Failed != 0 {
 		t.Fatalf("push counters: %+v", res)
 	}
@@ -426,7 +427,7 @@ func TestStockPushMarksOnlyRefusedBarcodes(t *testing.T) {
 	do(t, h, "POST", "/publish", selection(t, d))
 	cab.refuse["2000000000028"] = "нет такого товара"
 
-	res := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	res := decode[channel.PushResponse](t, do(t, h, "POST", "/push", ""))
 	if res.Pushed != 1 || res.Failed != 1 {
 		t.Fatalf("a partial refusal must not fail the batch: %+v", res)
 	}
@@ -481,7 +482,7 @@ func TestCabinetCountsWhatCanActuallyBeLinked(t *testing.T) {
 	seedProduct(t, d, "SIZED", 5, 1000)
 	seedProduct(t, d, "NOPE", 1, 500)
 
-	body, _ := json.Marshal(publishRequest{ProductIDs: []int64{idA}})
+	body, _ := json.Marshal(channel.PublishRequest{ProductIDs: []int64{idA}})
 	do(t, h, "POST", "/publish", string(body))
 
 	got := decode[cabinetResponse](t, do(t, h, "GET", "/cabinet", ""))

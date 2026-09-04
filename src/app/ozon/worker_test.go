@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 )
 
@@ -612,13 +613,13 @@ func TestPushEndpoint(t *testing.T) {
 	}
 	id := seedLinked(t, d, "A", 5)
 
-	got := decode[pushResponse](t, do(t, h, "POST", "/push", ""))
+	got := decode[channel.PushResponse](t, do(t, h, "POST", "/push", ""))
 	if got.Pushed != 1 || got.Failed != 0 {
 		t.Fatalf("push: %+v", got)
 	}
 	// The button drives the level both ways.
 	setStock(t, d, id, 9)
-	if got = decode[pushResponse](t, do(t, h, "POST", "/push", "")); got.Pushed != 1 {
+	if got = decode[channel.PushResponse](t, do(t, h, "POST", "/push", "")); got.Pushed != 1 {
 		t.Fatalf("button did not push the stock increase: %+v", got)
 	}
 
@@ -629,7 +630,7 @@ func TestPushEndpoint(t *testing.T) {
 
 	m.failOffer("A", "нет такого склада")
 	setStock(t, d, id, 1)
-	if got = decode[pushResponse](t, do(t, h, "POST", "/push", "")); got.Failed != 1 {
+	if got = decode[channel.PushResponse](t, do(t, h, "POST", "/push", "")); got.Failed != 1 {
 		t.Fatalf("error did not reach the button: %+v", got)
 	}
 	s = decode[settingsResponse](t, do(t, h, "GET", "/settings", ""))

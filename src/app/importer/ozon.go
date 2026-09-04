@@ -3,6 +3,7 @@ package importer
 import (
 	"strconv"
 	"strings"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -350,12 +351,35 @@ func (o *Ozon) list() (*ozonListResponse, error) {
 	return &out, err
 }
 
-func (o *Ozon) Count() (int, error) {
-	l, err := o.list()
-	if err != nil {
-		return 0, err
+// descriptions is the one Ozon endpoint with no batch form, one call per card.
+// Serially that is the slowest step of the import by far, so the calls run a
+// few at a time; a card whose call failed simply arrives without a description.
+func (o *Ozon) descriptions(ids []int64) map[int64]string {
+	out := make([]string, len(ids))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, kImageWorkers)
+	for i, id := range ids {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			var desc struct {
+				Result struct {
+					Description string `json:"description"`
+				} `json:"result"`
+			}
+			if err := o.post("/v1/product/info/description", ozonProductIDRequest{ProductID: id}, &desc); err == nil {
+				out[i] = desc.Result.Description
+			}
+		}()
 	}
-	return l.Result.Total, nil
+	wg.Wait()
+	m := make(map[int64]string, len(ids))
+	for i, id := range ids {
+		m[id] = out[i]
+	}
+	return m
 }
 
 func (o *Ozon) Fetch() ([]Item, error) {
@@ -402,18 +426,13 @@ func (o *Ozon) Fetch() ([]Item, error) {
 		used[ozonCategoryKey{CategoryID: it.CategoryID, TypeID: it.TypeID}] = true
 	}
 	dicts := o.attributeDicts(used)
+	descriptions := o.descriptions(ids)
 	items := make([]Item, 0, len(info.Items))
 	for _, it := range info.Items {
 		price, _ := strconv.ParseFloat(strings.TrimSpace(it.Price), 64)
-		var desc struct {
-			Result struct {
-				Description string `json:"description"`
-			} `json:"result"`
-		}
-		_ = o.post("/v1/product/info/description", ozonProductIDRequest{ProductID: it.ID}, &desc)
 		key := ozonCategoryKey{CategoryID: it.CategoryID, TypeID: it.TypeID}
 		items = append(items, Item{
-			SKU: it.OfferID, Title: it.Name, Description: desc.Result.Description,
+			SKU: it.OfferID, Title: it.Name, Description: descriptions[it.ID],
 			Price: int64(price * 100), Stock: stockByID[it.ID], ImageURLs: it.Images,
 			Category: categories[key], Brand: ozonBrand(attrs[it.ID]),
 			Params:   ozonParams(attrs[it.ID], dicts[key]),

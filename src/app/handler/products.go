@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/media"
 )
 
@@ -99,6 +101,19 @@ const (
 	kAdminMaxPageSize = 500
 )
 
+// pageParams reads the page size and number of a list request, clamped to what
+// the server is willing to render.
+func pageParams(q url.Values, def, maxPer int) (per, page int) {
+	per, page = def, 1
+	if n, err := strconv.Atoi(q.Get("per")); err == nil && n > 0 {
+		per = min(n, maxPer)
+	}
+	if n, err := strconv.Atoi(q.Get("page")); err == nil && n > 1 {
+		page = n
+	}
+	return per, page
+}
+
 func idParam(r *http.Request) (int64, error) {
 	return strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 }
@@ -114,7 +129,7 @@ func (h *Handler) enrich(p database.Product) productResponse {
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var req productRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Title) == "" {
-		writeBadRequest(w, "title required")
+		httpjson.WriteBadRequest(w, "title required")
 		return
 	}
 	p := &database.Product{SKU: req.SKU, Title: req.Title, Description: req.Description,
@@ -132,22 +147,22 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		p.Supplier = *req.Supplier
 	}
 	if err := h.db.CreateProduct(p); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	// Re-read: the slug and timestamps are set by the DB, the request lacks them.
 	saved, err := h.db.GetProduct(p.ID)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, h.enrich(*saved))
+	httpjson.WriteOK(w, h.enrich(*saved))
 }
 
 func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r)
 	if err != nil {
-		writeBadRequest(w, "bad id")
+		httpjson.WriteBadRequest(w, "bad id")
 		return
 	}
 	old, err := h.db.GetProduct(id)
@@ -157,7 +172,7 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	var req productRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Title) == "" {
-		writeBadRequest(w, "title required")
+		httpjson.WriteBadRequest(w, "title required")
 		return
 	}
 	p := &database.Product{ID: id, SKU: req.SKU, Title: req.Title,
@@ -191,32 +206,32 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		p.PriceManual = true
 	}
 	if err := h.db.UpdateProduct(p); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	saved, err := h.db.GetProduct(id)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	h.stockChanged()
-	writeOK(w, h.enrich(*saved))
+	httpjson.WriteOK(w, h.enrich(*saved))
 }
 
 func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r)
 	if err != nil {
-		writeBadRequest(w, "bad id")
+		httpjson.WriteBadRequest(w, "bad id")
 		return
 	}
 	if err := h.db.DeleteProduct(id); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	// A deleted product means zero on the marketplace, and there is no point
 	// waiting for the tick while selling something that no longer exists.
 	h.stockChanged()
-	writeOK(w, okStatusResponse{Status: "deleted"})
+	httpjson.WriteOK(w, okStatusResponse{Status: "deleted"})
 }
 
 // DeleteImage removes a photo from a product, and the file with it when the
@@ -231,16 +246,16 @@ type categoriesResponse struct {
 func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
 	list, err := h.db.Categories()
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, categoriesResponse{Categories: list})
+	httpjson.WriteOK(w, categoriesResponse{Categories: list})
 }
 
 func (h *Handler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	imageID, err := strconv.ParseInt(chi.URLParam(r, "imageID"), 10, 64)
 	if err != nil {
-		writeBadRequest(w, "bad image id")
+		httpjson.WriteBadRequest(w, "bad image id")
 		return
 	}
 	im, err := h.db.GetImage(imageID)
@@ -249,7 +264,7 @@ func (h *Handler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.db.DeleteImage(imageID); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	if !strings.HasPrefix(im.Path, "http") {
@@ -262,23 +277,16 @@ func (h *Handler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := h.db.GetProduct(im.ProductID)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, h.enrich(*p))
+	httpjson.WriteOK(w, h.enrich(*p))
 }
 
 func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	search := strings.TrimSpace(q.Get("q"))
-	per := kAdminPageSize
-	if n, err := strconv.Atoi(q.Get("per")); err == nil && n > 0 {
-		per = min(n, kAdminMaxPageSize)
-	}
-	page := 1
-	if n, err := strconv.Atoi(q.Get("page")); err == nil && n > 1 {
-		page = n
-	}
+	per, page := pageParams(q, kAdminPageSize, kAdminMaxPageSize)
 	supplier := database.AnySupplier
 	if v, ok := q["supplier"]; ok && len(v) > 0 {
 		supplier = v[0]
@@ -287,7 +295,7 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	desc := q.Get("dir") == "desc"
 	total, err := h.db.CountProducts(search, supplier)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	pages := max((total+per-1)/per, 1)
@@ -296,22 +304,33 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := h.db.ListProductsSorted(search, supplier, sort, desc, per, (page-1)*per)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	// enrich issues one query per product: 100 rows - 101 queries to local
-	// SQLite, measured as unnoticeable. A join will be needed if per grows.
+	ids := make([]int64, 0, len(list))
+	for _, p := range list {
+		ids = append(ids, p.ID)
+	}
+	images, err := h.db.ImagesFor(ids)
+	if err != nil {
+		httpjson.WriteInternalError(w, err)
+		return
+	}
 	out := make([]productResponse, 0, len(list))
 	for _, p := range list {
-		out = append(out, h.enrich(p))
+		imgs := images[p.ID]
+		if imgs == nil {
+			imgs = []database.ProductImage{}
+		}
+		out = append(out, productResponse{Product: p, Images: imgs})
 	}
-	writeOK(w, listProductsResponse{Products: out, Total: total, Page: page, Pages: pages})
+	httpjson.WriteOK(w, listProductsResponse{Products: out, Total: total, Page: page, Pages: pages})
 }
 
 func (h *Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r)
 	if err != nil {
-		writeBadRequest(w, "bad id")
+		httpjson.WriteBadRequest(w, "bad id")
 		return
 	}
 	if _, err := h.db.GetProduct(id); err != nil {
@@ -321,28 +340,28 @@ func (h *Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, kMaxUploadSize)
 	f, hdr, err := r.FormFile("file")
 	if err != nil {
-		writeBadRequest(w, "file required (max 10MB)")
+		httpjson.WriteBadRequest(w, "file required (max 10MB)")
 		return
 	}
 	defer func() { _ = f.Close() }()
 	ext := strings.ToLower(filepath.Ext(hdr.Filename))
 	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
-		writeBadRequest(w, "only jpeg/png/webp")
+		httpjson.WriteBadRequest(w, "only jpeg/png/webp")
 		return
 	}
 	name := fmt.Sprintf("p%d-%s%s", id, newToken()[:8], ext)
 	if err := os.MkdirAll(h.uploadsDir, 0755); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	dst, err := os.Create(filepath.Join(h.uploadsDir, name))
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	defer func() { _ = dst.Close() }()
 	if _, err := io.Copy(dst, f); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	// The small copy for the catalogue grid. Not fatal when it fails: the
@@ -351,11 +370,11 @@ func (h *Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		log.Warnf("thumbnail for %q: %v", name, err)
 	}
 	if err := h.db.AddImage(id, name); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	p, _ := h.db.GetProduct(id)
-	writeOK(w, h.enrich(*p))
+	httpjson.WriteOK(w, h.enrich(*p))
 }
 
 type imageOrderRequest struct {
@@ -369,22 +388,22 @@ type imageOrderRequest struct {
 func (h *Handler) SetImageOrder(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r)
 	if err != nil {
-		writeBadRequest(w, "bad id")
+		httpjson.WriteBadRequest(w, "bad id")
 		return
 	}
 	var req imageOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
-		writeBadRequest(w, "ids required")
+		httpjson.WriteBadRequest(w, "ids required")
 		return
 	}
 	if err := h.db.SetImageOrder(id, req.IDs); err != nil {
-		writeBadRequest(w, err.Error())
+		httpjson.WriteBadRequest(w, err.Error())
 		return
 	}
 	p, err := h.db.GetProduct(id)
 	if err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, h.enrich(*p))
+	httpjson.WriteOK(w, h.enrich(*p))
 }

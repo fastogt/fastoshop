@@ -52,14 +52,6 @@ type Diff struct {
 	PriceChanges []DiffRow `json:"price_changes"`
 }
 
-// shelfPrice is the shop's own pricing rule in one place: the coefficient
-// carries the supplier's number into our money, the ladder adds the margin.
-// The preview must use it too, or "Check" promises a price the import will not
-// produce.
-func shelfPrice(rules []database.PriceRule, source int64, coefficient float64) int64 {
-	return database.ShelfPrice(rules, source, coefficient)
-}
-
 // Compare matches the incoming catalogue against the shop by article, inside one
 // supplier group: counting another supplier's goods as "gone" would be a lie.
 // Rows without an article take no part - there is nothing to match them by, and
@@ -97,7 +89,7 @@ func Compare(items []Item, existing []database.Product, supplier string,
 			if len(d.NewItems) < kListLimit {
 				d.NewItems = append(d.NewItems, DiffRow{
 					SKU: it.SKU, Title: it.Title, Now: it.Price,
-					Shelf: shelfPrice(rules, it.Price, coefficient), Stock: it.Stock,
+					Shelf: database.ShelfPrice(rules, it.Price, coefficient), Stock: it.Stock,
 				})
 			}
 			continue
@@ -113,7 +105,7 @@ func Compare(items []Item, existing []database.Product, supplier string,
 		}
 		row := DiffRow{
 			SKU: it.SKU, Title: it.Title, Was: old.SourcePrice, Now: it.Price,
-			Shelf: shelfPrice(rules, it.Price, coefficient), Stock: it.Stock,
+			Shelf: database.ShelfPrice(rules, it.Price, coefficient), Stock: it.Stock,
 		}
 		// A product imported before source prices were tracked has 0 there;
 		// calling that an infinite rise would push it to the top of the list and

@@ -3,6 +3,9 @@ package handler
 import (
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/fastogt/fastoshop/app/httpjson"
 )
 
 type logInfoResponse struct {
@@ -18,18 +21,18 @@ type logInfoResponse struct {
 // download would show the owner an error where an explanation belongs.
 func (h *Handler) LogInfo(w http.ResponseWriter, r *http.Request) {
 	if h.LogPath == "" {
-		writeOK(w, logInfoResponse{})
+		httpjson.WriteOK(w, logInfoResponse{})
 		return
 	}
 	st, err := os.Stat(h.LogPath)
 	if err != nil {
-		writeOK(w, logInfoResponse{})
+		httpjson.WriteOK(w, logInfoResponse{})
 		return
 	}
-	writeOK(w, logInfoResponse{
+	httpjson.WriteOK(w, logInfoResponse{
 		Available:  true,
 		Size:       st.Size(),
-		ModifiedAt: st.ModTime().UTC().Format("2006-01-02T15:04:05Z"),
+		ModifiedAt: st.ModTime().UTC().Format(time.RFC3339),
 	})
 }
 

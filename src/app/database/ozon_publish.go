@@ -47,16 +47,14 @@ func (f CandidateFilter) clauses() (string, []any) {
 	var conds []string
 	var args []any
 	if len(f.IDs) > 0 {
-		conds = append(conds, `p.id IN (`+placeholders(len(f.IDs))+`)`)
-		for _, id := range f.IDs {
-			args = append(args, id)
-		}
+		in, a := inClause(f.IDs)
+		conds = append(conds, `p.id IN (`+in+`)`)
+		args = append(args, a...)
 	}
 	if len(f.ExcludeIDs) > 0 {
-		conds = append(conds, `p.id NOT IN (`+placeholders(len(f.ExcludeIDs))+`)`)
-		for _, id := range f.ExcludeIDs {
-			args = append(args, id)
-		}
+		in, a := inClause(f.ExcludeIDs)
+		conds = append(conds, `p.id NOT IN (`+in+`)`)
+		args = append(args, a...)
 	}
 	if f.Linked != nil {
 		if *f.Linked {
@@ -71,16 +69,12 @@ func (f CandidateFilter) clauses() (string, []any) {
 	return " AND " + strings.Join(conds, " AND "), args
 }
 
-func placeholders(n int) string {
-	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
-}
-
 // candidateWhere joins the owner's search to the state filter. The search half
 // is the same builder the product table uses, so a word typed here matches what
 // it would match there; only the category column needs the alias, the rest are
 // unambiguous because the links table has no columns of those names.
 func candidateWhere(f CandidateFilter) (string, []any) {
-	where, args := productWhere("", f.Q, supplierAny, false)
+	where, args := productWhere("", f.Q, AnySupplier, false)
 	where = strings.ReplaceAll(where, "category=", "p.category=")
 	extra, extraArgs := f.clauses()
 	if extra == "" {

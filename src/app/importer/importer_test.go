@@ -46,11 +46,10 @@ func TestOzonImport(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &Ozon{ClientID: "cid", APIKey: "key", BaseURL: srv.URL}
-	n, err := imp.Count()
-	if err != nil || n != 1 {
-		t.Fatalf("count: %v %d", err, n)
+	if items, err := imp.Fetch(); err != nil || len(items) != 1 {
+		t.Fatalf("fetch: %v %d", err, len(items))
 	}
-	res, err := Run(imp, d, "Ромашка", 1, "", nil)
+	res, err := Run(imp, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +75,7 @@ func TestOzonImport(t *testing.T) {
 		t.Fatalf("images: %+v", imgs)
 	}
 	// A repeat import - dedup by SKU.
-	res, _ = Run(imp, d, "Ромашка", 1, "", nil)
+	res, _ = Run(imp, d, "Ромашка", 1, nil)
 	if res.Imported != 0 || res.Skipped != 1 {
 		t.Fatalf("dedup: %+v", res)
 	}
@@ -136,7 +135,7 @@ func TestWBImportSizes(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &WB{Token: "tok", ContentURL: srv.URL, PricesURL: srv.URL, MarketplaceURL: srv.URL}
-	res, err := Run(imp, d, "Ромашка", 1, "", nil)
+	res, err := Run(imp, d, "Ромашка", 1, nil)
 	if err != nil || res.Imported != 3 {
 		t.Fatalf("%v %+v", err, res)
 	}
@@ -205,7 +204,7 @@ func TestWBImportSingleSize(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &WB{Token: "tok", ContentURL: srv.URL, PricesURL: srv.URL, MarketplaceURL: srv.URL}
-	res, err := Run(imp, d, "Ромашка", 1, "", nil)
+	res, err := Run(imp, d, "Ромашка", 1, nil)
 	if err != nil || res.Imported != 1 {
 		t.Fatalf("%v %+v", err, res)
 	}
@@ -303,12 +302,7 @@ func TestYMLImport(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 7}
-	// available="false" is not counted - the seller cares how many will arrive.
-	n, err := imp.Count()
-	if err != nil || n != 4 {
-		t.Fatalf("count: %v %d", err, n)
-	}
-	res, err := Run(imp, d, "Ромашка", 1, "", nil)
+	res, err := Run(imp, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,7 +332,7 @@ func TestYMLImport(t *testing.T) {
 		t.Fatal("BYN should not have been imported")
 	}
 
-	res, _ = Run(imp, d, "Ромашка", 1, "", nil)
+	res, _ = Run(imp, d, "Ромашка", 1, nil)
 	if res.Imported != 0 || res.Skipped != 3 {
 		t.Fatalf("dedup: %+v", res)
 	}
@@ -355,7 +349,7 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 7}
-	if _, err := Run(imp, d, "Ромашка", 1, "", nil); err != nil {
+	if _, err := Run(imp, d, "Ромашка", 1, nil); err != nil {
 		t.Fatal(err)
 	}
 	p, err := d.GetVisibleProductBySlug("terka-plastmassovaya")
@@ -374,7 +368,7 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := Run(imp, d, "Ромашка", 1, "", nil); err != nil {
+	if _, err := Run(imp, d, "Ромашка", 1, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -481,10 +475,17 @@ func TestImportFillsMeasurementsWithoutOverwriting(t *testing.T) {
 	for _, p := range stored {
 		bySKU[p.SKU] = p
 	}
+	w, err := d.NewImportWriter()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, it := range feed {
-		if _, err := merge(d, bySKU[it.SKU], it, 1, nil); err != nil {
+		if _, err := merge(w, bySKU[it.SKU], it, 1, nil); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if err := w.Close(nil); err != nil {
+		t.Fatal(err)
 	}
 
 	got, _ := d.GetProduct(corrected.ID)
@@ -540,14 +541,14 @@ func TestYMLTooBig(t *testing.T) {
 
 	imp := &YML{URL: srv.URL + "/feed.xml", MaxBytes: 100}
 	var ke *i18n.KeyError
-	if _, err := imp.Count(); !errors.As(err, &ke) || ke.Key != i18n.KeyYMLTooBig {
+	if _, err := imp.Fetch(); !errors.As(err, &ke) || ke.Key != i18n.KeyYMLTooBig {
 		t.Fatalf("expected size error, got %v", err)
 	}
 }
 
 func TestYMLBadURL(t *testing.T) {
 	imp := &YML{URL: "ftp://example.com/feed.xml"}
-	if _, err := imp.Count(); err == nil {
+	if _, err := imp.Fetch(); err == nil {
 		t.Fatal("expected scheme error")
 	}
 }
@@ -586,7 +587,7 @@ func TestYMLFeedCurrency(t *testing.T) {
 	}
 
 	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 1}
-	res, err := Run(imp, d, "Ромашка", 1, "", nil)
+	res, err := Run(imp, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

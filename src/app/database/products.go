@@ -105,19 +105,32 @@ func (d *Database) uniqueSlug(base string) (string, error) {
 	}
 }
 
-func (d *Database) CreateProduct(p *Product) error {
-	base := Slugify(p.Title)
-	if base == "" {
-		// A title made of pure punctuation ("!!!") yields an empty slug and the
-		// product becomes unreachable; uniqueSlug will pick product-2, product-3…
-		base = "product"
+// slugBase is what a title turns into before a uniqueness suffix. A title made
+// of pure punctuation ("!!!") yields an empty slug and the product becomes
+// unreachable, so it falls back to "product".
+func slugBase(title string) string {
+	if base := Slugify(title); base != "" {
+		return base
 	}
-	slug, err := d.uniqueSlug(base)
+	return "product"
+}
+
+// execer is what a write needs from either the pool or an open transaction.
+type execer interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
+func (d *Database) CreateProduct(p *Product) error {
+	slug, err := d.uniqueSlug(slugBase(p.Title))
 	if err != nil {
 		return err
 	}
 	p.Slug = slug
-	res, err := d.db.Exec(
+	return insertProduct(d.db, p)
+}
+
+func insertProduct(q execer, p *Product) error {
+	res, err := q.Exec(
 		`INSERT INTO products (sku, title, slug, description, price, source_price,
 		 price_manual, stock, category, brand, supplier, hidden,
 		 weight_g, length_mm, width_mm, height_mm, params)
@@ -134,8 +147,10 @@ func (d *Database) CreateProduct(p *Product) error {
 
 // UpdateProduct intentionally never re-slugs: the slug is part of the public
 // URL and already indexed by search engines, so it must stay stable once set.
-func (d *Database) UpdateProduct(p *Product) error {
-	_, err := d.db.Exec(
+func (d *Database) UpdateProduct(p *Product) error { return updateProduct(d.db, p) }
+
+func updateProduct(q execer, p *Product) error {
+	_, err := q.Exec(
 		`UPDATE products SET sku=?, title=?, description=?, price=?, source_price=?,
 		 stock=?, category=?, brand=?, supplier=?, hidden=?, price_manual=?,
 		 weight_g=?, length_mm=?, width_mm=?, height_mm=?, params=?,
@@ -212,17 +227,17 @@ func likeEscape(s string) string {
 // name: "Текстиль/Текстиль для спальни/КПБ Евро".
 const CategorySep = "/"
 
-// supplierAny is what "no filter" looks like: an empty string is a real value
+// AnySupplier disables the supplier filter. An empty string is a real value
 // (goods the owner made by hand), so it cannot double as "any".
-const supplierAny = "\x00any"
+const AnySupplier = "\x00any"
 
 // inClause renders the placeholders and args of an `IN (...)` filter.
-func inClause(ids []int64) (string, []any) {
-	args := make([]any, len(ids))
-	for i, id := range ids {
-		args[i] = id
+func inClause[T any](vals []T) (string, []any) {
+	args := make([]any, len(vals))
+	for i, v := range vals {
+		args[i] = v
 	}
-	return strings.TrimSuffix(strings.Repeat("?,", len(ids)), ","), args
+	return strings.TrimSuffix(strings.Repeat("?,", len(vals)), ","), args
 }
 
 // CatalogFilter is what the buyer chose on the storefront: where they are in
@@ -253,7 +268,7 @@ func productWhere(category, q, supplier string, onlyVisible bool) (string, []any
 	if onlyVisible {
 		conds = append(conds, `hidden=0`)
 	}
-	if supplier != supplierAny {
+	if supplier != AnySupplier {
 		conds = append(conds, `supplier=?`)
 		args = append(args, supplier)
 	}
@@ -291,7 +306,7 @@ func productWhere(category, q, supplier string, onlyVisible bool) (string, []any
 // ListProducts returns the whole catalogue (LIMIT -1 is SQLite for "no limit");
 // the import diff genuinely needs every row.
 func (d *Database) ListProducts() ([]Product, error) {
-	return d.listProducts("", "", supplierAny, "", false, -1, 0, false)
+	return d.listProducts("", "", AnySupplier, "", false, -1, 0, false)
 }
 
 // The storefront reads through its own three functions rather than a boolean
@@ -301,7 +316,7 @@ func (d *Database) ListProducts() ([]Product, error) {
 // q is the buyer's search: the same substring match over title and article the
 // admin uses, so a shop needs no second index to be searchable.
 func (d *Database) ListVisibleProductsPage(f CatalogFilter, limit, offset int) ([]Product, error) {
-	where, args := productWhere(f.Category, f.Query, supplierAny, true)
+	where, args := productWhere(f.Category, f.Query, AnySupplier, true)
 	where = withStock(where, f.InStock)
 	args = append(args, limit, offset)
 	return d.queryProducts(`SELECT `+kProductCols+` FROM products`+where+
@@ -309,7 +324,7 @@ func (d *Database) ListVisibleProductsPage(f CatalogFilter, limit, offset int) (
 }
 
 func (d *Database) CountVisibleProducts(f CatalogFilter) (int, error) {
-	where, args := productWhere(f.Category, f.Query, supplierAny, true)
+	where, args := productWhere(f.Category, f.Query, AnySupplier, true)
 	var n int
 	err := d.db.QueryRow(`SELECT COUNT(*) FROM products`+withStock(where, f.InStock), args...).Scan(&n)
 	return n, err
@@ -369,9 +384,6 @@ func orderBy(whitelist map[string]string, sort string, desc bool) string {
 func (d *Database) ListProductsSorted(q, supplier, sort string, desc bool, limit, offset int) ([]Product, error) {
 	return d.listProducts("", q, supplier, sort, desc, limit, offset, false)
 }
-
-// AnySupplier disables the supplier filter.
-const AnySupplier = supplierAny
 
 func (d *Database) listProducts(category, q, supplier, sort string, desc bool, limit, offset int, onlyVisible bool) ([]Product, error) {
 	where, args := productWhere(category, q, supplier, onlyVisible)
@@ -433,11 +445,7 @@ func (d *Database) distinct(column string) ([]string, error) {
 }
 
 func (d *Database) CountProducts(q, supplier string) (int, error) {
-	return d.countProducts("", q, supplier, false)
-}
-
-func (d *Database) countProducts(category, q, supplier string, onlyVisible bool) (int, error) {
-	where, args := productWhere(category, q, supplier, onlyVisible)
+	where, args := productWhere("", q, supplier, false)
 	var n int
 	err := d.db.QueryRow(`SELECT COUNT(*) FROM products`+where, args...).Scan(&n)
 	return n, err
@@ -458,15 +466,11 @@ func (d *Database) LinksBySKU(skus []string) (map[string]ProductLink, error) {
 	if len(skus) == 0 {
 		return out, nil
 	}
-	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(skus)), ",")
-	args := make([]any, len(skus))
-	for i, s := range skus {
-		args[i] = s
-	}
+	in, args := inClause(skus)
 	rows, err := d.db.Query(
 		`SELECT p.sku, p.slug, COALESCE((SELECT i.path FROM product_images i
 		     WHERE i.product_id = p.id ORDER BY i.position, i.id LIMIT 1), '')
-		 FROM products p WHERE p.sku IN (`+placeholders+`)`, args...)
+		 FROM products p WHERE p.sku IN (`+in+`)`, args...)
 	if err != nil {
 		return nil, err
 	}

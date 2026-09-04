@@ -22,13 +22,13 @@ func TestImportTouchesOnlyItsOwnGroup(t *testing.T) {
 	}
 
 	src := &feed{name: "yml", items: []Item{{SKU: "P-1", Title: "Хлеб", Price: 1000, Stock: 3}}}
-	if _, err := Run(src, d, "Ромашка", 1, "", nil); err != nil {
+	if _, err := Run(src, d, "Ромашка", 1, nil); err != nil {
 		t.Fatal(err)
 	}
 	// A second pass with none of the supplier's products at all - the zeroing
 	// must not escape its group.
 	src.items = []Item{{SKU: "P-2", Title: "Молоко", Price: 2000, Stock: 1}}
-	res, err := Run(src, d, "Ромашка", 1, "", nil)
+	res, err := Run(src, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestArticleOwnedByAnotherGroupIsAConflict(t *testing.T) {
 	}
 
 	src := &feed{name: "yml", items: []Item{{SKU: "A", Title: "Чайник", Price: 1000, Stock: 50}}}
-	res, err := Run(src, d, "Ромашка", 1, "", nil)
+	res, err := Run(src, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestImportSkipsUnusableRows(t *testing.T) {
 		{SKU: "FREE", Title: "Без цены", Price: 0, Stock: 1},
 		{SKU: "NEG", Title: "Минус на складе", Price: 1000, Stock: -5},
 	}}
-	res, err := Run(src, d, "Ромашка", 1, "", nil)
+	res, err := Run(src, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestImportSkipsUnusableRows(t *testing.T) {
 	}
 
 	// Re-uploading the same garbage creates nothing anew.
-	res, err = Run(src, d, "Ромашка", 1, "", nil)
+	res, err = Run(src, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -22,52 +22,46 @@ func IsValidLang(l string) bool { return l == LangRU || l == LangEN }
 // Message keys. Values carry %-verbs where the caller substitutes; both
 // translations of one key must take the same arguments in the same order.
 const (
-	KeyOrderStockGone      = "order_stock_gone"
-	KeyCSVParseFailed      = "csv_parse_failed"
-	KeyTestMailSubject     = "test_mail_subject"
-	KeyTestMailBody        = "test_mail_body"
-	KeyNewOrderSubject     = "new_order_subject"
-	KeyOrderTotal          = "order_total"
-	KeyOrderName           = "order_name"
-	KeyOrderPhone          = "order_phone"
-	KeyOrderComment        = "order_comment"
-	KeyOzonNoKeys          = "ozon_no_keys"
-	KeyOzonNegativePrice   = "ozon_negative_price"
-	KeyOzonNegativeMarkup  = "ozon_negative_markup"
-	KeyOzonNotLinked       = "ozon_not_linked"
-	KeyOzonBadWarehouse    = "ozon_bad_warehouse"
-	KeyOzonPushBusy        = "ozon_push_busy"
-	KeyOzonNoAnswer        = "ozon_no_answer"
-	KeyOzonUnknownReply    = "ozon_unknown_reply"
-	KeyOzonNothingSelected = "ozon_nothing_selected"
-	KeyBadCoefficient      = "bad_coefficient"
-	KeyOzonBadRules        = "ozon_bad_rules"
-	KeyBadPriceRules       = "bad_price_rules"
-	KeyNoAIKey             = "no_ai_key"
-	KeyAIKeyRejected       = "ai_key_rejected"
-	KeyAINoCredits         = "ai_no_credits"
-	KeyAIUnavailable       = "ai_unavailable"
-	KeyWBNoToken           = "wb_no_token"
-	KeyWBNegativePrice     = "wb_negative_price"
-	KeyWBNegativeMarkup    = "wb_negative_markup"
-	KeyWBNotLinked         = "wb_not_linked"
-	KeyWBBadWarehouse      = "wb_bad_warehouse"
-	KeyWBPushBusy          = "wb_push_busy"
-	KeyWBUnknownReply      = "wb_unknown_reply"
-	KeyWBNothingSelected   = "wb_nothing_selected"
-	KeyWBBadRules          = "wb_bad_rules"
-	KeyWBPriceConflict     = "wb_price_conflict"
-	KeyWBPriceTaskStuck    = "wb_price_task_stuck"
-	KeyWBAmbiguousCard     = "wb_ambiguous_card"
-	KeySupplierRequired    = "supplier_required"
-	KeyBadStock            = "bad_stock"
-	KeyNothingSelected     = "nothing_selected"
-	KeyJobBusy             = "job_busy"
-	KeyBadCurrency         = "bad_currency"
-	KeyYMLBadURL           = "yml_bad_url"
-	KeyYMLBadStatus        = "yml_bad_status"
-	KeyYMLTooBig           = "yml_too_big"
-	KeyYMLBadXML           = "yml_bad_xml"
+	KeyOrderStockGone   = "order_stock_gone"
+	KeyCSVParseFailed   = "csv_parse_failed"
+	KeyTestMailSubject  = "test_mail_subject"
+	KeyTestMailBody     = "test_mail_body"
+	KeyNewOrderSubject  = "new_order_subject"
+	KeyOrderTotal       = "order_total"
+	KeyOrderName        = "order_name"
+	KeyOrderPhone       = "order_phone"
+	KeyOrderComment     = "order_comment"
+	KeyOzonNoKeys       = "ozon_no_keys"
+	KeyNegativePrice    = "negative_price"
+	KeyNegativeMarkup   = "negative_markup"
+	KeyOzonNotLinked    = "ozon_not_linked"
+	KeyOzonBadWarehouse = "ozon_bad_warehouse"
+	KeyOzonPushBusy     = "ozon_push_busy"
+	KeyOzonNoAnswer     = "ozon_no_answer"
+	KeyOzonUnknownReply = "ozon_unknown_reply"
+	KeyBadCoefficient   = "bad_coefficient"
+	KeyBadPriceRules    = "bad_price_rules"
+	KeyNoAIKey          = "no_ai_key"
+	KeyAIKeyRejected    = "ai_key_rejected"
+	KeyAINoCredits      = "ai_no_credits"
+	KeyAIUnavailable    = "ai_unavailable"
+	KeyWBNoToken        = "wb_no_token"
+	KeyWBNotLinked      = "wb_not_linked"
+	KeyWBBadWarehouse   = "wb_bad_warehouse"
+	KeyWBPushBusy       = "wb_push_busy"
+	KeyWBUnknownReply   = "wb_unknown_reply"
+	KeyWBPriceConflict  = "wb_price_conflict"
+	KeyWBPriceTaskStuck = "wb_price_task_stuck"
+	KeyWBAmbiguousCard  = "wb_ambiguous_card"
+	KeySupplierRequired = "supplier_required"
+	KeyBadStock         = "bad_stock"
+	KeyNothingSelected  = "nothing_selected"
+	KeyJobBusy          = "job_busy"
+	KeyBadCurrency      = "bad_currency"
+	KeyYMLBadURL        = "yml_bad_url"
+	KeyYMLBadStatus     = "yml_bad_status"
+	KeyYMLTooBig        = "yml_too_big"
+	KeyYMLBadXML        = "yml_bad_xml"
 
 	KeyOrderEmail          = "order_email"
 	KeyOrderConfirmSubject = "order_confirm_subject"
@@ -109,10 +103,10 @@ var kMessages = map[string][2]string{
 		"сначала сохраните Client-Id и Api-Key",
 		"save the Client-Id and Api-Key first",
 	},
-	KeyOzonNegativePrice: {
+	KeyNegativePrice: {
 		"цена не может быть отрицательной", "price cannot be negative",
 	},
-	KeyOzonNegativeMarkup: {
+	KeyNegativeMarkup: {
 		"наценка не может быть отрицательной", "markup cannot be negative",
 	},
 	KeyOzonNotLinked: {
@@ -135,14 +129,7 @@ var kMessages = map[string][2]string{
 		"другая категория уже занимает такой адрес на витрине",
 		"another category already holds that storefront address",
 	},
-	KeyOzonNothingSelected: {
-		"не выбрано ни одного товара", "no products selected",
-	},
 	KeyBadPriceRules: {
-		"проверьте лестницу наценки: множители больше нуля и ровно одна строка «и выше»",
-		"check the markup ladder: multipliers above zero and exactly one \"and above\" row",
-	},
-	KeyOzonBadRules: {
 		"проверьте лестницу наценки: множители больше нуля и ровно одна строка «и выше»",
 		"check the markup ladder: multipliers above zero and exactly one \"and above\" row",
 	},
@@ -165,12 +152,6 @@ var kMessages = map[string][2]string{
 	KeyWBNoToken: {
 		"сначала сохраните токен Wildberries", "save the Wildberries token first",
 	},
-	KeyWBNegativePrice: {
-		"цена не может быть отрицательной", "the price cannot be negative",
-	},
-	KeyWBNegativeMarkup: {
-		"наценка не может быть отрицательной", "the markup cannot be negative",
-	},
 	KeyWBNotLinked: {
 		"товар не связан с карточкой Wildberries",
 		"the product is not linked to a Wildberries card",
@@ -184,13 +165,6 @@ var kMessages = map[string][2]string{
 	},
 	KeyWBUnknownReply: {
 		"неизвестный ответ Wildberries", "unrecognised Wildberries reply",
-	},
-	KeyWBNothingSelected: {
-		"не выбрано ни одного товара", "no products selected",
-	},
-	KeyWBBadRules: {
-		"проверьте лестницу наценки: множители больше нуля и ровно одна строка «и выше»",
-		"check the markup ladder: multipliers above zero and exactly one \"and above\" row",
 	},
 	KeyWBPriceConflict: {
 		"у размеров одной карточки разные цены, а Wildberries принимает одну цену на карточку",

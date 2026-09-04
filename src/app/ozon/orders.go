@@ -44,7 +44,7 @@ func (w *Worker) pollOrders(c *Client) error {
 
 	postings, err := c.ListPostings(since.Add(-kPollOverlap), to)
 	if err != nil {
-		w.setPollError(err.Error())
+		w.SetPollError(err.Error())
 		return err
 	}
 
@@ -66,7 +66,7 @@ func (w *Worker) pollOrders(c *Client) error {
 			Items:         items,
 		})
 		if err != nil {
-			w.setPollError(err.Error())
+			w.SetPollError(err.Error())
 			return err
 		}
 		if moved {
@@ -77,7 +77,7 @@ func (w *Worker) pollOrders(c *Client) error {
 	if err := w.db.SetOzonOrdersSince(to); err != nil {
 		return err
 	}
-	w.setPollError("")
+	w.SetPollError("")
 	if applied > 0 {
 		log.Infof("ozon orders: applied %d postings", applied)
 		// Stock levels changed - wake the push. Within the current pass it runs

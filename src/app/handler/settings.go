@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/httpjson"
 	"github.com/fastogt/fastoshop/app/i18n"
 	"github.com/fastogt/fastoshop/app/mail"
 )
@@ -64,7 +65,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	writeOK(w, settingsResponse{
+	httpjson.WriteOK(w, settingsResponse{
 		OwnerEmail: s.OwnerEmail, ShopName: s.ShopName, ShopPhone: s.ShopPhone,
 		Telegram: s.Telegram, WhatsApp: s.WhatsApp,
 		Currency: s.Currency, Lang: s.Lang, Logo: s.Logo,
@@ -100,7 +101,7 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	var req settingsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBadRequest(w, "invalid body")
+		httpjson.WriteBadRequest(w, "invalid body")
 		return
 	}
 	s.ShopName, s.ShopPhone = req.ShopName, req.ShopPhone
@@ -109,7 +110,7 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	// keep what is stored instead of failing validation.
 	if req.Currency != "" {
 		if !database.IsValidShopCurrency(req.Currency) {
-			writeBadRequest(w, h.msg(i18n.KeyBadCurrency))
+			httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadCurrency))
 			return
 		}
 		s.Currency = req.Currency
@@ -140,7 +141,7 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		s.AdHuntersAPIKey = strings.TrimSpace(*req.AdHuntersAPIKey)
 	}
 	if err := h.db.UpdateSettings(s); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
 	h.GetSettings(w, r)
@@ -156,7 +157,7 @@ type langRequest struct {
 func (h *Handler) SetLang(w http.ResponseWriter, r *http.Request) {
 	var req langRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || !i18n.IsValidLang(req.Lang) {
-		writeBadRequest(w, "lang must be ru or en")
+		httpjson.WriteBadRequest(w, "lang must be ru or en")
 		return
 	}
 	s, err := h.db.GetSettings()
@@ -166,10 +167,10 @@ func (h *Handler) SetLang(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Lang = req.Lang
 	if err := h.db.UpdateSettings(s); err != nil {
-		writeInternalError(w, err)
+		httpjson.WriteInternalError(w, err)
 		return
 	}
-	writeOK(w, okStatusResponse{Status: "ok"})
+	httpjson.WriteOK(w, okStatusResponse{Status: "ok"})
 }
 
 // TestSMTP sends a test email to oneself - the "Check" button in the profile.
@@ -181,8 +182,8 @@ func (h *Handler) TestSMTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := mail.Send(s, i18n.T(s.Lang, i18n.KeyTestMailSubject),
 		i18n.T(s.Lang, i18n.KeyTestMailBody)); err != nil {
-		writeBadRequest(w, err.Error())
+		httpjson.WriteBadRequest(w, err.Error())
 		return
 	}
-	writeOK(w, okStatusResponse{Status: "sent"})
+	httpjson.WriteOK(w, okStatusResponse{Status: "sent"})
 }

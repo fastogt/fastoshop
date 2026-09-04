@@ -57,7 +57,7 @@ func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 			   nm_id, qty, created_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(order_id) DO NOTHING`,
 			o.OrderID, o.storedStatus(), productID, o.Barcode, o.Article, o.NmID,
-			o.Qty, o.CreatedAt.UTC().Format(kSQLiteTime))
+			o.Qty, o.CreatedAt.UTC().Format(time.DateTime))
 		if err != nil {
 			return err
 		}
@@ -244,6 +244,6 @@ func (d *Database) SetWBOrdersSince(t time.Time) error {
 	_, err := d.db.Exec(
 		`INSERT INTO wb_cursor (id, orders_since) VALUES (1, ?)
 		 ON CONFLICT(id) DO UPDATE SET orders_since=excluded.orders_since`,
-		t.UTC().Format(kSQLiteTime))
+		t.UTC().Format(time.DateTime))
 	return err
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 )
 
@@ -164,7 +165,7 @@ func TestPublishMatchesBySKU(t *testing.T) {
 		t.Fatalf("check before publish: %d", n)
 	}
 
-	body, _ := json.Marshal(publishRequest{ProductIDs: ids})
+	body, _ := json.Marshal(channel.PublishRequest{ProductIDs: ids})
 	got := decode[publishResponse](t, do(t, h, "POST", "/publish", string(body)))
 	if got.Published != 2 {
 		t.Fatalf("published: %+v", got)
