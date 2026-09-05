@@ -70,8 +70,11 @@ Search traffic is not instant either. A new site is crawled over weeks, and how 
 
 ## Quick start
 
+**Requirements:** Debian 12+ or Ubuntu 22.04+, amd64, and a domain with an A record pointing at the machine. One shared vCPU and 1 GB of RAM carry a catalogue of 20,000 products; the disk is decided by photographs rather than by the database, which stays in the tens of megabytes. Older releases are not supported.
+
 ```bash
 # On a fresh Debian/Ubuntu VPS:
+sudo apt install nginx certbot python3-certbot-nginx
 sudo apt install ./fastoshop_<version>_amd64.deb
 sudo nano /etc/fastoshop.conf        # base_url: https://shop.example.com
 sudo systemctl enable --now fastoshop
@@ -84,8 +87,9 @@ sudo certbot --nginx -d shop.example.com
 Open `https://shop.example.com/admin` and the wizard creates the owner account. On a domain that is already public, create the owner from the console instead and the wizard closes itself:
 
 ```bash
-sudo fastoshop -create-owner you@example.com   # prints a generated password
-sudo fastoshop -reset-password                 # forgot it? no mail server needed
+# As the service user: the database lives in its home, and root would make a second one.
+sudo -u fastocloud fastoshop -create-owner you@example.com   # prints a generated password
+sudo -u fastocloud fastoshop -reset-password                 # forgot it? no mail server needed
 ```
 
 After the shop is live, add it to Yandex.Webmaster and Google Search Console and submit the sitemap. In Yandex, set the region to where you actually sell - for commercial queries it decides a great deal.
