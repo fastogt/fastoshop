@@ -1,3 +1,10 @@
+1.48.1 / September 5, 2026
+[Alexandr Topilski]
+- `base_url` has no default any more. It is the address the shop is reached at from outside, and there is no value worth guessing: a shop that started on a guessed localhost worked, and wrote that address into the sitemap, into every canonical and into the invitation link, where nothing looks broken until a search engine has read it. A config without the field now stops the service and says which field is missing. `host`, `log_level` and `database` describe local behaviour and keep their defaults
+- Installation stops when the service user cannot be created instead of carrying on. On a machine where `fastocloud` already exists with a different home the shop put its database in that home and served an empty catalogue from a file nobody was looking at
+- The package declares the glibc it was built against, so `apt` refuses on a release older than Debian 12 or Ubuntu 22.04. Until now it installed there and the service crash-looped with the reason visible only in the journal
+- The quick start creates the owner as the service user. Run under `sudo`, `fastoshop -create-owner` wrote into root's home while the service reads its own, so the owner ended up in a database nobody serves. Both READMEs now also state the minimum requirements and install nginx and certbot before calling them
+
 1.48.0 / September 4, 2026
 [Alexandr Topilski]
 - Import writes in chunks of one transaction instead of a commit per row. Every product used to cost a slug lookup, an insert and one insert per photo, each committed on its own; the writer now answers slug uniqueness from memory, stores a product's photos in one statement and takes withdrawn products off sale in one update. On a file-backed database a fresh import runs several times faster, and between chunks the storefront still gets its reads in
