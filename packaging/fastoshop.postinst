@@ -10,8 +10,9 @@ else
     cp "$NEW_CONFIG_FILE" "$CONFIG_FILE"
 fi
 
-chmod +x /usr/bin/fastoshop
-useradd -m -U -d /home/fastocloud fastocloud -s /bin/bash || true
+# The database lives in this user's home, so a failed useradd must stop the install.
+id -u fastocloud >/dev/null 2>&1 ||
+    useradd -m -U -d /home/fastocloud fastocloud -s /bin/bash
 chown fastocloud:fastocloud "$CONFIG_FILE"
 
 systemctl daemon-reload || true

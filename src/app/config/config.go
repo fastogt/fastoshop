@@ -7,14 +7,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Settings - the single source of truth at deploy level. Everything the owner
-// configures (SMTP, shop) lives in the DB (the settings table), not here.
+// Settings is deploy-level only; everything the owner configures lives in the DB.
 type Settings struct {
 	Host     string `yaml:"host"`
 	LogLevel string `yaml:"log_level"`
-	// LogPath - where the log is written so the owner can read it from the admin.
-	// Empty keeps the log on stdout, which is where the operator's journald picks
-	// it up; a shop owner has no shell and would never see it there.
+	// LogPath empty keeps the log on stdout, where a shop owner with no shell never sees it.
 	LogPath  string `yaml:"log_path"`
 	Database string `yaml:"database"`
 	// BaseURL - the public storefront address (for sitemap, canonical, emails).
@@ -43,8 +40,9 @@ func Load(path string) (*Config, error) {
 	if cfg.Settings.Database == "" {
 		cfg.Settings.Database = "~/.fastoshop/fastoshop.db"
 	}
+	// No default: a guessed public address reaches the buyer, in sitemap and canonical.
 	if cfg.Settings.BaseURL == "" {
-		cfg.Settings.BaseURL = "http://localhost:9097"
+		return nil, fmt.Errorf("%s: base_url is required", path)
 	}
 	return &cfg, nil
 }

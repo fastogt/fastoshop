@@ -8,7 +8,8 @@ import (
 
 func TestLoadDefaults(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "c.conf")
-	if err := os.WriteFile(p, []byte("settings:\n  host: \"\"\n"), 0644); err != nil {
+	body := "settings:\n  host: \"\"\n  base_url: \"https://shop.example.com\"\n"
+	if err := os.WriteFile(p, []byte(body), 0644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := Load(p)
@@ -21,7 +22,14 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Settings.Database != "~/.fastoshop/fastoshop.db" {
 		t.Errorf("db default: %q", cfg.Settings.Database)
 	}
-	if cfg.Settings.BaseURL != "http://localhost:9097" {
-		t.Errorf("base_url default: %q", cfg.Settings.BaseURL)
+}
+
+func TestLoadRequiresBaseURL(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "c.conf")
+	if err := os.WriteFile(p, []byte("settings:\n  host: \"\"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(p); err == nil {
+		t.Fatal("want an error without base_url, got none")
 	}
 }

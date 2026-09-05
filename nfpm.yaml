@@ -38,3 +38,5 @@ overrides:
   deb:
     depends:
       - systemd
+      # Built against glibc 2.34: without this apt installs on older releases and crash-loops.
+      - libc6 (>= 2.34)
