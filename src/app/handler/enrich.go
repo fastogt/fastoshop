@@ -17,10 +17,8 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// kEnrichTimeout sits just under nginx's 60-second proxy read timeout. One card
-// on the AdHunters GPU takes 15-25 seconds, so a synchronous request is honest
-// here - ponytail: a background task with progress is the answer only if this
-// ever grows into "rewrite the whole catalogue".
+// ponytail: enrichment is synchronous, capped under nginx's 60 s proxy read timeout.
+// A background task with progress is the answer if this ever covers a whole catalogue.
 const kEnrichTimeout = 55 * time.Second
 
 // A variable, not a constant, so a test can point at a fake AdHunters.
@@ -45,12 +43,8 @@ type enrichResponse struct {
 	Category    string `json:"category"`
 }
 
-// kMaxCategoryBytes bounds the section list by size rather than by count: a
-// deep path runs past a hundred characters, and two hundred of them made a
-// 55 KB prompt that pushed the answer out of the model's context - it replied
-// with nothing usable in three seconds. Measured on a live 24 000-product tree.
-// ponytail: a flat budget, filled with the shallowest paths first. Narrowing
-// the list by the product's own words is the upgrade if this proves too blunt.
+// ponytail: a flat byte budget on the category list, shallowest paths first.
+// Narrowing the list by the product's own words is the upgrade if this proves too blunt.
 const kMaxCategoryBytes = 4000
 
 type adHuntersEnvelope struct {

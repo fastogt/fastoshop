@@ -20,9 +20,8 @@ import (
 // Same ceiling the admin upload uses.
 const kMaxImageBytes = 10 << 20
 
-// ponytail: eight at a time is what turns 60 000 photos from a day into an
-// hour without looking like a crawl to the supplier. Make it a setting when
-// someone's host starts refusing us.
+// ponytail: eight downloads at a time, fast without crawling the supplier.
+// Make it a setting when someone's host starts refusing us.
 const kImageWorkers = 8
 
 // localName mirrors the admin upload naming (p<id>-<token><ext>).

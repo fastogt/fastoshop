@@ -17,13 +17,8 @@ const CandidatesPageSize = 100
 // OrphanSample caps the named orphans a cabinet check returns; the count is the answer.
 const OrphanSample = 20
 
-// A failed push is retried soon once - the platform may have blinked - and then
-// at a pace that does not hammer a cabinet that is genuinely refusing.
-//
-// ponytail: a two-step backoff ladder instead of an attempt counter - it needs
-// no new column in the schema, and a schema change costs a MINOR release. We
-// only tell "first failure" from "it was already bad"; if a third class of
-// errors shows up that this cannot serve, add attempts INTEGER and count for real.
+// ponytail: two steps instead of an attempt counter, which would cost a schema column.
+// A third class of failure that this cannot tell apart needs attempts INTEGER.
 const (
 	FirstRetry = time.Minute
 	NextRetry  = 15 * time.Minute

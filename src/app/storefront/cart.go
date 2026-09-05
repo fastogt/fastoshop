@@ -19,9 +19,8 @@ import (
 
 const kCartCookie = "cart"
 
-// ponytail: the cart lives in a cookie, no table and no sessions. Browsers cap
-// a cookie at ~4 KB, hence the 20-line ceiling; if more is ever needed, add a
-// carts table keyed by a token stored in the cookie.
+// ponytail: the cart lives in a cookie, capped at ~4 KB by browsers - 20 lines.
+// Past that, a carts table keyed by a token stored in the cookie.
 const kMaxCartLines = 20
 
 // The cookie is buyer-editable: price, title and stock are re-read from the DB.

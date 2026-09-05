@@ -81,9 +81,8 @@ func (d *Database) WBLinksByProducts(ids []int64) ([]WBLinkState, error) {
 
 // WBSKUState returns every product's article and whether it is already linked.
 //
-// ponytail: the whole catalogue in memory - 24 000 short strings read once when
-// the tab opens. An IN (…) against the platform's list would need thousands of
-// bound parameters and buys nothing at this size.
+// ponytail: the whole catalogue in memory - short strings read once when the tab opens.
+// An IN (…) against the platform's list is the upgrade if a catalogue outgrows that.
 func (d *Database) WBSKUState() (map[string]int64, map[string]bool, error) {
 	rows, err := d.db.Query(
 		`SELECT p.sku, p.id, l.product_id IS NOT NULL

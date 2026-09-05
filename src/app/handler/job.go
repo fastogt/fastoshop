@@ -38,14 +38,8 @@ const (
 	kStageDone    = "done"
 )
 
-// job is the one long-running task an instance may have. A shop has one owner,
-// who cannot start an import and a fill at the same moment, so a single slot
-// with a mutex is the whole scheduler.
-//
-// ponytail: a restart loses the progress but no data - products are already
-// written, photos that did not make it are still links, and running the action
-// again picks up exactly what is left. A jobs table appears when there is more
-// than one job.
+// ponytail: one job slot with a mutex; a restart loses the progress but no data.
+// A jobs table appears when there is more than one job.
 type job struct {
 	mu       sync.Mutex
 	running  bool
@@ -159,9 +153,8 @@ func (h *Handler) jobState() jobResponse {
 	}
 }
 
-// ponytail: the stream watches the job state on a ticker instead of being woken
-// by it. A condition variable would save two wakeups a second and cost a
-// subscriber list - worth it when there is more than one job to watch.
+// ponytail: the stream polls the job state on a ticker instead of being woken by it.
+// A condition variable with a subscriber list is worth it with more than one job.
 const kJobTick = 500 * time.Millisecond
 
 // Keeps the connection alive through proxies that drop idle upstreams.

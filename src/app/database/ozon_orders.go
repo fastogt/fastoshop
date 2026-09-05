@@ -132,10 +132,8 @@ func applySeenPosting(tx *sql.Tx, p *OzonPosting) (bool, error) {
 
 // ozonOrderStock reads all lines before any Exec: one connection per transaction.
 //
-// ponytail: we return the ordered qty, not what was actually deducted. They can
-// diverge only on an oversell (deducted less than sold) - if that starts to
-// hurt, add an applied_qty column to ozon_order_items: the table is new, no
-// ALTER TABLE on live instances will be needed.
+// ponytail: we return the ordered qty, not what was deducted; they diverge on an oversell.
+// If that starts to hurt, add an applied_qty column to ozon_order_items.
 func ozonOrderStock(tx *sql.Tx, id int64) ([]OrderItem, error) {
 	rows, err := tx.Query(
 		`SELECT product_id, qty FROM ozon_order_items

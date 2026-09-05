@@ -10,9 +10,7 @@ import (
 // kFaviconAccent matches --accent in static/style.css.
 const kFaviconAccent = "#b4532a"
 
-// ponytail: a real logo upload is the obvious next step; until a seller asks,
-// the initial is what a shop with no designer would have anyway.
-//
+// ponytail: a generated initial instead of a logo upload, until a seller asks for one.
 // Crawlers fetch /favicon.ico whatever the head says; redirect so it cannot drift.
 func (s *Storefront) FaviconICO(w http.ResponseWriter, r *http.Request) {
 	target := "/favicon.svg"

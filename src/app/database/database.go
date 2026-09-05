@@ -23,8 +23,7 @@ const kDSNParams = "?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000&_sync
 // kDriver is our own driver: it registers ulower, as SQLite folds case for ASCII only.
 //
 // ponytail: a callback per row on a search that was already a full scan.
-// Measured in milliseconds on 24 000 products; FTS5 with unicode61 is the
-// upgrade the day search needs ranking or prefixes rather than substrings.
+// FTS5 with unicode61 is the upgrade when search needs ranking or prefixes.
 const kDriver = "sqlite3_fastoshop"
 
 func init() {

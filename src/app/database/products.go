@@ -238,10 +238,8 @@ func productWhere(category, q, supplier string, onlyVisible bool) (string, []any
 	}
 	// Every word must match title or article; ulower both sides - SQLite folds ASCII only.
 	//
-	// ponytail: a full scan per word - three words is three passes of the 46 ms
-	// one pass already costs. FTS5 with the unicode61 tokenizer is the upgrade,
-	// and it brings ranking, which this has never had; it also brings a virtual
-	// table to keep in step with an import that writes 24 000 rows at once.
+	// ponytail: a full scan per word - three words is three passes over the whole table.
+	// FTS5 with the unicode61 tokenizer is the upgrade, and it brings ranking too.
 	for _, word := range strings.Fields(q) {
 		conds = append(conds, `(ulower(title) LIKE ? ESCAPE '\' OR ulower(sku) LIKE ? ESCAPE '\')`)
 		p := strings.ToLower(likePattern(word))

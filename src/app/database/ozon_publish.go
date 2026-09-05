@@ -29,11 +29,8 @@ type CandidateFilter struct {
 
 // clauses turns the filter into SQL fragments over the products alias p.
 //
-// ponytail: the id lists travel in the query string, so a filter over more than
-// a few thousand ready products would outgrow the URL. The tab falls back to
-// the unfiltered table in that case - a seller with thousands of linkable
-// articles has long since linked them, and paging the whole catalogue is what
-// this endpoint did before the filter existed.
+// ponytail: the id lists travel in the query string, so a filter over a few thousand
+// ready products outgrows the URL; the tab then falls back to the unfiltered table.
 func (f CandidateFilter) clauses() (string, []any) {
 	var conds []string
 	var args []any
@@ -167,9 +164,8 @@ func (d *Database) ProductsByIDs(ids []int64) ([]Product, error) {
 
 // OzonSKUState is every product's article and whether it is already linked.
 //
-// ponytail: the whole catalogue in memory - 24 000 short strings read once when
-// the tab opens. An IN (…) against the platform's list would need thousands of
-// bound parameters and buys nothing at this size.
+// ponytail: the whole catalogue in memory - short strings read once when the tab opens.
+// An IN (…) against the platform's list is the upgrade if a catalogue outgrows that.
 func (d *Database) OzonSKUState() (map[string]int64, map[string]bool, error) {
 	rows, err := d.db.Query(
 		`SELECT p.sku, p.id, l.product_id IS NOT NULL

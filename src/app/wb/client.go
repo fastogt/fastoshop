@@ -434,9 +434,8 @@ type ordersResponse struct {
 	Next   int64   `json:"next"`
 }
 
-// ponytail: 40 pages by 1000 orders in one poll window. A sole trader on FBS
-// never sells that in five minutes; if one does, the cursor picks up the rest on
-// the next tick anyway.
+// ponytail: 40 pages by 1000 orders in one five-minute poll window.
+// Beyond that the cursor picks up the rest on the next tick.
 const (
 	kOrdersLimit    = 1000
 	kMaxOrderPages  = 40

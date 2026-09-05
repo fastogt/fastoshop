@@ -16,9 +16,8 @@ const kBaseURL = "https://api-seller.ozon.ru"
 
 const kListLimit = 1000
 
-// ponytail: ceiling of 20 pages by 1000 - 20 thousand cards in the cabinet. A
-// single sole trader never has more; if one does - drop the limit and walk the
-// list in the background, a synchronous HTTP handler will not carry that much.
+// ponytail: ceiling of 20 pages by 1000 - 20 thousand cards in the cabinet.
+// Past that, drop the limit and walk the list in a background task, not a handler.
 const kMaxPages = 20
 
 var kHTTP = &http.Client{Timeout: 30 * time.Second}
@@ -239,9 +238,8 @@ func (c *Client) SetPrices(items []PriceItem) ([]ItemResult, error) {
 // kPostingLimit is the documented per-page ceiling of /v3/posting/fbs/list.
 const kPostingLimit = 50
 
-// ponytail: 40 pages by 50 - 2000 postings per pass. A five-minute tick and a
-// poll window starting at the last cursor will not reach that even for a large
-// sole trader; if they do, the cursor simply catches up on the next pass.
+// ponytail: 40 pages by 50 - 2000 postings per pass, a five-minute poll window.
+// Beyond that the cursor simply catches up on the next pass.
 const kMaxPostingPages = 40
 
 type postingFilter struct {
@@ -285,10 +283,8 @@ type postingListResponse struct {
 	} `json:"result"`
 }
 
-// ponytail: v3 is the version we can verify; /v4/posting/fbs/list also exists
-// and drops the "result" envelope for a cursor, the direction Ozon is moving
-// (v1/warehouse/list is already retired). Migrate on the first real posting,
-// when both shapes can be compared against actual data instead of guessed.
+// ponytail: v3 is the version we can verify; v4 is where Ozon is moving.
+// Migrate on the first real posting, when both shapes can be compared against data.
 //
 // A posting without posting_number means the response format drifted: that is an error.
 func (c *Client) ListPostings(since, to time.Time) ([]Posting, error) {

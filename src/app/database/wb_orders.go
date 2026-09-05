@@ -87,9 +87,8 @@ func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 
 // SetWBOrderStatus returns stock only on the not cancelled -> cancelled transition.
 //
-// ponytail: we return the ordered qty, not what was actually deducted. They can
-// diverge only on an oversell - if that starts to hurt, add an applied_qty
-// column, the table is new and no live instance has to be migrated.
+// ponytail: we return the ordered qty, not what was deducted; they diverge on an oversell.
+// If that starts to hurt, add an applied_qty column to wb_orders.
 func (d *Database) SetWBOrderStatus(orderID int64, status string, cancelled bool) (moved bool, err error) {
 	err = d.withTx(func(tx *sql.Tx) error {
 		var id int64

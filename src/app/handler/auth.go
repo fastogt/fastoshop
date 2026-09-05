@@ -16,16 +16,8 @@ import (
 
 const kSessionTTL = 30 * 24 * time.Hour
 
-// Login is not rate-limited by refusing: a shop has one owner and nobody to
-// call, so a lockout after N tries would let anyone who knows their address
-// shut them out of their own admin until somebody reaches the server over SSH.
-// A growing delay costs an attacker time and costs the owner nothing - they
-// type the right password and the counter resets.
-//
-// ponytail: one counter for the whole instance rather than a bucket per
-// address. There is one owner, so "somebody is guessing" is a single fact, and
-// per-IP state would need expiry while an attacker rotates addresses anyway.
-// Per-IP buckets are the upgrade if a shop ever has more than one login.
+// ponytail: one instance-wide counter, not per-address, and delay instead of lockout.
+// Per-IP buckets, with expiry, are the upgrade if a shop ever has more than one login.
 const (
 	kLoginFreeTries = 3
 	kMaxLoginDelay  = 8 * time.Second

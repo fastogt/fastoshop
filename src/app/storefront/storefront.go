@@ -123,10 +123,8 @@ func imageURL(path string) string {
 	return "/uploads/" + path
 }
 
-// A photo with no small copy is served as it is: a hole in the grid is worse.
-//
-// ponytail: one stat per card, sixty per page. Microseconds on a local disk;
-// an in-memory cache is for the day the catalogue moves to network storage.
+// ponytail: one stat per card, sixty per page - microseconds on a local disk.
+// An in-memory cache is for the day the catalogue moves to network storage.
 func (s *Storefront) thumbURL(path string) string {
 	if media.HasThumb(s.uploads, path) {
 		return "/uploads/" + media.ThumbName(path)
@@ -665,9 +663,8 @@ func (s *Storefront) Info(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Fixed text and no switch: a shop collecting a name and a phone owes this page.
-// ponytail: hardcoded. A settings field the day a shop needs different terms,
-// a retention period of its own or a processor we do not know about.
+// ponytail: the privacy text is hardcoded, one wording for every shop.
+// A settings field the day a shop needs its own terms, retention or processor.
 func (s *Storefront) Privacy(w http.ResponseWriter, r *http.Request) {
 	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL, CSS: template.CSS(styleCSS),
 		CartCount: cartCount(r), Canonical: s.baseURL + "/privacy"}
