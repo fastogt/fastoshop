@@ -30,10 +30,7 @@ type settingsResponse struct {
 	MetrikaCounterID string `json:"metrika_counter_id"`
 	Requisites       string `json:"requisites"`
 	Terms            string `json:"terms"`
-	// The stored AdHunters key as its last four characters ("…a1b2"), empty
-	// when there is none. Enough for the admin to show the button and for the
-	// owner to recognise which key is in - and the key itself still never
-	// leaves the server, because it spends their money.
+	// Only the last four characters: the key itself never leaves the server.
 	AdHuntersAPIKey string `json:"adhunters_api_key"`
 }
 
@@ -50,8 +47,7 @@ type settingsRequest struct {
 	SMTPFrom     string  `json:"smtp_from"`
 	SMTPPassword *string `json:"smtp_password"` // nil = leave unchanged
 
-	// Pointers: an older admin build does not send these fields, and a missing
-	// field must leave the counters alone instead of tearing them off the page.
+	// Pointers: a missing field must leave the stored value alone.
 	GAMeasurementID  *string `json:"ga_measurement_id"`
 	MetrikaCounterID *string `json:"metrika_counter_id"`
 	Requisites       *string `json:"requisites"`
@@ -80,8 +76,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// maskKey keeps the last four characters of a secret, which is enough to tell
-// two keys apart and useless to anyone who intercepts it.
+// Last four characters: enough to tell two keys apart, useless if intercepted.
 func maskKey(key string) string {
 	r := []rune(key)
 	if len(r) == 0 {
@@ -106,8 +101,7 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	s.ShopName, s.ShopPhone = req.ShopName, req.ShopPhone
 	s.Telegram, s.WhatsApp = req.Telegram, req.WhatsApp
-	// An empty currency means an older admin build that does not send the field:
-	// keep what is stored instead of failing validation.
+	// An empty currency means the field was not sent: keep what is stored.
 	if req.Currency != "" {
 		if !database.IsValidShopCurrency(req.Currency) {
 			httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadCurrency))
@@ -135,8 +129,7 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	if req.Terms != nil {
 		s.Terms = strings.TrimSpace(*req.Terms)
 	}
-	// The admin sends this only when the owner typed a new key: the masked
-	// value it received back must never be saved as the key itself.
+	// Sent only when the owner typed a new key: a masked value must never be saved.
 	if req.AdHuntersAPIKey != nil {
 		s.AdHuntersAPIKey = strings.TrimSpace(*req.AdHuntersAPIKey)
 	}
@@ -151,9 +144,7 @@ type langRequest struct {
 	Lang string `json:"lang"`
 }
 
-// SetLang is its own endpoint rather than a field of the settings form: the
-// language switch lives in the header and must not resubmit - and so overwrite -
-// whatever the owner happens to be editing in the profile at that moment.
+// Its own endpoint: the header switch must not resubmit the profile form.
 func (h *Handler) SetLang(w http.ResponseWriter, r *http.Request) {
 	var req langRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || !i18n.IsValidLang(req.Lang) {

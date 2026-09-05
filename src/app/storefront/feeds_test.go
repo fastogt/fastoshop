@@ -38,8 +38,7 @@ func TestFeedsCatalog(t *testing.T) {
 		"<picture>https://cdn.example.org/tea.jpg</picture>",
 		"<price>2500.00</price>",
 		"<currencyId>RUB</currencyId>",
-		// Outside the standard: without it a shop copied from another instance
-		// arrives with one invented stock level for the whole catalogue.
+		// Outside the standard, but our own importer reads it back.
 		"<count>3</count>",
 		`available="true"`,
 		`available="false"`,
@@ -70,12 +69,7 @@ func TestFeedsCatalog(t *testing.T) {
 	}
 }
 
-// A hidden product must leave the feeds together with the pages: a feed offer
-// pointing at a 404 gets the whole feed flagged by the provider.
-// A nested path becomes an element per segment tied by parentId. Named after
-// the whole path in one flat element, the tree is lost twice over: Yandex reads
-// a shop of one level, and our own importer - a feed of ours is a valid import
-// source - rebuilds that name as a single category with the separator rewritten.
+// A nested path becomes one element per segment tied by parentId, not a flat name.
 func TestFeedsCategoryTree(t *testing.T) {
 	d, h := setup(t)
 	p := &database.Product{Title: "Кружка", SKU: "MG-1", Price: 2329, Stock: 2,
@@ -131,8 +125,7 @@ func TestFeedsCurrencyBYN(t *testing.T) {
 	}
 }
 
-// The parcel, in the units the feeds state rather than the ones we store: a
-// wrong conversion is silent on our side and rejected on theirs.
+// The parcel in the units the feeds state, not the ones we store.
 func TestFeedsParcelAndParams(t *testing.T) {
 	d, h := setup(t)
 	g, l, w, ht := int64(1250), int64(300), int64(205), int64(90)
@@ -162,8 +155,7 @@ func TestFeedsParcelAndParams(t *testing.T) {
 			t.Errorf("yml missing %q", want)
 		}
 	}
-	// What the owner unticked for the storefront stays out of the feed too, and
-	// a characteristic with no name is not a characteristic.
+	// What the owner hid on the storefront stays out of the feed too.
 	if strings.Contains(yml, "Код ТН ВЭД") {
 		t.Error("yml carries a param the owner hid")
 	}
@@ -184,8 +176,7 @@ func TestFeedsParcelAndParams(t *testing.T) {
 	}
 }
 
-// The brand travels the whole way: every source states it, and both feeds and
-// the card's markup are asked for it back.
+// Both feeds and the card's markup are asked for the brand back.
 func TestFeedsBrand(t *testing.T) {
 	d, h := setup(t)
 	p := &database.Product{Title: "Чайник", SKU: "TK-9", Price: 5000, Stock: 1,
@@ -202,8 +193,7 @@ func TestFeedsBrand(t *testing.T) {
 	if page := get(t, h, "/p/"+p.Slug); !strings.Contains(page, `"brand": {"@type": "Brand", "name": "Гжель"}`) {
 		t.Error("product page missing brand in JSON-LD")
 	}
-	// A product nobody named a maker for states none: an empty node in a feed is
-	// worse than an absent one.
+	// An empty node in a feed is worse than an absent one.
 	q := &database.Product{Title: "Ковш", SKU: "KV-9", Price: 4000, Stock: 1}
 	if err := d.CreateProduct(q); err != nil {
 		t.Fatal(err)

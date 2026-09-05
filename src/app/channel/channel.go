@@ -1,8 +1,4 @@
-// Package channel holds what every marketplace tab turned out to share once two
-// of them were finished: request parsing, retry arithmetic, the wire shapes the
-// tabs answer with, and the worker's wake-up plumbing. Nothing here knows how a
-// platform names a card, a warehouse or a price - that stays in the platform's
-// own package, and a third channel copies only that part.
+// Package channel holds what the marketplace tabs share and no platform owns.
 package channel
 
 import (
@@ -18,9 +14,7 @@ import (
 // CandidatesPageSize is a page of the product picker in a tab.
 const CandidatesPageSize = 100
 
-// OrphanSample caps the named orphans a cabinet check returns. The count
-// already answers whether they matter; a thousand names would answer nothing
-// louder than twenty.
+// OrphanSample caps the named orphans a cabinet check returns; the count is the answer.
 const OrphanSample = 20
 
 // A failed push is retried soon once - the platform may have blinked - and then
@@ -87,8 +81,7 @@ type OKStatusResponse struct {
 	Status string `json:"status"`
 }
 
-// ID as a string: warehouse_id is stored as text in the settings, and turning it
-// into a number for a dropdown only to turn it back is pointless.
+// ID as a string: warehouse_id is stored as text in the settings.
 type WarehouseRow struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -111,13 +104,7 @@ func PageParam(r *http.Request) int {
 	return page
 }
 
-// CandidateFilter reads the state the tab is showing. The ids come from the
-// cabinet call the tab already made when it opened: which products have a card
-// on the platform is the platform's answer, not ours, and re-asking it per page
-// of a hundred rows is what this endpoint must never do.
-//
-// Nothing given means the whole catalogue, which is what the table did before
-// the filter existed and what it still falls back to.
+// The ids come from the cabinet call the tab made on open; never re-ask per page.
 func CandidateFilter(r *http.Request) database.CandidateFilter {
 	f := database.CandidateFilter{Q: strings.TrimSpace(r.URL.Query().Get("q"))}
 	f.IDs = idList(r.URL.Query().Get("ids"))
@@ -133,9 +120,7 @@ func CandidateFilter(r *http.Request) database.CandidateFilter {
 	return f
 }
 
-// idList parses "1,2,3". A malformed id is skipped rather than failing the
-// request: the list is a view filter, and answering with a shorter table beats
-// answering with an error the owner cannot act on.
+// idList parses "1,2,3"; a malformed id is skipped rather than failing the request.
 func idList(s string) []int64 {
 	if s == "" {
 		return nil
@@ -150,11 +135,7 @@ func idList(s string) []int64 {
 	return out
 }
 
-// Signals is the part of a sync worker that has nothing to do with the
-// platform: the wake-up channel and the reason the last order poll did not
-// happen. The latter lives in memory rather than in the database: a column
-// would cost an ALTER TABLE on live installs, and after a restart the next tick
-// fills it in again anyway.
+// Signals is the platform-free part of a worker: the wake channel and last poll error.
 type Signals struct {
 	wake    chan struct{}
 	pollErr atomic.Pointer[string]
@@ -167,8 +148,7 @@ func NewSignals() *Signals {
 // Wake is what the worker's loop selects on.
 func (s *Signals) Wake() <-chan struct{} { return s.wake }
 
-// StockChanged wakes the worker without blocking the caller: a buffer of one and
-// a non-blocking send make it a "something changed" signal, not an event queue.
+// StockChanged never blocks: a buffer of one makes this a signal, not an event queue.
 func (s *Signals) StockChanged() {
 	select {
 	case s.wake <- struct{}{}:

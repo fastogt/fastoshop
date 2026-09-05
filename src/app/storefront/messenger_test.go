@@ -8,9 +8,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// A price list writes `Ерш унитазный с/подст "Шляпа" д13х36см`. Quotes and
-// slashes in an unescaped href end the URL at the first one, and the button
-// then opens a messenger with half a product name in it.
+// Quotes and slashes in an unescaped href end the URL at the first one.
 func TestOrderLinkSurvivesQuotesAndSlashes(t *testing.T) {
 	shop := &database.Settings{Currency: "RUB", Telegram: "@lavka", WhatsApp: "+375 (29) 123-45-67"}
 	p := &database.Product{
@@ -54,8 +52,7 @@ func TestTelegramHandleForms(t *testing.T) {
 	}
 }
 
-// No messenger set is the default, and a button that goes nowhere is worse than
-// no button.
+// No messenger set is the default, and a button that goes nowhere is worse than none.
 func TestNoMessengerNoButtons(t *testing.T) {
 	shop := &database.Settings{Currency: "RUB"}
 	p := &database.Product{Title: "Чайник", Price: 100}

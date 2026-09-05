@@ -12,8 +12,7 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// errNoClient marks "the answer to the owner is already written"; the caller
-// only has to stop.
+// errNoClient means the answer to the owner is already written; the caller stops.
 var errNoClient = errors.New("wb: no token")
 
 type publishResponse struct {
@@ -26,8 +25,6 @@ type unpublishResponse struct {
 	Failed      []unlinkedProduct `json:"failed"`
 }
 
-// Candidates lists shop products with their publication state - the table the
-// owner ticks before pressing "Publish".
 func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
 	page := channel.PageParam(r)
 	f := channel.CandidateFilter(r)
@@ -54,8 +51,7 @@ func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// cabinetResponse is what the tab learns when it opens: how the shop's
-// catalogue and the cabinet's cards actually overlap.
+// cabinetResponse is how the shop's catalogue and the cabinet's cards overlap.
 type cabinetResponse struct {
 	Cards    int `json:"cards"`
 	Products int `json:"products"`
@@ -64,26 +60,14 @@ type cabinetResponse struct {
 	NoCard   int `json:"no_card"`
 	// Cards in the cabinet whose article matches no product of ours.
 	Orphans int `json:"orphans"`
-	// OrphanSKUs are those articles, so the tab can name them instead of only
-	// counting them. Capped: the number answers "should I care", the list
-	// answers "which ones", and nobody reads past the first screen of either.
+	// OrphanSKUs are those articles, capped: the count answers "should I care".
 	OrphanSKUs []string `json:"orphan_skus"`
-	// Products whose article matches a card that carries several sizes. They are
-	// neither ready nor cardless: the card exists, and publishing still cannot
-	// pick a size. Counted apart so the tab can say so instead of filing them
-	// under "no card", which would send the owner to create a duplicate.
+	// A multi-size match is neither ready nor cardless: the size cannot be picked.
 	Ambiguous int     `json:"ambiguous"`
 	ReadyIDs  []int64 `json:"ready_ids"`
 }
 
-// Cabinet is asked once, when the tab opens. Not cached and not folded into
-// Candidates: the paged product table would otherwise re-read the platform's
-// whole card list for every page of a hundred rows, and a cached answer would go
-// stale exactly when the owner has just created the card they are looking for.
-//
-// The match runs through the same index Publish uses, not a set of articles: on
-// Wildberries a card with several sizes cannot be linked by vendor code alone,
-// and a tab that promised otherwise would be lying about its own button.
+// Asked once when the tab opens; matched through the same index Publish uses.
 func (h *Handlers) Cabinet(w http.ResponseWriter, r *http.Request) {
 	c, ok := h.client(w)
 	if !ok {
@@ -134,9 +118,7 @@ func (h *Handlers) Cabinet(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// Publish links the selected products to their cabinet cards by article. It is
-// deliberately a selection, not a sweep: which goods go to a marketplace is the
-// owner's decision, and "everything that matched" is not that decision.
+// A selection, not a sweep: which goods go to a marketplace is the owner's call.
 func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 	var req channel.PublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.ProductIDs) == 0 {
@@ -175,10 +157,7 @@ func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// Unpublish takes products off the channel. The link is dropped only after the
-// platform has been told the stock is zero: a card left behind with the last
-// level we pushed would keep selling goods we no longer account for. Rows that
-// never reached the platform (stock_pushed <= 0) need no call.
+// The link is dropped only after the platform has been told the stock is zero.
 func (h *Handlers) Unpublish(w http.ResponseWriter, r *http.Request) {
 	var req channel.PublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.ProductIDs) == 0 {
@@ -224,9 +203,7 @@ func (h *Handlers) Unpublish(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// zeroOut pushes a zero stock for every barcode and reports the ones the
-// platform refused. A transport failure aborts the whole unpublish: guessing
-// that a card is safe to forget is exactly how an oversell starts.
+// A transport failure aborts the whole unpublish: a forgotten card oversells.
 func (h *Handlers) zeroOut(w http.ResponseWriter, links []database.WBLinkState) (map[string]string, error) {
 	c, ok := h.client(w)
 	if !ok {

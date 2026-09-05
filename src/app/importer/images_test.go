@@ -24,8 +24,7 @@ func imageServer(t *testing.T) *httptest.Server {
 	mux.HandleFunc("/gone.jpg", func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	})
-	// A .jpg link that answers with an error page - the case that would leave a
-	// broken card behind if we trusted the extension.
+	// A .jpg link that answers with an error page.
 	mux.HandleFunc("/liar.jpg", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("<html><body>404</body></html>"))
 	})
@@ -74,8 +73,7 @@ func TestLocalizeImages(t *testing.T) {
 	}
 
 	got, _ := d.ListImages(id)
-	// Nothing is deleted: a 404 today is a working link tomorrow, and a photo
-	// that does not load shows the catalogue's own "no photo" mark anyway.
+	// Nothing is deleted: a 404 today is a working link tomorrow.
 	if len(got) != 4 {
 		t.Fatalf("images: %+v", got)
 	}
@@ -86,8 +84,7 @@ func TestLocalizeImages(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(uploads, got[0].Path)); err != nil {
 		t.Fatalf("file not written: %v", err)
 	}
-	// A bad hour at the supplier and a lying content type both keep the link - a
-	// hotlinked picture beats no picture, and both come back.
+	// A bad hour and a lying content type both keep the link.
 	if !strings.HasPrefix(got[1].Path, "http") || !strings.HasPrefix(got[2].Path, "http") {
 		t.Fatalf("failed downloads must stay links: %+v", got[1:])
 	}
@@ -103,8 +100,7 @@ func TestLocalizeImages(t *testing.T) {
 	}
 }
 
-// Stopping must actually stop: the way out of sixty thousand photos started by
-// mistake cannot be a service restart.
+// Stopping must actually stop, without a service restart.
 func TestLocalizeImagesStop(t *testing.T) {
 	srv := imageServer(t)
 	d, _ := database.OpenInMemory()
@@ -123,8 +119,7 @@ func TestLocalizeImagesStop(t *testing.T) {
 			cancel()
 		}
 	})
-	// Work already in flight finishes, so the exact count is not fixed - what
-	// matters is that the remaining hundreds were never started.
+	// Work in flight finishes, so only "the rest never started" is assertable.
 	if ok+failed >= len(imgs) {
 		t.Fatalf("stop did nothing: %d of %d done", ok+failed, len(imgs))
 	}
@@ -147,9 +142,7 @@ func TestLocalizeImagesProgress(t *testing.T) {
 	}
 }
 
-// The dialog offers "main photos only" as a third of the work, so the query
-// behind it must return exactly one row per product - the first position - and
-// the counts shown next to the choice must agree with what the download gets.
+// "Main photos only" must return exactly one row per product, the first position.
 func TestListRemoteImagesMainOnly(t *testing.T) {
 	srv := imageServer(t)
 	d, _ := database.OpenInMemory()

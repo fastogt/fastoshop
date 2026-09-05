@@ -15,60 +15,35 @@ type Product struct {
 	Slug        string `json:"slug"`
 	Description string `json:"description"`
 	Price       int64  `json:"price"` // minor units
-	// SourcePrice is what the feed charged, kept so the shelf price can be
-	// recomputed from scratch; PriceManual marks a price the owner typed, which
-	// a recompute leaves alone.
+	// SourcePrice is the feed's price; PriceManual marks a price a recompute leaves alone.
 	SourcePrice int64  `json:"source_price"`
 	PriceManual bool   `json:"price_manual"`
 	Stock       int    `json:"stock"`
 	Category    string `json:"category"`
-	// Brand is the manufacturer, not the supplier: one supplier ships many
-	// brands, and a buyer types the brand into the search box.
+	// Brand is the manufacturer, not the supplier.
 	Brand string `json:"brand"`
-	// Supplier is the group that owns this product; empty means the owner made it
-	// by hand and no feed may touch it.
+	// Supplier owns this product; empty means hand-made and no feed may touch it.
 	Supplier string `json:"supplier"`
-	// Hidden only governs the storefront; whether the product is published to a
-	// marketplace is the channel tab's business.
+	// Hidden governs the storefront only, not marketplace publication.
 	Hidden bool `json:"hidden"`
-	// Gross weight in grams and packed size in millimetres. Pointers, because
-	// "nobody said" and "zero" are different answers: a delivery quote must not
-	// treat an unweighed product as weightless. Absent stays absent - a price
-	// list rarely states a weight, and guessing one costs real money at the
-	// counter.
+	// Weight in grams and size in millimetres; an unweighed product is absent, not zero.
 	WeightG  *int64 `json:"weight_g"`
 	LengthMM *int64 `json:"length_mm"`
 	WidthMM  *int64 `json:"width_mm"`
 	HeightMM *int64 `json:"height_mm"`
-	// Characteristics as their source stated them, in the order it stated them:
-	// a seller arranges a card's properties to be read in that order, and a map
-	// would shuffle them. Weight and size are deliberately not among these: the
-	// core does arithmetic with those, and one number with two homes is one home
-	// too many.
+	// Params keep the source's order; weight and size stay out, they have own columns.
 	Params    []Param   `json:"params"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// Param is one characteristic. Value keeps the type its source gave it, because
-// JSON already has that notation - a second one beside it would be a second one
-// to keep in sync, and every type it could name is one JSON already spells.
-// Wildberries hands us `any` for exactly this reason, and flattening it into a
-// string was throwing away a type nobody had to guess at.
-//
-// Name is both the caption and the key: all three sources state one string and
-// no identifier, so a separate key would be that same string twice. A unit
-// belongs in it - "Вес, кг" reads, and it leaves 1.5 a number.
+// Param is one characteristic: Value keeps its source's JSON type, Name is the key.
 type Param struct {
 	Name  string `json:"name"`
 	Value any    `json:"value"`
 }
 
-// ParamValueOK reports whether v is a value we store: one of JSON's own scalars
-// or a flat list of them. Everything else - an object, null, a blank string - is
-// not a characteristic: it would put an empty row on the card, or a shape the
-// storefront's switch has no branch for. Checked on the way in and again on the
-// way out, because a database is not only written by this code.
+// ParamValueOK reports whether v is a JSON scalar or a flat list of them.
 func ParamValueOK(v any) bool {
 	switch x := v.(type) {
 	case string:
@@ -105,9 +80,7 @@ func (d *Database) uniqueSlug(base string) (string, error) {
 	}
 }
 
-// slugBase is what a title turns into before a uniqueness suffix. A title made
-// of pure punctuation ("!!!") yields an empty slug and the product becomes
-// unreachable, so it falls back to "product".
+// slugBase falls back to "product": a punctuation-only title yields an empty slug.
 func slugBase(title string) string {
 	if base := Slugify(title); base != "" {
 		return base
@@ -145,8 +118,7 @@ func insertProduct(q execer, p *Product) error {
 	return nil
 }
 
-// UpdateProduct intentionally never re-slugs: the slug is part of the public
-// URL and already indexed by search engines, so it must stay stable once set.
+// UpdateProduct never re-slugs: the slug is a public, indexed URL and must stay put.
 func (d *Database) UpdateProduct(p *Product) error { return updateProduct(d.db, p) }
 
 func updateProduct(q execer, p *Product) error {
@@ -180,10 +152,7 @@ func scanProduct(row interface{ Scan(...any) error }) (*Product, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Decoded here so no caller ever handles raw JSON. Unreadable contents are
-	// dropped rather than fatal: one bad row must not take a catalogue page
-	// down, and characteristics are not what the page is for. The same goes for
-	// a single unreadable characteristic among readable ones.
+	// Unreadable params are dropped, not fatal: one bad row must not take a page down.
 	p.Params = nil
 	var stored []Param
 	if err := json.Unmarshal([]byte(params), &stored); err == nil {
@@ -196,8 +165,7 @@ func scanProduct(row interface{ Scan(...any) error }) (*Product, error) {
 	return &p, nil
 }
 
-// paramsJSON is what goes into the column: always a list, never NULL and never
-// the "null" a nil slice marshals to.
+// paramsJSON always yields a list, never NULL nor the "null" a nil slice marshals to.
 func paramsJSON(v []Param) string {
 	if len(v) == 0 {
 		return "[]"
@@ -213,8 +181,7 @@ func (d *Database) GetProduct(id int64) (*Product, error) {
 	return scanProduct(d.db.QueryRow(`SELECT `+kProductCols+` FROM products WHERE id=?`, id))
 }
 
-// likePattern escapes %, _ and the escape character itself: without this a "%"
-// query from the admin search would match the entire catalog.
+// likePattern escapes %, _ and the escape char, so a "%" query is not a wildcard.
 func likePattern(q string) string {
 	return "%" + likeEscape(q) + "%"
 }
@@ -223,12 +190,10 @@ func likeEscape(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
-// CategorySep joins the segments of a category path. A category is a path, not a
-// name: "Текстиль/Текстиль для спальни/КПБ Евро".
+// CategorySep joins the segments of a category path: a category is a path, not a name.
 const CategorySep = "/"
 
-// AnySupplier disables the supplier filter. An empty string is a real value
-// (goods the owner made by hand), so it cannot double as "any".
+// AnySupplier disables the supplier filter; "" is a real value (hand-made goods).
 const AnySupplier = "\x00any"
 
 // inClause renders the placeholders and args of an `IN (...)` filter.
@@ -240,10 +205,6 @@ func inClause[T any](vals []T) (string, []any) {
 	return strings.TrimSuffix(strings.Repeat("?,", len(vals)), ","), args
 }
 
-// CatalogFilter is what the buyer chose on the storefront: where they are in
-// the tree, what they typed, how they want it ordered and whether they want to
-// see what is out of stock. A struct rather than five positional arguments,
-// half of them empty at every call site.
 type CatalogFilter struct {
 	Category string
 	Query    string
@@ -253,9 +214,7 @@ type CatalogFilter struct {
 	InStock bool
 }
 
-// kCatalogSortable - the orders a buyer may ask for. Sorting runs in SQL over
-// the whole catalogue, not over the page in the browser: 60 cards sorted out of
-// 20 000 would be a lie.
+// kCatalogSortable whitelists the orders a buyer may ask for; sorting runs in SQL.
 var kCatalogSortable = map[string]string{
 	"price": "price",
 	"title": "title",
@@ -273,20 +232,11 @@ func productWhere(category, q, supplier string, onlyVisible bool) (string, []any
 		args = append(args, supplier)
 	}
 	if category != "" {
-		// A category is a path, so a node covers its descendants too: "Текстиль"
-		// shows everything under "Текстиль/Спальня/КПБ". Without this a parent
-		// page would be empty while its children hold the whole catalogue.
+		// A category is a path: a node covers its descendants, or a parent page is empty.
 		conds = append(conds, `(category=? OR category LIKE ? ESCAPE '\')`)
 		args = append(args, category, likeEscape(category)+CategorySep+`%`)
 	}
-	// Every word must appear, in the title or in the article, in any order. One
-	// LIKE over the whole query matched the buyer's spacing and nothing else:
-	// "кпб евро" found none of the 24 000 products whose titles read "КПБ Евро
-	// 4 предмета", and two words in the buyer's own order is the common case.
-	//
-	// ulower on both sides: SQLite's own case folding stops at ASCII, and a
-	// catalogue written in Russian is invisible to a buyer typing in lower case
-	// without this.
+	// Every word must match title or article; ulower both sides - SQLite folds ASCII only.
 	//
 	// ponytail: a full scan per word - three words is three passes of the 46 ms
 	// one pass already costs. FTS5 with the unicode61 tokenizer is the upgrade,
@@ -303,18 +253,12 @@ func productWhere(category, q, supplier string, onlyVisible bool) (string, []any
 	return " WHERE " + strings.Join(conds, " AND "), args
 }
 
-// ListProducts returns the whole catalogue (LIMIT -1 is SQLite for "no limit");
-// the import diff genuinely needs every row.
+// ListProducts returns the whole catalogue (LIMIT -1 is SQLite for "no limit").
 func (d *Database) ListProducts() ([]Product, error) {
 	return d.listProducts("", "", AnySupplier, "", false, -1, 0, false)
 }
 
-// The storefront reads through its own three functions rather than a boolean
-// argument: a hidden product leaking into the catalogue or the sitemap is an SEO
-// bug that no test at the call site would catch, and "Visible" in the name is
-// harder to forget than a true.
-// q is the buyer's search: the same substring match over title and article the
-// admin uses, so a shop needs no second index to be searchable.
+// Visible-only reads have their own functions: a hidden product must never leak out.
 func (d *Database) ListVisibleProductsPage(f CatalogFilter, limit, offset int) ([]Product, error) {
 	where, args := productWhere(f.Category, f.Query, AnySupplier, true)
 	where = withStock(where, f.InStock)
@@ -330,8 +274,7 @@ func (d *Database) CountVisibleProducts(f CatalogFilter) (int, error) {
 	return n, err
 }
 
-// withStock hides what cannot be bought today. Out of stock is a filter, not a
-// separate query: the same page with one condition more.
+// withStock hides what cannot be bought today.
 func withStock(where string, inStock bool) string {
 	if !inStock {
 		return where
@@ -347,28 +290,18 @@ func (d *Database) GetVisibleProductBySlug(slug string) (*Product, error) {
 		`SELECT `+kProductCols+` FROM products WHERE slug=? AND hidden=0`, slug))
 }
 
-// kSortable is the whitelist of ORDER BY columns. Sorting happens in SQL, not in
-// the browser: with 20 000 products a client-side sort would order the current
-// page only and call it "sorted by price", which is worse than no sorting.
+// kSortable whitelists ORDER BY columns; sorting runs in SQL, not in the browser.
 var kSortable = map[string]string{
 	"title":   "title",
 	"price":   "price",
 	"stock":   "stock",
 	"created": "created_at",
-	// The admin sorts by this after an import or a run of AI rewrites, to see
-	// what actually moved.
+	// The admin sorts by this after an import, to see what actually moved.
 	"updated": "updated_at",
 	"sku":     "sku",
 }
 
-// orderBy renders a safe ORDER BY from a whitelist. Unknown keys fall back to
-// newest first, the order the lists had before sorting existed.
-//
-// id is always the last term, and that is not cosmetic: an import writes twenty
-// thousand rows within one second, so created_at ties across the whole
-// catalogue. Without a unique tiebreaker SQLite is free to order ties
-// differently between queries, and paging would then repeat some rows and skip
-// others.
+// orderBy renders a safe ORDER BY; id is last so ties cannot shuffle between pages.
 func orderBy(whitelist map[string]string, sort string, desc bool) string {
 	col, ok := whitelist[sort]
 	if !ok {
@@ -409,22 +342,17 @@ func (d *Database) queryProducts(query string, args ...any) ([]Product, error) {
 	return out, rows.Err()
 }
 
-// Categories lists the storefront categories in use. Like suppliers, derived
-// from the products: a category is a slug in the catalogue URL, not an entity
-// with a life of its own.
+// Categories lists the categories in use, derived from the products themselves.
 func (d *Database) Categories() ([]string, error) {
 	return d.distinct("category")
 }
 
-// Suppliers lists the groups in use. Derived from the products rather than kept
-// in a table of its own: a group is just a name, and a CRUD screen for three
-// rows earns nobody anything.
+// Suppliers lists the groups in use, derived from the products themselves.
 func (d *Database) Suppliers() ([]string, error) {
 	return d.distinct("supplier")
 }
 
-// distinct is safe because the column name never comes from a request - the two
-// callers pass a literal.
+// distinct interpolates the column name: callers must pass a literal, never input.
 func (d *Database) distinct(column string) ([]string, error) {
 	rows, err := d.db.Query(
 		`SELECT DISTINCT ` + column + ` FROM products WHERE ` + column +
@@ -451,16 +379,12 @@ func (d *Database) CountProducts(q, supplier string) (int, error) {
 	return n, err
 }
 
-// ProductLink is what an order line needs to point at the goods it sold: the
-// storefront page and the picture that identifies them at a glance.
 type ProductLink struct {
 	Slug  string
 	Image string
 }
 
-// LinksBySKU maps the articles of an order's lines onto the products they refer
-// to. A missing article is simply absent from the map: the order's snapshot
-// outlives the product, and a line whose goods were deleted still has to render.
+// LinksBySKU maps order-line articles to products; a deleted product is absent.
 func (d *Database) LinksBySKU(skus []string) (map[string]ProductLink, error) {
 	out := map[string]ProductLink{}
 	if len(skus) == 0 {

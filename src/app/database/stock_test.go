@@ -79,8 +79,7 @@ func TestConcurrentCheckoutLastUnit(t *testing.T) {
 	}
 }
 
-// One of three lines fell short - no order, no lines, and no stock movement on
-// the neighboring products must remain.
+// One short line must leave no order, no lines and no movement on its neighbours.
 func TestCheckoutRollsBackWholeCart(t *testing.T) {
 	d := openFile(t)
 	a := product(t, d, "Чайник", 5)
@@ -178,8 +177,7 @@ func TestUncancelRefusedWhenStockGone(t *testing.T) {
 	}
 }
 
-// An order from the days before stock tracking: nothing was deducted, so a
-// cancellation returns nothing.
+// An order with nothing deducted returns nothing on cancellation.
 func TestLegacyOrderDoesNotRestock(t *testing.T) {
 	d := openFile(t)
 	p := product(t, d, "Чайник", 3)
@@ -195,8 +193,7 @@ func TestLegacyOrderDoesNotRestock(t *testing.T) {
 	}
 }
 
-// The product was deleted after the order: the order history stays intact, and
-// there is nowhere to return the stock.
+// A product deleted after the order: history stays, the stock has nowhere to go.
 func TestRestockSkipsDeletedProduct(t *testing.T) {
 	d := openFile(t)
 	p := product(t, d, "Чайник", 2)

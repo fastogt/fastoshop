@@ -17,8 +17,7 @@ import (
 	"github.com/fastogt/fastoshop/app/media"
 )
 
-// Same ceiling the admin upload uses: a photo bigger than this is a mistake at
-// the supplier's end, not a product picture.
+// Same ceiling the admin upload uses.
 const kMaxImageBytes = 10 << 20
 
 // ponytail: eight at a time is what turns 60 000 photos from a day into an
@@ -26,8 +25,7 @@ const kMaxImageBytes = 10 << 20
 // someone's host starts refusing us.
 const kImageWorkers = 8
 
-// localName mirrors the admin upload naming (p<id>-<token><ext>) so an imported
-// photo and an uploaded one are indistinguishable on disk and in the DB.
+// localName mirrors the admin upload naming (p<id>-<token><ext>).
 func localName(productID int64, ext string) (string, error) {
 	raw := make([]byte, 4)
 	if _, err := rand.Read(raw); err != nil {
@@ -36,9 +34,7 @@ func localName(productID int64, ext string) (string, error) {
 	return fmt.Sprintf("p%d-%s%s", productID, hex.EncodeToString(raw), ext), nil
 }
 
-// extByContent trusts the bytes, not the URL: suppliers serve .jpg links that
-// answer with an HTML error page, and saving that as a photo would leave a
-// broken card behind with no way to tell it apart from a real one.
+// Trust the bytes, not the URL: suppliers serve .jpg links that answer with HTML.
 func extByContent(head []byte) string {
 	switch http.DetectContentType(head) {
 	case "image/jpeg":
@@ -82,25 +78,13 @@ func fetchImage(im database.ProductImage, uploadsDir string) (string, error) {
 	if err := os.WriteFile(filepath.Join(uploadsDir, name), data, 0644); err != nil {
 		return "", err
 	}
-	// The small copy is made here, where the file has just been written: sixty
-	// full-size photos on one catalogue page are megabytes of traffic.
 	if err := media.MakeThumb(uploadsDir, name); err != nil {
 		log.Warnf("thumbnail for %q: %v", name, err)
 	}
 	return name, nil
 }
 
-// LocalizeImages downloads photos that still live on the supplier's server and
-// points the catalogue at our own copies. A photo that fails to download keeps
-// its link, whatever the reason: a 404 today is a working link tomorrow, and the
-// catalogue shows its own "no photo" mark for anything that does not load, so a
-// dead link costs nothing that would justify deleting a row for good.
-//
-// The context stops the run: it is the way out of a download of sixty thousand
-// photos started by mistake.
-//
-// onProgress is called after every photo with the number finished and the ids
-// being downloaded right now - that is what the admin draws its spinner from.
+// LocalizeImages copies supplier photos to our disk; a failed one keeps its link.
 func LocalizeImages(ctx context.Context, db *database.Database, uploadsDir string,
 	imgs []database.ProductImage, onProgress func(done int, inFlight []int64)) (ok, failed int) {
 	var (
@@ -133,8 +117,7 @@ func LocalizeImages(ctx context.Context, db *database.Database, uploadsDir strin
 				name, err := fetchImage(im, uploadsDir)
 				if err == nil {
 					if err = db.SetImagePath(im.ID, name); err != nil {
-						// The file is on disk but nothing points at it - remove it
-						// rather than leave the uploads dir growing invisibly.
+						// Nothing points at the file now: do not leave it in uploads.
 						_ = os.Remove(filepath.Join(uploadsDir, name))
 					}
 				}
@@ -157,8 +140,7 @@ func LocalizeImages(ctx context.Context, db *database.Database, uploadsDir strin
 			}
 		}()
 	}
-	// Stopping only closes the tap: a photo already being downloaded is cheaper
-	// to finish than to throw away.
+	// Stopping only closes the tap; photos already in flight are finished.
 	for _, im := range imgs {
 		select {
 		case queue <- im:

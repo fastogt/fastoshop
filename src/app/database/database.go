@@ -10,28 +10,17 @@ import (
 
 type Database struct {
 	db *sql.DB
-	// The path is needed by the stats page: it shows the file size, while the
-	// config stores it with a "~" that the caller has already expanded by now.
+	// The stats page needs it; the caller has already expanded the config's "~".
 	path string
 }
 
 // Path - the file the database opened. For ":memory:" it returns just that.
 func (d *Database) Path() string { return d.path }
 
-// A second process touches the database now - the nightly backup
-// (`VACUUM INTO`) and `-reset-password`. In rollback-journal mode a reader
-// blocks the writer, so a backup would turn checkout into a 500. WAL makes
-// reads non-blocking, busy_timeout waits instead of returning SQLITE_BUSY at
-// once, and synchronous NORMAL is the standard companion of WAL: it saves an
-// fsync per order, which is safe on RAID-1 with power-loss-protected SSDs and
-// nightly backups. ":memory:" silently ignores WAL, so tests are unaffected.
+// WAL keeps a second process (backup, -reset-password) from blocking the writer.
 const kDSNParams = "?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL"
 
-// kDriver is our own driver name because the connection carries one extra
-// function. SQLite folds case for ASCII only, so `LIKE '%кастрюля%'` never
-// matched "Кастрюля": on a live catalogue a buyer typing lower case saw 8 pots
-// out of 521. Go's strings.ToLower knows Unicode, so the comparison is done on
-// both sides through it.
+// kDriver is our own driver: it registers ulower, as SQLite folds case for ASCII only.
 //
 // ponytail: a callback per row on a search that was already a full scan.
 // Measured in milliseconds on 24 000 products; FTS5 with unicode61 is the
@@ -41,8 +30,7 @@ const kDriver = "sqlite3_fastoshop"
 func init() {
 	sql.Register(kDriver, &sqlite3.SQLiteDriver{
 		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-			// Pure: the same input always yields the same output, which lets
-			// SQLite cache the call.
+			// Pure: same input, same output, so SQLite may cache the call.
 			return conn.RegisterFunc("ulower", strings.ToLower, true)
 		},
 	})
@@ -53,8 +41,7 @@ func Open(path string) (*Database, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
-	// SQLite writes single-threaded, and ":memory:" hands every new connection
-	// its own empty database - a pool of one connection removes both problems.
+	// SQLite writes single-threaded, and ":memory:" is per-connection.
 	db.SetMaxOpenConns(1)
 	d := &Database{db: db, path: path}
 	if err := d.migrate(); err != nil {

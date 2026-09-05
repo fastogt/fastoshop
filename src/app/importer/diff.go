@@ -8,14 +8,10 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// kListLimit caps each list in the diff. Three thousand changed rows is not
-// something a person reads; the counts plus the outliers are what a decision is
-// made on. The response says how many were left out - a silently truncated list
-// reads as a complete one.
+// kListLimit caps each list in the diff; the counts stay complete.
 const kListLimit = 50
 
-// DiffRow is one product in the comparison. Prices are in minor units: Was and
-// Now are the supplier's price, Shelf is what the coefficient makes of it.
+// Prices are in minor units: Was/Now are the supplier's, Shelf has the coefficient.
 type DiffRow struct {
 	SKU     string  `json:"sku"`
 	Title   string  `json:"title"`
@@ -26,13 +22,9 @@ type DiffRow struct {
 	Stock   int     `json:"stock"`
 }
 
-// Diff is what an import would change, computed against the current catalogue.
-// No snapshot of the previous feed is needed: products.source_price already
-// holds what the supplier charged last time.
+// Diff is computed against products.source_price, not a snapshot of the last feed.
 type Diff struct {
-	// Currency the feed quotes in, empty when the source does not say. The admin
-	// compares it with the shop's own currency: the coefficient is the only thing
-	// that converts, and it converts nothing unless the owner puts a rate in it.
+	// Currency the feed quotes in, empty when the source does not say.
 	Currency string `json:"currency"`
 
 	Total     int `json:"total"`
@@ -41,8 +33,7 @@ type Diff struct {
 	PriceUp   int `json:"price_up"`
 	PriceDown int `json:"price_down"`
 	Unchanged int `json:"unchanged"`
-	// Conflicts are articles owned by another group: this import will leave them
-	// alone, and the owner has to decide whose they are.
+	// Conflicts are articles owned by another group; this import leaves them alone.
 	Conflicts int `json:"conflicts"`
 	// NoSKU are rows the feed sent without an article; they cannot be imported.
 	NoSKU int `json:"no_sku"`
@@ -52,10 +43,7 @@ type Diff struct {
 	PriceChanges []DiffRow `json:"price_changes"`
 }
 
-// Compare matches the incoming catalogue against the shop by article, inside one
-// supplier group: counting another supplier's goods as "gone" would be a lie.
-// Rows without an article take no part - there is nothing to match them by, and
-// guessing by title would silently merge different goods.
+// Compare matches by article inside one supplier group; rows without one sit out.
 func Compare(items []Item, existing []database.Product, supplier string,
 	coefficient float64, rules []database.PriceRule) *Diff {
 	bySKU := make(map[string]database.Product, len(existing))
@@ -107,9 +95,7 @@ func Compare(items []Item, existing []database.Product, supplier string,
 			SKU: it.SKU, Title: it.Title, Was: old.SourcePrice, Now: it.Price,
 			Shelf: database.ShelfPrice(rules, it.Price, coefficient), Stock: it.Stock,
 		}
-		// A product imported before source prices were tracked has 0 there;
-		// calling that an infinite rise would push it to the top of the list and
-		// bury the real news.
+		// A zero source price would read as an infinite rise and top the list.
 		if old.SourcePrice > 0 {
 			row.Percent = float64(it.Price-old.SourcePrice) / float64(old.SourcePrice) * 100
 		}
@@ -128,8 +114,7 @@ func Compare(items []Item, existing []database.Product, supplier string,
 		}
 	}
 
-	// Biggest movement first, in either direction: a 60% cut matters as much as
-	// a 60% rise.
+	// Biggest movement first, in either direction.
 	slices.SortStableFunc(changes, func(a, b DiffRow) int {
 		return cmp.Compare(math.Abs(b.Percent), math.Abs(a.Percent))
 	})

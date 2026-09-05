@@ -4,8 +4,7 @@ import (
 	"testing"
 )
 
-// cp1251 encodes a string the way Russian Excel does on "Save as CSV":
-// that is exactly what breaks real uploads.
+// cp1251 encodes a string the way Russian Excel does on "Save as CSV".
 func cp1251(s string) []byte {
 	back := map[rune]byte{}
 	for i, r := range kCP1251 {
@@ -61,8 +60,7 @@ func TestCSVReadsUTF8Template(t *testing.T) {
 	}
 }
 
-// Columns are read by name: a column rearranged in Excel must not silently
-// write the price into the stock.
+// Columns are read by name: a rearranged column must not write price into stock.
 func TestCSVColumnsByName(t *testing.T) {
 	c := &CSV{Data: []byte("title,price,sku\nЧайник,100.00,A-1\n")}
 	items, _ := c.Fetch()
@@ -92,8 +90,7 @@ func TestCSVMissingColumnIsAnError(t *testing.T) {
 	}
 }
 
-// A price list writes nesting inside one cell, and that is data, not a guess.
-// A slash between digits is a size, not a level.
+// Nesting inside one cell is data; a slash between digits is a size, not a level.
 func TestCSVCategoryCell(t *testing.T) {
 	cases := map[string]string{
 		"Текстиль > Спальня": "Текстиль/Спальня",
@@ -123,8 +120,6 @@ func TestCSVReadsCategory(t *testing.T) {
 }
 
 // TestCSVParams: a column the shop does not know by name is a characteristic.
-// In a spreadsheet a property is a column - that is what the format already
-// offers, and packing pairs into one cell would invent a second one beside it.
 func TestCSVParams(t *testing.T) {
 	c := &CSV{Data: []byte(
 		"sku;title;price;Цвет;Материал;;Объём\n" +
@@ -145,16 +140,13 @@ func TestCSVParams(t *testing.T) {
 	if items[1].Params != nil {
 		t.Errorf("пустые ячейки должны давать ничего, а не пустой набор: %+v", items[1].Params)
 	}
-	// A column with no heading is not a characteristic, and an empty cell adds
-	// nothing: both are ordinary in a spreadsheet and neither may reach a card.
+	// A heading-less column and an empty cell must both reach no card.
 	if got := items[2].Params; len(got) != 1 || param(got, "Цвет") != "синий" {
 		t.Errorf("пустые и безымянные не отсеялись: %+v", got)
 	}
 }
 
-// TestPriceWithNote: a price list annotates a price in the same cell - a
-// discount in brackets, a footnote star, a currency. The number is the price;
-// a cell holding a second number is two prices and stays refused.
+// TestPriceWithNote: a noted price yields its number; a second number is refused.
 func TestPriceWithNote(t *testing.T) {
 	for _, c := range []struct {
 		in   string

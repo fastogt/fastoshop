@@ -2,11 +2,7 @@ package database
 
 import "testing"
 
-// ShelfPrice and RecomputePrices are one formula in two languages, and the day
-// they round differently an import "Check" reports half the catalogue as
-// changed prices that never moved. The rate here lands many costs on exact
-// half-kopecks, where a rounding done per step and one done at the end part
-// ways.
+// ShelfPrice and RecomputePrices are one formula in two languages; they must agree.
 func TestShelfPriceMatchesRecompute(t *testing.T) {
 	d, err := OpenInMemory()
 	if err != nil {
@@ -47,9 +43,7 @@ func TestShelfPriceMatchesRecompute(t *testing.T) {
 	}
 }
 
-// Recalculation must start from the source price, not the current one:
-// otherwise batches brought in at different rates drift apart, and rounding
-// accumulates.
+// Recalculation must start from the source price, not the current one.
 func TestApplyPriceCoefficient(t *testing.T) {
 	d, err := OpenInMemory()
 	if err != nil {

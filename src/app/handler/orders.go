@@ -12,16 +12,12 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// orderResponse carries the snapshot already parsed. The raw items_json stays in
-// the database and out of the wire: it is a legal record, not a payload, and
-// having the browser and the CSV each parse it their own way is how two numbers
-// for one order appear.
+// The raw items_json stays in the database: it is a legal record, not a payload.
 type orderResponse struct {
 	database.Order
 	Items []orderItem `json:"items"`
 	Total int64       `json:"total"`
-	// Broken tells the admin the snapshot could not be read, so it shows the row
-	// as needing a human instead of quietly printing a zero.
+	// Broken marks a snapshot that could not be read, so no zero is printed.
 	Broken bool `json:"broken"`
 }
 
@@ -46,16 +42,11 @@ type orderItem struct {
 	Title string `json:"title"`
 	Price int64  `json:"price"`
 	Qty   int    `json:"qty"`
-	// Slug and Image are looked up now, not stored: the snapshot must not age,
-	// but the owner opening an order wants to see what was bought. Both are
-	// empty for goods that no longer exist.
+	// Looked up now, not stored: the snapshot must not age. Empty for gone goods.
 	Slug  string `json:"slug"`
 	Image string `json:"image"`
 }
 
-// orderLines reads the snapshot an order was placed with. One reader for the
-// screen and the accountant's CSV alike: two copies of this arithmetic would
-// disagree the day one of them is fixed.
 func orderLines(o database.Order) (items []orderItem, total int64, ok bool) {
 	if err := json.Unmarshal([]byte(o.ItemsJSON), &items); err != nil {
 		return nil, 0, false
@@ -66,9 +57,6 @@ func orderLines(o database.Order) (items []orderItem, total int64, ok bool) {
 	return items, total, true
 }
 
-// ListOrders is paginated: a shop that sells keeps every order forever, and
-// handing the whole history to the admin on each visit stops working long
-// before the shop does.
 func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	status := q.Get("status")
@@ -97,8 +85,7 @@ func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 		}
 		orders = append(orders, orderResponse{Order: o, Items: items, Total: sum, Broken: !ok})
 	}
-	// One query for the whole page: a lookup per line would be fifty round trips
-	// to draw one screen.
+	// One query for the whole page: a lookup per line would be fifty round trips.
 	links, err := h.db.LinksBySKU(skus)
 	if err != nil {
 		httpjson.WriteInternalError(w, err)
@@ -148,10 +135,7 @@ type deletedResponse struct {
 	Deleted int `json:"deleted"`
 }
 
-// BulkDeleteOrders erases orders for good. Only by an explicit list of ids -
-// deleting "everything the filter matches" is how a shop loses its journal in
-// one click. Stock is not returned: a delete is not a cancellation, and an
-// order that still holds goods should be cancelled first.
+// An explicit list only, and stock is not returned: a delete is not a cancellation.
 func (h *Handler) BulkDeleteOrders(w http.ResponseWriter, r *http.Request) {
 	var req bulkIDsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -175,9 +159,7 @@ type bulkStatusRequest struct {
 	Status string  `json:"status"`
 }
 
-// bulkStatusFailure names the order that would not move and why. Reopening can
-// be refused when the goods are gone, and a count alone would leave the owner
-// guessing which of the ticked orders did not change.
+// Names the order that would not move: a count alone leaves the owner guessing.
 type bulkStatusFailure struct {
 	ID     int64  `json:"id"`
 	Reason string `json:"reason"`
@@ -188,10 +170,7 @@ type bulkStatusResponse struct {
 	Failed  []bulkStatusFailure `json:"failed"`
 }
 
-// BulkOrderStatus moves the ticked orders. Each one goes through the same
-// single-order path rather than one UPDATE: a status change moves stock, and
-// that has to stay transactional per order - one refusal must not roll back the
-// rest, and must not silently pass either.
+// One order at a time: a status change moves stock and stays transactional.
 func (h *Handler) BulkOrderStatus(w http.ResponseWriter, r *http.Request) {
 	var req bulkStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil ||
@@ -224,8 +203,7 @@ func (h *Handler) BulkOrderStatus(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// csvSafe neutralizes formula injection: name/phone/titles come from the public
-// order form, and Excel and LibreOffice execute a cell starting with = + - @.
+// Excel executes a cell starting with = + - @; these fields are public input.
 func csvSafe(s string) string {
 	if s == "" {
 		return s
@@ -254,8 +232,7 @@ func (h *Handler) ExportOrdersCSV(w http.ResponseWriter, r *http.Request) {
 		items, total, ok := orderLines(o)
 		var desc, totalCell string
 		if !ok {
-			// This is a tax journal: a broken row must not be shown as zero,
-			// or revenue is silently understated. Empty total = "count by hand".
+			// A tax journal: a broken row must not print as zero, so the total is empty.
 			desc = h.msg(i18n.KeyCSVParseFailed)
 		} else {
 			for _, it := range items {

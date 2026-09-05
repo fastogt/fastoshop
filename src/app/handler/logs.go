@@ -9,16 +9,12 @@ import (
 )
 
 type logInfoResponse struct {
-	// Available is false when the shop was started without a log file: the admin
-	// then says so instead of offering a link that answers 404.
+	// Available is false when the shop was started without a log file.
 	Available  bool   `json:"available"`
 	Size       int64  `json:"size"`
 	ModifiedAt string `json:"modified_at"`
 }
 
-// LogInfo backs the expert block: whether there is a log at all, how big it is
-// and when it last moved. Counting on the browser to discover that from a failed
-// download would show the owner an error where an explanation belongs.
 func (h *Handler) LogInfo(w http.ResponseWriter, r *http.Request) {
 	if h.LogPath == "" {
 		httpjson.WriteOK(w, logInfoResponse{})
@@ -36,9 +32,7 @@ func (h *Handler) LogInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Logs hands the file over as plain text, the way the other services do. Whole
-// file, not a tail: it is capped at ten megabytes, and paging through a log is a
-// second tool, not a feature of this one.
+// The whole file, not a tail: it is capped at ten megabytes.
 func (h *Handler) Logs(w http.ResponseWriter, r *http.Request) {
 	if h.LogPath == "" {
 		http.NotFound(w, r)

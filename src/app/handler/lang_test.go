@@ -10,8 +10,7 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// A fresh shop must have a language: an empty value would arrive in the admin
-// and leave the switcher with no selected state.
+// A fresh shop must have a language: an empty value leaves the switcher blank.
 func TestLangDefaultsAndRoundTrip(t *testing.T) {
 	h := newTestHandler(t)
 	if _, err := h.db.CreateOwner("a@b.c"); err != nil {

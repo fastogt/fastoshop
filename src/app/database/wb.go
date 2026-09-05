@@ -20,9 +20,7 @@ type WBLink struct {
 	VendorCode string
 }
 
-// GetWBSettings returns empty settings rather than an error on a fresh database:
-// there is no id=1 row until the owner saves a token once, and the tab must open
-// as an empty form, not a 500.
+// GetWBSettings returns empty settings when the id=1 row does not exist yet.
 func (d *Database) GetWBSettings() (*WBSettings, error) {
 	var s WBSettings
 	err := d.db.QueryRow(
@@ -48,8 +46,7 @@ func (d *Database) SaveWBSettings(s *WBSettings) error {
 	return err
 }
 
-// UpsertWBLink leaves price and the push state alone: re-linking must reset
-// neither the platform price the owner set nor the state of the sync.
+// UpsertWBLink leaves price and push state alone so re-linking resets neither.
 func (d *Database) UpsertWBLink(l *WBLink) error {
 	_, err := d.db.Exec(
 		`INSERT INTO wb_links (product_id, nm_id, barcode, vendor_code)
@@ -65,22 +62,18 @@ func (d *Database) DeleteWBLink(productID int64) error {
 	return err
 }
 
-// WBStockRow is a link whose stock is due for a push. Stock is already the level
-// the platform should hold: a deleted product does not exist, so zero.
+// WBStockRow is a link whose stock is due for a push.
 type WBStockRow struct {
 	ProductID   int64
 	Barcode     string
 	Stock       int64
 	StockPushed int64
 	Error       string
-	// RetryAt is when the row is due again. Shown to the owner: an error with no
-	// "and then what" reads like the sync gave up.
+	// RetryAt is when the row is due again.
 	RetryAt sql.NullTime
 }
 
-// kWBStockGuard selects rows whose wanted level diverged from the last pushed
-// one. stock_pushed = -1 means there is no baseline yet, so the first push is
-// always allowed.
+// kWBStockGuard: stock_pushed = -1 means no baseline yet, so the first push passes.
 const kWBStockGuard = `l.barcode != ''
 	 AND (l.stock_pushed = -1 OR MAX(COALESCE(p.stock, 0), 0) != l.stock_pushed)`
 
@@ -116,9 +109,7 @@ func (d *Database) wbStockRows(where string) ([]WBStockRow, error) {
 	return out, rows.Err()
 }
 
-// MarkWBStockPushed clears retry_at, which is shared with the price push, for
-// the same reason it is shared on Ozon: at worst the price is retried one pass
-// early and backs off again.
+// MarkWBStockPushed clears retry_at, which is shared with the price push.
 func (d *Database) MarkWBStockPushed(productID, level int64) error {
 	_, err := d.db.Exec(
 		`UPDATE wb_links SET stock_pushed=?, stock_error='', retry_at=NULL
@@ -126,8 +117,7 @@ func (d *Database) MarkWBStockPushed(productID, level int64) error {
 	return err
 }
 
-// MarkWBStockError writes retry_at as a UTC string in CURRENT_TIMESTAMP format,
-// otherwise the comparison in WBStockToPush drifts by the timezone offset.
+// MarkWBStockError writes retry_at as a UTC string to match CURRENT_TIMESTAMP.
 func (d *Database) MarkWBStockError(productID int64, msg string, retryAt time.Time) error {
 	_, err := d.db.Exec(
 		`UPDATE wb_links SET stock_error=?, retry_at=? WHERE product_id=?`,
@@ -135,8 +125,7 @@ func (d *Database) MarkWBStockError(productID int64, msg string, retryAt time.Ti
 	return err
 }
 
-// CountWBStockState counts pending without regard to retry_at - to the owner a
-// row in backoff is still "waiting to be sent", not gone.
+// CountWBStockState counts pending regardless of retry_at: backoff still counts.
 func (d *Database) CountWBStockState() (pending, failed int, err error) {
 	err = d.db.QueryRow(
 		`SELECT
@@ -148,8 +137,7 @@ func (d *Database) CountWBStockState() (pending, failed int, err error) {
 	return pending, failed, err
 }
 
-// CountWBLinks counts shop products, not wb_links rows: links of orphaned cards
-// outlive their products and have no place in "linked / not linked".
+// CountWBLinks counts shop products, not wb_links rows: orphan links are excluded.
 func (d *Database) CountWBLinks() (linked, unlinked int, err error) {
 	err = d.db.QueryRow(
 		`SELECT
@@ -161,10 +149,7 @@ func (d *Database) CountWBLinks() (linked, unlinked int, err error) {
 	return linked, unlinked, err
 }
 
-// ClearWBBackoff drops every pending retry. Only the manual "push now" button
-// calls it: after a failure the owner fixes what the platform complained about
-// and presses the button, and a backoff they cannot see makes it look like the
-// button does nothing. The ticker keeps waiting, which is what backoff is for.
+// ClearWBBackoff drops every pending retry; only the manual push button calls it.
 func (d *Database) ClearWBBackoff() error {
 	_, err := d.db.Exec(`UPDATE wb_links SET retry_at=NULL WHERE retry_at IS NOT NULL`)
 	return err

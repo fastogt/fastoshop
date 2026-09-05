@@ -20,8 +20,7 @@ import (
 type Handlers struct {
 	db     *database.Database
 	worker *Worker
-	// Hosts overrides the API addresses - tests point a mock here. Empty in
-	// production: the client picks live or sandbox from the settings.
+	// Hosts overrides the API addresses - tests point a mock here.
 	Hosts Hosts
 }
 
@@ -62,8 +61,7 @@ type stockErrorRow struct {
 	Stock     int64  `json:"stock"`
 	Pushed    int64  `json:"pushed"`
 	Error     string `json:"error"`
-	// RetryAt nil means the row is due on the next pass. An error without a
-	// "and then what" reads to the owner like the sync gave up.
+	// RetryAt nil means the row is due on the next pass.
 	RetryAt *time.Time `json:"retry_at"`
 }
 
@@ -87,16 +85,12 @@ type settingsResponse struct {
 	Pending     int             `json:"pending"`
 	Failed      int             `json:"failed"`
 	StockErrors []stockErrorRow `json:"stock_errors"`
-	// Price counters live next to the stock ones instead of replacing them: a
-	// price the platform refused must not hide a stock that did not arrive.
-	// InFlight is what makes this channel different from Ozon - an upload is
-	// accepted long before it is applied, and the owner has to see the wait.
+	// InFlight: a price upload is accepted long before it is applied.
 	PricePending  int             `json:"price_pending"`
 	PriceInFlight int             `json:"price_in_flight"`
 	PriceFailed   int             `json:"price_failed"`
 	PriceErrors   []priceErrorRow `json:"price_errors"`
-	// Counters of incoming platform sales: total, of them oversold and those that
-	// matched no linked product.
+	// Sales counters: total, of them oversold and with unmatched items.
 	OrdersTotal      int    `json:"orders_total"`
 	OrdersOversold   int    `json:"orders_oversold"`
 	OrdersUnresolved int    `json:"orders_unresolved"`
@@ -110,9 +104,7 @@ type settingsRequest struct {
 	WarehouseID string  `json:"warehouse_id"`
 }
 
-// Prices are in kopecks: Price is what the owner wants on the platform,
-// ShopPrice is the shelf price of the shop. Title empty means the product is
-// gone and only the card on the platform is left.
+// Prices are in kopecks; an empty Title means only the platform card is left.
 type wbLinkRow struct {
 	ProductID   int64  `json:"product_id"`
 	NmID        int64  `json:"nm_id"`
@@ -141,15 +133,11 @@ type checkResponse struct {
 	Total     int    `json:"total"`
 	LegalName string `json:"legal_name"`
 	TradeMark string `json:"trade_mark"`
-	// NoStockScope: the token was issued without the Marketplace section, so
-	// stock can never travel. Reported here because nothing else says it - the
-	// cards and prices calls succeed, the tab looks connected, and the levels
-	// silently stay put. Measured on a live seller who pasted such a token.
+	// NoStockScope: a token without the Marketplace section can never move stock.
 	NoStockScope bool `json:"no_stock_scope"`
 }
 
-// Reason is empty for the plain "no such card" case and carries an explanation
-// when the article did match something we refused to guess at.
+// Reason is empty for a plain "no such card" and set when we refused to guess.
 type unlinkedProduct struct {
 	ProductID int64  `json:"id"`
 	Title     string `json:"title"`
@@ -157,8 +145,7 @@ type unlinkedProduct struct {
 	Reason    string `json:"reason"`
 }
 
-// ProductID nil means the sale could not be matched to a shop product; the front
-// end shows such a row as a warning instead of hiding it silently.
+// ProductID nil means the sale matched no shop product; the tab warns about it.
 type wbOrderRow struct {
 	OrderID   int64     `json:"order_id"`
 	Status    string    `json:"status"`
@@ -263,8 +250,7 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) msg(key string) string { return i18n.T(h.db.Lang(), key) }
 
-// client builds a client on the saved token. A false second value means there is
-// no token and the answer to the owner has already been sent.
+// A false second value means there is no token and the owner was already answered.
 func (h *Handlers) client(w http.ResponseWriter) (*Client, bool) {
 	s, err := h.db.GetWBSettings()
 	if err != nil {
@@ -282,8 +268,6 @@ func (h *Handlers) client(w http.ResponseWriter) (*Client, bool) {
 	return c, true
 }
 
-// Check is the "Check" button: a live request with the saved token so the owner
-// sees that the cabinet answers at all.
 func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 	c, ok := h.client(w)
 	if !ok {
@@ -295,16 +279,13 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res := checkResponse{Total: len(cards)}
-	// The seller's name is a nicety, not the point of the check: a cabinet that
-	// listed its cards is reachable whether or not this endpoint answers.
+	// A cabinet that listed its cards is reachable even if this endpoint is not.
 	if info, err := c.SellerInfo(); err != nil {
 		log.Warnf("wb: seller info: %v", err)
 	} else {
 		res.LegalName, res.TradeMark = info.Name, info.TradeMark
 	}
-	// A token can be issued per section, and one without Marketplace answers
-	// every stock call with 403 while cards and prices keep working. Asking for
-	// the warehouse list is the cheapest question that has that answer.
+	// A token without the Marketplace section answers every stock call with 403.
 	if _, err := c.ListWarehouses(); err != nil {
 		var apiErr *APIError
 		res.NoStockScope = errors.As(err, &apiErr) && apiErr.Status == http.StatusForbidden
@@ -312,9 +293,7 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// Warehouses fills the warehouse dropdown. The error goes to the owner as text:
-// the tab degrades to typing warehouse_id by hand, not to an empty list with no
-// explanation.
+// The error goes to the owner as text: the tab degrades to typing warehouse_id.
 func (h *Handlers) Warehouses(w http.ResponseWriter, r *http.Request) {
 	c, ok := h.client(w)
 	if !ok {
@@ -333,8 +312,7 @@ func (h *Handlers) Warehouses(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// pushError turns our own sentinels into the owner's language and leaves
-// anything else as is: an unexpected failure is more useful verbatim.
+// pushError turns our own sentinels into the owner's language, anything else verbatim.
 func (h *Handlers) pushError(err error) string {
 	switch {
 	case errors.Is(err, ErrPushBusy):
@@ -345,8 +323,6 @@ func (h *Handlers) pushError(err error) string {
 	return err.Error()
 }
 
-// Push is the "Push now" button: the same pass the worker runs, only synchronous
-// and with the counters in the answer.
 func (h *Handlers) Push(w http.ResponseWriter, r *http.Request) {
 	if err := h.db.ClearWBBackoff(); err != nil {
 		httpjson.WriteInternalError(w, err)
@@ -360,9 +336,7 @@ func (h *Handlers) Push(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, channel.PushResponse{Pushed: pushed, Failed: failed})
 }
 
-// Orders is the platform sales log. These sales never land in the shop's orders
-// - the platform reports them itself, and duplicating would double the revenue
-// in the tax CSV - so this is the only place the owner sees them.
+// Platform sales never land in the shop's orders: the platform reports them itself.
 func (h *Handlers) Orders(w http.ResponseWriter, r *http.Request) {
 	page := channel.PageParam(r)
 	total, err := h.db.CountWBOrders()
@@ -389,9 +363,7 @@ func (h *Handlers) Orders(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// Links is the linked-products table: what we know about every link, including
-// the price the owner set for the platform. Paged, because a shop of 20 000
-// products would otherwise send its whole catalogue into the browser.
+// Paged: a large catalogue must not go into the browser whole.
 func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	page := channel.PageParam(r)
 	total, err := h.db.CountWBLinkRows()
@@ -423,10 +395,7 @@ func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// SetPrice sets the price of one product ON WILDBERRIES, in kopecks. Zero
-// switches the management off - the price stays whatever the cabinet holds, we
-// simply stop touching it. A product without a link is a 404 and not a silently
-// created row.
+// Kopecks; zero switches management off and leaves whatever the cabinet holds.
 func (h *Handlers) SetPrice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "productID"), 10, 64)
 	if err != nil {
@@ -454,9 +423,7 @@ func (h *Handlers) SetPrice(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, channel.OKStatusResponse{Status: "ok"})
 }
 
-// FillPrices is the bulk helper "shelf price + N%". It fills only links whose
-// price is still zero: the owner's own numbers are never overwritten in bulk, so
-// the button is safe to press twice.
+// Fills only links whose price is still zero: the owner's own numbers survive.
 func (h *Handlers) FillPrices(w http.ResponseWriter, r *http.Request) {
 	var req channel.FillPricesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

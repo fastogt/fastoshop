@@ -39,8 +39,7 @@ func (d *Database) ListImages(productID int64) ([]ProductImage, error) {
 	return out, rows.Err()
 }
 
-// ImagesFor returns the photos of the given products keyed by product id, in
-// position order: one query for a page instead of one per card.
+// ImagesFor returns photos for a whole page of products in one query.
 func (d *Database) ImagesFor(ids []int64) (map[int64][]ProductImage, error) {
 	out := map[int64][]ProductImage{}
 	if len(ids) == 0 {
@@ -64,9 +63,7 @@ func (d *Database) ImagesFor(ids []int64) (map[int64][]ProductImage, error) {
 	return out, rows.Err()
 }
 
-// AllImages returns every product's photo paths keyed by product id, in
-// position order. The feeds render the whole catalogue in one response, and
-// per-product ListImages calls would be 20 000 round trips.
+// AllImages feeds the whole-catalogue exports, which render in one response.
 // ponytail: the whole table in memory (~60k rows at the proven scale); stream
 // row-by-row if catalogues outgrow that.
 func (d *Database) AllImages() (map[int64][]string, error) {
@@ -88,9 +85,7 @@ func (d *Database) AllImages() (map[int64][]string, error) {
 	return out, rows.Err()
 }
 
-// GetImage is what deletion needs to know whether a file has to go with the
-// row: an imported photo is a link to the supplier's server, an uploaded one is
-// a file of ours.
+// GetImage: path is a supplier URL for imported photos, a local file for uploads.
 func (d *Database) GetImage(id int64) (*ProductImage, error) {
 	var im ProductImage
 	err := d.db.QueryRow(
@@ -102,9 +97,6 @@ func (d *Database) GetImage(id int64) (*ProductImage, error) {
 	return &im, nil
 }
 
-// CountRemoteImages answers both halves of the question the fill dialog asks -
-// how many photos are still on someone else's server, and how many of those are
-// the main one of their product - in a single pass.
 func (d *Database) CountRemoteImages(s Selection) (main, total int, err error) {
 	where, args, ok := s.where()
 	if !ok {
@@ -122,12 +114,7 @@ func (d *Database) CountRemoteImages(s Selection) (main, total int, err error) {
 	return main, total, err
 }
 
-// ListRemoteImages returns the photos still living on someone else's server for
-// the products in the selection. It is what "download the photos" works from:
-// the rows are already in the right order, and only their path changes.
-// mainOnly narrows it to the first photo of each product - the one the
-// catalogue, the feeds and image search actually show. It is a third of the
-// rows and a third of the downloads.
+// ListRemoteImages lists photos still on a supplier's server; mainOnly keeps the first.
 func (d *Database) ListRemoteImages(s Selection, mainOnly bool) ([]ProductImage, error) {
 	where, args, ok := s.where()
 	if !ok {
@@ -158,9 +145,7 @@ func (d *Database) ListRemoteImages(s Selection, mainOnly bool) ([]ProductImage,
 	return out, rows.Err()
 }
 
-// SetImagePath swaps a downloaded photo in without touching its position: the
-// first photo is the card in search results and on the channel, and parallel
-// downloads reinserting rows would shuffle that order.
+// SetImagePath updates in place: position picks the main photo, so rows must not move.
 func (d *Database) SetImagePath(id int64, path string) error {
 	_, err := d.db.Exec(`UPDATE product_images SET path=? WHERE id=?`, path, id)
 	return err
@@ -171,13 +156,7 @@ func (d *Database) DeleteImage(id int64) error {
 	return err
 }
 
-// SetImageOrder rewrites the positions of a product's photos to the order given.
-// The first one is not decoration: it is the card in search results, in the
-// catalogue grid and in a marketplace listing, so being able to put a good photo
-// there is the whole point of ordering at all.
-//
-// Ids that do not belong to the product are refused rather than ignored: a
-// silently dropped id would leave the gallery in an order nobody asked for.
+// SetImageOrder renumbers positions; position 0 is the main photo. Foreign ids error.
 func (d *Database) SetImageOrder(productID int64, ids []int64) error {
 	return d.withTx(func(tx *sql.Tx) error {
 		for i, id := range ids {

@@ -13,20 +13,16 @@ import (
 
 type publishResponse struct {
 	Published int `json:"published"`
-	// Products whose article has no card in the cabinet. Creating cards is not
-	// ours to do yet, so the owner is told plainly instead of silently skipping.
+	// Products whose article has no card in the cabinet; we do not create cards.
 	NoCard []unlinkedProduct `json:"no_card"`
 }
 
 type unpublishResponse struct {
 	Unpublished int `json:"unpublished"`
-	// Rows we could not zero out on the platform. They keep their link on
-	// purpose: dropping it would leave a card selling stock we no longer track.
+	// Rows we could not zero out keep their link: a card must not sell untracked stock.
 	Failed []unlinkedProduct `json:"failed"`
 }
 
-// Candidates lists shop products with their publication state - the table the
-// owner ticks before pressing "Publish".
 func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
 	page := channel.PageParam(r)
 	f := channel.CandidateFilter(r)
@@ -53,12 +49,9 @@ func (h *Handlers) Candidates(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// cabinetResponse is what the tab learns when it opens: how the shop's
-// catalogue and the cabinet's cards actually overlap.
+// cabinetResponse is how the shop's catalogue and the cabinet's cards overlap.
 type cabinetResponse struct {
-	// Cards in the cabinet, products in the shop, and the three states between
-	// them. They do not add up to Products by accident: a product with no
-	// article at all is in none of them.
+	// The states do not add up to Products: a product with no article is in none.
 	Cards    int `json:"cards"`
 	Products int `json:"products"`
 	Linked   int `json:"linked"`
@@ -66,22 +59,13 @@ type cabinetResponse struct {
 	NoCard   int `json:"no_card"`
 	// Orphans are cards in the cabinet whose article is in no product of ours.
 	Orphans int `json:"orphans"`
-	// OrphanSKUs are those articles, so the tab can name them instead of only
-	// counting them. Capped: the number answers "should I care", the list
-	// answers "which ones", and nobody reads past the first screen of either.
+	// OrphanSKUs are those articles, capped: the count answers "should I care".
 	OrphanSKUs []string `json:"orphan_skus"`
 	// ReadyIDs are the products that pressing "Publish" would actually link.
-	// The tab marks its rows from this and stops offering a button that cannot
-	// work: on a live shop the owner ticked a hundred rows and got ninety-nine
-	// refusals, because the table never said which ones had a card.
 	ReadyIDs []int64 `json:"ready_ids"`
 }
 
-// Cabinet is asked once, when the tab opens. It is deliberately not cached and
-// not folded into Candidates: the paged product table would otherwise re-read
-// the platform's whole article list for every page of a hundred rows, and a
-// cached answer would go stale exactly when the owner has just created the card
-// they are looking for.
+// Asked once when the tab opens; not cached and not folded into the paged Candidates.
 func (h *Handlers) Cabinet(w http.ResponseWriter, r *http.Request) {
 	c, ok := h.client(w)
 	if !ok {
@@ -126,9 +110,7 @@ func (h *Handlers) Cabinet(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// Publish links the selected products to their cabinet cards by article. It is
-// deliberately a selection, not a sweep: which goods go to a marketplace is the
-// owner's decision, and "everything that matched" is not that decision.
+// A selection, not a sweep: which goods go to a marketplace is the owner's call.
 func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 	var req channel.PublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.ProductIDs) == 0 {
@@ -172,10 +154,7 @@ func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// Unpublish takes products off the channel. The link is dropped only after the
-// platform has been told the stock is zero: a card left behind with the last
-// level we pushed would keep selling goods we no longer account for. Rows that
-// never reached the platform (stock_pushed <= 0) need no call.
+// The link is dropped only after the platform has been told the stock is zero.
 func (h *Handlers) Unpublish(w http.ResponseWriter, r *http.Request) {
 	var req channel.PublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.ProductIDs) == 0 {
@@ -221,9 +200,7 @@ func (h *Handlers) Unpublish(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// zeroOut pushes a zero stock for every offer and reports the ones the platform
-// refused. A transport failure aborts the whole unpublish: guessing that a card
-// is safe to forget is exactly how an oversell starts.
+// A transport failure aborts the whole unpublish: a forgotten card oversells.
 func (h *Handlers) zeroOut(w http.ResponseWriter, links []database.OzonLinkState) (map[string]string, error) {
 	s, err := h.db.GetOzonSettings()
 	if err != nil {

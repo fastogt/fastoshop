@@ -18,8 +18,7 @@ func linkAndPrice(t *testing.T, h *Handlers, d *database.Database, sku string, p
 	return id
 }
 
-// The price API is asynchronous: the upload is accepted long before it is
-// applied, so a second pass must not send the same price again.
+// The price API is asynchronous: a second pass must not send the same price again.
 func TestPriceNotResentWhileInFlight(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")
@@ -112,8 +111,7 @@ func TestStuckPriceTaskIsReleased(t *testing.T) {
 	}
 }
 
-// Wildberries takes one price per card. Sizes that disagree are not resolved by
-// picking one of them.
+// One price per card: sizes that disagree are not resolved by picking one.
 func TestSizesDisagreeingOnPriceSendNothing(t *testing.T) {
 	h, d, cab := newTest(t,
 		sizedCard(9, "ART-9", map[string]string{"M": "2000000000097", "L": "2000000000103"}),
@@ -170,8 +168,7 @@ func TestAgreeingSizesCollapseToOneItem(t *testing.T) {
 	}
 }
 
-// A price the owner never set is never touched: a shop that ignored the column
-// cannot have its platform prices moved by us.
+// A price the owner never set is never touched.
 func TestUnsetPriceIsNeverPushed(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")

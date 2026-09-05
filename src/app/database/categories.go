@@ -9,30 +9,22 @@ import (
 	"strings"
 )
 
-// Category is a node of the catalogue tree. What a product belongs to is still
-// the path in products.category - this row describes the node: the owner's text
-// for its page, where it stands among its siblings and whether the storefront
-// shows it at all. A node with no products of its own is a node the owner
-// declared before filling it.
+// Category describes a tree node; membership stays the path in products.category.
 type Category struct {
 	Path     string `json:"path"`
 	Body     string `json:"body"`
 	Position int    `json:"position"`
 	Hidden   bool   `json:"hidden"`
-	// Count is filled by Tree: how many visible products hang at or below the
-	// node. Not stored - a counter kept in a column drifts from the truth.
+	// Count is filled by Tree: visible products at or below the node, never stored.
 	Count int `json:"count"`
-	// LastMod is the date of the newest product below the node, "2006-01-02":
-	// the sitemap needs one, and an ISO date compares as a string.
+	// LastMod is the newest product date below the node, "2006-01-02" (sorts as text).
 	LastMod string `json:"-"`
 }
 
-// ErrCategoryExists - two nodes cannot share a path, and two names that
-// transliterate into one slug cannot share an address either.
+// ErrCategoryExists - two nodes cannot share a path.
 var ErrCategoryExists = errors.New("category exists")
 
-// ErrCategorySlugTaken - different names, one URL: "КПБ" and "К.П.Б." both
-// become "kpb", and the second page would quietly replace the first.
+// ErrCategorySlugTaken - two different names can transliterate into one slug.
 var ErrCategorySlugTaken = errors.New("category slug taken")
 
 func (d *Database) SetCategoryText(path, body string) error {
@@ -47,8 +39,7 @@ func (d *Database) SetCategoryHidden(path string, hidden bool) error {
 	return d.upsertCategory(path, "hidden", hidden)
 }
 
-// upsertCategory writes one column of a node, creating the row when the node
-// only existed as a path on some products.
+// upsertCategory writes one column, creating the row when the node had none.
 func (d *Database) upsertCategory(path, column string, value any) error {
 	_, err := d.db.Exec(
 		`INSERT INTO categories (path, `+column+`) VALUES (?, ?)
@@ -65,9 +56,7 @@ func (d *Database) CategoryTextOf(path string) (string, error) {
 	return body, err
 }
 
-// CreateCategory declares a node that has no products yet. The storefront still
-// ignores it until something is in it - an empty listing is a soft 404 - but the
-// owner can build the tree first and fill it after.
+// CreateCategory declares an empty node; the storefront hides it until it has goods.
 func (d *Database) CreateCategory(path string) error {
 	path = NormalizePath(path)
 	if path == "" {
@@ -80,8 +69,7 @@ func (d *Database) CreateCategory(path string) error {
 	return err
 }
 
-// checkFree refuses a path already taken by a node or by a node whose slug is
-// the same: the address is what matters, and two names may share one.
+// checkFree refuses a path taken by a node or by a node with the same slug.
 func (d *Database) checkFree(path, movingFrom string) error {
 	nodes, err := d.Tree()
 	if err != nil {
@@ -102,10 +90,7 @@ func (d *Database) checkFree(path, movingFrom string) error {
 	return nil
 }
 
-// CategoryPath joins segment names into a stored path. A slash inside a name
-// becomes a dash: it would invent a level that is not there ("КПБ 1,5/2 сп" is
-// one category, not two). Every writer of a category goes through here, so what
-// a path is gets decided in one place.
+// CategoryPath joins segments; a slash inside a name becomes a dash, not a level.
 func CategoryPath(segments ...string) string {
 	out := make([]string, 0, len(segments))
 	for _, s := range segments {
@@ -117,21 +102,17 @@ func CategoryPath(segments ...string) string {
 	return strings.Join(out, CategorySep)
 }
 
-// NormalizePath cleans a path that is already a path: empty segments and stray
-// separators disappear, the levels stay levels.
+// NormalizePath drops empty segments and stray separators from an existing path.
 func NormalizePath(path string) string {
 	return CategoryPath(strings.Split(path, CategorySep)...)
 }
 
-// JoinCategory puts a new name under a parent path - the shape the admin works
-// in: the parent is a path, the name is one level.
+// JoinCategory puts one new name under a parent path.
 func JoinCategory(parent, name string) string {
 	return CategoryPath(append(strings.Split(NormalizePath(parent), CategorySep), name)...)
 }
 
-// SlugPath is the storefront address of a node: every segment transliterated.
-// Kept here rather than in the storefront because the admin has to refuse a
-// name whose address is taken, and both must agree on what the address is.
+// SlugPath is a node's storefront address; admin and storefront must agree on it.
 func SlugPath(path string) string {
 	segments := strings.Split(path, CategorySep)
 	for i, seg := range segments {
@@ -140,10 +121,7 @@ func SlugPath(path string) string {
 	return strings.Join(segments, CategorySep)
 }
 
-// Tree returns every node: the ones products live in and the ones the owner
-// declared, each with the number of visible products at or below it. Parents
-// are folded in, so "Текстиль/Спальня/КПБ" also yields "Текстиль" and
-// "Текстиль/Спальня" even when nothing sits on those levels directly.
+// Tree returns every node with its visible count; parents are folded in.
 func (d *Database) Tree() ([]Category, error) {
 	byPath := map[string]*Category{}
 	node := func(path string) *Category {
@@ -190,8 +168,7 @@ func (d *Database) Tree() ([]Category, error) {
 		if err := declared.Scan(&c.Path, &c.Body, &c.Position, &c.Hidden); err != nil {
 			return nil, err
 		}
-		// A declared node exists on its own, and so do its parents: a child
-		// without a parent in the tree cannot be drawn.
+		// A child without its parents in the tree cannot be drawn.
 		segments := strings.Split(c.Path, CategorySep)
 		for i := range segments {
 			node(strings.Join(segments[:i+1], CategorySep))
@@ -211,9 +188,7 @@ func (d *Database) Tree() ([]Category, error) {
 	return out, nil
 }
 
-// sortCategories orders siblings by the owner's position first and by name
-// second, and keeps the whole list in tree order so a caller can draw it
-// without sorting again.
+// sortCategories orders siblings by position then name, and the list in tree order.
 func sortCategories(nodes []Category) {
 	pos := map[string]int{}
 	for _, n := range nodes {
@@ -232,9 +207,7 @@ func sortCategories(nodes []Category) {
 	sort.Slice(nodes, func(i, j int) bool { return key(nodes[i].Path) < key(nodes[j].Path) })
 }
 
-// VisibleCategories is what the storefront may show: hidden nodes and
-// everything below them are gone, and so are nodes with no goods - an empty
-// listing is a soft 404 and spends the crawl budget on nothing.
+// VisibleCategories drops hidden branches and empty nodes: an empty listing is a 404.
 func (d *Database) VisibleCategories() ([]Category, error) {
 	nodes, err := d.Tree()
 	if err != nil {
@@ -258,10 +231,7 @@ func underAny(path string, prefixes []string) bool {
 	return slices.ContainsFunc(prefixes, func(p string) bool { return strings.HasPrefix(path, p) })
 }
 
-// RenameCategory moves a node - a rename and a re-parent are the same operation
-// on a path. Products and descendants travel with it in one transaction, and
-// the old address is remembered so a page that already earns search traffic
-// answers 301 instead of 404.
+// RenameCategory moves a node; the old path is kept so its page 301s instead of 404s.
 func (d *Database) RenameCategory(from, to string) error {
 	from, to = NormalizePath(from), NormalizePath(to)
 	if from == "" || to == "" {
@@ -282,9 +252,7 @@ func (d *Database) RenameCategory(from, to string) error {
 	})
 }
 
-// DeleteCategory lifts everything one level up: products and subcategories move
-// to the parent, a root node's goods become uncategorised. Deleting a shelf is
-// not deleting what stands on it.
+// DeleteCategory lifts products and subcategories one level up instead of removing them.
 func (d *Database) DeleteCategory(path string) error {
 	path = NormalizePath(path)
 	if path == "" {
@@ -292,8 +260,7 @@ func (d *Database) DeleteCategory(path string) error {
 	}
 	parent := ParentPath(path)
 	return d.withTx(func(tx *sql.Tx) error {
-		// The row goes before the move, not after: renaming it to the parent's
-		// path would collide with the parent's own row.
+		// The row goes before the move: renaming it to the parent's path would collide.
 		if _, err := tx.Exec(`DELETE FROM categories WHERE path=?`, path); err != nil {
 			return err
 		}
@@ -309,12 +276,9 @@ func ParentPath(path string) string {
 	return ""
 }
 
-// movePath rewrites the prefix everywhere it is stored: on the products, on the
-// nodes and in the redirects that already pointed at the old address. Deleting a
-// root node moves its goods to "" - they keep selling, they just lose a shelf.
+// movePath rewrites the path prefix on products, nodes and redirects; "" = no category.
 func movePath(tx *sql.Tx, from, to string) error {
-	// substr() is 1-based and counts characters, not bytes: a Cyrillic prefix is
-	// twice as long in bytes, and len() here would cut the path in the middle.
+	// substr() is 1-based and counts characters: len() would cut a Cyrillic path.
 	tail := len([]rune(from)) + 1
 	rewrite := func(table, column string) error {
 		var query string
@@ -334,18 +298,14 @@ func movePath(tx *sql.Tx, from, to string) error {
 	if err := rewrite("products", "category"); err != nil {
 		return err
 	}
-	// The node's own row travels with it. No collision is possible here: a
-	// rename checks the destination first, and a delete drops the row before
-	// moving what is left.
+	// No collision: a rename checks the destination, a delete drops the row first.
 	if err := rewrite("categories", "path"); err != nil {
 		return err
 	}
 	if err := rewrite("category_redirects", "new_path"); err != nil {
 		return err
 	}
-	// The old address must keep working: it is in the index and in somebody's
-	// bookmarks. An empty destination means the goods lost their category, and
-	// then the page is gone for good.
+	// With no destination the page is gone; otherwise the old address must keep working.
 	if to == "" {
 		_, err := tx.Exec(`DELETE FROM category_redirects WHERE old_path=?`, from)
 		return err
@@ -356,10 +316,7 @@ func movePath(tx *sql.Tx, from, to string) error {
 	return err
 }
 
-// CategoryRedirectBySlug answers where a renamed category went, looked up by
-// the address a visitor asked for, and returns the new address. Only the moved
-// node itself is recorded, so a child is matched by prefix: renaming
-// "Текстиль" must also move "Текстиль/КПБ", which is where the traffic is.
+// CategoryRedirectBySlug maps an old slug to the new one; children match by prefix.
 func (d *Database) CategoryRedirectBySlug(slug string) (string, bool, error) {
 	rows, err := d.db.Query(`SELECT old_path, new_path FROM category_redirects`)
 	if err != nil {

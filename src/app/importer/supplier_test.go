@@ -6,8 +6,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// The shop lives on two suppliers plus its own goods. Uploading one feed has
-// no right to touch what isn't its own - neither price nor stock.
+// One feed has no right to touch another supplier's price or stock.
 func TestImportTouchesOnlyItsOwnGroup(t *testing.T) {
 	d := mergeDB(t)
 
@@ -25,8 +24,7 @@ func TestImportTouchesOnlyItsOwnGroup(t *testing.T) {
 	if _, err := Run(src, d, "Ромашка", 1, nil); err != nil {
 		t.Fatal(err)
 	}
-	// A second pass with none of the supplier's products at all - the zeroing
-	// must not escape its group.
+	// A second pass with no products of this supplier: zeroing stays in its group.
 	src.items = []Item{{SKU: "P-2", Title: "Молоко", Price: 2000, Stock: 1}}
 	res, err := Run(src, d, "Ромашка", 1, nil)
 	if err != nil {

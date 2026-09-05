@@ -19,8 +19,7 @@ import (
 type Handlers struct {
 	db     *database.Database
 	worker *Worker
-	// BaseURL overrides the Seller API address - tests point a mock here. Empty
-	// in production: the client substitutes the live host itself.
+	// BaseURL overrides the Seller API address - tests point a mock here.
 	BaseURL string
 }
 
@@ -77,21 +76,18 @@ type settingsResponse struct {
 	ClientID    string `json:"client_id"`
 	APIKeySet   bool   `json:"api_key_set"`
 	WarehouseID string `json:"warehouse_id"`
-	// The shop's currency, read through so the tab can label prices. Not a
-	// setting of this channel - see OzonSettings.
+	// The shop's currency, not a setting of this channel - see OzonSettings.
 	Currency    string          `json:"currency"`
 	Linked      int             `json:"linked"`
 	Unlinked    int             `json:"unlinked"`
 	Pending     int             `json:"pending"`
 	Failed      int             `json:"failed"`
 	StockErrors []stockErrorRow `json:"stock_errors"`
-	// Price counters live next to the stock ones instead of replacing them: a
-	// price rejected by Ozon must not hide a stock that did not arrive.
+	// A price rejected by Ozon must not hide a stock that did not arrive.
 	PricePending int             `json:"price_pending"`
 	PriceFailed  int             `json:"price_failed"`
 	PriceErrors  []priceErrorRow `json:"price_errors"`
-	// Counters of incoming platform sales: total, of them oversold and with
-	// items that did not match any linked product.
+	// Sales counters: total, of them oversold and with unmatched items.
 	OrdersTotal      int    `json:"orders_total"`
 	OrdersOversold   int    `json:"orders_oversold"`
 	OrdersUnresolved int    `json:"orders_unresolved"`
@@ -105,9 +101,7 @@ type settingsRequest struct {
 	WarehouseID string  `json:"warehouse_id"`
 }
 
-// Prices are in kopecks: Price is what the owner wants on Ozon, ShopPrice is the
-// shelf price of the shop. Title empty means the product is gone and only the
-// card on the platform is left.
+// Prices are in kopecks; an empty Title means only the platform card is left.
 type ozonLinkRow struct {
 	ProductID   int64  `json:"product_id"`
 	OfferID     string `json:"offer_id"`
@@ -141,8 +135,7 @@ type unlinkedProduct struct {
 	SKU   string `json:"sku"`
 }
 
-// ProductID nil means the item could not be matched to a shop product; the
-// front end shows such a row as a warning instead of hiding it silently.
+// ProductID nil means the item matched no shop product; the tab warns about it.
 type ozonOrderItemRow struct {
 	ProductID *int64 `json:"product_id"`
 	OfferID   string `json:"offer_id"`
@@ -224,9 +217,7 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Orders is the platform sales log. These sales never land in the shop's orders
-// (Ozon reports them itself, duplicating would double the revenue in the tax
-// CSV), so this is the only place the owner sees them.
+// Platform sales never land in the shop's orders: Ozon reports them itself.
 func (h *Handlers) Orders(w http.ResponseWriter, r *http.Request) {
 	page := channel.PageParam(r)
 	total, err := h.db.CountOzonOrders()
@@ -283,8 +274,7 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) msg(key string) string { return i18n.T(h.db.Lang(), key) }
 
-// client builds a client on the saved keys. A false second value means there are
-// no keys and the answer to the owner has already been sent.
+// A false second value means there are no keys and the owner was already answered.
 func (h *Handlers) client(w http.ResponseWriter) (*Client, bool) {
 	s, err := h.db.GetOzonSettings()
 	if err != nil {
@@ -298,8 +288,6 @@ func (h *Handlers) client(w http.ResponseWriter) (*Client, bool) {
 	return &Client{ClientID: s.ClientID, APIKey: s.APIKey, BaseURL: h.BaseURL}, true
 }
 
-// Check is the "Check" button: a live request with the saved keys so the
-// owner sees that the cabinet answers at all.
 func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 	c, ok := h.client(w)
 	if !ok {
@@ -311,10 +299,7 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res := checkResponse{Total: len(offers)}
-	// The cabinet's currency follows from the legal entity behind it. It is
-	// reported, not stored: the shop already has a currency, and if these two
-	// disagree the shop's is wrong - the tab says so instead of us keeping a
-	// second answer in step. A failure here must not fail the check itself.
+	// The cabinet's currency is reported, not stored; a failure must not fail the check.
 	if info, err := c.SellerInfo(); err != nil {
 		log.Warnf("ozon: seller info: %v", err)
 	} else {
@@ -323,9 +308,7 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// Warehouses fills the warehouse dropdown. The error goes to the owner as text:
-// the tab degrades to typing warehouse_id by hand, not to an empty list with no
-// explanation.
+// The error goes to the owner as text: the tab degrades to typing warehouse_id.
 func (h *Handlers) Warehouses(w http.ResponseWriter, r *http.Request) {
 	c, ok := h.client(w)
 	if !ok {
@@ -344,10 +327,7 @@ func (h *Handlers) Warehouses(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// Push is the "Push now" button: the same pass the worker runs, only
-// synchronous and with the counters in the answer.
-// pushError turns our own sentinels into the owner's language and leaves
-// anything else as is: an unexpected failure is more useful verbatim.
+// pushError turns our own sentinels into the owner's language, anything else verbatim.
 func (h *Handlers) pushError(err error) string {
 	switch {
 	case errors.Is(err, ErrPushBusy):
@@ -358,8 +338,7 @@ func (h *Handlers) pushError(err error) string {
 	return err.Error()
 }
 
-// shopCurrency is the money every price in this tab is written in. Empty only
-// on a shop with no settings row, which has no prices either.
+// Empty only on a shop with no settings row, which has no prices either.
 func (h *Handlers) shopCurrency() string {
 	s, err := h.db.GetSettings()
 	if err != nil {
@@ -381,9 +360,7 @@ func (h *Handlers) Push(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, channel.PushResponse{Pushed: pushed, Failed: failed})
 }
 
-// Links is the linked-products table: what we know about every link, including
-// the price the owner set for the platform. Paged, because a shop of 20 000
-// products would otherwise send its whole catalogue into the browser.
+// Paged: a large catalogue must not go into the browser whole.
 func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	page := channel.PageParam(r)
 	total, err := h.db.CountOzonLinkRows()
@@ -413,10 +390,7 @@ func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, res)
 }
 
-// SetPrice sets the price of one product ON OZON, in kopecks. Zero switches the
-// management off - the price stays whatever the cabinet holds, we simply stop
-// touching it. A product without a link is a 404 and not a silently created row:
-// a price for something unlinked would never be sent anywhere.
+// Kopecks; zero switches management off and leaves whatever the cabinet holds.
 func (h *Handlers) SetPrice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "productID"), 10, 64)
 	if err != nil {
@@ -444,9 +418,7 @@ func (h *Handlers) SetPrice(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, channel.OKStatusResponse{Status: "ok"})
 }
 
-// FillPrices is the bulk helper "shelf price + N%". It fills only links whose
-// price is still zero: the owner's own numbers are never overwritten in bulk,
-// so the button is safe to press twice.
+// Fills only links whose price is still zero: the owner's own numbers survive.
 func (h *Handlers) FillPrices(w http.ResponseWriter, r *http.Request) {
 	var req channel.FillPricesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

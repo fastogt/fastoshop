@@ -26,35 +26,24 @@ type productRequest struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Price       int64  `json:"price"`
-	// A pointer, like smtp_password in settings: a missing field means "don't
-	// touch". Otherwise a product form opened before a sale would reset the
-	// stock to the number it displayed and resurrect already sold units.
+	// A missing field means "don't touch": a stale form must not reset the stock.
 	Stock    *int   `json:"stock"`
 	Category string `json:"category"`
 	Brand    string `json:"brand"`
-	// Supplier group. Pointer for the same reason as the others: a client that
-	// does not send the field must not move the product out of its group.
+	// A client that does not send the field must not move the product out of its group.
 	Supplier *string `json:"supplier"`
-	// Same pointer idiom: an absent field means "leave as is". A plain bool would
-	// flip visibility for every client that does not know the field yet.
+	// An absent field means "leave as is".
 	Hidden *bool `json:"hidden"`
-	// Gross weight in grams, packed size in millimetres. Here nil means "clear
-	// it" rather than "leave as is": an empty field in the form is how a wrong
-	// weight is taken back, and the admin ships inside the same package as the
-	// server, so there is no older client to protect against.
+	// Grams and millimetres. Here nil means "clear it" rather than "leave as is".
 	WeightG  *int64 `json:"weight_g"`
 	LengthMM *int64 `json:"length_mm"`
 	WidthMM  *int64 `json:"width_mm"`
 	HeightMM *int64 `json:"height_mm"`
-	// Characteristics, in the order the form lists them. Nil means "leave as
-	// is" and an empty list means "clear them": a set arrives from a source or
-	// from a person, and both state the whole set rather than one key of it.
+	// Nil means "leave as is", an empty list means "clear them": a set arrives whole.
 	Params []database.Param `json:"params"`
 }
 
-// cleanParams keeps the rows a card can show. A form always has a blank row at
-// the bottom and a person always leaves one half-filled, so both are dropped
-// here rather than stored as an empty line under the price.
+// A form's blank and half-filled rows are dropped rather than stored.
 func cleanParams(in []database.Param) []database.Param {
 	out := make([]database.Param, 0, len(in))
 	for _, p := range in {
@@ -71,9 +60,7 @@ func cleanParams(in []database.Param) []database.Param {
 	return out
 }
 
-// positive keeps a measurement only when it is one: zero and negative are not
-// weights or sizes, they are an empty field or a typo, and either must be
-// stored as "unknown" rather than as a number a delivery quote would trust.
+// Zero and negative are an empty field or a typo, so they are stored as unknown.
 func positive(v *int64) *int64 {
 	if v == nil || *v <= 0 {
 		return nil
@@ -95,14 +82,10 @@ type listProductsResponse struct {
 
 const (
 	kAdminPageSize = 100
-	// 500 is what bulk work needs: a catalogue of twenty thousand is corrected
-	// in blocks, not read row by row. enrich() runs a query per row, so the
-	// ceiling stays where a page is still one quick request.
+	// 500 keeps a page one quick request: enrich() runs a query per row.
 	kAdminMaxPageSize = 500
 )
 
-// pageParams reads the page size and number of a list request, clamped to what
-// the server is willing to render.
 func pageParams(q url.Values, def, maxPer int) (per, page int) {
 	per, page = def, 1
 	if n, err := strconv.Atoi(q.Get("per")); err == nil && n > 0 {
@@ -178,9 +161,7 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	p := &database.Product{ID: id, SKU: req.SKU, Title: req.Title,
 		Description: req.Description, Price: req.Price,
 		Stock: old.Stock, Category: req.Category, Brand: req.Brand, Hidden: old.Hidden,
-		// Carried from the stored row: the admin form knows nothing about the
-		// source price, and dropping it would leave the product out of every
-		// later coefficient recompute.
+		// The admin form has no source price; dropping it would skip later recomputes.
 		SourcePrice: old.SourcePrice, PriceManual: old.PriceManual,
 		Supplier: old.Supplier,
 		WeightG:  positive(req.WeightG),
@@ -200,8 +181,7 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	if req.Supplier != nil {
 		p.Supplier = *req.Supplier
 	}
-	// Typing a different price claims it: from now on a coefficient recompute
-	// must not overwrite this row.
+	// Typing a different price claims it: a recompute must not overwrite this row.
 	if req.Price != old.Price {
 		p.PriceManual = true
 	}
@@ -228,21 +208,15 @@ func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteInternalError(w, err)
 		return
 	}
-	// A deleted product means zero on the marketplace, and there is no point
-	// waiting for the tick while selling something that no longer exists.
+	// A deleted product means zero on the marketplace; no point waiting for the tick.
 	h.stockChanged()
 	httpjson.WriteOK(w, okStatusResponse{Status: "deleted"})
 }
 
-// DeleteImage removes a photo from a product, and the file with it when the
-// photo is ours. Imported photos are links to the supplier's server - there is
-// nothing of ours to unlink.
 type categoriesResponse struct {
 	Categories []string `json:"categories"`
 }
 
-// Categories feeds the picker in the product form: the owner reuses a category
-// or types a new one, and no separate screen has to exist for a list of slugs.
 func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
 	list, err := h.db.Categories()
 	if err != nil {
@@ -268,8 +242,7 @@ func (h *Handler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !strings.HasPrefix(im.Path, "http") {
-		// Best effort: a missing file must not fail the request, but leaving
-		// every removed upload on disk would grow the volume forever.
+		// Best effort: a missing file must not fail the request.
 		if err := os.Remove(filepath.Join(h.uploadsDir, im.Path)); err != nil {
 			log.Warnf("delete image file %q: %v", im.Path, err)
 		}
@@ -364,8 +337,7 @@ func (h *Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteInternalError(w, err)
 		return
 	}
-	// The small copy for the catalogue grid. Not fatal when it fails: the
-	// storefront falls back to the original, it is only heavier.
+	// Not fatal: the storefront falls back to the original, only heavier.
 	if err := media.MakeThumb(h.uploadsDir, name); err != nil {
 		log.Warnf("thumbnail for %q: %v", name, err)
 	}
@@ -381,10 +353,7 @@ type imageOrderRequest struct {
 	IDs []int64 `json:"ids"`
 }
 
-// SetImageOrder is the drag and drop behind the photo strip. The first photo is
-// what a shopper sees in the catalogue and what a search engine puts next to the
-// snippet, so moving a good one to the front is a routine job, not a nicety -
-// especially on an imported catalogue, where the order came from the supplier.
+// The first photo is what the catalogue and the search snippet show.
 func (h *Handler) SetImageOrder(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r)
 	if err != nil {

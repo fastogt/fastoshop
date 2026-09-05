@@ -18,14 +18,7 @@ import (
 //	WB_TOKEN=…                                go test ./app/importer -run Live -v
 //	OZON_CLIENT_ID=… OZON_API_KEY=…           go test ./app/importer -run Live -v
 //
-// The fixtures next door state what a source is able to carry; these state what
-// a real supplier or cabinet actually fills, which is a different question and
-// one no fixture can answer. A feed of twenty thousand offers where nine state
-// a weight parses correctly and is useless, and only a live run says so.
-//
-// They assert almost nothing on purpose - somebody else's catalogue is not ours
-// to have opinions about. The two things they do insist on are that something
-// parsed and that the parser did not silently drop the majority.
+// They assert almost nothing: only that something parsed and most of it survived.
 func TestLiveYML(t *testing.T) {
 	url := os.Getenv("FEED_URL")
 	if url == "" {
@@ -37,8 +30,7 @@ func TestLiveYML(t *testing.T) {
 	report(t, items)
 }
 
-// A price list off disk: a spreadsheet or a CSV, told apart by its own bytes
-// the way the upload endpoint tells them apart.
+// A price list off disk: a spreadsheet or a CSV, told apart by its own bytes.
 func TestLiveFile(t *testing.T) {
 	path := os.Getenv("FEED_FILE")
 	if path == "" {
@@ -94,9 +86,7 @@ func fetchLive(t *testing.T, src Source) []Item {
 	return items
 }
 
-// report prints what a real catalogue actually fills. The interesting number is
-// not the total but which fields come back empty: those are what the owner will
-// be asked for before a marketplace accepts a card.
+// report prints which fields a real catalogue fills and which come back empty.
 func report(t *testing.T, items []Item) {
 	t.Helper()
 	filled := map[string]int{}
@@ -134,8 +124,7 @@ func report(t *testing.T, items []Item) {
 			float64(filled[n])*100/float64(len(items)))
 	}
 
-	// A category is a path, and how deep a source nests it decides whether a
-	// storefront gets a tree or a single flat level.
+	// How deep a source nests decides whether the storefront gets a tree.
 	levels := make([]int, 0, len(depth))
 	for d := range depth {
 		levels = append(levels, d)
@@ -145,9 +134,7 @@ func report(t *testing.T, items []Item) {
 		t.Logf("  category depth %d: %d", d, depth[d])
 	}
 
-	// Which characteristics the source actually states, most common first. This
-	// is the list a channel has to be mapped against, and guessing it from one
-	// card is how a mapping ends up wrong for the other nineteen thousand.
+	// Which characteristics the source actually states, most common first.
 	seen := map[string]int{}
 	for _, it := range items {
 		for _, p := range it.Params {
@@ -179,8 +166,7 @@ func report(t *testing.T, items []Item) {
 		}
 	}
 
-	// One whole item, as parsed. A count says a field is filled; only the value
-	// says it is filled with something usable.
+	// One whole item, as parsed: a count cannot say whether a value is usable.
 	best := 0
 	for i, it := range items {
 		if len(it.Params) > len(items[best].Params) ||
@@ -191,9 +177,7 @@ func report(t *testing.T, items []Item) {
 	raw, _ := json.MarshalIndent(items[best], "", "  ")
 	t.Logf("fullest item:\n%s", raw)
 
-	// The parser must not be quietly dropping most of the source: an item with
-	// no title or no price is one the shop cannot show, and a source where that
-	// is the majority means the mapping is wrong, not the seller.
+	// The parser must not be quietly dropping most of the source.
 	if filled["title"]*2 < len(items) || filled["price"]*2 < len(items) {
 		t.Errorf("more than half the items have no title or no price: %+v", filled)
 	}

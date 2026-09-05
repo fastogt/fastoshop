@@ -2,8 +2,7 @@ package database
 
 import "fmt"
 
-// WBCandidate is a shop product as the channel tab sees it. Published is the
-// presence of a link row - the link set IS the published set.
+// WBCandidate is a shop product for the channel tab; the link set is the published set.
 type WBCandidate struct {
 	ProductID int64
 	SKU       string
@@ -14,8 +13,7 @@ type WBCandidate struct {
 	Published bool
 }
 
-// CountWBCandidates counts what the same filter would list, so the table's page
-// numbers agree with its rows.
+// CountWBCandidates counts what the same filter would list.
 func (d *Database) CountWBCandidates(f CandidateFilter) (int, error) {
 	where, args := candidateWhere(f)
 	var n int
@@ -25,9 +23,7 @@ func (d *Database) CountWBCandidates(f CandidateFilter) (int, error) {
 	return n, err
 }
 
-// ListWBCandidates returns a page of shop products with their publication state.
-// Hidden products are included on purpose: a product can be off the storefront
-// and still sold on the marketplace.
+// ListWBCandidates includes hidden products: off the storefront, still sold on WB.
 func (d *Database) ListWBCandidates(f CandidateFilter, limit, offset int) ([]WBCandidate, error) {
 	where, args := candidateWhere(f)
 	args = append(args, limit, offset)
@@ -52,8 +48,7 @@ func (d *Database) ListWBCandidates(f CandidateFilter, limit, offset int) ([]WBC
 	return out, rows.Err()
 }
 
-// WBLinkState is a link as unpublishing sees it: the barcode to zero out on the
-// platform and the level we last pushed there.
+// WBLinkState is a link as unpublishing sees it: barcode to zero out, last level.
 type WBLinkState struct {
 	ProductID   int64
 	NmID        int64
@@ -84,10 +79,7 @@ func (d *Database) WBLinksByProducts(ids []int64) ([]WBLinkState, error) {
 	return out, rows.Err()
 }
 
-// WBSKUState is every product's article and whether it is already linked. The
-// tab joins this against the cabinet's own cards: counting on the hundred rows
-// currently on screen would answer a question nobody asked, while "12 of 24 000
-// can be published" is the one that explains the tab.
+// WBSKUState returns every product's article and whether it is already linked.
 //
 // ponytail: the whole catalogue in memory - 24 000 short strings read once when
 // the tab opens. An IN (…) against the platform's list would need thousands of
@@ -111,8 +103,7 @@ func (d *Database) WBSKUState() (map[string]int64, map[string]bool, error) {
 			return nil, nil, err
 		}
 		ids[sku] = id
-		// A duplicate article keeps the linked side: the tab must not offer to
-		// link an article that already is.
+		// A duplicate article keeps the linked side.
 		linked[sku] = linked[sku] || isLinked
 	}
 	return ids, linked, rows.Err()

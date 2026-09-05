@@ -18,8 +18,7 @@ func TestTranslations(t *testing.T) {
 	}
 }
 
-// Errors stored in the database mix our sentinels with text from the platform:
-// ours get translated, the platform's is passed through untouched.
+// Our sentinels get translated; text from the platform is passed through untouched.
 func TestTIfKeyLeavesForeignTextAlone(t *testing.T) {
 	if got := TIfKey(LangEN, KeyOzonNoAnswer); got != "Ozon did not answer for this article" {
 		t.Errorf("own key not translated: %q", got)

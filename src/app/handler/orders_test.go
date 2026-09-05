@@ -80,8 +80,7 @@ func TestOrdersAndSettings(t *testing.T) {
 	}
 }
 
-// Broken items_json must not be printed as zero: this is a tax journal.
-// A name from the public form must not be written raw: Excel runs the formula.
+// A broken snapshot must not print as zero, and Excel must not run a name.
 func TestExportOrdersCSVSafety(t *testing.T) {
 	h := newTestHandler(t)
 	r := chi.NewRouter()
@@ -108,9 +107,7 @@ func TestExportOrdersCSVSafety(t *testing.T) {
 	}
 }
 
-// An order carries a person's name and phone, so the owner must be able to
-// erase it - and only by an explicit list: "delete everything the filter
-// matches" is how a shop loses its journal in one click.
+// Deletion only by an explicit list, never "everything the filter matches".
 func TestBulkDeleteOrders(t *testing.T) {
 	h := newTestHandler(t)
 	_ = h.db.CreateOrder(&database.Order{Name: "Иван", Phone: "+7999",
@@ -142,8 +139,7 @@ func TestBulkDeleteOrders(t *testing.T) {
 	}
 }
 
-// The admin gets the snapshot already read: the browser must not receive the raw
-// blob and parse money out of it on its own.
+// The browser must not receive the raw blob and parse money out of it.
 func TestListOrdersParsesSnapshot(t *testing.T) {
 	h := newTestHandler(t)
 	if err := h.db.CreateOrder(&database.Order{Name: "Светлана", Phone: "+375",

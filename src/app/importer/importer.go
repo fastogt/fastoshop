@@ -19,32 +19,20 @@ type Item struct {
 	Price       int64 // minor units
 	Stock       int
 	ImageURLs   []string
-	// Category is a path from the root down, segments joined by "/". A source
-	// with a tree (YML, Ozon, a price list cell written as "Textile > Bedroom")
-	// fills every segment; one without (a WB subject) fills a single one.
+	// Category is a path from the root down, segments joined by "/".
 	Category string
-	// Gross weight in grams and packed size in millimetres, as the platform
-	// stated them. nil means the source said nothing - the one thing a delivery
-	// quote must tell apart from a zero. Marketplaces make both mandatory on a
-	// card, which is why an import is the only way a catalogue of twenty
-	// thousand ever gets weighed: nobody types that in by hand.
+	// Gross weight in grams and packed size in millimetres; nil means unstated.
 	WeightG  *int64
 	LengthMM *int64
 	WidthMM  *int64
 	HeightMM *int64
-	// Brand is the manufacturer the source named. Not the supplier: Wildberries
-	// states it on the card, Ozon as attribute 85, YML as <vendor>, and every
-	// one of them means the maker of the goods.
+	// Brand is the manufacturer (Ozon attribute 85, YML <vendor>), not the supplier.
 	Brand string
-	// Characteristics as the source stated them: colour, size, material. Weight
-	// and dimensions are deliberately NOT in here - the core does arithmetic
-	// with those, and two homes for one number is one home too many.
+	// Characteristics as stated; weight and dimensions deliberately stay out.
 	Params []database.Param
 }
 
-// fill keeps what the product already has and takes the feed's value only when
-// there is nothing to keep. The second return says whether anything changed, so
-// a refresh that brings no news still writes nothing.
+// fill takes the feed's value only when there is nothing to keep.
 func fill(have, incoming *int64) (*int64, bool) {
 	if have != nil || incoming == nil {
 		return have, false
@@ -52,9 +40,7 @@ func fill(have, incoming *int64) (*int64, bool) {
 	return incoming, true
 }
 
-// grams and millimetres convert a platform's own units into ours. An unknown
-// unit returns nothing rather than a guess: a weight off by a factor of a
-// thousand is worse than no weight at all, and it is silent.
+// An unknown unit returns nothing rather than a guess off by a factor of a thousand.
 func grams(v float64, unit string) *int64 {
 	var g float64
 	switch strings.ToLower(strings.TrimSpace(unit)) {
@@ -83,8 +69,7 @@ func millimetres(v float64, unit string) *int64 {
 	return positive(mm)
 }
 
-// positive rounds and keeps a measurement only when it is one: zero is what a
-// platform sends for "not filled in", and it must stay "not filled in" here.
+// Platforms send zero for "not filled in", so it must not become a measurement.
 func positive(v float64) *int64 {
 	n := int64(math.Round(v))
 	if n <= 0 {
@@ -99,23 +84,17 @@ type Source interface {
 	Fetch() ([]Item, error)
 }
 
-// SourceErrors - a source may reject a card before it is ever written to the
-// DB (e.g. a foreign currency in YML). Such losses must make it into Result,
-// or the seller sees "20 migrated" without learning about the 3 lost.
+// SourceErrors - cards a source rejected before the DB; they belong in Result.
 type SourceErrors interface {
 	FetchErrors() int
 }
 
-// SourceCurrency - the source knows which currency its prices came in. An empty
-// string means "unknown" (our own CSV), where the owner fills the prices in
-// themselves.
+// SourceCurrency - the currency the prices came in; empty means unknown.
 type SourceCurrency interface {
 	Currency() string
 }
 
-// FeedCurrency answers the one question worth asking before an import: does the
-// feed quote the same money the shop sells in. We hold no exchange rate and
-// fetch none - it goes into the coefficient.
+// We hold no exchange rate and fetch none - it goes into the coefficient.
 func FeedCurrency(src Source) string {
 	if c, ok := src.(SourceCurrency); ok {
 		return c.Currency()
@@ -125,21 +104,15 @@ func FeedCurrency(src Source) string {
 
 type Result struct {
 	Imported int `json:"imported"`
-	// Updated counts products already in the shop whose supplier price or stock
-	// moved; Skipped counts those the feed repeated unchanged plus rows the
-	// import refused to create: no article, a duplicate article, a zero price,
-	// or an article owned by another supplier group.
+	// Skipped counts unchanged rows plus rows the import refused to create.
 	Updated int `json:"updated"`
 	Skipped int `json:"skipped"`
-	// Zeroed counts products the feed no longer lists. They are not deleted:
-	// ozon_links points at the product id and the slug is already indexed, so
-	// recreating one later would break the channel link and a live URL.
+	// Zeroed products are not deleted: channel links and indexed slugs point at them.
 	Zeroed int `json:"zeroed"`
 	Errors int `json:"errors"`
 }
 
-// Stages travel to the admin as keys: the text around them is rendered in the
-// owner's language on the screen, like everything else there.
+// Stages travel to the admin as keys and are rendered in the owner's language.
 const (
 	StageFetch    = "fetch"
 	StageProducts = "products"
@@ -147,15 +120,7 @@ const (
 
 var kHTTP = &http.Client{Timeout: 60 * time.Second}
 
-// Run imports the catalogue, turning each source price into a shelf price with
-// the owner's coefficient: exchange rate and import costs folded into one
-// number. The source price is stored as it came, so changing the coefficient
-// later recomputes exactly instead of rescaling a rescaled value.
-// Run imports into one supplier group. The group, not the source, decides what
-// this import may touch: a shop can live off two feeds plus its own goods, and
-// one feed must never reprice or zero out another's.
-// onProgress may be nil. It reports the stage and how far along it is, so the
-// admin can show a bar instead of a spinner that says nothing for two minutes.
+// Run imports into one supplier group, which alone decides what may be touched.
 func Run(src Source, db *database.Database, supplier string, coefficient float64,
 	onProgress func(stage string, done, total int)) (*Result, error) {
 	progress := func(stage string, done, total int) {
@@ -163,9 +128,7 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 			onProgress(stage, done, total)
 		}
 	}
-	// The shop's markup ladder is read once per import: it belongs to the shop,
-	// not to the feed, and re-reading it per product would be twenty thousand
-	// queries to answer the same question.
+	// The markup ladder belongs to the shop, not the feed: read it once per import.
 	rules, err := db.ShopPriceRules()
 	if err != nil {
 		return nil, err
@@ -202,8 +165,7 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 		}
 		seen[it.SKU] = true
 		if old, found := bySKU[it.SKU]; found {
-			// An article owned by another supplier group is left untouched: two
-			// suppliers claiming one article is the owner's call, not ours.
+			// An article owned by another supplier group is left untouched.
 			if old.Supplier != supplier {
 				res.Skipped++
 				continue
@@ -221,8 +183,7 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 			}
 			continue
 		}
-		// A zero price is refused: a product given away for free is worse than a
-		// product missing.
+		// A zero price is refused: free goods are worse than missing ones.
 		if it.Price <= 0 {
 			res.Skipped++
 			continue
@@ -239,20 +200,14 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 			res.Errors++
 			continue
 		}
-		// The supplier's link is stored, not the file: a large catalogue means
-		// several photos per card, and the import would take hours instead of a
-		// minute. The storefront renders an absolute URL from product_images.path
-		// as happily as a local name, and the owner pulls the photos onto our
-		// disk when they want to, with "Download photos" in the products table.
+		// product_images.path takes an absolute URL as well as a local name.
 		_ = w.AddImages(p.ID, it.ImageURLs)
 		res.Imported++
 	}
 
 	progress(StageProducts, len(items), len(items))
 
-	// A feed that came back empty is a supplier's outage, not a decision to
-	// withdraw the entire catalogue - zeroing everything on it would take the
-	// shop off sale, and on Ozon too.
+	// An empty feed is a supplier's outage, not a decision to withdraw the catalogue.
 	if len(items) > 0 {
 		gone := missing(existing, seen, supplier)
 		if err := w.Close(w.ZeroStock(gone)); err != nil {
@@ -264,35 +219,25 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 	return res, w.Close(nil)
 }
 
-// merge updates what the source owns - its price and the stock - and leaves
-// alone what the owner owns: the title, the description and the photos are
-// their SEO work, and a weekly feed must not undo it. A price the owner typed
-// keeps its manual mark and its value.
+// merge writes only what the source owns; the owner's title, text and photos stay.
 func merge(wr *database.ImportWriter, old database.Product, it Item, coefficient float64,
 	rules []database.PriceRule) (bool, error) {
 	price := old.Price
 	if !old.PriceManual {
 		price = database.ShelfPrice(rules, it.Price, coefficient)
 	}
-	// A category the owner already set is theirs; an empty one gets filled, so a
-	// catalogue imported before categories existed picks them up on the next run
-	// instead of needing a wipe.
+	// A category the owner already set is theirs; an empty one gets filled.
 	category := old.Category
 	if category == "" {
 		category = it.Category
 	}
-	// Measurements follow the same rule as the category: an empty one is filled,
-	// a stated one is left alone. A catalogue imported before this existed picks
-	// up its weights on the next refresh, and an owner who corrected one keeps
-	// the correction - the platform's number is a starting point, not a verdict.
+	// Measurements follow the category rule: empty is filled, stated is left alone.
 	weight, filled := fill(old.WeightG, it.WeightG)
 	length, l := fill(old.LengthMM, it.LengthMM)
 	width, w := fill(old.WidthMM, it.WidthMM)
 	height, hh := fill(old.HeightMM, it.HeightMM)
 	measured := filled || l || w || hh
-	// Characteristics follow the category: an empty set is filled, a set the
-	// owner has touched is theirs. We do not merge key by key - a half-owned
-	// set is a set nobody can reason about.
+	// Characteristics are all-or-nothing: no key-by-key merge into a half-owned set.
 	params, gained := old.Params, false
 	if len(params) == 0 && len(it.Params) > 0 {
 		params, gained = it.Params, true
@@ -317,9 +262,7 @@ func merge(wr *database.ImportWriter, old database.Product, it Item, coefficient
 	return true, wr.UpdateProduct(&old)
 }
 
-// missing is what this group's feed stopped listing and still has stock: the
-// products to take off sale. Other groups and the owner's own goods are none of
-// its business.
+// missing is what this group's feed stopped listing and still has stock.
 func missing(existing []database.Product, seen map[string]bool, supplier string) []int64 {
 	var ids []int64
 	for _, p := range existing {

@@ -2,8 +2,7 @@ package database
 
 import "database/sql"
 
-// Feed is the YML source the owner refreshes weekly: the link plus the group it
-// belongs to. Kept in the settings row because a shop has exactly one of each.
+// Feed is the YML source and its supplier group, kept in the single settings row.
 type Feed struct {
 	URL      string
 	Supplier string

@@ -48,10 +48,7 @@ func get(t *testing.T, h http.Handler, path string) string {
 	return w.Body.String()
 }
 
-// The zero-JS storefront is a promise, so an unconfigured shop must carry no
-// counter at all; a configured one must carry ids the providers can actually
-// read back - html/template escapes inside <script>, and a mangled id is a
-// counter that silently collects nothing.
+// No counter at all unless configured, and ids the providers can read back.
 func TestCounters(t *testing.T) {
 	d, h := setup(t)
 	var body string
@@ -67,9 +64,7 @@ func TestCounters(t *testing.T) {
 	if err := d.UpdateSettings(s); err != nil {
 		t.Fatal(err)
 	}
-	// Every page the buyer can land on, not just the catalogue: a product card
-	// is the page search engines send traffic to, and a counter missing there
-	// undercounts exactly the visits worth measuring.
+	// Every page the buyer can land on, not just the catalogue.
 	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
 		body = get(t, h, path)
 		for _, want := range []string{
@@ -141,9 +136,7 @@ func TestJSONLDValidWithHostileTitle(t *testing.T) {
 	}
 }
 
-// ldImage extracts image from the JSON-LD. We compare the parsed value, not a
-// substring: in a JS context html/template escapes slashes (\/), which is valid
-// JSON but does not match the original string.
+// Compare the parsed value: in a JS context html/template escapes slashes (\/).
 func ldImage(t *testing.T, body string) string {
 	t.Helper()
 	_, rest, ok := strings.Cut(body, `<script type="application/ld+json">`)
@@ -160,8 +153,7 @@ func ldImage(t *testing.T, body string) string {
 	return ld.Image
 }
 
-// Import no longer downloads photos - product_images.path holds the absolute
-// source URL. It must reach <img>, og:image and JSON-LD as is.
+// An absolute source URL must reach <img>, og:image and JSON-LD as it stands.
 func TestRemoteImageURLRenderedAsIs(t *testing.T) {
 	d, h := setup(t)
 	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
@@ -312,9 +304,7 @@ func TestSitemapRobots404(t *testing.T) {
 	}
 }
 
-// llms.txt is the shop's map for AI assistants: name, how ordering works, the
-// catalogue sections. Answer engines already send buyers, and they decide from
-// one read, not from twenty thousand pages.
+// The shop's map for AI assistants: name, how ordering works, catalogue sections.
 func TestLlmsTxt(t *testing.T) {
 	_, h := setup(t)
 	body := get(t, h, "/llms.txt")
@@ -509,8 +499,7 @@ func TestCartOutOfStockCannotBeAdded(t *testing.T) {
 	}
 }
 
-// The product ran out after it was added - the line is dropped at render time,
-// what has vanished cannot be ordered.
+// A product that ran out after it was added cannot be ordered.
 func TestCartDropsVanishedProduct(t *testing.T) {
 	d, h := setup(t)
 	secondProduct(t, d)
@@ -542,8 +531,7 @@ func TestCartCheckoutRequiresPhoneAndItems(t *testing.T) {
 	if orders, _ := d.ListOrders(); len(orders) != 0 {
 		t.Fatal("order without phone must be rejected")
 	}
-	// The refused form comes back filled: a phone user who loses their name
-	// and comment to a validation error does not retype them - they leave.
+	// The refused form comes back filled: nothing typed has to be retyped.
 	body := w.Body.String()
 	if !strings.Contains(body, `value="Иван"`) ||
 		!strings.Contains(body, "привезите к обеду") {
@@ -613,10 +601,7 @@ func TestCheckoutDecrementsStock(t *testing.T) {
 	}
 }
 
-// Stock deduction failed at checkout: no order exists, the buyer sees the named
-// reason, the line leaves the cart. Here it is triggered by a duplicated cookie
-// line (two of 3 with a stock of 3) - the same path as two buyers racing for
-// the last unit, but reproducible.
+// A duplicated cookie line reproduces two buyers racing for the last unit.
 func TestCheckoutSoldOutRace(t *testing.T) {
 	d, h := setup(t)
 	second := secondProduct(t, d)
@@ -651,8 +636,7 @@ func TestCheckoutSoldOutRace(t *testing.T) {
 	}
 }
 
-// A Belarusian shop's storefront must not show Russian rubles: the buyer sees
-// the label, and priceCurrency ends up in the search engine results.
+// priceCurrency reaches the search results, so the shop's own currency must hold.
 func TestStorefrontCurrencyBYN(t *testing.T) {
 	d, h := setup(t)
 	if err := d.UpdateSettings(&database.Settings{
@@ -677,9 +661,7 @@ func TestStorefrontCurrencyBYN(t *testing.T) {
 	}
 }
 
-// A hidden product must vanish from everywhere at once. Especially from the
-// sitemap: a map leading to 404s hurts the search engine's trust in the whole
-// site.
+// A hidden product must leave the sitemap too: a map leading to 404s costs trust.
 func TestHiddenProductLeavesStorefront(t *testing.T) {
 	d, h := setup(t)
 	p := &database.Product{Title: "Тайный чайник", Price: 1000, Stock: 5}
@@ -718,8 +700,7 @@ func TestHiddenProductLeavesStorefront(t *testing.T) {
 	}
 }
 
-// HEAD must behave like GET: monitoring, link checkers and some crawlers use it
-// to probe availability, and a 405 on the storefront looks like a broken site.
+// Monitoring and link checkers probe with HEAD; a 405 looks like a broken site.
 func TestHeadIsAllowedEverywhere(t *testing.T) {
 	d, h := setup(t)
 	p := &database.Product{Title: "Чайник HEAD", Price: 1000, Stock: 1}
@@ -735,8 +716,7 @@ func TestHeadIsAllowedEverywhere(t *testing.T) {
 	}
 }
 
-// The tab icon comes from the shop name: the storefront belongs to the seller,
-// and putting our mark there would brand somebody else's shop.
+// The tab icon comes from the shop name: our mark would brand somebody else's shop.
 func TestFaviconUsesShopInitial(t *testing.T) {
 	d, h := setup(t)
 	if err := d.UpdateSettings(&database.Settings{
@@ -757,9 +737,7 @@ func TestFaviconUsesShopInitial(t *testing.T) {
 	}
 }
 
-// The seller's logo replaces the text name in the header and becomes the tab
-// icon. The name does not disappear though: it moves into alt, otherwise the
-// home page loses its textual signal of whose shop this is.
+// The logo takes over the header and the tab icon; the name survives in alt.
 func TestShopLogoReplacesName(t *testing.T) {
 	d, h := setup(t)
 	base := &database.Settings{OwnerEmail: "a@b.c", PasswordHash: "h",
@@ -789,8 +767,7 @@ func TestShopLogoReplacesName(t *testing.T) {
 	}
 }
 
-// The buyer's search: a plain GET form, because the storefront carries no
-// JavaScript to search with.
+// A plain GET form: the storefront carries no JavaScript to search with.
 func TestStorefrontSearch(t *testing.T) {
 	d, h := setup(t)
 	_ = d.CreateProduct(&database.Product{Title: "Синяя кастрюля", Price: 100000,
@@ -802,8 +779,7 @@ func TestStorefrontSearch(t *testing.T) {
 	if !strings.Contains(body, "Синяя кастрюля") || strings.Contains(body, "Красный чайник") {
 		t.Fatalf("search did not filter: %s", body)
 	}
-	// Search results are thin and endless: out of the index, and no canonical
-	// pointing at them.
+	// Search results stay out of the index, with no canonical pointing at them.
 	if !strings.Contains(body, `name="robots" content="noindex,follow"`) {
 		t.Error("search results must be noindex")
 	}
@@ -828,8 +804,7 @@ func TestStorefrontSearch(t *testing.T) {
 		t.Error("the catalogue must stay in the index")
 	}
 
-	// Leafing through results must not drop the query and dump the buyer back
-	// into the full catalogue.
+	// Paging through results must not drop the query.
 	seedCatalog(t, d, 130)
 	paged := get(t, h, "/?q="+url.QueryEscape("Товар"))
 	if !strings.Contains(paged, "page=2&amp;q=%D0%A2%D0%BE%D0%B2%D0%B0%D1%80") {
@@ -837,8 +812,7 @@ func TestStorefrontSearch(t *testing.T) {
 	}
 }
 
-// A result page must say how many it found: "Поиск: кружка" alone leaves the
-// buyer guessing whether that is everything or the first screen of hundreds.
+// A result page must say how many it found, not just what was searched for.
 func TestSearchResultCount(t *testing.T) {
 	d, h := setup(t)
 	for _, n := range []string{"Кружка синяя", "Кружка белая"} {
@@ -864,8 +838,7 @@ func TestSearchResultCount(t *testing.T) {
 	}
 }
 
-// The product page has to say where the buyer is and let them step back into
-// the category - and tell a search engine the same thing.
+// The way back into the category, for the buyer and for a search engine alike.
 func TestProductBreadcrumbsAndGallery(t *testing.T) {
 	d, h := setup(t)
 	p, err := d.GetVisibleProductBySlug("krasnyj-chajnik")
@@ -889,8 +862,7 @@ func TestProductBreadcrumbsAndGallery(t *testing.T) {
 	}
 }
 
-// A single photo needs no thumbnail strip: one thumbnail under one picture is
-// furniture, not navigation.
+// One thumbnail under one picture is furniture, not navigation.
 func TestSinglePhotoHasNoThumbs(t *testing.T) {
 	d, h := setup(t)
 	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
@@ -900,8 +872,7 @@ func TestSinglePhotoHasNoThumbs(t *testing.T) {
 	}
 }
 
-// The catalogue grid must not pull full-size supplier photos: sixty of them on
-// one page is what makes a real shop slow.
+// Sixty full-size supplier photos on one page is what makes a real shop slow.
 func TestCatalogUsesThumbnails(t *testing.T) {
 	d, err := database.OpenInMemory()
 	if err != nil {
@@ -949,8 +920,7 @@ func TestCatalogFallsBackToOriginal(t *testing.T) {
 	}
 }
 
-// The shop language is the seller's choice, and <html lang> has to follow it:
-// an English shop declaring Russian tells every crawler the wrong thing.
+// <html lang> follows the shop language, or every crawler is told the wrong thing.
 func TestHTMLLang(t *testing.T) {
 	d, h := setup(t)
 	for _, lang := range []string{"ru", "en"} {
@@ -967,15 +937,12 @@ func TestHTMLLang(t *testing.T) {
 	}
 }
 
-// Requisites are what a buyer checks before paying a stranger, and what the law
-// requires a shop in Russia or Belarus to publish. Empty means the markup stays
-// clean: an Organization carrying only a name is noise, not data.
+// Law requires them published; empty means no Organization block at all.
 func TestRequisites(t *testing.T) {
 	d, h := setup(t)
 
 	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
-		// Match the markup and the block, not the word: the .requisites class
-		// lives in the inline CSS on every page and would always match.
+		// Match the markup, not the word: the class lives in the inline CSS too.
 		if body := get(t, h, path); strings.Contains(body, `"Organization"`) ||
 			strings.Contains(body, `class="requisites"`) {
 			t.Errorf("%s carries an Organization with no details filled in", path)
@@ -992,9 +959,7 @@ func TestRequisites(t *testing.T) {
 
 	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/cart"} {
 		body := get(t, h, path)
-		// Specifically the footer block, not the text anywhere: the same
-		// requisites live in the JSON-LD, and a substring search would pass
-		// with an empty footer.
+		// The footer block, not the text anywhere: the JSON-LD repeats it.
 		_, after, ok := strings.Cut(body, `<div class="requisites">`)
 		if !ok {
 			t.Fatalf("%s: no requisites block in the footer", path)
@@ -1026,11 +991,7 @@ func TestRequisites(t *testing.T) {
 	}
 }
 
-// Every picture sits in a frame that carries the shop's "no photo" mark behind
-// it. A product without photos gets the mark instead of a hole half a page tall;
-// a product whose supplier stopped serving a link gets it too, without anything
-// being deleted - the link may work again tomorrow. The stub is served as a file,
-// so a catalogue of sixty cards costs one request for all of them.
+// A missing or broken photo shows the mark behind the frame, deleting nothing.
 func TestNoPhotoPlaceholder(t *testing.T) {
 	d, h := setup(t)
 
@@ -1062,9 +1023,7 @@ func TestNoPhotoPlaceholder(t *testing.T) {
 	}
 }
 
-// Yandex and Google both refuse a shop that does not publish how it ships and
-// how it takes money, so the page has to exist - and has to stay out of the
-// footer and the sitemap while the owner has not written the terms.
+// Shopping engines require the terms; unwritten, the page stays out of everything.
 func TestInfoPage(t *testing.T) {
 	d, h := setup(t)
 
@@ -1102,9 +1061,7 @@ func TestInfoPage(t *testing.T) {
 	}
 }
 
-// A category is the landing page of the shop: a search for "купить КПБ евро"
-// must arrive at a page with its own heading and only its own goods, not at the
-// catalogue with a query parameter.
+// A category is a landing page of its own, not the catalogue with a parameter.
 func TestCategoryPages(t *testing.T) {
 	d, h := setup(t)
 	seed := []struct{ title, category string }{
@@ -1140,8 +1097,7 @@ func TestCategoryPages(t *testing.T) {
 		}
 	}
 
-	// Two categories that render the same title or description are two pages
-	// competing for one query - the bug this whole feature exists to fix.
+	// Two categories sharing a title or description compete for one query.
 	other := get(t, h, "/c/posuda")
 	if title(leaf) == title(other) {
 		t.Errorf("two categories share one title: %q", title(leaf))
@@ -1191,8 +1147,7 @@ func description(body string) string {
 	return out
 }
 
-// Sorting and "in stock" are links, not JavaScript, and every variant points at
-// the plain page: the same goods in another order are one page for a crawler.
+// Filters are links, and every variant points its canonical at the plain page.
 func TestCatalogFilters(t *testing.T) {
 	d, h := setup(t)
 	_ = d.CreateProduct(&database.Product{Title: "Дешёвый ковш", Price: 100, Stock: 3})
@@ -1218,10 +1173,7 @@ func TestCatalogFilters(t *testing.T) {
 	}
 }
 
-// HEAD must survive the outer router. A method-specific route registered there
-// (/admin* is GET-only) makes chi answer 405 to a HEAD of any page before the
-// mounted storefront runs its own middleware - monitoring and link checkers
-// then see a shop that looks broken.
+// A GET-only /admin* on the outer router makes chi 405 a HEAD of any page.
 func TestHeadThroughOuterRouter(t *testing.T) {
 	_, sf := setup(t)
 	r := chi.NewRouter()
@@ -1238,9 +1190,7 @@ func TestHeadThroughOuterRouter(t *testing.T) {
 	}
 }
 
-// The owner's text is what makes a category page a landing page instead of a
-// listing: it shows above the goods and becomes the page description, because a
-// generated one repeats on every page of every shop.
+// The owner's text shows above the goods and becomes the page description.
 func TestCategoryText(t *testing.T) {
 	d, h := setup(t)
 	if err := d.CreateProduct(&database.Product{Title: "Кастрюля", Price: 100,
@@ -1271,8 +1221,7 @@ func TestCategoryText(t *testing.T) {
 	if len([]rune(desc)) > 160 {
 		t.Errorf("description is %d runes, a snippet shows about 160", len([]rune(desc)))
 	}
-	// Cut on a sentence, never mid-word: a description ending in "дост" reads as
-	// a broken page in the search results.
+	// Cut on a sentence: a snippet ending mid-word reads as a broken page.
 	if !strings.HasSuffix(desc, ".") && !strings.HasSuffix(desc, "…") {
 		t.Errorf("description ends mid-sentence: %q", desc)
 	}
@@ -1286,9 +1235,7 @@ func TestCategoryText(t *testing.T) {
 	}
 }
 
-// Tidying the tree must not throw away what a page earned: a renamed category
-// answers 301 at its old address, and a hidden one disappears from the shop
-// altogether.
+// A renamed category answers 301 at its old address; a hidden one disappears.
 func TestCategoryRenameAndHide(t *testing.T) {
 	d, h := setup(t)
 	if err := d.CreateProduct(&database.Product{Title: "КПБ Евро", Price: 100,
@@ -1328,8 +1275,7 @@ func TestCategoryRenameAndHide(t *testing.T) {
 	}
 }
 
-// A buyer leaves a phone or an email, whichever they prefer - but not neither:
-// an order nobody can be reached about is a lost sale that looks like a sale.
+// A phone or an email, whichever the buyer prefers, but not neither.
 func TestOrderContacts(t *testing.T) {
 	d, h := setup(t)
 	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
@@ -1377,8 +1323,7 @@ func TestOrderContacts(t *testing.T) {
 	}
 }
 
-// A cart is where a shop loses the sale it already had, so its controls must be
-// obvious: minus, plus and a cross, not "type 0 to delete".
+// Minus, plus and a cross, not "type 0 to delete".
 func TestCartRowControls(t *testing.T) {
 	d, h := setup(t)
 	p, _ := d.GetVisibleProductBySlug("krasnyj-chajnik")
@@ -1426,9 +1371,7 @@ func TestCartRowControls(t *testing.T) {
 	}
 }
 
-// A price change must reach a shopper and a crawler without anyone submitting
-// anything: the page is built per request, so it may not be cached. The feed is
-// allowed an hour - the provider re-fetches it on its own schedule.
+// A price change must reach a shopper with no purge, so pages carry no caching.
 func TestPriceIsNeverCached(t *testing.T) {
 	d, h := setup(t)
 	p, err := d.GetVisibleProductBySlug("krasnyj-chajnik")
@@ -1453,8 +1396,7 @@ func TestPriceIsNeverCached(t *testing.T) {
 	if !strings.Contains(body, "9999.00") {
 		t.Fatal("the page still shows the old price")
 	}
-	// schema.org carries the same number, so the shopper and the search engine
-	// never see two different prices.
+	// schema.org must carry the same number the page shows.
 	if strings.Count(body, "9999.00") < 2 {
 		t.Fatal("the markup disagrees with the page")
 	}
@@ -1464,9 +1406,7 @@ func TestPriceIsNeverCached(t *testing.T) {
 	}
 }
 
-// Crawlers ask for /favicon.ico before they read the page, and Google puts that
-// icon next to the snippet. A 404 there is why a shop shows a globe while its
-// competitors show their own mark.
+// Crawlers ask for /favicon.ico before the page, and Google shows it in the snippet.
 func TestFaviconICO(t *testing.T) {
 	d, h := setup(t)
 
@@ -1488,12 +1428,7 @@ func TestFaviconICO(t *testing.T) {
 	}
 }
 
-// A price with no validity date is eventually dropped from the search snippet as
-// stale, and an offer with no condition is incomplete. Both are things the shop
-// actually knows - unlike a rating, which it must never invent.
-// The measurements are the owner's, never a guess: a product nobody weighed
-// says nothing at all - no table of dashes on the page and no empty node in the
-// markup, which is what a shipping quote reads.
+// Measurements are never guessed: an unweighed product publishes no empty node.
 func TestSpecsShownOnlyWhenStated(t *testing.T) {
 	d, h := setup(t)
 
@@ -1528,9 +1463,7 @@ func TestSpecsShownOnlyWhenStated(t *testing.T) {
 	if !strings.Contains(body, "30 × 20 × 15 см") {
 		t.Error("size not shown in centimetres")
 	}
-	// The markup keeps the stored units, which is what a machine wants. Spaces
-	// are collapsed first: html/template pads numbers inside a script, and a
-	// test that encodes that quirk breaks on the next Go release.
+	// Spaces are collapsed first: html/template pads numbers inside a script.
 	flat := strings.Join(strings.Fields(body), " ")
 	if !strings.Contains(flat, `"value": 1200 , "unitCode": "GRM"`) {
 		t.Error("weight missing from the markup")
@@ -1567,10 +1500,7 @@ func TestOfferCarriesWhatWeKnow(t *testing.T) {
 	}
 }
 
-// A shop is expected to say whom the buyer is paying, and this one had nowhere
-// to say it: only /info existed. The page writes nothing new - it renders the
-// phone and the legal details the owner already filled - so it appears exactly
-// when there is something on it, and 404s when there is not.
+// The page renders only what the owner already filled in, and 404s when that is nothing.
 func TestContactsAppearsOnlyWhenThereIsSomethingToShow(t *testing.T) {
 	d, h := setup(t)
 
@@ -1596,9 +1526,7 @@ func TestContactsAppearsOnlyWhenThereIsSomethingToShow(t *testing.T) {
 			t.Errorf("/contacts is missing %q", want)
 		}
 	}
-	// The contact address is what a buyer looks for, so it is published on
-	// purpose even though it doubles as the admin login: the password is the
-	// secret, and guessing it is throttled.
+	// Published on purpose even though it doubles as the admin login.
 	if !strings.Contains(body, s.OwnerEmail) {
 		t.Error("no contact address on the contacts page")
 	}
@@ -1613,10 +1541,7 @@ func TestContactsAppearsOnlyWhenThereIsSomethingToShow(t *testing.T) {
 	}
 }
 
-// Clean-param folds the sorted copies of a section into the section itself, so
-// a crawler stops spending requests on permutations of the same products. The
-// half that matters is what it must NOT list: page two holds different goods,
-// and folding it into page one would hide most of a 24 000-product catalogue.
+// Clean-param folds sorted copies into the section; page must never be listed.
 func TestRobotsCleanParam(t *testing.T) {
 	_, h := setup(t)
 	rb := get(t, h, "/robots.txt")
@@ -1639,10 +1564,7 @@ func TestRobotsCleanParam(t *testing.T) {
 	}
 }
 
-// TestProductShowsCharacteristics: an imported card carries a dozen properties
-// and they are what a buyer compares and a search engine matches a query
-// against. They belong in the visible table and in the structured data, both
-// stated by the source and neither invented.
+// The source's properties belong in the visible table and in the structured data.
 func TestProductShowsCharacteristics(t *testing.T) {
 	d, h := setup(t)
 	p := &database.Product{
@@ -1665,8 +1587,7 @@ func TestProductShowsCharacteristics(t *testing.T) {
 			t.Errorf("страница не показывает %q", want)
 		}
 	}
-	// A list of one is how a marketplace states a single value; brackets and
-	// quotes are Go syntax and have no business on a page.
+	// A list of one is how a marketplace states a single value; Go syntax must not leak.
 	if strings.Contains(body, "[PETG") || strings.Contains(body, "Пустое") {
 		t.Error("сырое значение или пустая характеристика попали на страницу")
 	}
@@ -1675,9 +1596,7 @@ func TestProductShowsCharacteristics(t *testing.T) {
 		t.Error("характеристик нет в разметке для поисковика")
 	}
 
-	// What a buyer sees is the owner's call, not ours: a marketplace card also
-	// carries their paperwork, and which of it belongs on a page is a decision
-	// they make once per property in the settings.
+	// Which properties a buyer sees is the owner's call, made once in the settings.
 	if err := d.SetHiddenParams([]string{"Цвет"}); err != nil {
 		t.Fatal(err)
 	}

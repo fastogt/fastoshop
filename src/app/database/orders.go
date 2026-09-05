@@ -9,20 +9,16 @@ type Order struct {
 	ID    int64  `json:"id"`
 	Name  string `json:"name"`
 	Phone string `json:"phone"`
-	// Email is the second way to reach the buyer; at least one of the two is
-	// always filled.
+	// At least one of Phone and Email is always filled.
 	Email   string `json:"email"`
 	Comment string `json:"comment"`
-	// The snapshot stays on the server: the admin receives it parsed, and the
-	// only reader of the raw text is the code that writes it.
+	// The snapshot stays on the server: the admin receives it parsed.
 	ItemsJSON string    `json:"-"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// CreateOrder inserts an order without touching stock (stock_applied = 0) - the
-// state orders from before stock accounting are in. The storefront uses
-// CreateOrderWithStock; this exists so tests can produce that legacy state.
+// CreateOrder leaves stock alone; the storefront uses CreateOrderWithStock instead.
 func (d *Database) CreateOrder(o *Order) error {
 	res, err := d.db.Exec(
 		`INSERT INTO orders (name, phone, email, comment, items_json) VALUES (?, ?, ?, ?, ?)`,
@@ -35,13 +31,8 @@ func (d *Database) CreateOrder(o *Order) error {
 	return nil
 }
 
-// SetOrderStatus moves stock together with the status: a cancellation returns
-// the product to the warehouse, putting the order back to work deducts it
-// again. The stock_applied flag guarantees that toggling back and forth moves
-// stock exactly once in each direction, and orders from the days before
-// tracking (stock_applied = 0) return nothing.
-// Putting an order back to work may fail: then *OutOfStockError and the status
-// does not change - promising the buyer a product that is gone is not allowed.
+// SetOrderStatus moves stock too; stock_applied keeps it to once per direction.
+// Re-activating a cancelled order may fail *OutOfStockError.
 func (d *Database) SetOrderStatus(id int64, status string) error {
 	return d.withTx(func(tx *sql.Tx) error {
 		var current string
@@ -72,10 +63,7 @@ func (d *Database) SetOrderStatus(id int64, status string) error {
 	})
 }
 
-// kOrderSortable is the ORDER BY whitelist. The order total is not here on
-// purpose: it lives inside items_json, and sorting by it would mean either
-// parsing every row in Go or teaching SQLite to read JSON - neither is worth it
-// while a shop has thousands of orders, not millions.
+// kOrderSortable is the ORDER BY whitelist; no total, it lives inside items_json.
 var kOrderSortable = map[string]string{
 	"created": "created_at",
 	"status":  "status",
@@ -93,8 +81,7 @@ func (d *Database) CountOrders(status string) (int, error) {
 	return n, err
 }
 
-// ListOrdersPage is the admin list. The unpaginated variant stays for the CSV
-// export, which genuinely needs every row.
+// ListOrdersPage is the admin list; the unpaginated ListOrders stays for the CSV export.
 func (d *Database) ListOrdersPage(status, sort string, desc bool, limit, offset int) ([]Order, error) {
 	where := ""
 	args := []any{}
@@ -130,11 +117,7 @@ func (d *Database) scanOrders(query string, args ...any) ([]Order, error) {
 	return out, rows.Err()
 }
 
-// DeleteOrders removes orders for good, with their items. An order carries a
-// buyer's name, phone and address of sorts, and the owner must be able to erase
-// it - for a mistaken order, for a test one, and because a person may ask them
-// to. Stock is not returned: a delete is not a cancellation, and an order that
-// still holds goods should be cancelled first.
+// DeleteOrders erases orders with their items; stock is not returned - cancel first.
 func (d *Database) DeleteOrders(ids []int64) (int, error) {
 	if len(ids) == 0 {
 		return 0, nil

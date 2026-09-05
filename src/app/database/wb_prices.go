@@ -5,8 +5,7 @@ import (
 	"time"
 )
 
-// WBPriceRow is a link whose Wildberries price is due for a push. Price is the
-// price ON WILDBERRIES in kopecks - the owner's own number, not products.price.
+// WBPriceRow is a link due for a price push; Price is the Wildberries price in kopecks.
 type WBPriceRow struct {
 	ProductID   int64
 	NmID        int64
@@ -14,13 +13,11 @@ type WBPriceRow struct {
 	Price       int64
 	PricePushed int64
 	Error       string
-	// RetryAt is when the row is due again, for the same reason the stock row
-	// carries it.
+	// RetryAt is when the row is due again.
 	RetryAt sql.NullTime
 }
 
-// WBPriceSent is one row of an upload task: what was actually put on the wire,
-// rounded up to whole roubles and back to kopecks.
+// WBPriceSent is one upload row: what went on the wire, rounded up to whole roubles.
 type WBPriceSent struct {
 	ProductID int64
 	Sent      int64
@@ -31,10 +28,7 @@ type WBPriceTask struct {
 	CreatedAt time.Time
 }
 
-// kWBPriceGuard: price = 0 means the owner never opted this product in, and we
-// never touch a price we were not asked to manage. A non-empty price_task means
-// an upload is still in flight - without that clause the next tick would upload
-// everything again, because price_pushed only moves when the task reports back.
+// kWBPriceGuard: price 0 is opt-out; a non-empty price_task means an upload in flight.
 const kWBPriceGuard = `nm_id != 0 AND price > 0 AND price_task = ''
 	 AND (price + 99) / 100 * 100 != price_pushed`
 
@@ -69,9 +63,7 @@ func (d *Database) wbPriceRows(where string) ([]WBPriceRow, error) {
 	return out, rows.Err()
 }
 
-// MarkWBPriceSent records an upload and the rows it carries in one transaction:
-// a task remembered without its rows would never be credited, and rows stamped
-// without a task would be stuck in flight forever.
+// MarkWBPriceSent records the upload and the rows it carries in one transaction.
 func (d *Database) MarkWBPriceSent(uploadID string, at time.Time, sent []WBPriceSent) error {
 	return d.withTx(func(tx *sql.Tx) error {
 		if _, err := tx.Exec(
@@ -109,8 +101,7 @@ func (d *Database) WBPriceTasks() ([]WBPriceTask, error) {
 	return out, rows.Err()
 }
 
-// MarkWBPriceTaskDone credits what was sent: the platform confirmed the upload,
-// so price_sent becomes the new baseline the guard compares against.
+// MarkWBPriceTaskDone makes price_sent the new baseline the guard compares against.
 func (d *Database) MarkWBPriceTaskDone(uploadID string) error {
 	return d.withTx(func(tx *sql.Tx) error {
 		if _, err := tx.Exec(
@@ -124,9 +115,7 @@ func (d *Database) MarkWBPriceTaskDone(uploadID string) error {
 	})
 }
 
-// MarkWBPriceTaskFailed releases the rows of a task the platform rejected.
-// byNm carries per-card messages when Wildberries gave them; everything else
-// gets fallback, so no row is released without a reason the owner can read.
+// MarkWBPriceTaskFailed releases the task's rows; byNm holds per-card messages.
 func (d *Database) MarkWBPriceTaskFailed(uploadID string, byNm map[int64]string,
 	fallback string, retryAt time.Time) error {
 	at := retryAt.UTC().Format(time.DateTime)
@@ -148,9 +137,7 @@ func (d *Database) MarkWBPriceTaskFailed(uploadID string, byNm map[int64]string,
 	})
 }
 
-// MarkWBCardError stamps every row of the given cards with one message. Price
-// lives on the card, not on the size, so a refusal - or sizes that disagree on
-// the price - belongs to all rows of that card at once.
+// MarkWBCardError stamps all rows of a card: price lives on the card, not the size.
 func (d *Database) MarkWBCardError(nmIDs []int64, msg string, retryAt time.Time) error {
 	at := retryAt.UTC().Format(time.DateTime)
 	return d.withTx(func(tx *sql.Tx) error {
@@ -175,10 +162,7 @@ func (d *Database) CountWBPriceState() (pending, inFlight, failed int, err error
 	return pending, inFlight, failed, err
 }
 
-// SetWBPrice returns false when there is no link for that product: setting a
-// platform price for something we never linked is a mistake worth reporting, not
-// a row worth creating. Clearing price_error is deliberate - an edit is the
-// owner's attempt to fix whatever the platform complained about.
+// SetWBPrice reports false when the product has no link, and clears price_error.
 func (d *Database) SetWBPrice(productID, price int64) (bool, error) {
 	res, err := d.db.Exec(
 		`UPDATE wb_links SET price=?, price_error='' WHERE product_id=?`, price, productID)
@@ -189,9 +173,7 @@ func (d *Database) SetWBPrice(productID, price int64) (bool, error) {
 	return n > 0, err
 }
 
-// FillWBPrices sets the platform price from the shelf price plus a markup in
-// basis points, and only for linked rows that have none yet: prices the owner
-// already chose are never overwritten by a bulk helper.
+// FillWBPrices sets only empty prices: the shelf price plus a markup in basis points.
 func (d *Database) FillWBPrices(markupBP int64) (int, error) {
 	res, err := d.db.Exec(
 		`UPDATE wb_links SET price = (
@@ -207,9 +189,7 @@ func (d *Database) FillWBPrices(markupBP int64) (int, error) {
 	return int(n), err
 }
 
-// WBLinkRow is one line of the linked-products table on the tab. Title and SKU
-// are empty for a link whose product is gone - the row still matters, it is the
-// card we keep zeroing out on the platform.
+// WBLinkRow is one line of the linked-products table; Title and SKU may be empty.
 type WBLinkRow struct {
 	ProductID   int64
 	NmID        int64

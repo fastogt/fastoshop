@@ -6,9 +6,7 @@ import (
 	"testing"
 )
 
-// build packs the given parts into a workbook. Writing the XML by hand is the
-// point: the parser must survive what a real price list looks like, not what a
-// library would have produced.
+// build packs the given parts into a workbook, XML written by hand on purpose.
 func build(t *testing.T, parts map[string]string, media map[string][]byte) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -51,8 +49,7 @@ const kStrings = `<?xml version="1.0"?><sst>
 <si><t>Кастрюля 3 л</t></si>
 </sst>`
 
-// A real price list opens with a title row and only then names the columns, and
-// the columns are sparse: an empty cell is simply absent from the XML.
+// A real price list opens with a title row, and its cells are sparse in the XML.
 const kSheet = `<?xml version="1.0"?><worksheet><sheetData>
 <row r="1"><c r="A1" t="s"><v>0</v></c></row>
 <row r="3"><c r="A3" t="s"><v>1</v></c><c r="B3" t="s"><v>2</v></c><c r="C3" t="s"><v>3</v></c><c r="D3" t="s"><v>4</v></c><c r="E3" t="s"><v>5</v></c></row>

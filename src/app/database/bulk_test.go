@@ -24,8 +24,6 @@ func bulkDB(t *testing.T) (*Database, map[string]int64) {
 	return d, ids
 }
 
-// The main scenario: the feed brought zero stock, the owner sets it in one go -
-// but only for their own group.
 func TestSetStockForWholeGroup(t *testing.T) {
 	d, ids := bulkDB(t)
 	n, err := d.SetStockBulk(Selection{All: true, Supplier: "Ромашка"}, 7)
@@ -43,8 +41,6 @@ func TestSetStockForWholeGroup(t *testing.T) {
 	}
 }
 
-// "All by filter" respects the search too, otherwise the button would do
-// something other than what is shown.
 func TestBulkRespectsSearch(t *testing.T) {
 	d, ids := bulkDB(t)
 	n, err := d.SetStockBulk(Selection{All: true, Supplier: AnySupplier, Q: "Хлеб"}, 5)
@@ -61,8 +57,6 @@ func TestBulkRespectsSearch(t *testing.T) {
 	}
 }
 
-// An empty selection without the "all" flag must touch nothing: otherwise a
-// misclick on the button would rewrite the catalog.
 func TestBulkEmptySelectionTouchesNothing(t *testing.T) {
 	d, ids := bulkDB(t)
 	n, err := d.SetStockBulk(Selection{Supplier: AnySupplier}, 99)

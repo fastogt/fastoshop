@@ -13,8 +13,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// fakeAdHunters stands in for the paid service. It also records the key it was
-// given, so the test can prove the shop forwards the owner's own key.
+// Records the key it was given, to prove the shop forwards the owner's own.
 func fakeAdHunters(t *testing.T, status int, body string, gotKey *string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(
@@ -35,8 +34,7 @@ func fakeAdHunters(t *testing.T, status int, body string, gotKey *string) *httpt
 	return srv
 }
 
-// The handler reads {id} from chi, so the request is routed rather than
-// hand-built: a router in the test is shorter than faking a route context.
+// The handler reads {id} from chi, so the request must be routed.
 func enrichProduct(t *testing.T, h *Handler, id int64) *httptest.ResponseRecorder {
 	t.Helper()
 	r := chi.NewRouter()
@@ -47,8 +45,6 @@ func enrichProduct(t *testing.T, h *Handler, id int64) *httptest.ResponseRecorde
 	return w
 }
 
-// The draft is a draft: whatever the model wrote, the product in the database
-// must be untouched until the owner saves it themselves.
 func TestEnrichReturnsDraftWithoutWriting(t *testing.T) {
 	h := newTestHandler(t)
 	if err := h.db.CreateSettings(&database.Settings{OwnerEmail: "o@example.com"}); err != nil {
@@ -97,10 +93,7 @@ func TestEnrichReturnsDraftWithoutWriting(t *testing.T) {
 	}
 }
 
-// Sections are offered only for a product that has none - a filed product keeps
-// what it has, and the model is never given the chance to move it. For an
-// unfiled one, a section the shop does not have cannot reach the form however
-// confidently the model writes it.
+// Sections go out only for an unfiled product, and only from the shop's tree.
 func TestEnrichOffersSectionsOnlyForAnUnfiledProduct(t *testing.T) {
 	h := newTestHandler(t)
 	if err := h.db.CreateSettings(&database.Settings{OwnerEmail: "o@example.com"}); err != nil {
@@ -141,8 +134,7 @@ func TestEnrichOffersSectionsOnlyForAnUnfiledProduct(t *testing.T) {
 		Data enrichResponse `json:"data"`
 	}
 
-	// Filed: nothing to choose from, so the list is not sent and no section
-	// comes back to overwrite a precise path with a vague one.
+	// Filed: the list is not sent and no section comes back.
 	reply = "Посуда"
 	w := enrichProduct(t, h, filed.ID)
 	if len(sent.Categories) != 0 {
@@ -173,8 +165,7 @@ func TestEnrichOffersSectionsOnlyForAnUnfiledProduct(t *testing.T) {
 	}
 }
 
-// Every way this can fail says something the owner can act on, and none of
-// them touches the product.
+// Every failure says something the owner can act on, and none touches the product.
 func TestEnrichFailuresAreExplained(t *testing.T) {
 	h := newTestHandler(t)
 	if err := h.db.CreateSettings(&database.Settings{OwnerEmail: "o@example.com"}); err != nil {
@@ -222,9 +213,6 @@ func TestEnrichFailuresAreExplained(t *testing.T) {
 	}
 }
 
-// A measurement the shop already has travels with the request: the card can
-// then state the weight instead of leaving it out, and the model is never asked
-// to work one out.
 func TestEnrichSendsWhatTheShopAlreadyKnows(t *testing.T) {
 	h := newTestHandler(t)
 	if err := h.db.CreateSettings(&database.Settings{OwnerEmail: "o@example.com"}); err != nil {

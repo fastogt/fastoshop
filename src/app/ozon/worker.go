@@ -15,23 +15,16 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// kPushInterval matches what platform connectors settle on in practice. Polling
-// every minute costs four times the method budget and buys nothing: sales within
-// a tick collapse into a single level push anyway.
+// Polling faster only spends the method budget: sales within a tick collapse anyway.
 const kPushInterval = 5 * time.Minute
 
-// ErrPushBusy - the previous pass is still running. Parallel pushes of the same
-// level are harmless, but the counters in the button's answer would become a lie.
+// ErrPushBusy - the previous pass is still running.
 var ErrPushBusy = errors.New("ozon push already running")
 
-// ErrBadWarehouse travels to the owner, so the handler turns it into their
-// language; the wrapped value stays for the log.
+// ErrBadWarehouse travels to the owner, so the handler translates it.
 var ErrBadWarehouse = errors.New("warehouse_id must be a number")
 
-// Worker drives the shop's stocks and prices to the platform by levels: the link
-// row remembers the last value pushed, and a push happens only when the wanted
-// value differs from it. A lost push is repaired by the next tick, and N sales
-// within one tick collapse into a single call.
+// Worker pushes by levels: the link row remembers the last value sent.
 type Worker struct {
 	*channel.Signals
 	db *database.Database
@@ -44,9 +37,7 @@ func NewWorker(db *database.Database) *Worker {
 	return &Worker{Signals: channel.NewSignals(), db: db}
 }
 
-// Run reads the settings on every pass rather than at start: the owner enables
-// the push and changes the warehouse from the admin panel, and demanding a
-// service restart for that is not acceptable.
+// Settings are read on every pass: the owner changes them without a restart.
 func (w *Worker) Run(ctx context.Context) {
 	t := time.NewTicker(kPushInterval)
 	defer t.Stop()
@@ -68,9 +59,7 @@ func (w *Worker) Run(ctx context.Context) {
 	}
 }
 
-// Pass is one sync pass. It returns how many items the platform accepted and
-// rejected, stocks and prices together. A disabled or half-configured
-// integration is not an error: the pass is simply empty.
+// A disabled or half-configured integration is not an error: the pass is empty.
 func (w *Worker) Pass() (pushed, failed int, err error) {
 	if !w.running.CompareAndSwap(false, true) {
 		return 0, 0, ErrPushBusy
@@ -84,8 +73,7 @@ func (w *Worker) Pass() (pushed, failed int, err error) {
 	if !s.Enabled || s.ClientID == "" || s.APIKey == "" {
 		return 0, 0, nil
 	}
-	// Prices need no warehouse, stocks do: a cabinet without an FBS warehouse
-	// yet must still get its prices instead of the whole pass going quiet.
+	// Prices need no warehouse, stocks do - a cabinet without one still gets prices.
 	var warehouse int64
 	if s.WarehouseID != "" {
 		warehouse, err = strconv.ParseInt(s.WarehouseID, 10, 64)
@@ -95,10 +83,7 @@ func (w *Worker) Pass() (pushed, failed int, err error) {
 	}
 
 	c := &Client{ClientID: s.ClientID, APIKey: s.APIKey, BaseURL: w.BaseURL}
-	// Polling orders goes first: a sale on the platform must lower our stock
-	// before this very pass starts pushing levels. Otherwise we would push up
-	// what Ozon has just sold - an oversell of our own making. If the poll
-	// fails, nothing is pushed.
+	// Orders first: a platform sale must lower our stock before we push levels.
 	if err := w.pollOrders(c); err != nil {
 		return 0, 0, err
 	}
@@ -108,15 +93,10 @@ func (w *Worker) Pass() (pushed, failed int, err error) {
 		pushed, failed, halt, err = w.pushStocks(c, warehouse)
 	}
 	if err != nil || halt {
-		// halt: the whole stocks call died (network, 5xx, 429) - the platform is
-		// having a bad moment, and hammering it with prices from the same pass
-		// would only spend the retry budget. The next tick picks both up.
+		// halt: the whole stocks call died, so prices wait for the next tick too.
 		return pushed, failed, err
 	}
-	// The shop's currency is the cabinet's: one shop, one legal entity, one
-	// money. Reading it here keeps a single answer instead of two to reconcile.
-	// A shop with no settings row has no currency to label a price with, so the
-	// prices wait - the stocks above already went, and they need no money.
+	// No shop currency means no label for a price, so prices wait; stocks need none.
 	shop, err := w.db.GetSettings()
 	if err != nil {
 		return pushed, failed, nil
@@ -125,8 +105,7 @@ func (w *Worker) Pass() (pushed, failed int, err error) {
 	return pushed + p, failed + f, err
 }
 
-// pushStocks reports halt when an entire call failed: the remaining batches are
-// left to the next tick instead of being hammered through.
+// halt means an entire call failed; the remaining batches wait for the next tick.
 func (w *Worker) pushStocks(c *Client, warehouse int64) (pushed, failed int, halt bool, err error) {
 	rows, err := w.db.OzonStockToPush()
 	if err != nil {
@@ -171,9 +150,7 @@ func (w *Worker) pushStocks(c *Client, warehouse int64) (pushed, failed int, hal
 	return pushed, failed, false, nil
 }
 
-// pushPrices sends only the prices the owner opted in explicitly: rows with
-// price = 0 never reach the platform, so a shop that never touched the price
-// column cannot have its Ozon prices moved by us.
+// Only opted-in prices go out: a row with price = 0 never reaches the platform.
 func (w *Worker) pushPrices(c *Client, currency string) (pushed, failed int, err error) {
 	rows, err := w.db.OzonPriceToPush()
 	if err != nil {
@@ -185,8 +162,7 @@ func (w *Worker) pushPrices(c *Client, currency string) (pushed, failed int, err
 		rows = rows[n:]
 
 		items := make([]PriceItem, len(batch))
-		// sent holds what we will remember as pushed - the rounded value, not
-		// the one the owner typed.
+		// sent is what we remember as pushed - the wire value, not the typed one.
 		sent := make([]int64, len(batch))
 		for i, r := range batch {
 			items[i], sent[i] = NewPriceItem(r.OfferID, r.Price, currency)
@@ -221,8 +197,7 @@ func (w *Worker) pushPrices(c *Client, currency string) (pushed, failed int, err
 	return pushed, failed, nil
 }
 
-// callDelay: on a 429 we obey Retry-After verbatim - our own backoff has no
-// business arguing with the cabinet's limits.
+// On a 429 we obey Retry-After verbatim; the cabinet's limits outrank our backoff.
 func callDelay(callErr error, fallback time.Duration) time.Duration {
 	var apiErr *APIError
 	if errors.As(callErr, &apiErr) && apiErr.RetryAfter > 0 {

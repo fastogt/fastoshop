@@ -120,8 +120,7 @@ func TestWBImportSizes(t *testing.T) {
 	mux.HandleFunc("/api/v3/stocks/7", func(w http.ResponseWriter, r *http.Request) {
 		var req wbStocksRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		// The method takes barcodes, not chrtID: if we query with the wrong key,
-		// live WB silently returns an empty list and the whole catalogue arrives at zero.
+		// The method takes barcodes, not chrtID: a wrong key returns an empty list.
 		if len(req.Skus) != 3 || req.Skus[0] != "2000000000011" {
 			t.Errorf("stocks request: %+v", req)
 		}
@@ -213,15 +212,11 @@ func TestWBImportSingleSize(t *testing.T) {
 	if err != nil || p.SKU != "WB-1" || p.Title != "Кружка" || p.Price != 99050 || p.Stock != 4 {
 		t.Fatalf("%v %+v", err, p)
 	}
-	// A card carries a dozen characteristics because the seller cannot publish
-	// without them - which makes an import the one way a catalogue arrives
-	// already described. One name holds a string, a number or a list.
+	// One characteristic name holds a string, a number or a list.
 	if len(p.Params) != 3 {
 		t.Fatalf("характеристик %d, ожидалось 3: %+v", len(p.Params), p.Params)
 	}
-	// Each keeps the type Wildberries stated, all the way through the database:
-	// a list stays a list rather than becoming "синий, белый", and a height
-	// stays a number rather than becoming "10".
+	// Each keeps the type WB stated, all the way through the database.
 	colour, ok := param(p.Params, "Цвет").([]any)
 	if !ok || len(colour) != 2 || colour[0] != "синий" || colour[1] != "белый" {
 		t.Errorf("список значений не доехал списком: %+v", param(p.Params, "Цвет"))
@@ -232,8 +227,7 @@ func TestWBImportSingleSize(t *testing.T) {
 	if param(p.Params, "Материал") != "керамика" {
 		t.Errorf("строка не разобралась: %+v", p.Params)
 	}
-	// Wildberries states centimetres and kilograms; we store millimetres and
-	// grams, and the conversion is the import's job, not the reader's.
+	// WB states centimetres and kilograms; we store millimetres and grams.
 	if p.WeightG == nil || *p.WeightG != 350 {
 		t.Errorf("WB weight: %v, want 350 g", p.WeightG)
 	}
@@ -242,9 +236,7 @@ func TestWBImportSingleSize(t *testing.T) {
 	}
 }
 
-// param finds a characteristic by name. Characteristics are a list, so the
-// tests need a lookup the storage no longer provides - and they compare the
-// value as it is stored, which is the point of the whole exercise.
+// param finds a characteristic by name, comparing the value as it is stored.
 func param(ps []database.Param, name string) any {
 	for _, p := range ps {
 		if p.Name == name {
@@ -338,9 +330,7 @@ func TestYMLImport(t *testing.T) {
 	}
 }
 
-// The card is the owner's work - typed by hand or paid for through the AI
-// button - and a weekly price refresh must never take it back. Only the numbers
-// the supplier owns are allowed to move.
+// A refresh may move only the numbers the supplier owns, never the owner's card.
 func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	srv := ymlServer(t, kYMLFeed)
 	defer srv.Close()
@@ -385,13 +375,11 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	if after.Category != "Посуда/Тёрки" {
 		t.Errorf("the feed took the category back: %q", after.Category)
 	}
-	// Characteristics are the owner's as well: a set they have touched is not
-	// overwritten, and a feed that carries none does not empty it.
+	// Characteristics are the owner's: a touched set is never overwritten or emptied.
 	if len(after.Params) != 1 || param(after.Params, "Цвет") != "белый" {
 		t.Errorf("the feed took the characteristics back: %+v", after.Params)
 	}
-	// Measurements are the owner's too: a feed that never carried a weight must
-	// not take one back.
+	// Measurements are the owner's too: a feed without a weight takes none back.
 	if after.WeightG == nil || *after.WeightG != 1200 {
 		t.Errorf("the feed took the weight back: %v", after.WeightG)
 	}
@@ -405,10 +393,7 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	}
 }
 
-// A catalogue of twenty thousand is never weighed by hand, so the only way the
-// fields ever fill is an import - and both platforms make weight and size
-// mandatory on a card. Units are theirs and differ: Ozon states its own beside
-// the number, Wildberries fixes centimetres and kilograms by contract.
+// Units differ: Ozon states its own beside the number, WB fixes cm and kg by contract.
 func TestUnitsConvertIntoOneStore(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -447,9 +432,7 @@ func TestUnitsConvertIntoOneStore(t *testing.T) {
 
 func ptr(v int64) *int64 { return &v }
 
-// The feed fills what is empty and keeps its hands off what the owner set -
-// the same rule the category follows. A platform's weight is a starting point,
-// not a verdict: the owner who corrected one is the one who weighed the parcel.
+// The feed fills what is empty and keeps its hands off what the owner set.
 func TestImportFillsMeasurementsWithoutOverwriting(t *testing.T) {
 	d, _ := database.OpenInMemory()
 	defer func() { _ = d.Close() }()
@@ -501,9 +484,7 @@ func TestImportFillsMeasurementsWithoutOverwriting(t *testing.T) {
 	}
 }
 
-// A feed of ours states a quantity per offer; a feed from anywhere else does not.
-// Both arrive through the same source, so one catalogue must be able to hold the
-// counted and the uncounted at once.
+// One catalogue must hold counted and uncounted offers at once.
 func TestYMLCount(t *testing.T) {
 	const feed = `<?xml version="1.0" encoding="UTF-8"?>
 <yml_catalog><shop><offers>
@@ -569,8 +550,7 @@ const kBYNFeed = `<?xml version="1.0" encoding="utf-8"?>
 </offer>
 </offers></shop></yml_catalog>`
 
-// A Belarusian feed into a Belarusian shop needs no conversion; a currency the
-// shop does not deal in is an error, not a price taken at face value.
+// A currency the shop does not deal in is an error, not a price at face value.
 func TestYMLFeedCurrency(t *testing.T) {
 	srv := ymlServer(t, kBYNFeed)
 	defer srv.Close()
@@ -603,9 +583,7 @@ func TestYMLFeedCurrency(t *testing.T) {
 	}
 }
 
-// A YML feed carries the shop's tree, and it is the tree that turns a catalogue
-// into landing pages. The synthetic root every Bitrix export starts with -
-// "Главная / Каталог товаров" - is not a category and must not become one.
+// A Bitrix export's synthetic root ("Главная / Каталог товаров") is not a category.
 const kYMLTreeFeed = `<?xml version="1.0" encoding="UTF-8"?>
 <yml_catalog><shop><categories>
 <category id="1">Главная</category>
@@ -650,8 +628,7 @@ func TestYMLCategoryTree(t *testing.T) {
 	}
 }
 
-// The common root is only dropped while something else remains: a shop selling
-// one category must keep it.
+// The common root is only dropped while something else remains.
 func TestTrimCommonRootKeepsTheLeaf(t *testing.T) {
 	items := []Item{{Category: "Посуда"}, {Category: "Посуда"}}
 	trimCommonRoot(items)
@@ -660,8 +637,7 @@ func TestTrimCommonRootKeepsTheLeaf(t *testing.T) {
 	}
 }
 
-// The Ozon taxonomy is one request per import, not one per card, and it gives a
-// full path down to the type - the same shape as a YML tree.
+// The Ozon taxonomy is one request per import and gives a full path to the type.
 func TestOzonCategoryTree(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v3/product/list", func(w http.ResponseWriter, r *http.Request) {
@@ -700,8 +676,7 @@ func TestOzonCategoryTree(t *testing.T) {
 	}
 }
 
-// A taxonomy that fails to load costs the categories, not the import: the goods
-// are worth more than their shelves.
+// A taxonomy that fails to load costs the categories, not the import.
 func TestOzonSurvivesTaxonomyFailure(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v3/product/list", func(w http.ResponseWriter, r *http.Request) {
@@ -728,11 +703,7 @@ func TestOzonSurvivesTaxonomyFailure(t *testing.T) {
 	}
 }
 
-// TestYMLParams: <param> is the standard's own place for characteristics, and
-// every exporter writes them. We read past them until v1.37, which is why no
-// imported catalogue had any. The unit belongs with the value - "12 см" reads,
-// "12" does not - and a nameless or empty param is dropped rather than shown
-// as a blank row on the card.
+// TestYMLParams: <param> is the standard's own place for characteristics.
 func TestYMLParams(t *testing.T) {
 	srv := ymlServer(t, kYMLFeed)
 	defer srv.Close()
@@ -756,8 +727,7 @@ func TestYMLParams(t *testing.T) {
 	if param(terka.Params, "Цвет") != "белый" || param(terka.Params, "Материал") != "пластик" {
 		t.Errorf("пары не разобрались: %+v", terka.Params)
 	}
-	// The unit moves into the caption and the value stays a number: a filter can
-	// compare 12 to 20, it cannot compare "12 см" to "20 см".
+	// The unit moves into the caption so the value stays a comparable number.
 	if param(terka.Params, "Диаметр, см") != 12.0 {
 		t.Errorf("единица не переехала в подпись, или число стало строкой: %+v", terka.Params)
 	}
@@ -765,13 +735,11 @@ func TestYMLParams(t *testing.T) {
 	if terka.Params[0].Name != "Цвет" || terka.Params[2].Name != "Диаметр, см" {
 		t.Errorf("порядок из фида не сохранился: %+v", terka.Params)
 	}
-	// The weight is a named column, not a characteristic: the shop does
-	// arithmetic with it and two homes for one number is one home too many.
+	// The weight is a named column, not a characteristic: the shop computes with it.
 	if terka.WeightG == nil || *terka.WeightG != 750 {
 		t.Errorf("вес из фида: %v", terka.WeightG)
 	}
-	// An offer without params must not gain an empty set - the storefront would
-	// print a heading over nothing.
+	// An offer without params must not gain an empty set.
 	for _, it := range items {
 		if it.SKU == "TR-4" && it.Params != nil {
 			t.Errorf("товар без характеристик получил набор: %+v", it.Params)

@@ -10,15 +10,10 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// kTaskTTL is how long a price upload may stay unanswered before its rows are
-// released. Without a ceiling a task the platform forgot about would pin its
-// products out of the sync forever, and the tab would show them as "in flight"
-// with nothing ever moving.
+// How long an upload may stay unanswered before its rows are released again.
 const kTaskTTL = time.Hour
 
-// settlePriceTasks credits or releases the uploads started by earlier passes.
-// It runs before the price push: rows carrying a task are invisible to the guard
-// until this has resolved them.
+// Runs before the price push: rows carrying a task are invisible until resolved.
 func (w *Worker) settlePriceTasks(c *Client) error {
 	tasks, err := w.db.WBPriceTasks()
 	if err != nil {
@@ -27,8 +22,7 @@ func (w *Worker) settlePriceTasks(c *Client) error {
 	for _, t := range tasks {
 		state, byNm, err := c.PriceTaskStatus(t.UploadID)
 		if err != nil {
-			// A status we could not read is not a failed upload: leave the task
-			// alone and try again next pass, the TTL below is the real ceiling.
+			// An unreadable status is not a failed upload; the TTL is the ceiling.
 			log.Warnf("wb price task %s: %v", t.UploadID, err)
 			state = TaskPending
 		}
@@ -55,13 +49,7 @@ func (w *Worker) settlePriceTasks(c *Client) error {
 	return nil
 }
 
-// pushPrices sends only the prices the owner opted in explicitly: rows with
-// price = 0 never reach the platform, so a shop that never touched the price
-// column cannot have its Wildberries prices moved by us.
-//
-// Wildberries takes one price per card, and our catalogue can hold several sizes
-// of one card as separate products. Sizes that disagree are not resolved by
-// picking one - the whole card is skipped and every row of it is told why.
+// Only opted-in prices go out; one price per card, so disagreeing sizes are skipped.
 func (w *Worker) pushPrices(c *Client) (pushed, failed int, err error) {
 	rows, err := w.db.WBPriceToPush()
 	if err != nil {
@@ -106,8 +94,7 @@ func (w *Worker) pushPrices(c *Client) (pushed, failed int, err error) {
 		if err := w.db.MarkWBPriceSent(uploadID, time.Now(), sent); err != nil {
 			return pushed, failed, err
 		}
-		// Not counted as pushed yet: the platform has accepted the task, not the
-		// prices. The next pass credits them once the task reports back.
+		// The platform accepted the task, not the prices; the next pass credits them.
 		pushed += len(sent)
 	}
 	return pushed, failed, nil
@@ -128,8 +115,7 @@ func cardIDs(groups []cardGroup) []int64 {
 	return out
 }
 
-// groupByCard collapses rows to one item per card and reports the cards whose
-// sizes want different prices.
+// Collapses rows to one item per card and reports the cards whose sizes disagree.
 func groupByCard(rows []database.WBPriceRow) (agreed, conflicted []cardGroup) {
 	byNm := map[int64]*cardGroup{}
 	var order []int64

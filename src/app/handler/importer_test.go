@@ -25,9 +25,7 @@ func TestImportValidation(t *testing.T) {
 	}
 }
 
-// A shop taking catalogues from several suppliers converts one of them from
-// another currency. That conversion belongs to the run: stored as the shop's, it
-// would reprice everybody else's goods on their next import.
+// A run's coefficient belongs to that run and must not become the shop's.
 func TestImportKeepsShopCoefficient(t *testing.T) {
 	h := newTestHandler(t)
 	// The coefficient lives in the settings row, and that row is the owner's.

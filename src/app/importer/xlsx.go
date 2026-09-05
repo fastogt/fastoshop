@@ -14,15 +14,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// XLSX is a supplier's own price list, the file a seller actually has. Unlike
-// the CSV template we do not get to dictate the shape here, so the columns are
-// found by their headers and the header row is found by its content: a price
-// list starts with a logo, a phone number and three empty rows about as often as
-// it starts with the table.
-//
-// Reading it ourselves rather than asking for "a proper CSV" is the point: the
-// owner's file opens in Excel, and telling them to rebuild it by hand is how a
-// catalogue never gets imported at all.
+// XLSX is a supplier's own price list: columns and the header row are found by content.
 type XLSX struct {
 	Data []byte
 
@@ -40,12 +32,10 @@ func (x *XLSX) Fetch() ([]Item, error) {
 
 func (x *XLSX) FetchErrors() int { return x.errs }
 
-// IsXLSX reports whether the bytes are a spreadsheet rather than a CSV. Every
-// xlsx is a zip; a text file never starts with that signature.
+// Every xlsx is a zip; a text file never starts with that signature.
 func IsXLSX(raw []byte) bool { return bytes.HasPrefix(raw, []byte("PK\x03\x04")) }
 
-// kMaxHeaderScan is how far down the sheet we look for the header row. A price
-// list with more than fifty rows of preamble is not a price list.
+// kMaxHeaderScan is how far down the sheet we look for the header row.
 const kMaxHeaderScan = 50
 
 func (x *XLSX) parse() {
@@ -86,19 +76,14 @@ func (x *XLSX) parse() {
 		return
 	}
 	col := map[string]int{}
-	// A column the shop does not know by name is a characteristic, the same rule
-	// the CSV template follows: in a spreadsheet a property is a column, and a
-	// supplier's own list is where "Цвет" and "Материал" actually live. Dropping
-	// them here while keeping them there made one format lose what the other
-	// kept.
+	// A column the shop does not know by name is a characteristic, as in the CSV.
 	var extra []struct {
 		at   int
 		name string
 	}
 	for i, name := range grid[head] {
 		if key := headerKey(name); key != "" {
-			// The first column of a kind wins: price lists like to repeat "Цена"
-			// for a second currency, and the left one is the one being sold at.
+			// First column of a kind wins: "Цена" repeats for a second currency.
 			if _, seen := col[key]; !seen {
 				col[key] = i
 			}
@@ -138,9 +123,7 @@ func (x *XLSX) parse() {
 			Category: cellCategory(get("category")),
 		}
 		if item.SKU == "" {
-			// Without an article a row cannot be matched on the next import, and a
-			// catalogue that duplicates itself every upload is worse than one row
-			// missing.
+			// Without an article a row cannot be matched on the next import.
 			x.errs++
 			continue
 		}
@@ -161,10 +144,7 @@ func (x *XLSX) parse() {
 	}
 }
 
-// headerKey maps a price list's own wording to our column names. Only the
-// spellings actually seen in the wild are listed; anything unknown is ignored
-// rather than guessed at, and a file whose title column is called something else
-// entirely fails loudly in headerRow instead of importing nonsense.
+// headerKey maps a price list's own wording to our column names.
 func headerKey(raw string) string {
 	s := strings.ToLower(strings.TrimSpace(raw))
 	s = strings.NewReplacer("ё", "е", ".", "", ",", "").Replace(s)
@@ -196,9 +176,7 @@ func headerKey(raw string) string {
 	return ""
 }
 
-// headerRow finds the row that names the columns. A price list starts with a
-// logo and contacts, so the first row is rarely the table; what makes a row the
-// header is that it names both a title and a price.
+// The header row is the one naming both a title and a price, not the first row.
 func headerRow(grid [][]string) int {
 	for n := 0; n < len(grid) && n < kMaxHeaderScan; n++ {
 		var title, price bool
@@ -250,9 +228,7 @@ func sharedStrings(files map[string]*zip.File) []string {
 	return out
 }
 
-// firstSheet picks the first worksheet by name. Workbook order would be more
-// correct, but a price list has one sheet that matters and it is the first one;
-// resolving the workbook relationship chain to learn that is not worth it.
+// firstSheet picks the first worksheet by name rather than by workbook order.
 func firstSheet(files map[string]*zip.File) string {
 	var names []string
 	for name := range files {
@@ -278,9 +254,7 @@ func sheetNumber(name string) int {
 	return n
 }
 
-// readSheet returns the sheet as a dense grid. Cells are sparse in the file - an
-// empty cell is simply absent - so they are placed by their own column letter,
-// otherwise every gap would shift the rest of the row left.
+// Cells are sparse in the file, so each is placed by its own column letter.
 func readSheet(f *zip.File, shared []string) ([][]string, error) {
 	rc, err := f.Open()
 	if err != nil {
@@ -334,8 +308,7 @@ func readSheet(f *zip.File, shared []string) ([][]string, error) {
 	return grid, nil
 }
 
-// columnIndex turns the letters of a cell reference into a zero-based column:
-// "A1" is 0, "AB7" is 27.
+// columnIndex turns a cell reference into a zero-based column: "A1" 0, "AB7" 27.
 func columnIndex(ref string) int {
 	n := 0
 	for _, r := range ref {

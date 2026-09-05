@@ -98,8 +98,7 @@ func TestPollCancellationRestocksOnce(t *testing.T) {
 		t.Fatalf("cancellation did not return stock: %d", got)
 	}
 
-	// Two more encounters of the same cancellation (including under a different
-	// cancelling status) no longer move the stock.
+	// A cancellation seen again, even under another status, no longer moves stock.
 	pass(t, w)
 	m.setPostings(posting("0004-1", "not_accepted", line("A", 2)))
 	pass(t, w)
@@ -133,8 +132,7 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	seedLinked(t, d, "A", 5)
 
-	// A response of unknown shape - the cursor must not be touched, or the
-	// window with the sales drifts away forever.
+	// On a response of unknown shape the cursor must not move.
 	m.mu.Lock()
 	m.postingsRaw = `{"result":{"postings":[{"status":"awaiting_deliver"}]}}`
 	m.mu.Unlock()
@@ -161,8 +159,7 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	}
 	t.Logf("cursor: %s", since.Format(time.RFC3339))
 
-	// The next poll goes out with an overlap backwards - and the re-fetched
-	// posting passes through as a no-op.
+	// The next poll overlaps backwards; the re-fetched posting is a no-op.
 	pass(t, w)
 	fs := m.filters()
 	last, err := time.Parse(time.RFC3339, fs[len(fs)-1].Since)
@@ -179,8 +176,6 @@ func TestPollCursorAdvancesOnlyOnSuccess(t *testing.T) {
 	}
 }
 
-// TestFullCycle - the whole slice: linked, pushed a level, the marketplace sold,
-// the poll applied the sale, the next pass pushed the reduced level.
 func TestFullCycle(t *testing.T) {
 	h, d := newTestHandlers(t)
 	m := newOzonMock(t)

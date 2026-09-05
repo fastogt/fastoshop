@@ -5,9 +5,7 @@ import (
 	"testing"
 )
 
-// An imported catalogue carries titles past the limit search engines accept in
-// structured data, and one such field costs the whole page its rich result. The visible heading keeps the full title, so what goes into
-// the markup has to stay a prefix of it.
+// An over-long name costs the page its rich result; it must stay a prefix of the title.
 func TestClipName(t *testing.T) {
 	short := "Чайник эмалированный 2 л"
 	if got := clipName(short); got != short {

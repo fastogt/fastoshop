@@ -23,8 +23,7 @@ func (o *Ozon) Name() string { return "ozon" }
 // Currency: an Ozon seller account is settled in roubles whatever the shop sells in.
 func (o *Ozon) Currency() string { return database.ShopCurrencyRUB }
 
-// post goes through the channel package's client: one implementation of the
-// Seller API auth and error handling instead of a second copy here.
+// post goes through the ozon package's client: one Seller API auth in one place.
 func (o *Ozon) post(path string, body any, out any) error {
 	c := &ozon.Client{ClientID: o.ClientID, APIKey: o.APIKey, BaseURL: o.BaseURL}
 	return c.Post(path, body, out)
@@ -62,9 +61,7 @@ type ozonCategoryTreeRequest struct {
 	Language string `json:"language"`
 }
 
-// ozonCategoryNode is one node of the Ozon taxonomy. A branch carries
-// description_category_id and a name, a leaf carries type_id and type_name -
-// the same structure all the way down, so one type reads the whole tree.
+// A taxonomy branch carries description_category_id/name, a leaf type_id/type_name.
 type ozonCategoryNode struct {
 	CategoryID int64              `json:"description_category_id"`
 	Name       string             `json:"category_name"`
@@ -77,17 +74,13 @@ type ozonCategoryTreeResponse struct {
 	Result []ozonCategoryNode `json:"result"`
 }
 
-// ozonCategoryKey identifies a card's place in the taxonomy: the category alone
-// is not enough, two types under one category are different shelves.
+// Category alone is not a place: two types under one category are different shelves.
 type ozonCategoryKey struct {
 	CategoryID int64
 	TypeID     int64
 }
 
-// categoryPaths downloads the taxonomy once per import and flattens it into
-// "Дом и сад/Кухня/Посуда для сервировки/Тарелки". One request for the whole
-// catalogue, not one per card. A failure is not fatal: the products are worth
-// more than their categories, so the import goes on without them.
+// The taxonomy is one request per import, flattened into a path; a failure is not fatal.
 func (o *Ozon) categoryPaths() map[ozonCategoryKey]string {
 	var resp ozonCategoryTreeResponse
 	if err := o.post("/v1/description-category/tree",
@@ -107,8 +100,7 @@ func (o *Ozon) categoryPaths() map[ozonCategoryKey]string {
 			if name == "" {
 				name = n.TypeName
 			}
-			// A fresh slice per node: append onto the parent's backing array and
-			// siblings overwrite each other's last segment.
+			// A fresh slice per node: siblings would share the parent's backing array.
 			path := append(append([]string{}, parents...), name)
 			if n.TypeID != 0 {
 				paths[ozonCategoryKey{CategoryID: id, TypeID: n.TypeID}] = database.CategoryPath(path...)
@@ -120,17 +112,7 @@ func (o *Ozon) categoryPaths() map[ozonCategoryKey]string {
 	return paths
 }
 
-// Characteristics -------------------------------------------------------
-//
-// Ozon splits a card's characteristics in two: /v4/product/info/attributes says
-// which attribute holds what, by numeric id, and the category's own dictionary
-// says what that id is called and what type it is. Both halves are needed - an
-// id is not a caption - which is why this costs a second call per category the
-// catalogue actually uses rather than one call for everything.
-//
-// The type comes from the platform, not from the shape of the value: Ozon
-// declares Integer, Decimal, Boolean or String per attribute, so nothing here
-// is guessed at, and a number arrives as a number.
+// Attributes hold ids; the category dictionary names and types them.
 
 type ozonAttributesFilter struct {
 	ProductID  []int64 `json:"product_id"`
@@ -175,11 +157,7 @@ type ozonAttributeDictResponse struct {
 	Result []ozonAttributeDef `json:"result"`
 }
 
-// attributeDicts fetches the attribute dictionary for every category the
-// catalogue actually uses - one call each, not one per product. A category whose
-// dictionary fails is not fatal: its characteristics arrive as plain strings
-// under their numeric id's name, which is worse than a caption and better than
-// nothing.
+// One dictionary call per category in use; a failed one leaves values under their id.
 func (o *Ozon) attributeDicts(keys map[ozonCategoryKey]bool) map[ozonCategoryKey]map[int64]ozonAttributeDef {
 	out := make(map[ozonCategoryKey]map[int64]ozonAttributeDef, len(keys))
 	for k := range keys {
@@ -205,8 +183,7 @@ func (o *Ozon) attributes(ids []int64) map[int64][]ozonAttrValueSet {
 	if err := o.post("/v4/product/info/attributes",
 		ozonAttributesRequest{Limit: 1000,
 			Filter: ozonAttributesFilter{ProductID: ids, Visibility: "ALL"}}, &resp); err != nil {
-		// Characteristics are description, not the product: an import without
-		// them is worth more than no import.
+		// Characteristics are description, not the product: do not fail the import.
 		log.Warnf("ozon: attributes: %v", err)
 		return nil
 	}
@@ -224,10 +201,7 @@ type ozonAttrValueSet struct {
 	Values []ozonAttrValue
 }
 
-// Attributes that are not characteristics. 85 becomes the brand field, and one
-// number with two homes is one home too many. 11254 is a rich-content document:
-// kilobytes of JSON that would sit in the storefront's table as a row and go out
-// in the feed as a <param>.
+// Attributes that are not characteristics: 85 is the brand, 11254 rich content.
 const (
 	kOzonAttrBrand       = 85
 	kOzonAttrRichContent = 11254
@@ -248,8 +222,7 @@ func ozonBrand(sets []ozonAttrValueSet) string {
 	return ""
 }
 
-// ozonParams turns one card's attributes into ours, reading each value as the
-// type the platform declared for it.
+// Values are read as the type Ozon declared, not as their digits look.
 func ozonParams(sets []ozonAttrValueSet, defs map[int64]ozonAttributeDef) []database.Param {
 	var out []database.Param
 	for _, s := range sets {
@@ -259,8 +232,7 @@ func ozonParams(sets []ozonAttrValueSet, defs map[int64]ozonAttributeDef) []data
 		def, known := defs[s.ID]
 		name := def.Name
 		if !known || name == "" {
-			// An id is not a caption, but dropping the value would lose data the
-			// dictionary call failed to explain, not data Ozon failed to send.
+			// An id is not a caption, but a value without one still beats no value.
 			name = "attribute " + strconv.FormatInt(s.ID, 10)
 		}
 		var vals []any
@@ -280,8 +252,7 @@ func ozonParams(sets []ozonAttrValueSet, defs map[int64]ozonAttributeDef) []data
 	return out
 }
 
-// ozonValue reads one value as its declared type. An unparseable number stays a
-// string: Ozon says what the field is, but the seller is who filled it in.
+// An unparseable number stays a string: Ozon types the field, the seller fills it.
 func ozonValue(kind, raw string) any {
 	switch strings.ToLower(kind) {
 	case "integer", "decimal":
@@ -317,8 +288,7 @@ type ozonStocksResponse struct {
 	} `json:"items"`
 }
 
-// stocks returns the sellable FBS stock keyed by product_id. Free stock is
-// present minus reserved: what is reserved has already been sold.
+// Free FBS stock is present minus reserved: what is reserved has already been sold.
 func (o *Ozon) stocks() map[int64]int {
 	var out ozonStocksResponse
 	// ponytail: one page without a cursor - the same amount list() pulls.
@@ -351,9 +321,7 @@ func (o *Ozon) list() (*ozonListResponse, error) {
 	return &out, err
 }
 
-// descriptions is the one Ozon endpoint with no batch form, one call per card.
-// Serially that is the slowest step of the import by far, so the calls run a
-// few at a time; a card whose call failed simply arrives without a description.
+// The description endpoint has no batch form: one call per card, a few at a time.
 func (o *Ozon) descriptions(ids []int64) map[int64]string {
 	out := make([]string, len(ids))
 	var wg sync.WaitGroup
@@ -396,15 +364,12 @@ func (o *Ozon) Fetch() ([]Item, error) {
 			ID      int64  `json:"id"`
 			OfferID string `json:"offer_id"`
 			Name    string `json:"name"`
-			// marketing_price was retired by Ozon on 12.11.2025 and now comes
-			// back empty: reading it imported every catalogue at price 0.
+			// Ozon retired marketing_price on 12.11.2025; it comes back empty.
 			Price      string   `json:"price"`
 			Images     []string `json:"images"`
 			CategoryID int64    `json:"description_category_id"`
 			TypeID     int64    `json:"type_id"`
-			// Ozon states its own units alongside the numbers, so nothing here
-			// has to be assumed. Mandatory on a card, which makes this the one
-			// place a whole catalogue arrives already weighed.
+			// Ozon states its own units alongside the numbers.
 			Weight     float64 `json:"weight"`
 			WeightUnit string  `json:"weight_unit"`
 			Depth      float64 `json:"depth"`
@@ -419,8 +384,7 @@ func (o *Ozon) Fetch() ([]Item, error) {
 	stockByID := o.stocks()
 	categories := o.categoryPaths()
 	attrs := o.attributes(ids)
-	// Only the categories this catalogue actually sells in: a dictionary per
-	// card would be twenty thousand calls, one per category is a handful.
+	// Only the categories this catalogue sells in: a dictionary per card is per-card calls.
 	used := map[ozonCategoryKey]bool{}
 	for _, it := range info.Items {
 		used[ozonCategoryKey{CategoryID: it.CategoryID, TypeID: it.TypeID}] = true

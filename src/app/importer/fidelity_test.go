@@ -10,17 +10,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// Nothing must be lost on the way in. A test that checks the fields its author
-// thought of, one line each, cannot fail for a field nobody remembered - so
-// these five compare the whole result at once. Each source gets one fixture
-// with every field that source is able to state, and one reflect.DeepEqual
-// against the Items we expect. A field that stops being parsed fails a test
-// without anyone having remembered to check for it, and a field that starts
-// being parsed has to be written into the expectation deliberately.
-//
-// What each source can carry differs, and the gaps are stated where they come
-// up: a spreadsheet states no weight, and only the two marketplaces state a
-// parcel's size.
+// One fixture per source, compared whole: a field silently dropped fails a test.
 
 func i64(v int64) *int64 { return &v }
 
@@ -60,8 +50,7 @@ func TestYMLParsesEverythingItIsGiven(t *testing.T) {
 		Price:       250050,
 		Stock:       7,
 		ImageURLs:   []string{img, img},
-		// One category deep: the shared root "Посуда" is trimmed, as a single
-		// root tells a buyer nothing the shop's own name did not.
+		// One category deep: the shared root "Посуда" is trimmed.
 		Category: "Чайники",
 		WeightG:  i64(750),
 		LengthMM: i64(201),
@@ -85,8 +74,7 @@ func TestCSVParsesEverythingItIsGiven(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// No weight and no dimensions: a spreadsheet column for them was never
-	// agreed, and inventing one here would be inventing a format.
+	// No weight and no dimensions: a spreadsheet has no agreed column for them.
 	want := []Item{{
 		SKU:         "TK-1",
 		Title:       "Чайник",
@@ -180,8 +168,7 @@ func TestWBParsesEverythingItIsGiven(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Centimetres and kilograms in, millimetres and grams out: the conversion is
-	// the import's job, and a card with one size keeps the article as it is.
+	// Centimetres and kilograms in, millimetres and grams out.
 	want := []Item{{
 		SKU:         "TK-1",
 		Title:       "Чайник",
@@ -244,8 +231,7 @@ func TestOzonParsesEverythingItIsGiven(t *testing.T) {
 	mux.HandleFunc("/v1/description-category/attribute", func(w http.ResponseWriter, r *http.Request) {
 		var req ozonAttributeDictRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		// The dictionary is asked for by category and type together: two types
-		// under one category are different shelves with different attributes.
+		// The dictionary is asked for by category and type together.
 		if req.CategoryID != 17 || req.TypeID != 91 {
 			t.Errorf("attribute dictionary asked for %d/%d", req.CategoryID, req.TypeID)
 		}
@@ -264,14 +250,7 @@ func TestOzonParsesEverythingItIsGiven(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Characteristics come typed as Ozon declared them, not as their digits
-	// look: Decimal is a number, Boolean is a bool, a collection stays a list,
-	// and an attribute the category dictionary does not describe keeps its value
-	// under its id rather than being dropped.
-	//
-	// Two of them are not characteristics at all. 85 is the brand and belongs in
-	// its own field; 11254 is a rich-content document, and kilobytes of JSON in
-	// the storefront's table of properties is not a property.
+	// Typed as Ozon declared; 85 is the brand and 11254 rich content, neither a param.
 	want := []Item{{
 		SKU:         "TK-1",
 		Title:       "Чайник",

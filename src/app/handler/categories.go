@@ -15,9 +15,7 @@ type categoryListResponse struct {
 	Categories []database.Category `json:"categories"`
 }
 
-// CategoryList is the whole tree in one response, unpaged on purpose: a
-// catalogue of 24 000 products has hundreds of categories, not thousands, and a
-// tree drawn one page at a time is not a tree.
+// The tree comes in one response, unpaged: hundreds of categories, not thousands.
 func (h *Handler) CategoryList(w http.ResponseWriter, r *http.Request) {
 	nodes, err := h.db.Tree()
 	if err != nil {
@@ -51,12 +49,10 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, categoryPathResponse{Path: path})
 }
 
-// categoryUpdateRequest carries only what changed: the fields are pointers so
-// that renaming a category cannot silently unhide it.
+// Pointer fields: renaming a category must not silently unhide it.
 type categoryUpdateRequest struct {
 	Path string `json:"path"`
-	// Name renames the node in place; Parent moves it (an empty string means the
-	// root). Both rewrite the paths of every product and subcategory below.
+	// An empty Parent means the root; both rewrite the paths of everything below.
 	Name     *string `json:"name"`
 	Parent   *string `json:"parent"`
 	Position *int    `json:"position"`
@@ -128,8 +124,7 @@ type categoryPathResponse struct {
 	Path string `json:"path"`
 }
 
-// DeleteCategory removes the shelf, not what stands on it: products and
-// subcategories move up to the parent, and the old address answers 301.
+// Products and subcategories move up to the parent; the old address answers 301.
 func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	path := database.NormalizePath(r.URL.Query().Get("path"))
 	if path == "" {
@@ -143,8 +138,6 @@ func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, okStatusResponse{Status: "deleted"})
 }
 
-// writeCategoryError renders the two conflicts the owner can cause in their own
-// language; anything else is ours to fix and goes out as a 500.
 func (h *Handler) writeCategoryError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, database.ErrCategoryExists):

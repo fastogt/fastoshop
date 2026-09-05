@@ -35,8 +35,6 @@ func TestFileDatabasePragmas(t *testing.T) {
 	}
 }
 
-// Reopening models a service restart: the schema is created idempotently,
-// data is not lost.
 func TestReopenKeepsData(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "shop.db")
 	d, err := Open(path)

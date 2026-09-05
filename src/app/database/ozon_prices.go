@@ -2,8 +2,7 @@ package database
 
 import "time"
 
-// OzonPriceRow is a link whose Ozon price is due for a push. Price is the price
-// ON OZON in kopecks - the owner's own number, not products.price.
+// OzonPriceRow is a link due for a price push; Price is the Ozon price in kopecks.
 type OzonPriceRow struct {
 	ProductID   int64
 	OfferID     string
@@ -12,12 +11,7 @@ type OzonPriceRow struct {
 	Error       string
 }
 
-// kOzonPriceGuard: price = 0 means the owner never opted this product in, and we
-// never touch a price we were not asked to manage. price_pushed = -1 is "no
-// baseline yet", so the first push of a set price always goes.
-// price_pushed holds exactly what was sent, down to the kopeck, so the wanted
-// price is compared to it as it stands. A price of zero is not "free", it is
-// "not managed here" - those rows never travel.
+// price = 0 is "not managed here", never pushed; price_pushed = -1 is no baseline.
 const kOzonPriceGuard = `offer_id != '' AND price > 0
 	 AND price != price_pushed`
 
@@ -53,9 +47,7 @@ func (d *Database) ozonPriceRows(query string) ([]OzonPriceRow, error) {
 	return out, rows.Err()
 }
 
-// MarkOzonPricePushed stores the value actually sent (rounded up to whole
-// rubles and back to kopecks), not what the owner typed: comparing the wanted
-// price against the sent one is what keeps the row from flapping every pass.
+// MarkOzonPricePushed stores the value actually sent, so the row stops flapping.
 func (d *Database) MarkOzonPricePushed(productID, level int64) error {
 	_, err := d.db.Exec(
 		`UPDATE ozon_links SET price_pushed=?, price_error='', retry_at=NULL
@@ -63,8 +55,7 @@ func (d *Database) MarkOzonPricePushed(productID, level int64) error {
 	return err
 }
 
-// MarkOzonPriceError writes retry_at in the same UTC format as the stock side -
-// the column is shared, and so is the comparison against CURRENT_TIMESTAMP.
+// MarkOzonPriceError writes retry_at as UTC - the column is shared with the stock side.
 func (d *Database) MarkOzonPriceError(productID int64, msg string, retryAt time.Time) error {
 	_, err := d.db.Exec(
 		`UPDATE ozon_links SET price_error=?, retry_at=? WHERE product_id=?`,
@@ -81,11 +72,7 @@ func (d *Database) CountOzonPriceState() (pending, failed int, err error) {
 	return pending, failed, err
 }
 
-// SetOzonPrice returns false when there is no link for that product: setting a
-// platform price for something we never linked is a mistake worth reporting,
-// not a row worth creating. Clearing price_error is deliberate - an edit is the
-// owner's attempt to fix whatever Ozon complained about, and the stale message
-// must not outlive it.
+// SetOzonPrice returns false when the product has no link; it also clears price_error.
 func (d *Database) SetOzonPrice(productID, price int64) (bool, error) {
 	res, err := d.db.Exec(
 		`UPDATE ozon_links SET price=?, price_error='' WHERE product_id=?`, price, productID)
@@ -96,10 +83,7 @@ func (d *Database) SetOzonPrice(productID, price int64) (bool, error) {
 	return n > 0, err
 }
 
-// FillOzonPrices sets the Ozon price from the shelf price plus a markup in basis
-// points, and only for linked rows that have none yet: prices the owner already
-// chose are never overwritten by a bulk helper. Arithmetic stays in integer
-// kopecks and rounds up, exactly like a single push does.
+// FillOzonPrices marks up the shelf price only where no Ozon price was set yet.
 func (d *Database) FillOzonPrices(markupBP int64) (int, error) {
 	res, err := d.db.Exec(
 		`UPDATE ozon_links SET price = (
@@ -115,9 +99,7 @@ func (d *Database) FillOzonPrices(markupBP int64) (int, error) {
 	return int(n), err
 }
 
-// OzonLinkRow is one line of the linked-products table on the tab. Title and SKU
-// are empty for a link whose product is gone - the row still matters, it is the
-// card we keep zeroing out on the platform.
+// OzonLinkRow is one linked-products row; Title and SKU are empty for a gone product.
 type OzonLinkRow struct {
 	ProductID   int64
 	OfferID     string

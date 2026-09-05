@@ -9,9 +9,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// The ladder is what makes a catalogue of seven-rouble sieves and three-hundred
-// rouble steamers priceable at all: one multiplier leaves nothing on the first
-// and prices the second above the brand's own store.
+// One multiplier lies at both ends of a wide catalogue; the ladder does not.
 func TestShopPriceLadder(t *testing.T) {
 	h := newTestHandler(t)
 	if err := h.db.CreateSettings(&database.Settings{OwnerEmail: "o@example.com"}); err != nil {
@@ -62,8 +60,7 @@ func TestShopPriceLadder(t *testing.T) {
 		t.Fatalf("a ladder with no open band must be refused: %d", w.Code)
 	}
 
-	// A single open band is the "one markup percent" case from the Products
-	// screen - the common case, and the one a CASE with no WHEN broke.
+	// A single open band is the "one markup percent" case from the Products screen.
 	w = httptest.NewRecorder()
 	h.SetPriceRules(w, httptest.NewRequest("PUT", "/api/products/price-rules", strings.NewReader(
 		`{"rules":[{"up_to":0,"multiplier":1.3}]}`)))

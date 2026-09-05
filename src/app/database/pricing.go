@@ -5,9 +5,7 @@ import (
 	"strings"
 )
 
-// kMaxCoefficient is a sanity ceiling, not a business rule: a typo like 3000
-// instead of 30 would silently multiply a whole catalogue by a hundred, and the
-// owner would find out from the storefront.
+// kMaxCoefficient is a sanity ceiling: a typo must not multiply a whole catalogue.
 const kMaxCoefficient = 1000
 
 func ValidCoefficient(c float64) bool { return c > 0 && c <= kMaxCoefficient }
@@ -16,8 +14,7 @@ func (d *Database) PriceCoefficient() (float64, error) {
 	var c float64
 	err := d.db.QueryRow(`SELECT price_coefficient FROM settings WHERE id=1`).Scan(&c)
 	if err != nil {
-		// A shop without a settings row yet is not broken: it simply has no
-		// coefficient, and 1 leaves the source price as it is.
+		// No settings row yet: 1 leaves the source price as it is.
 		return 1, nil
 	}
 	return c, nil
@@ -27,15 +24,12 @@ func (d *Database) SetPriceCoefficient(c float64) error {
 	if !ValidCoefficient(c) {
 		return fmt.Errorf("invalid price coefficient: %v", c)
 	}
-	// UPDATE only: an INSERT here would forge a settings row with no owner, and
-	// the settings row is where the owner's credentials live.
+	// UPDATE only: an INSERT here would forge a settings row with no owner.
 	_, err := d.db.Exec(`UPDATE settings SET price_coefficient=? WHERE id=1`, c)
 	return err
 }
 
-// ApplyPriceCoefficient recomputes shelf prices from the source prices in one
-// statement - 20 000 rows is a single UPDATE, not twenty thousand round trips.
-// Rows the owner priced by hand and rows with no source are left alone.
+// ApplyPriceCoefficient leaves manually priced rows and rows with no source alone.
 func (d *Database) ApplyPriceCoefficient(c float64) (int, error) {
 	rules, err := d.ShopPriceRules()
 	if err != nil {
@@ -44,13 +38,7 @@ func (d *Database) ApplyPriceCoefficient(c float64) (int, error) {
 	return d.RecomputePrices(c, rules)
 }
 
-// RecomputePrices rebuilds every shelf price from the source price: the
-// coefficient carries it into the shop's money, the ladder adds the margin.
-//
-// One UPDATE with the ladder inlined as a CASE, not a loop: a catalogue of
-// twenty thousand would otherwise be twenty thousand round trips to do
-// arithmetic SQLite can do in one pass. The bands are compared against the cost,
-// which is what the owner sees in the price column.
+// RecomputePrices rebuilds shelf prices from source_price; bands compare against cost.
 func (d *Database) RecomputePrices(c float64, rules []PriceRule) (int, error) {
 	if !ValidCoefficient(c) {
 		return 0, fmt.Errorf("invalid price coefficient: %v", c)
@@ -65,8 +53,7 @@ func (d *Database) RecomputePrices(c float64, rules []PriceRule) (int, error) {
 
 	expr := "source_price * ?"
 	args := []any{c}
-	// A single band is the plain "percent" case from the Products screen: the
-	// ladder has one row, "and above", and CASE with no WHEN is a syntax error.
+	// CASE with no WHEN is a syntax error, so a single band is a plain multiplication.
 	if len(rules) == 1 {
 		expr = "(source_price * ?) * ?"
 		args = []any{c, rules[0].Multiplier}

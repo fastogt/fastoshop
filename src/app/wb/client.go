@@ -14,8 +14,7 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// Hosts is the four Wildberries APIs a channel needs. They are separate hosts,
-// not paths on one, so a base URL like Ozon's does not exist here.
+// Wildberries splits its API across four hosts, so a single base URL cannot exist.
 type Hosts struct {
 	Content     string
 	Prices      string
@@ -30,14 +29,7 @@ var kProd = Hosts{
 	Common:      "https://common-api.wildberries.ru",
 }
 
-// kSandbox is the test contour. A test token only reaches these hosts and only
-// sees generated data, so the owner can wire the tab up without touching a live
-// catalogue. https://dev.wildberries.ru/
-//
-// Common is deliberately empty: there is no common-api-sandbox host, the name
-// does not even resolve. Checked against a live test token on 2026-08-17. The
-// seller name is a nicety on the check screen, so its absence costs nothing -
-// but a request to a host that does not exist costs a DNS timeout every time.
+// Test contour; Common is empty because no common-api-sandbox host exists.
 var kSandbox = Hosts{
 	Content:     "https://content-api-sandbox.wildberries.ru",
 	Prices:      "https://discounts-prices-api-sandbox.wildberries.ru",
@@ -52,8 +44,7 @@ const kCardsLimit = 100
 // ceiling as the Ozon client, and the same upgrade path if a cabinet outgrows it.
 const kMaxPages = 200
 
-// kStockBatch is what one PUT /api/v3/stocks/{id} carries. Documented ceiling is
-// 1000 barcodes.
+// kStockBatch is one PUT /api/v3/stocks/{id}: documented ceiling 1000 barcodes.
 const kStockBatch = 1000
 
 // kPriceBatch is what one price upload task carries.
@@ -64,12 +55,10 @@ const kStatusBatch = 1000
 
 var kHTTP = &http.Client{Timeout: 30 * time.Second}
 
-// Client is a minimal Wildberries Seller API client. Authentication is a single
-// token for every host, unlike Ozon's Client-Id plus Api-Key pair.
+// Authentication is a single token for every host, unlike Ozon's id plus key pair.
 type Client struct {
 	Token string
-	// Hosts is the zero value in production (kProd) or kSandbox when the owner
-	// asked for the test contour; tests point all four fields at one httptest mux.
+	// Zero value is production; tests point all four fields at one httptest mux.
 	Hosts Hosts
 }
 
@@ -85,9 +74,7 @@ func orDefault(v, def string) string {
 	return def
 }
 
-// errorEnvelope is the trap this API sets and Ozon's does not: several methods
-// answer 200 and put the failure in the body. Ignoring it would record a push as
-// successful and never retry it.
+// Several methods answer 200 and put the failure in the body.
 type errorEnvelope struct {
 	Error     bool   `json:"error"`
 	ErrorText string `json:"errorText"`
@@ -143,15 +130,10 @@ func (c *Client) do(method, url string, body, out any) error {
 	return json.Unmarshal(raw, out)
 }
 
-// kMaxErrorText caps what a refusal contributes to a message: this text is
-// logged and stored in the database, and an API that answers an error with a
-// page of HTML would otherwise put all of it there.
+// A refusal can arrive as a page of HTML, and this text is logged and stored.
 const kMaxErrorText = 500
 
-// safe prepares a platform message for a log and for the database. The token
-// travels in a header and never in a URL, so it cannot leak by itself - but an
-// API that echoes the request back would carry it into our logs, and one line
-// here is cheaper than finding out that it does.
+// An API that echoes the request back would carry the token into our logs.
 func (c *Client) safe(text string) string {
 	if c.Token != "" {
 		text = strings.ReplaceAll(text, c.Token, "***")
@@ -165,9 +147,7 @@ func (c *Client) safe(text string) string {
 // errNoSellerInfo marks a contour that does not publish seller details at all.
 var errNoSellerInfo = errors.New("wb: no seller-info endpoint in this contour")
 
-// APIError is a refused answer from the cabinet. Body is kept so callers that
-// know the shape of a particular refusal (the per-barcode 409 of a stock push)
-// can read it instead of parsing the message.
+// Body is kept: the per-barcode 409 of a stock push is read from it.
 type APIError struct {
 	Status     int
 	RetryAfter time.Duration
@@ -177,10 +157,7 @@ type APIError struct {
 
 func (e *APIError) Error() string { return e.msg }
 
-// retryAfter reads both headers: Wildberries answers a 429 with
-// X-Ratelimit-Retry on most methods and the standard Retry-After on some, and
-// guessing our own backoff over the platform's own number gets us throttled
-// longer.
+// A 429 carries X-Ratelimit-Retry on most methods and Retry-After on some.
 func retryAfter(h http.Header) time.Duration {
 	for _, name := range []string{"X-Ratelimit-Retry", "Retry-After"} {
 		sec, err := strconv.Atoi(h.Get(name))
@@ -193,8 +170,7 @@ func retryAfter(h http.Header) time.Duration {
 
 // Cards ------------------------------------------------------------------
 
-// Card is one Wildberries card with its sizes. A size carries the barcodes stock
-// is set by; the card carries the nmID price is set by.
+// Stock is set by the size's barcode, price by the card's nmID.
 type Card struct {
 	NmID       int64  `json:"nmID"`
 	VendorCode string `json:"vendorCode"`
@@ -234,9 +210,7 @@ type cardsResponse struct {
 	Cursor cardsCursor `json:"cursor"`
 }
 
-// ListCards walks the cabinet with the cursor the platform hands back. withPhoto
-// -1 means "cards with and without photos": a card we are only linking to does
-// not have to be pretty.
+// withPhoto -1 means cards with and without photos.
 func (c *Client) ListCards() ([]Card, error) {
 	var out []Card
 	cursor := cardsCursor{Limit: kCardsLimit}
@@ -270,9 +244,7 @@ type SellerInfo struct {
 }
 
 func (c *Client) SellerInfo() (*SellerInfo, error) {
-	// Hosts set with an empty Common means "this contour has no such host" - the
-	// sandbox is exactly that case. Falling back to production would send a test
-	// token where it does not belong and wait out a refusal for nothing.
+	// An empty Common means the contour has no such host; no fallback to production.
 	if c.Hosts != (Hosts{}) && c.Hosts.Common == "" {
 		return nil, errNoSellerInfo
 	}
@@ -298,8 +270,7 @@ func (c *Client) ListWarehouses() ([]Warehouse, error) {
 
 // Stocks -----------------------------------------------------------------
 
-// StockItem is one barcode's level on one warehouse. Sku here is the barcode,
-// which is what the platform calls it in this method.
+// Sku here is the barcode - that is what the platform calls it in this method.
 type StockItem struct {
 	Sku    string `json:"sku"`
 	Amount int64  `json:"amount"`
@@ -317,10 +288,7 @@ type stocksError struct {
 	} `json:"data"`
 }
 
-// SetStocks pushes levels for one warehouse and returns the barcodes the
-// platform refused, keyed by barcode. A success is an empty body with 204: there
-// is no per-item verdict to fan out, so the whole batch is credited. Only a 409
-// carries per-barcode reasons, and only those rows are marked.
+// Success is 204 with no body, so the whole batch is credited; only a 409 names rows.
 func (c *Client) SetStocks(warehouseID int64, items []StockItem) (map[string]string, error) {
 	url := fmt.Sprintf("%s/api/v3/stocks/%d", c.marketplace(), warehouseID)
 	err := c.do("PUT", url, stocksRequest{Stocks: items}, nil)
@@ -348,9 +316,7 @@ func (c *Client) SetStocks(warehouseID int64, items []StockItem) (map[string]str
 
 // Prices -----------------------------------------------------------------
 
-// PriceItem is one card's price in whole roubles: the platform takes no
-// fractions here, and discount is deliberately absent - promotions are the
-// seller's business, and sending a zero would reprice the whole catalogue.
+// Whole roubles only; no discount field - a zero there would reprice the catalogue.
 type PriceItem struct {
 	NmID  int64 `json:"nmID"`
 	Price int64 `json:"price"`
@@ -366,17 +332,13 @@ type priceUploadResponse struct {
 	} `json:"data"`
 }
 
-// NewPriceItem converts kopecks to the whole roubles the platform accepts,
-// rounding up, and returns the rounded value back in kopecks so the caller can
-// store what was actually sent. Storing the owner's raw number instead would
-// make the row differ from the platform forever and push it every pass.
+// Rounds up to whole roubles and returns that back in kopecks: store what was sent.
 func NewPriceItem(nmID, kopecks int64) (PriceItem, int64) {
 	roubles := (kopecks + 99) / 100
 	return PriceItem{NmID: nmID, Price: roubles}, roubles * 100
 }
 
-// UploadPrices starts an upload task and returns its id. The result is not known
-// yet: it is polled by PriceTaskStatus one or more passes later.
+// The result is not known yet: PriceTaskStatus polls it a pass or more later.
 func (c *Client) UploadPrices(items []PriceItem) (string, error) {
 	var resp priceUploadResponse
 	if err := c.do("POST", c.prices()+"/api/v2/upload/task",
@@ -413,17 +375,14 @@ type taskErrorsResponse struct {
 	} `json:"data"`
 }
 
-// Documented task statuses: 3 is processed, 4 and 5 are refusals. Anything else
-// is still moving, and a task we cannot classify must stay pending rather than
-// be credited.
+// Status 3 is processed, 4 and 5 are refusals; anything else is still moving.
 const (
 	kTaskStatusDone      = 3
 	kTaskStatusCancelled = 4
 	kTaskStatusRejected  = 5
 )
 
-// PriceTaskStatus reports how a task ended and, for a failure, why - per card
-// where the platform said so.
+// Reports how a task ended and, for a failure, why - per card where stated.
 func (c *Client) PriceTaskStatus(uploadID string) (TaskState, map[int64]string, error) {
 	var resp taskStatusResponse
 	url := c.prices() + "/api/v2/history/tasks?uploadID=" + uploadID
@@ -440,8 +399,7 @@ func (c *Client) PriceTaskStatus(uploadID string) (TaskState, map[int64]string, 
 	}
 }
 
-// taskErrors is best effort: a task that failed is failed whether or not the
-// platform explains itself, and the caller has a fallback message.
+// Best effort: the caller has a fallback message when the platform says nothing.
 func (c *Client) taskErrors(uploadID string) map[int64]string {
 	var resp taskErrorsResponse
 	url := c.prices() + "/api/v2/buffer/tasks?uploadID=" + uploadID
@@ -485,8 +443,7 @@ const (
 	kOrderTimeShort = "2006-01-02T15:04:05Z07:00"
 )
 
-// ListOrders walks assembly tasks created since a point in time. dateFrom is in
-// unix seconds and next is the platform's own cursor, not an offset.
+// dateFrom is unix seconds and next is the platform's own cursor, not an offset.
 func (c *Client) ListOrders(since time.Time) ([]Order, error) {
 	var out []Order
 	next := int64(0)
@@ -506,8 +463,7 @@ func (c *Client) ListOrders(since time.Time) ([]Order, error) {
 	return out, nil
 }
 
-// CreatedTime parses the platform's timestamp. An unparsable value is not fatal:
-// the sale is real even when its clock is odd, and the caller stamps it now.
+// An unparsable timestamp is not fatal: the caller stamps the sale itself.
 func (o *Order) CreatedTime() time.Time {
 	t, err := time.Parse(kOrderTimeShort, o.CreatedAt)
 	if err != nil {
@@ -516,8 +472,7 @@ func (o *Order) CreatedTime() time.Time {
 	return t
 }
 
-// Barcode is the size's barcode the sale came through; it is what links the task
-// to one of our products.
+// The size's barcode the sale came through - what links the task to a product.
 func (o *Order) Barcode() string {
 	if len(o.Skus) == 0 {
 		return ""
@@ -525,8 +480,7 @@ func (o *Order) Barcode() string {
 	return o.Skus[0]
 }
 
-// OrderStatus is what the separate status call reports. WBStatus is the
-// platform's own state, SupplierStatus is ours.
+// WBStatus is the platform's own state, SupplierStatus is ours.
 type OrderStatus struct {
 	ID             int64  `json:"id"`
 	SupplierStatus string `json:"supplierStatus"`
@@ -541,8 +495,7 @@ type statusResponse struct {
 	Orders []OrderStatus `json:"orders"`
 }
 
-// OrderStatuses asks about the tasks whose state may still change. The order
-// list itself carries no status, so this is a second call by design.
+// The order list carries no status, so this is a second call by design.
 func (c *Client) OrderStatuses(ids []int64) (map[int64]OrderStatus, error) {
 	out := map[int64]OrderStatus{}
 	for start := 0; start < len(ids); start += kStatusBatch {

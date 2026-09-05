@@ -53,9 +53,6 @@ func TestProductCRUD(t *testing.T) {
 	}
 }
 
-// TestParamsKeepTheirTypes: a characteristic is stored as its source stated it,
-// and comes back the same. A number that made the round trip as a string is a
-// number no filter can compare and no platform card will accept.
 func TestParamsKeepTheirTypes(t *testing.T) {
 	d := openTest(t)
 	p := &Product{SKU: "P-1", Title: "Кружка", Price: 100, Params: []Param{
@@ -85,10 +82,6 @@ func TestParamsKeepTheirTypes(t *testing.T) {
 	}
 }
 
-// TestParamsDropTheUnreadable: the column is not written by this code alone -
-// an older row, a hand-edited database, a source that starts sending objects.
-// A characteristic nobody can render is dropped; the ones beside it survive,
-// because a card is not worth losing over a colour.
 func TestParamsDropTheUnreadable(t *testing.T) {
 	d := openTest(t)
 	p := &Product{SKU: "P-2", Title: "Ковш", Price: 100}

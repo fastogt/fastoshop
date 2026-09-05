@@ -90,10 +90,7 @@ func newToken() string {
 	return hex.EncodeToString(b)
 }
 
-// isTLS - prod sits behind nginx+certbot, which terminates TLS and proxies
-// plain HTTP, so r.TLS is always nil there: we rely on X-Forwarded-Proto.
-// Without this the Secure cookie would break login in prod, and on local http
-// login entirely, which is why the flag is not a constant.
+// Prod sits behind nginx, so r.TLS is nil: Secure follows X-Forwarded-Proto.
 func isTLS(r *http.Request) bool {
 	return r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 }
@@ -143,10 +140,7 @@ func (h *Handler) Setup(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, okStatusResponse{Status: "created"})
 }
 
-// Invite covers provisioning without sending a password around: the owner is
-// created when the shop is created and sets the password themselves via a
-// one-time link. The token burns on use, so an intercepted email is useless a
-// day later.
+// The owner sets their own password over a one-time link; the token burns on use.
 func (h *Handler) Invite(w http.ResponseWriter, r *http.Request) {
 	var req inviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Password) < 8 {
@@ -183,8 +177,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteBadRequest(w, "invalid body")
 		return
 	}
-	// Waited out before the answer, not after: the delay has to be paid whether
-	// the guess was right or wrong, or its length leaks which one it was.
+	// Paid before the answer, or its length leaks whether the guess was right.
 	if d := h.login.delay(); d > 0 {
 		select {
 		case <-time.After(d):

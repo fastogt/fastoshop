@@ -14,9 +14,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// CSV is the shop's own template: a fixed set of columns the owner fills in a
-// spreadsheet. No guessing at someone else's layout - the file's author is our
-// user, so we hand them the shape instead of trying to infer it.
+// CSV is the shop's own template: a fixed set of columns, no layout guessing.
 type CSV struct {
 	Data []byte
 
@@ -27,9 +25,7 @@ type CSV struct {
 
 func (c *CSV) Name() string { return "csv" }
 
-// Template is what the "Download template" button returns. Semicolon-separated
-// and BOM-prefixed on purpose: that is what Russian Excel opens without turning
-// the file into one column of mojibake.
+// Semicolons and a BOM on purpose: Russian Excel opens anything else as mojibake.
 func Template() []byte {
 	return []byte("\xef\xbb\xbf" +
 		"sku;title;description;price;stock;category;images;Цвет;Материал\n" +
@@ -37,18 +33,14 @@ func Template() []byte {
 		"https://example.com/1.jpg|https://example.com/2.jpg;белый;эмаль\n")
 }
 
-// kCP1251 maps the upper half of windows-1251 to runes. A table beats pulling in
-// x/text for one legacy charset - and this one is not optional: Russian Excel
-// writes CSV in cp1251, and without it the whole catalogue arrives as mojibake.
+// Upper half of windows-1251: Russian Excel writes CSV in that charset.
 var kCP1251 = []rune(
 	"ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–-�™љ›њќћџ" +
 		" ЎўЈ¤Ґ¦§Ё©Є«¬\u00ad®Ї°±Ііґµ¶·ё№є»јЅѕї" +
 		"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ" +
 		"абвгдежзийклмнопрстуфхцчшщъыьэюя")
 
-// decode returns the file as UTF-8. Detection is by validity rather than by a
-// declared charset: spreadsheets do not declare one, and invalid UTF-8 in this
-// part of the world means cp1251 in practice.
+// Spreadsheets declare no charset, so detection is by UTF-8 validity.
 func decode(raw []byte) string {
 	raw = bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))
 	if utf8.Valid(raw) {
@@ -66,8 +58,7 @@ func decode(raw []byte) string {
 	return b.String()
 }
 
-// delimiter guesses from the header line: Excel in a Russian locale writes
-// semicolons, everyone else writes commas.
+// Excel in a Russian locale writes semicolons, everyone else commas.
 func delimiter(text string) rune {
 	head, _, _ := strings.Cut(text, "\n")
 	if strings.Count(head, ";") > strings.Count(head, ",") {
@@ -96,8 +87,7 @@ func (c *CSV) parse() {
 	if len(records) == 0 {
 		return
 	}
-	// Read by header name, not by position: a column moved in Excel must not
-	// silently shift the price into the stock.
+	// Read by header name: a column moved in Excel must not shift price into stock.
 	col := map[string]int{}
 	for i, name := range records[0] {
 		col[strings.ToLower(strings.TrimSpace(name))] = i
@@ -123,8 +113,6 @@ func (c *CSV) parse() {
 		}
 		price, err := parseMoney(get(row, "price"))
 		if err != nil {
-			// The line number is what makes the log actionable: "row 418" sends
-			// whoever reads it straight to the cell.
 			log.Warnf("csv: row %d: price %q: %v", n+2, get(row, "price"), err)
 			c.errs++
 			continue
@@ -147,21 +135,13 @@ func (c *CSV) parse() {
 	}
 }
 
-// kKnownColumns are the ones the shop reads by meaning. Everything else in the
-// header is a characteristic: in a spreadsheet a property is a column, and
-// asking the owner to pack "Цвет=белый|Материал=эмаль" into one cell would be
-// inventing a format next to the one the file already has.
+// Columns the shop reads by meaning; every other column is a characteristic.
 var kKnownColumns = map[string]bool{
 	"sku": true, "title": true, "description": true, "price": true,
 	"stock": true, "category": true, "images": true,
 }
 
-// extraColumns collects the header's own columns as characteristics. A blank
-// cell adds nothing: an empty property is a heading over nothing on the card.
-//
-// Values stay text. A spreadsheet states no types and no units, so reading a
-// cell as a number would be reading the digits and hoping - and the column that
-// finally proves it wrong is the one holding article numbers.
+// Values stay text: a spreadsheet states no types and no units.
 func extraColumns(header, row []string) []database.Param {
 	var out []database.Param
 	for i, name := range header {
@@ -176,10 +156,7 @@ func extraColumns(header, row []string) []database.Param {
 	return out
 }
 
-// cellCategory reads the category the way price lists write it. Half of them
-// spell nesting inside one cell - "Текстиль > Спальня", sometimes with a slash
-// or a pipe - and that is data, not a guess. A cell with no separator is a
-// single level, which is what a spreadsheet usually holds.
+// Price lists spell nesting inside one cell, separated by ">", "|" or a slash.
 func cellCategory(raw string) string {
 	runes := []rune(raw)
 	var segments []string
@@ -188,8 +165,7 @@ func cellCategory(raw string) string {
 		switch r {
 		case '>', '|':
 		case '/', '\\':
-			// A slash between digits is a size, not a level: "КПБ 1,5/2 сп" is one
-			// category, "Текстиль/Спальня" is two.
+			// A slash between digits is a size, not a level: "КПБ 1,5/2 сп".
 			if i > 0 && i+1 < len(runes) &&
 				isDigitish(runes[i-1]) && isDigitish(runes[i+1]) {
 				continue
@@ -207,13 +183,7 @@ func isDigitish(r rune) bool {
 	return r >= '0' && r <= '9' || r == ',' || r == '.'
 }
 
-// parseMoney accepts both decimal separators and ignores spaces used as
-// thousands grouping: "1 234,50" is what a spreadsheet produces.
-// kPriceNote is a price followed by a note to a human: a star, a currency, a
-// discount in brackets. The number is the price and the note is not, so the
-// leading number is taken. A bracket may hold digits - "4.16(-9.2%)" is one
-// price and its discount - but a bare second number is two prices, and
-// choosing between them is not ours to do.
+// A price plus a note ("4.16(-9.2%)"): leading number wins, a bare second is refused.
 var kPriceNote = regexp.MustCompile(`^(-?[0-9]+(?:\.[0-9]+)?)(?:\([^)]*\)|[^0-9(])*$`)
 
 func parseMoney(s string) (int64, error) {
@@ -242,6 +212,5 @@ func (c *CSV) Fetch() ([]Item, error) {
 	return c.rows, nil
 }
 
-// FetchErrors reports rows the file itself made unusable, so a broken cell shows
-// up in the result instead of quietly shrinking the catalogue.
+// FetchErrors reports rows the file itself made unusable.
 func (c *CSV) FetchErrors() int { return c.errs }

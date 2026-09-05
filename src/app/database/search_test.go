@@ -2,10 +2,7 @@ package database
 
 import "testing"
 
-// SQLite folds case for ASCII only, so a catalogue written in Russian is
-// invisible to a buyer typing in lower case unless both sides go through a
-// Unicode-aware lower: measured on a live shop, "кастрюля" finds 8 products
-// against "Кастрюля" 521.
+// SQLite folds case for ASCII only: Cyrillic needs a Unicode-aware lower on both sides.
 func TestSearchIgnoresCyrillicCase(t *testing.T) {
 	d, err := OpenInMemory()
 	if err != nil {
@@ -34,8 +31,6 @@ func TestSearchIgnoresCyrillicCase(t *testing.T) {
 		}
 	}
 
-	// An article is matched the same way, and a word that is not there is still
-	// not there.
 	if n, _ := d.CountProducts("чайник", AnySupplier); n != 1 {
 		t.Errorf("kettle: %d, want 1", n)
 	}
@@ -44,10 +39,7 @@ func TestSearchIgnoresCyrillicCase(t *testing.T) {
 	}
 }
 
-// A buyer types words, not a substring. One LIKE over the whole query matched
-// their spacing and nothing else: on a live shop "кпб евро" found none of the
-// products titled "КПБ Евро 4 предмета". Every word has to be there; their
-// order is the buyer's business.
+// A buyer types words, not a substring: every word must match, in any order.
 func TestSearchMatchesEveryWordInAnyOrder(t *testing.T) {
 	d, err := OpenInMemory()
 	if err != nil {

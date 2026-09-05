@@ -11,10 +11,7 @@ import (
 
 type priceRulesResponse struct {
 	Rules []database.PriceRule `json:"rules"`
-	// Coefficient is what the catalogue actually runs on, and the form has to
-	// open with it: recomputing against a wrong one multiplies every price in
-	// the shop - a form defaulting to 1 against a shop on 0.0466 is twenty-one
-	// times.
+	// The coefficient comes from the shop: a wrong one multiplies every price.
 	Coefficient float64 `json:"coefficient"`
 }
 
@@ -22,10 +19,6 @@ type priceRulesRequest struct {
 	Rules []database.PriceRule `json:"rules"`
 }
 
-// GetPriceRules returns the shop's own markup ladder. The channels have had one
-// since they were written; the storefront made do with a single multiplier,
-// which lies at both ends of a catalogue - it leaves nothing on a seven-rouble
-// sieve and prices a steamer above the brand's own store.
 func (h *Handler) GetPriceRules(w http.ResponseWriter, r *http.Request) {
 	rules, err := h.db.ShopPriceRules()
 	if err != nil {
@@ -43,9 +36,7 @@ func (h *Handler) GetPriceRules(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, priceRulesResponse{Rules: rules, Coefficient: c})
 }
 
-// SetPriceRules stores the ladder without touching a single price: applying it
-// is the "Recompute" button, so the owner can lay the bands out and look at them
-// before twenty thousand products move.
+// Storing the ladder moves no price: applying it is the "Recompute" button.
 func (h *Handler) SetPriceRules(w http.ResponseWriter, r *http.Request) {
 	var req priceRulesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

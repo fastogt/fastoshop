@@ -14,14 +14,9 @@ import (
 	"github.com/fastogt/fastoshop/app/media"
 )
 
-// kLogoMaxSize is smaller than a product photo on purpose: a header logo that
-// weighs a megabyte is paid for on every page of the storefront, by every
-// visitor, on mobile data.
+// Smaller than a product photo: the logo is paid for on every storefront page.
 const kLogoMaxSize = 2 << 20
 
-// UploadLogo replaces the shop's logo. One file, not a gallery: a shop has one
-// mark, and the previous file goes with it so the uploads folder does not
-// collect every attempt.
 func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 	s, err := h.db.GetSettings()
 	if err != nil {
@@ -36,8 +31,7 @@ func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = f.Close() }()
 	ext := strings.ToLower(filepath.Ext(hdr.Filename))
-	// SVG is allowed here and nowhere else: a logo is drawn by a designer at one
-	// size and shown at another, and a raster mark goes soft on retina screens.
+	// SVG is allowed here and nowhere else: a raster mark goes soft on retina.
 	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" &&
 		ext != ".webp" && ext != ".svg" {
 		httpjson.WriteBadRequest(w, "only jpeg/png/webp/svg")
@@ -60,9 +54,7 @@ func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 	}
 	old := s.Logo
 	s.Logo = name
-	// The logo loads on every page of the shop. Sellers upload what the designer
-	// gave them - routinely two thousand pixels wide - for a header that draws it
-	// 36 px tall.
+	// The logo loads on every page; sellers upload 2000 px files for a 36 px header.
 	if err := media.Shrink(h.uploadsDir, name); err != nil {
 		log.Warnf("shrink logo %q: %v", name, err)
 	}
@@ -74,8 +66,6 @@ func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 	h.GetSettings(w, r)
 }
 
-// DeleteLogo puts the shop back to showing its name, which is what a storefront
-// without a logo should do - an empty header would be worse than plain text.
 func (h *Handler) DeleteLogo(w http.ResponseWriter, r *http.Request) {
 	s, err := h.db.GetSettings()
 	if err != nil {
@@ -92,8 +82,7 @@ func (h *Handler) DeleteLogo(w http.ResponseWriter, r *http.Request) {
 	h.GetSettings(w, r)
 }
 
-// removeLogoFile is best effort: a missing file must not fail the request, but
-// leaving every replaced logo behind would grow the volume for nothing.
+// Best effort: a missing file must not fail the request.
 func removeLogoFile(dir, name string) {
 	if name == "" {
 		return

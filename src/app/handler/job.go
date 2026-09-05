@@ -12,30 +12,23 @@ import (
 	"github.com/fastogt/fastoshop/app/importer"
 )
 
-// Job kinds and stages travel as keys, not as sentences: the admin renders them
-// in the owner's language like the rest of the screen.
+// Kinds and stages travel as keys: the admin renders them in the owner's language.
 const (
 	kJobImport = "import"
 	kJobFill   = "fill"
 )
 
-// Fill job stages: the download and its second half - a downloaded photo
-// without its small copy would leave the catalogue as heavy as it was, which is
-// the whole reason for downloading it.
 const (
 	kStagePhotos = "photos"
 	kStageThumbs = "thumbs"
 )
 
-// jobStage is one step of a job. A list, not a single stage, because a fill can
-// have several tasks ticked and each carries its own count - one flat "done of
-// total" would average them into a number that means nothing.
+// A list, not one stage: averaging separate counters into one number would lie.
 type jobStage struct {
 	Task  string `json:"task"`
 	Done  int    `json:"done"`
 	Total int    `json:"total"`
-	// State is pending | running | done, so the admin can show what is finished,
-	// what is going and what has not started.
+	// State is pending | running | done.
 	State string `json:"state"`
 }
 
@@ -65,8 +58,7 @@ type job struct {
 	cancel   context.CancelFunc
 }
 
-// start claims the slot for a known list of steps and hands back the context the
-// work must respect. Returns ok=false when a job is already running.
+// Returns ok=false when a job is already running.
 func (j *job) start(kind string, stages []jobStage) (context.Context, bool) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -77,8 +69,7 @@ func (j *job) start(kind string, stages []jobStage) (context.Context, bool) {
 	for i := range stages {
 		stages[i].State = kStagePending
 	}
-	// Field by field, not *j = job{}: that would overwrite the mutex we are
-	// holding right now.
+	// Field by field, not *j = job{}: that would overwrite the mutex we hold.
 	j.running, j.kind, j.stages = true, kind, stages
 	j.inFlight = nil
 	j.result, j.err, j.stopped, j.cancel = nil, "", false, cancel
@@ -91,9 +82,7 @@ func (j *job) busy() bool {
 	return j.running
 }
 
-// stop asks the running job to wind down. Work already in flight finishes - a
-// photo mid-download is cheaper to keep than to throw away - and nothing new is
-// started.
+// Work already in flight finishes; nothing new is started.
 func (j *job) stop() {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -103,8 +92,7 @@ func (j *job) stop() {
 	}
 }
 
-// progress moves one step along. Everything before it is marked finished: steps
-// run in order, so reaching step three is the proof that two is over.
+// Everything before the current step is marked finished: steps run in order.
 func (j *job) progress(task string, done, total int, inFlight []int64) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -129,8 +117,7 @@ func (j *job) finish(res *importer.Result, err error) {
 		j.cancel = nil
 	}
 	j.running, j.inFlight, j.result = false, nil, res
-	// Only a run that was neither stopped nor broken gets its bars filled: a
-	// half-done job showing 100% would be a lie.
+	// Only a run neither stopped nor broken fills its bars: 100% would be a lie.
 	if err == nil && !j.stopped {
 		for i := range j.stages {
 			j.stages[i].State = kStageDone
@@ -148,18 +135,15 @@ type jobResponse struct {
 	Running bool       `json:"running"`
 	Kind    string     `json:"kind"`
 	Stages  []jobStage `json:"stages"`
-	// InFlight are the products being worked on at this very moment - never more
-	// than the worker count, and what the table draws its spinner from.
+	// InFlight are the products being worked on right now.
 	InFlight []int64 `json:"in_flight"`
-	// Stopped tells a half-finished result from a complete one: the owner pressed
-	// stop, the counters are not the whole catalogue.
+	// Stopped tells a half-finished result from a complete one.
 	Stopped bool             `json:"stopped"`
 	Result  *importer.Result `json:"result,omitempty"`
 	Error   string           `json:"error,omitempty"`
 }
 
-// Job is the snapshot the admin reads on page load, and the fallback when the
-// stream is not available. Live updates come from JobStream.
+// The snapshot for page load; live updates come from JobStream.
 func (h *Handler) Job(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, h.jobState())
 }
@@ -183,10 +167,7 @@ const kJobTick = 500 * time.Millisecond
 // Keeps the connection alive through proxies that drop idle upstreams.
 const kJobKeepAlive = 25 * time.Second
 
-// JobStream pushes the state as it changes instead of having the admin ask
-// twice a second. Buffering is switched off explicitly: nginx would otherwise
-// hold the events until the response ended, which for a stream is never, and
-// our packaged config cannot be assumed to have proxy_buffering off.
+// Buffering is switched off explicitly: nginx would hold the events until the end.
 func (h *Handler) JobStream(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -230,8 +211,6 @@ func (h *Handler) JobStream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// JobStop is the way out of a download of sixty thousand photos started by
-// mistake. Without it the only stop is a service restart.
 func (h *Handler) JobStop(w http.ResponseWriter, r *http.Request) {
 	h.job.stop()
 	httpjson.WriteOK(w, okStatusResponse{Status: "ok"})

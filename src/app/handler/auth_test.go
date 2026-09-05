@@ -86,9 +86,7 @@ func TestSetupLoginFlow(t *testing.T) {
 	}
 }
 
-// The session cookie must carry Secure where the connection is TLS (in prod -
-// via X-Forwarded-Proto from nginx) and not carry it on local plain http,
-// otherwise login is broken.
+// The session cookie carries Secure only where the connection is TLS.
 func TestInvite(t *testing.T) {
 	d, err := database.OpenInMemory()
 	if err != nil {
@@ -280,10 +278,7 @@ func TestInternalErrorDoesNotLeakDetails(t *testing.T) {
 	}
 }
 
-// Login had no brake at all: bcrypt alone allows roughly a million guesses a
-// night. It is not a lockout on purpose - a shop has one owner and nobody to
-// call, so refusing after N tries would let anyone who knows their address shut
-// them out of their own admin until somebody reaches the server over SSH.
+// Not a lockout: a shop has one owner and nobody to call, so a delay instead.
 func TestLoginSlowsDownAfterRepeatedFailures(t *testing.T) {
 	var th loginThrottle
 
@@ -308,8 +303,7 @@ func TestLoginSlowsDownAfterRepeatedFailures(t *testing.T) {
 	if d := th.delay(); d != kMaxLoginDelay {
 		t.Errorf("delay %v, want the cap %v", d, kMaxLoginDelay)
 	}
-	// The right password clears it: the owner who finally remembers is not left
-	// waiting eight seconds on every future login.
+	// The right password clears the delay.
 	th.success()
 	if d := th.delay(); d != 0 {
 		t.Errorf("after a success the delay is %v, want none", d)

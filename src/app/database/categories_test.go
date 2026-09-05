@@ -37,9 +37,6 @@ func categoryOf(t *testing.T, d *Database, title string) string {
 	return ""
 }
 
-// A rename moves the goods and the branch below with it. The prefix match is
-// the dangerous part: "Текстиль" must not drag "Текстильная галантерея" along,
-// and an error there ruins a catalogue silently.
 func TestRenameCategory(t *testing.T) {
 	d := treeDB(t,
 		"Текстиль",                     // A
@@ -61,8 +58,7 @@ func TestRenameCategory(t *testing.T) {
 		}
 	}
 
-	// The old addresses are in the index: they must move, not die - the node
-	// itself and every page under it.
+	// The old addresses must move, not die: the node itself and every page under it.
 	for from, want := range map[string]string{
 		"tekstil":         "domashnij-tekstil",
 		"tekstil/spalnya": "domashnij-tekstil/spalnya",
@@ -102,8 +98,7 @@ func TestDeleteCategoryLiftsGoodsUp(t *testing.T) {
 		t.Errorf("subcategory went to %q, want Текстиль/КПБ", got)
 	}
 
-	// A root node has nowhere to lift to: its goods lose the category and keep
-	// selling.
+	// A root node has nowhere to lift to: its goods lose the category.
 	if err := d.DeleteCategory("Посуда"); err != nil {
 		t.Fatal(err)
 	}
@@ -115,8 +110,7 @@ func TestDeleteCategoryLiftsGoodsUp(t *testing.T) {
 // Two names, one address: the second page would quietly replace the first.
 func TestCategoryAddressCollision(t *testing.T) {
 	d := treeDB(t, "КПБ")
-	// «КПБ» in quotes is another name with the same address: quotes vanish in a
-	// slug.
+	// «КПБ» in quotes is another name with the same address: quotes vanish in a slug.
 	if err := d.CreateCategory("«КПБ»"); err != ErrCategorySlugTaken {
 		t.Errorf("create with a taken slug: %v", err)
 	}
@@ -129,8 +123,6 @@ func TestCategoryAddressCollision(t *testing.T) {
 	}
 }
 
-// A declared category exists in the admin before anything is in it, but the
-// storefront keeps quiet until it has goods: an empty listing is a soft 404.
 func TestDeclaredCategoryIsAdminOnly(t *testing.T) {
 	d := treeDB(t, "Посуда")
 	if err := d.CreateCategory("Мебель/Стулья"); err != nil {
@@ -160,8 +152,6 @@ func TestDeclaredCategoryIsAdminOnly(t *testing.T) {
 	}
 }
 
-// Hiding a node takes its whole branch off the storefront and leaves it in the
-// admin.
 func TestHiddenCategoryHidesItsBranch(t *testing.T) {
 	d := treeDB(t, "Распродажа/Уценка", "Посуда")
 	if err := d.SetCategoryHidden("Распродажа", true); err != nil {

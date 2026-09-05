@@ -8,25 +8,16 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// kFirstPollWindow is the window of the very first poll. One day: once the shop
-// is linked to the cabinet, yesterday's sales are already written off on the
-// platform and have to be caught up. Reaching deeper would let the first poll
-// alone zero out stocks with old orders.
+// One day: reaching deeper would zero out stocks with old orders on the first poll.
 const kFirstPollWindow = 24 * time.Hour
 
-// kPollOverlap is a deliberate overlap of the window: an assembly task can show
-// up later than its own timestamp. A task seen twice is rejected by UNIQUE in
-// the ledger, so a duplicate is free, while a lost sale is a permanent error in
-// the stocks.
+// An assembly task can appear later than its own timestamp; UNIQUE eats duplicates.
 const kPollOverlap = 10 * time.Minute
 
-// kOpenOrders is how many still-open tasks one pass asks the status of. Deep
-// history is not interesting: a task that old is finished either way.
+// How many still-open tasks one pass asks the status of; older ones are finished.
 const kOpenOrders = 1000
 
-// kCancelledStatuses are the statuses meaning the sale will not happen and the
-// goods go back on the shelf. Both vocabularies are listed because the platform
-// answers with two fields and spells cancellation differently in each.
+// Both vocabularies: the platform answers with two status fields spelled differently.
 var kCancelledStatuses = map[string]bool{
 	"cancel":              true,
 	"cancelled":           true,
@@ -36,10 +27,7 @@ var kCancelledStatuses = map[string]bool{
 	"cancelled_by_client": true,
 }
 
-// pollOrders fetches assembly tasks, applies them to our stocks, and then asks
-// what happened to the ones still open. The cursor advances only after the whole
-// batch was applied: an interrupted pass repeats the window in full, and the
-// ledger rejects everything already applied.
+// The cursor advances only after the whole batch was applied.
 func (w *Worker) pollOrders(c *Client) error {
 	since, err := w.db.WBOrdersSince()
 	if err != nil {
@@ -93,17 +81,13 @@ func (w *Worker) pollOrders(c *Client) error {
 	w.SetPollError("")
 	if applied+returned > 0 {
 		log.Infof("wb orders: applied %d, returned %d", applied, returned)
-		// Stock levels changed - wake the push. Within the current pass it runs
-		// next and already sees the new stocks; the signal matters when the pass
-		// was triggered by the button and the next tick is far away.
+		// Stock levels changed - wake the push instead of waiting for the next tick.
 		w.StockChanged()
 	}
 	return nil
 }
 
-// refreshStatuses asks about the tasks that may still change. The order list
-// carries no status of its own, so a cancellation is only visible through this
-// second call - without it a cancelled sale would hold our stock forever.
+// The order list carries no status, so a cancellation is only visible from this call.
 func (w *Worker) refreshStatuses(c *Client) (int, error) {
 	ids, err := w.db.OpenWBOrderIDs(kOpenOrders)
 	if err != nil || len(ids) == 0 {

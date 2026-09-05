@@ -5,9 +5,7 @@ import (
 	"time"
 )
 
-// The cabinet's currency is not stored here. One shop is one legal entity is
-// one currency, and that currency lives in settings.currency - a second copy
-// would be a second truth to keep in step.
+// The cabinet's currency lives in settings.currency - a second copy is a second truth.
 type OzonSettings struct {
 	ClientID    string
 	APIKey      string
@@ -20,9 +18,7 @@ type OzonLink struct {
 	OfferID   string
 }
 
-// GetOzonSettings returns empty settings rather than an error on a fresh
-// database: there is no id=1 row until the owner saves keys once, and the tab
-// must open as an empty form, not a 500.
+// GetOzonSettings returns empty settings when no id=1 row exists yet.
 func (d *Database) GetOzonSettings() (*OzonSettings, error) {
 	var s OzonSettings
 	err := d.db.QueryRow(
@@ -48,8 +44,7 @@ func (d *Database) SaveOzonSettings(s *OzonSettings) error {
 	return err
 }
 
-// UpsertOzonLink leaves price and *_pushed alone: re-linking must reset neither
-// the platform price the owner set nor the state of the sync.
+// UpsertOzonLink leaves price and *_pushed alone: re-linking must not reset sync state.
 func (d *Database) UpsertOzonLink(l *OzonLink) error {
 	_, err := d.db.Exec(
 		`INSERT INTO ozon_links (product_id, offer_id) VALUES (?, ?)
@@ -63,8 +58,7 @@ func (d *Database) DeleteOzonLink(productID int64) error {
 	return err
 }
 
-// OzonStockRow is a link whose stock is due for a push. Stock is already the
-// level the platform should hold: a deleted product does not exist, so zero.
+// OzonStockRow is a link due for a stock push; a deleted product means zero.
 type OzonStockRow struct {
 	ProductID   int64
 	OfferID     string
@@ -73,12 +67,7 @@ type OzonStockRow struct {
 	Error       string
 }
 
-// kOzonStockGuard selects rows whose wanted level diverged from the last pushed
-// one. The sync is bidirectional: platform sales arrive through order polling
-// and lower the stock before the pass starts pushing levels, so a push upwards
-// no longer overwrites what we have not seen.
-// stock_pushed = -1 means there is no baseline yet, the first push is always
-// allowed.
+// stock_pushed = -1 is "no baseline yet": the first push is always allowed.
 const kOzonStockGuard = `l.offer_id != ''
 	 AND (l.stock_pushed = -1 OR MAX(COALESCE(p.stock, 0), 0) != l.stock_pushed)`
 
@@ -105,11 +94,7 @@ func (d *Database) OzonStockToPush() ([]OzonStockRow, error) {
 	return out, rows.Err()
 }
 
-// MarkOzonStockPushed clears retry_at, which is shared with the price push: a
-// successful stock push therefore also lifts the price backoff of that row. At
-// worst the price is retried one pass early and backs off again - a wasted item
-// in a batch we were sending anyway, which is cheaper than a second timer
-// column and the ALTER TABLE it would cost on live installs.
+// MarkOzonStockPushed clears the shared retry_at, lifting the price backoff too.
 func (d *Database) MarkOzonStockPushed(productID, level int64) error {
 	_, err := d.db.Exec(
 		`UPDATE ozon_links SET stock_pushed=?, stock_error='', retry_at=NULL
@@ -117,9 +102,7 @@ func (d *Database) MarkOzonStockPushed(productID, level int64) error {
 	return err
 }
 
-// MarkOzonStockError writes retry_at as a UTC string in CURRENT_TIMESTAMP
-// format, otherwise the comparison in OzonStockToPush drifts by the timezone
-// offset.
+// MarkOzonStockError writes retry_at as UTC to match CURRENT_TIMESTAMP comparisons.
 func (d *Database) MarkOzonStockError(productID int64, msg string, retryAt time.Time) error {
 	_, err := d.db.Exec(
 		`UPDATE ozon_links SET stock_error=?, retry_at=? WHERE product_id=?`,
@@ -127,8 +110,7 @@ func (d *Database) MarkOzonStockError(productID int64, msg string, retryAt time.
 	return err
 }
 
-// CountOzonStockState counts pending without regard to retry_at - to the owner
-// a row in backoff is still "waiting to be sent", not gone.
+// CountOzonStockState counts pending ignoring retry_at: a row in backoff still counts.
 func (d *Database) CountOzonStockState() (pending, failed int, err error) {
 	err = d.db.QueryRow(
 		`SELECT
@@ -161,9 +143,7 @@ func (d *Database) ListOzonStockErrors() ([]OzonStockRow, error) {
 	return out, rows.Err()
 }
 
-// CountOzonLinks counts shop products, not ozon_links rows: links of orphaned
-// cards outlive their products, and they have no place in the owner's
-// "linked / not linked".
+// CountOzonLinks counts products, not links: orphaned links have no product to count.
 func (d *Database) CountOzonLinks() (linked, unlinked int, err error) {
 	err = d.db.QueryRow(
 		`SELECT
@@ -175,10 +155,7 @@ func (d *Database) CountOzonLinks() (linked, unlinked int, err error) {
 	return linked, unlinked, err
 }
 
-// ClearOzonBackoff drops every pending retry. Only the manual "push now" button
-// calls it: after a failure the owner fixes what the platform complained about
-// and presses the button, and a backoff they cannot see makes it look like the
-// button does nothing. The ticker keeps waiting, which is what backoff is for.
+// ClearOzonBackoff drops pending retries; only the manual "push now" button calls it.
 func (d *Database) ClearOzonBackoff() error {
 	_, err := d.db.Exec(`UPDATE ozon_links SET retry_at=NULL WHERE retry_at IS NOT NULL`)
 	return err

@@ -24,8 +24,7 @@ func TestDiffFirstImport(t *testing.T) {
 	}
 }
 
-// Re-uploading the same feed must not look like a change - otherwise the
-// owner sees "everything changed" every week and stops looking.
+// Re-uploading the same feed must not look like a change.
 func TestDiffSameFeedIsQuiet(t *testing.T) {
 	items := []Item{{SKU: "A", Price: 10000}, {SKU: "B", Price: 20000}}
 	existing := []database.Product{shopProduct("A", 10000), shopProduct("B", 20000)}
@@ -65,8 +64,7 @@ func TestDiffClassifiesChanges(t *testing.T) {
 	}
 }
 
-// A product imported before the source price existed must not take first place
-// with infinite growth and crowd out the real news.
+// A zero source price must not take first place with infinite growth.
 func TestDiffZeroSourcePriceHasNoPercent(t *testing.T) {
 	items := []Item{{SKU: "OLD", Price: 50000}, {SKU: "REAL", Price: 11000}}
 	existing := []database.Product{shopProduct("OLD", 0), shopProduct("REAL", 10000)}
@@ -79,8 +77,7 @@ func TestDiffZeroSourcePriceHasNoPercent(t *testing.T) {
 	}
 }
 
-// The counter must be complete even when the list is truncated: "showing 50"
-// without "of 312" reads as "50 changed".
+// The counter must be complete even when the list is truncated.
 func TestDiffCountsSurviveTruncation(t *testing.T) {
 	var items []Item
 	var existing []database.Product

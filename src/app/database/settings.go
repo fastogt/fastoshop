@@ -13,8 +13,7 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// Alphabet without visually confusable characters (0/O, 1/l/I) - the password
-// gets dictated over SSH or read off a screen.
+// Alphabet without visually confusable characters (0/O, 1/l/I): it gets dictated.
 const kGeneratedPasswordAlphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
 const kGeneratedPasswordLength = 16
 
@@ -25,8 +24,7 @@ const (
 	ShopCurrencyKZT = "KZT"
 )
 
-// kCurrencySigns is what a buyer sees next to the number. Every sign here goes
-// after the amount, which is how all four are written at home.
+// kCurrencySigns is what a buyer sees next to the number; every sign goes after it.
 var kCurrencySigns = map[string]string{
 	ShopCurrencyRUB: "₽",
 	ShopCurrencyBYN: "Br",
@@ -44,44 +42,29 @@ type Settings struct {
 	PasswordHash string `json:"-"`
 	ShopName     string `json:"shop_name"`
 	ShopPhone    string `json:"shop_phone"`
-	// Messenger handles for the "order in one message" buttons on a product
-	// page. Stored as the owner typed them; normalising happens where the link
-	// is built, so a pasted "@shop" or "+375 29 …" both work.
+	// Messenger handles stored as the owner typed them; normalised where the link is built.
 	Telegram string `json:"telegram"`
 	WhatsApp string `json:"whatsapp"`
-	// Legal details shown in the storefront footer, free-form multiline: a shop
-	// selling in Russia or Belarus is required to publish them, and their shape
-	// differs by country and by whether the seller is a company or a sole
-	// trader - a set of typed fields would fit one case and fight the rest.
+	// Legal footer details, free-form: their shape differs by country and seller type.
 	Requisites string `json:"requisites"`
-	// Delivery, payment and returns, free-form multiline, shown at /info. Yandex
-	// and Google both check that a shop publishes its terms before they let it
-	// into shopping results, and the buyer has to read them somewhere.
+	// Delivery, payment and returns, free-form, at /info; search engines check for it.
 	Terms string `json:"terms"`
 	// Logo file name; empty means the shop is represented by its name.
 	Logo string `json:"logo"`
-	// Shop-wide currency: one shop sells in one country's money, and this is
-	// the setting that reaches buyers and search engines.
+	// Shop-wide currency: one shop sells in one country's money.
 	Currency string `json:"currency"`
-	// Owner's language. One shop has one owner, so this drives both the admin
-	// and the text the server renders for them (errors, emails).
+	// Owner's language; drives the admin and the text the server renders for them.
 	Lang     string `json:"lang"`
 	SMTPHost string `json:"smtp_host"`
 	SMTPPort int    `json:"smtp_port"`
 	SMTPUser string `json:"smtp_user"`
-	// Envelope and header sender. Empty means the login is used - the common
-	// case; a relay logs in by an API key and a Workspace alias signs in as the
-	// real mailbox, and both need the letter to come from the shop's address.
+	// Envelope and header sender; empty means the SMTP login is used.
 	SMTPFrom     string `json:"smtp_from"`
 	SMTPPassword string `json:"-"`
-	// Analytics counter ids, as issued by the two providers. Stored raw: the
-	// shop only carries them to the page, and a format check here would break
-	// the day a provider changes its own.
+	// Stored raw: a format check would break the day a provider changes its own.
 	GAMeasurementID  string `json:"ga_measurement_id"`
 	MetrikaCounterID string `json:"metrika_counter_id"`
-	// The owner's AdHunters key, which pays for rewriting product cards. A
-	// secret like the SMTP password: it never leaves the server, the admin
-	// only learns whether one is stored.
+	// A secret like the SMTP password: it never leaves the server.
 	AdHuntersAPIKey string `json:"-"`
 }
 
@@ -113,8 +96,7 @@ func (d *Database) GetSettings() (*Settings, error) {
 
 func (d *Database) UpdateSettings(s *Settings) error {
 	currency := s.Currency
-	// Empty means "not set yet" - a shop created before the setting existed, or
-	// an older admin build. Default rather than refuse to save.
+	// Empty means "not set yet": default rather than refuse to save.
 	if currency == "" {
 		currency = ShopCurrencyRUB
 	}
@@ -141,8 +123,7 @@ func (d *Database) UpdateSettings(s *Settings) error {
 	return err
 }
 
-// Lang returns the owner's language, falling back to the default: a broken
-// settings row must not blank out the message the owner needs to read.
+// A broken settings row must not blank out the message the owner needs to read.
 func (d *Database) Lang() string {
 	s, err := d.GetSettings()
 	if err != nil {
@@ -172,24 +153,18 @@ func (d *Database) UseToken(token string) error {
 	return err
 }
 
-// CleanupExpiredTokens deletes stale tokens; called once at startup - the
-// table does not grow forever on a long-lived instance.
 func (d *Database) CleanupExpiredTokens() error {
 	_, err := d.db.Exec(`DELETE FROM auth_tokens WHERE expires_at < CURRENT_TIMESTAMP`)
 	return err
 }
 
-// DeleteOtherTokens invalidates every session except the one the password
-// change was made from: a hijacked cookie dies with the old password, while
-// the tab where the password was changed does not kick the owner out.
+// A hijacked cookie dies with the old password; the tab that changed it survives.
 func (d *Database) DeleteOtherTokens(except string) error {
 	_, err := d.db.Exec(`DELETE FROM auth_tokens WHERE token != ?`, except)
 	return err
 }
 
-// CreateOwner closes the window in which a fresh instance serves an open setup
-// wizard: the owner is created by provisioning, not by whoever guessed the
-// address first. Returns the plaintext password exactly once.
+// The owner is created by provisioning, not by whoever guessed the address first.
 func (d *Database) CreateOwner(email string) (string, error) {
 	if s, err := d.GetSettings(); err == nil {
 		return "", fmt.Errorf("owner already exists (%s)", s.OwnerEmail)
@@ -228,9 +203,7 @@ func generatePassword(n int) (string, error) {
 	return string(out), nil
 }
 
-// NewInviteToken - a one-time link for setting the password. Lives for a day:
-// it is forwarded by email, and an expired link is safer than a forgotten
-// working one.
+// A one-time link for setting the password; it is forwarded by email.
 func (d *Database) NewInviteToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -243,20 +216,13 @@ func (d *Database) NewInviteToken() (string, error) {
 	return tok, nil
 }
 
-// SetOwnerPassword sets the password the owner chose themselves via the
-// one-time link. Sessions are left alone: the invite is opened before the
-// first login, and killing someone else's sessions via someone else's link is
-// a ready-made way to throw the owner out of the admin.
+// Sessions are left alone: someone else's invite must not throw the owner out.
 func (d *Database) SetOwnerPassword(hash string) error {
 	_, err := d.db.Exec(`UPDATE settings SET password_hash=? WHERE id=1`, hash)
 	return err
 }
 
-// ResetOwnerPassword - the recovery path via the CLI (`fastoshop
-// -reset-password`): generates a new password, stores its bcrypt hash and
-// wipes all sessions in one sweep so a hijacked cookie does not survive the
-// change. Returns the plaintext password exactly once - it is stored nowhere
-// and never logged.
+// The plaintext password is returned once: it is stored nowhere and never logged.
 func (d *Database) ResetOwnerPassword() (string, error) {
 	pw, hash, err := generateCredentials()
 	if err != nil {
@@ -275,8 +241,7 @@ func (d *Database) ResetOwnerPassword() (string, error) {
 	return pw, nil
 }
 
-// Sign is kept next to the currency code so the storefront never has to map one
-// to the other itself.
+// Sign lives next to the currency code so the storefront never maps it itself.
 func (s *Settings) Sign() string {
 	if sign, ok := kCurrencySigns[s.Currency]; ok {
 		return sign

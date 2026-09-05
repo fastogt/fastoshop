@@ -7,19 +7,13 @@ import (
 	"slices"
 )
 
-// PriceRule is one band of a channel's markup ladder: everything below UpTo (in
-// kopecks) is multiplied by Multiplier. UpTo 0 is the open-ended top band.
-//
-// The ladder itself is not channel knowledge - every channel stores its bands in
-// its own table, but the arithmetic and its validation are one thing, and having
-// two copies of it means the second one is wrong the day the first is fixed.
+// PriceRule: everything below UpTo kopecks gets Multiplier; UpTo 0 is the top band.
 type PriceRule struct {
 	UpTo       int64   `json:"up_to"`
 	Multiplier float64 `json:"multiplier"`
 }
 
-// kMaxMultiplier is the same kind of guard as the import coefficient: a typo
-// must not send a catalogue to the platform at a hundred times its price.
+// kMaxMultiplier guards against a typo sending a catalogue out at a hundred times price.
 const kMaxMultiplier = 100
 
 func ValidPriceRules(rules []PriceRule) error {
@@ -38,16 +32,14 @@ func ValidPriceRules(rules []PriceRule) error {
 			open++
 		}
 	}
-	// Without an open-ended band the most expensive goods would silently get no
-	// price at all, which looks exactly like "the ladder did not work".
+	// Without an open-ended band the most expensive goods would get no price at all.
 	if open != 1 {
 		return fmt.Errorf("exactly one open-ended band is required, got %d", open)
 	}
 	return nil
 }
 
-// sortRules puts the bands in ascending order with the open-ended one last, so
-// the first match is the right one regardless of how the owner typed them in.
+// sortRules puts bands ascending with the open-ended one last, so first match wins.
 func sortRules(rules []PriceRule) {
 	slices.SortStableFunc(rules, func(a, b PriceRule) int {
 		if a.UpTo == 0 {
@@ -60,9 +52,7 @@ func sortRules(rules []PriceRule) {
 	})
 }
 
-// The helpers below interpolate table names and predicates into the SQL:
-// identifiers cannot travel as ? parameters. Every caller passes a fixed
-// constant from its own channel file, never user input.
+// Identifiers cannot be ? parameters; every caller interpolates a fixed constant.
 
 func (d *Database) priceRules(table string) ([]PriceRule, error) {
 	rows, err := d.db.Query(`SELECT up_to, multiplier FROM ` + table + ` ORDER BY id`)
@@ -85,8 +75,7 @@ func (d *Database) priceRules(table string) ([]PriceRule, error) {
 	return out, nil
 }
 
-// setPriceRules replaces the whole ladder: editing bands one by one would let
-// the table pass through states that are not a valid ladder.
+// setPriceRules replaces the whole ladder: partial edits would leave it invalid.
 func (d *Database) setPriceRules(table string, rules []PriceRule) error {
 	if err := ValidPriceRules(rules); err != nil {
 		return err
@@ -107,10 +96,7 @@ func (d *Database) setPriceRules(table string, rules []PriceRule) error {
 	})
 }
 
-// fillPricesByRules fills the platform price of linked products that do not
-// have one yet. Prices the owner set are left alone, same as the flat markup
-// helper: the ladder is a starting point, not an override. linkedPred is the
-// channel's own idea of "linked" over the alias l.
+// fillPricesByRules fills only unset prices; linkedPred is the channel's predicate on l.
 func (d *Database) fillPricesByRules(rulesTable, linksTable, linkedPred string) (int, error) {
 	rules, err := d.priceRules(rulesTable)
 	if err != nil {

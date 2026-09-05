@@ -9,8 +9,7 @@ import (
 	"testing"
 )
 
-// The log is the owner's only window into what the background did, so it has to
-// arrive as readable text - and only for someone who is logged in.
+// The log arrives as readable text, and only for someone who is logged in.
 func TestLogsServed(t *testing.T) {
 	h := newTestHandler(t)
 	path := filepath.Join(t.TempDir(), "fastoshop.log")
@@ -38,8 +37,7 @@ func TestLogsServed(t *testing.T) {
 	}
 }
 
-// A shop started without a log file must say so rather than answer a link with
-// an empty file.
+// A shop started without a log file must say so rather than serve an empty one.
 func TestLogsAbsent(t *testing.T) {
 	h := newTestHandler(t)
 	w := httptest.NewRecorder()

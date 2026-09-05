@@ -1,6 +1,4 @@
-// Package httpjson is the one place the gofastogt response envelope is written:
-// every handler package answers through these helpers, so the wire format
-// cannot drift between tabs.
+// Package httpjson is the one place the gofastogt response envelope is written.
 package httpjson
 
 import (
@@ -23,8 +21,7 @@ func writeError(w http.ResponseWriter, status int, err gofastogt.ErrorJson) {
 	_ = json.NewEncoder(w).Encode(gofastogt.NewErrorResponse(err))
 }
 
-// WriteInternalError never leaks err outwards: the text of SQL errors and paths
-// is a leak, and the repository is public. Details go to the log only.
+// WriteInternalError never leaks err outwards: SQL text and paths go to the log only.
 func WriteInternalError(w http.ResponseWriter, err error) {
 	log.Errorf("internal error: %v", err)
 	details := "internal error"

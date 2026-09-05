@@ -36,12 +36,10 @@ type Storefront struct {
 	info     *template.Template
 	privacy  *template.Template
 	contacts *template.Template
-	// Named with a suffix: the handlers are Category and Categories, and a field
-	// may not share a name with a method.
+	// Suffixed: a field may not share a name with the Category/Categories methods.
 	categoryTpl   *template.Template
 	categoriesTpl *template.Template
-	// OnStockChange wakes the marketplace sync after an order deducts stock. A
-	// field rather than a constructor argument: the link is one-way and optional.
+	// Optional one-way link: wakes the marketplace sync after an order deducts stock.
 	OnStockChange func()
 }
 
@@ -66,15 +64,7 @@ func New(db *database.Database, baseURL, uploadsDir string) *Storefront {
 	}
 }
 
-// HeadAsGet lets HEAD reach handlers registered as GET. chi answers 405
-// otherwise, and HEAD is what monitoring, link checkers and some crawlers use to
-// see whether a page is alive - a storefront that refuses it looks broken from
-// the outside. The body is dropped by net/http itself: the server still sees the
-// original HEAD request and suppresses it.
-//
-// Exported because it has to sit on the outermost router: a method-specific
-// route registered there (/admin*) makes chi answer 405 before this router is
-// ever reached, and the storefront's own copy never runs.
+// chi answers 405 to HEAD; must sit on the outermost router or /admin* preempts it.
 func HeadAsGet(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
@@ -116,17 +106,12 @@ func priceStr(minor int64) string {
 	return fmt.Sprintf("%.2f", float64(minor)/100)
 }
 
-// kCatalogPageSize - ~60 cards ≈ 100–200 KB of HTML: the page stays light for
-// mobile and for the crawler, and a 20,000-item catalogue never renders in one
-// piece.
-// A search box is not a text field: anything longer than this is a bot or a
-// paste, and it has no business reaching the database or the page title.
+// Anything longer than this is a bot or a paste, not a search.
 const kMaxQueryRunes = 100
 
 const kCatalogPageSize = 60
 
-// product_images.path holds either a local file name (uploaded via the admin)
-// or an absolute source URL (import no longer downloads photos).
+// product_images.path holds either a local file name or an absolute source URL.
 func isRemoteImage(path string) bool {
 	return strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://")
 }
@@ -138,11 +123,7 @@ func imageURL(path string) string {
 	return "/uploads/" + path
 }
 
-// thumbURL is what the catalogue grid shows. A 220 px card has no business
-// pulling the supplier's 150 KB original, and there are sixty of them on a
-// page. A photo with no small copy - uploaded before thumbnails existed, or
-// still a link to the supplier - is served as it is: a hole in the grid would
-// be worse than a heavy image.
+// A photo with no small copy is served as it is: a hole in the grid is worse.
 //
 // ponytail: one stat per card, sixty per page. Microseconds on a local disk;
 // an in-memory cache is for the day the catalogue moves to network storage.
@@ -161,8 +142,7 @@ func (s *Storefront) absImageURL(path string) string {
 	return s.baseURL + "/uploads/" + path
 }
 
-// orderItemJSON is the snapshot of a line item in orders.items_json. The same
-// format is read by the CSV export (handler/orders.go, orderItem).
+// The same format is read by the CSV export (handler/orders.go, orderItem).
 type orderItemJSON struct {
 	SKU   string `json:"sku"`
 	Title string `json:"title"`
@@ -187,41 +167,33 @@ type cardVM struct {
 	PriceStr string
 }
 
-// categoryVM is a node of the catalogue tree as the page shows it: the leaf
-// name for the eye, the full path for the address, the count for the buyer.
 type categoryVM struct {
 	Name  string
 	URL   string
 	Count int
 }
 
-// filterVM is one link of the sorting and stock strip. Filters are links, not a
-// form with JavaScript: the server renders the result, and the state lives in
-// the address, so a filtered listing can be sent to someone in a message.
+// Filters are links, not JavaScript: the state lives in the address and is shareable.
 type filterVM struct {
 	Name   string
 	URL    string
 	Active bool
 }
 
-// crumbVM is one step of the breadcrumbs, from the catalogue root to the page.
-// Position is counted here rather than in the template: BreadcrumbList numbers
-// its items from one, and html/template has no arithmetic.
+// BreadcrumbList numbers items from one, and html/template has no arithmetic.
 type crumbVM struct {
 	Name     string
 	URL      string
 	Position int
 }
 
-// imageVM - ready-made image addresses: relative for <img>, absolute for
-// og:image and JSON-LD.
+// Relative for <img>, absolute for og:image and JSON-LD.
 type imageVM struct {
 	URL    string
 	AbsURL string
 }
 
-// pageVM is the template data. One struct for both pages: a typed model
-// instead of map[string]any (project rule: no any in signatures).
+// A typed model instead of map[string]any (project rule: no any in signatures).
 type pageVM struct {
 	Shop     *database.Settings
 	BaseURL  string
@@ -230,48 +202,29 @@ type pageVM struct {
 	P        *database.Product
 	Images   []imageVM
 	PriceStr string
-	// PriceValidUntil keeps the offer fresh in search results: without a date a
-	// price is eventually treated as stale and dropped from the snippet. A month
-	// ahead, recomputed on every render - a shop that reprices weekly stays
-	// truthful, and one that never does still looks current.
+	// Without a date the offer is treated as stale and dropped from the snippet.
 	PriceValidUntil string
-	// PriceValidFrom is when this card last changed, which is the last moment
-	// its price could have moved. Search engines ask for it and we have no
-	// separate record of price changes; the alternative is inventing a date.
+	// Search engines ask for it; the card's last change is the closest date we have.
 	PriceValidFrom string
-	// SchemaName is the title cut to what structured data accepts. An imported
-	// catalogue runs past that limit often - a supplier's warehouse line is
-	// written for a stock sheet, not a search result - and the whole markup of
-	// such a page is rejected over one field. The visible heading keeps the
-	// full title: what is cut here is a prefix of it, not a different name.
+	// The title cut to what structured data accepts; stays a prefix of the heading.
 	SchemaName      string
 	MetaDescription string
-	// Specs are the measurements the owner filled in - only those. A product
-	// nobody weighed shows no specs block at all rather than a table of dashes.
-	Specs specVM
-	// The same measurements for the markup, in the units they are stored in and
-	// as plain numbers: a template cannot dereference a pointer, and 0 is the
-	// "not set" that the markup must skip rather than publish.
-	WeightG  int64
-	LengthMM int64
-	WidthMM  int64
-	HeightMM int64
-	// OrderLinks are the "order in one message" buttons - plain links to the
-	// owner's messengers with the product already written into the text. Empty
-	// when no messenger is set, which is the default.
+	Specs           specVM
+	// Stored units as plain numbers: a template cannot deref a pointer, 0 means unset.
+	WeightG    int64
+	LengthMM   int64
+	WidthMM    int64
+	HeightMM   int64
 	OrderLinks []orderLinkVM
 	Canonical  string
 	NoIndex    bool
 	Query      string
 	FoundStr   string
 	Category   string
-	// CategoryText is the owner's own words above the listing, and the first
-	// sentences of it become the page description: generated text is the same on
-	// every page of every shop, and a search engine has seen it a million times.
+	// The owner's own words: its first sentences become the page description.
 	CategoryText string
 	Crumbs       []crumbVM
-	// CrumbsEnd is the position the product itself takes in BreadcrumbList,
-	// after every category above it.
+	// The position the product itself takes in BreadcrumbList, after its categories.
 	CrumbsEnd  int
 	Children   []categoryVM
 	Categories []categoryVM
@@ -285,20 +238,15 @@ type pageVM struct {
 	TotalStr   string
 	CartCount  int
 	Dropped    bool
-	// NoContact - the buyer left neither a phone nor an email, so the order was
-	// not created: an order nobody can be reached about is not an order.
+	// Neither a phone nor an email was left, so no order was created.
 	NoContact bool
 	SoldOut   string
-	// What the buyer had already typed when the order was refused. Rendered
-	// back into the form: a phone user who loses their name and comment to a
-	// validation error does not retype them - they leave.
+	// Typed before the order was refused, rendered back so nothing has to be retyped.
 	FormName    string
 	FormComment string
 }
 
-// categoryURL is the address of a node of the tree: every segment of the path
-// transliterated, joined back with slashes. A category is a page of its own -
-// the landing page for "купить X" - not a query parameter on the catalogue.
+// A category is a page of its own, not a query parameter on the catalogue.
 func categoryURL(path string) string {
 	if path == "" {
 		return "/"
@@ -306,9 +254,7 @@ func categoryURL(path string) string {
 	return "/c/" + database.SlugPath(path)
 }
 
-// catalogURL is the catalogue page address with everything the buyer chose kept
-// in it: the category in the path, the search and the filters in the query. The
-// first page never carries ?page=, so one set of products has exactly one URL.
+// The first page never carries ?page=, so one set of products has exactly one URL.
 func catalogURL(f database.CatalogFilter, page int) string {
 	q := url.Values{}
 	if f.Query != "" {
@@ -333,16 +279,12 @@ func catalogURL(f database.CatalogFilter, page int) string {
 	return base + "?" + q.Encode()
 }
 
-// canonicalURL is the address without the filters. Sorting and "in stock" show
-// the same goods in another order - one page for a search engine, several for a
-// buyer - so every variant points at the plain one.
+// Sorted and filtered variants are one page for a search engine: all point here.
 func canonicalURL(category string, page int) string {
 	return catalogURL(database.CatalogFilter{Category: category}, page)
 }
 
-// foundStr - «нашёлся 1 товар» / «2 товара» / «5 товаров». Pluralization lives
-// here, not in the template: the storefront renders in the language of the
-// products, and the Russian numeral rule is one for the whole shop.
+// Pluralization here, not in the template: html/template cannot pick a numeral form.
 func foundStr(n int) string {
 	word := "товаров"
 	switch {
@@ -355,9 +297,7 @@ func foundStr(n int) string {
 }
 
 func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
-	// ?category= is where categories lived before they had pages of their own.
-	// The links are in the wild - in the index, in bookmarks - so they move
-	// permanently instead of dying.
+	// ?category= links are in the index and in bookmarks: move them, do not drop them.
 	if old := r.URL.Query().Get("category"); old != "" {
 		http.Redirect(w, r, categoryURL(old), http.StatusMovedPermanently)
 		return
@@ -365,9 +305,7 @@ func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
 	s.listing(w, r, "", s.index)
 }
 
-// Category is the landing page of a node of the tree: the page a search for
-// "купить КПБ евро оптом" should arrive at. It renders the node's own products
-// and everything below it, so a parent is never an empty page.
+// A node shows its descendants too, so a parent is never an empty landing page.
 func (s *Storefront) Category(w http.ResponseWriter, r *http.Request) {
 	nodes, err := s.db.VisibleCategories()
 	if err != nil {
@@ -381,21 +319,16 @@ func (s *Storefront) Category(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// The address may be one the owner renamed away. It is in the index and in
-	// somebody's bookmarks, so it moves rather than dies - otherwise tidying the
-	// tree would throw away everything the page had earned.
+	// A renamed category keeps its old address in the index: move it, do not drop it.
 	if to, ok, err := s.db.CategoryRedirectBySlug(want); err == nil && ok {
 		http.Redirect(w, r, "/c/"+to, http.StatusMovedPermanently)
 		return
 	}
-	// An unknown or emptied category is a 404, not an empty listing: a soft 404
-	// keeps the address in the index and spends the crawl budget on nothing.
+	// A 404, not an empty listing: a soft 404 keeps the address and burns crawl budget.
 	http.NotFound(w, r)
 }
 
-// Categories is the index of the tree - one page linking to every node. Without
-// it a crawler reaching the home page finds only the top level, and the deeper
-// landing pages stay invisible.
+// Without this index a crawler finds only the top level of the tree.
 func (s *Storefront) Categories(w http.ResponseWriter, r *http.Request) {
 	nodes, err := s.db.VisibleCategories()
 	if err != nil {
@@ -424,8 +357,6 @@ func categoryVMs(nodes []database.Category) []categoryVM {
 	return out
 }
 
-// children returns the nodes one level below path - the links that let a buyer
-// and a crawler walk down the tree.
 func children(nodes []database.Category, path string) []categoryVM {
 	prefix := path + database.CategorySep
 	depth := 1
@@ -456,9 +387,7 @@ func crumbs(path string) []crumbVM {
 	return out
 }
 
-// filterLinks renders the strip a buyer clicks: the shop's own order, price up
-// and down, and "in stock" as a toggle. Clicking a filter drops the page number
-// - page 7 of another ordering shows goods the buyer never asked for.
+// Clicking a filter drops the page number: page 7 of another ordering is unrelated.
 func filterLinks(f database.CatalogFilter) []filterVM {
 	sorts := []struct {
 		name string
@@ -484,8 +413,7 @@ func filterLinks(f database.CatalogFilter) []filterVM {
 	return out
 }
 
-// metaFrom cuts a description out of the owner's text: whole sentences up to
-// the length a snippet shows, so the tail is never a word broken in half.
+// Whole sentences up to the length a snippet shows, so the tail is never broken.
 func metaFrom(text string) string {
 	text = strings.Join(strings.Fields(strings.ReplaceAll(text, "\n", " ")), " ")
 	if len([]rune(text)) <= 160 {
@@ -502,9 +430,6 @@ func metaFrom(text string) string {
 }
 
 func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category string, tpl *template.Template) {
-	// The buyer's search. A shop the size of a marketplace catalogue cannot be
-	// browsed page by page, and the storefront has no JavaScript to search with -
-	// so it is a plain GET form and a server-rendered result.
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if len([]rune(query)) > kMaxQueryRunes {
 		query = string([]rune(query)[:kMaxQueryRunes])
@@ -556,8 +481,6 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 		Canonical: s.baseURL + canonicalURL(category, page), Page: page, Pages: pages,
 		Query: query, FoundStr: foundStr(total)}
 	data.Filters = filterLinks(filter)
-	// The tree: children to walk down into, crumbs to walk back up. Read once
-	// here - the home page needs the top level, a category needs its own level.
 	if nodes, err := s.db.VisibleCategories(); err == nil {
 		data.Children = children(nodes, category)
 	}
@@ -570,15 +493,11 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 			data.MetaDescription = metaFrom(text)
 		}
 	}
-	// A result page is thin, endless and duplicates the catalogue: search belongs
-	// out of the index. noindex,follow rather than robots.txt - a page blocked
-	// from crawling is a page whose noindex is never read.
+	// noindex,follow rather than robots.txt: a page blocked from crawling never reads it.
 	if query != "" {
 		data.NoIndex = true
 		data.Canonical = ""
-		// On an empty result the counter stays silent: below there is already a
-		// message with the query itself and a link back to the catalogue, and two
-		// identical phrases in a row are noise.
+		// The empty-result message below already names the query; two in a row is noise.
 		if total == 0 {
 			data.FoundStr = ""
 		}
@@ -594,16 +513,10 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 	}
 }
 
-// specVM carries the measurements ready for the eye - a named field each, not a
-// list of label-value pairs: a spec is a known thing, and adding one should be
-// a field here rather than another entry in a bag of strings. Empty means the
-// owner did not state it, and the page says nothing at all instead.
 type specVM struct {
 	Weight string
 	Size   string
-	// Props are the characteristics the source stated, in its order. Weight and
-	// size are not among them: they are named fields the shop does arithmetic
-	// with, and one number with two homes is one home too many.
+	// The source's own characteristics, in its order; weight and size are not among them.
 	Props []specProp
 }
 
@@ -612,21 +525,17 @@ type specProp struct {
 	Value string
 }
 
-// Empty reports whether there is anything to show, so the template can drop the
-// whole block rather than render an empty table.
 func (s specVM) Empty() bool {
 	return s.Weight == "" && s.Size == "" && len(s.Props) == 0
 }
 
-// specs formats what is set. Grams and millimetres are what we store -
-// arithmetic wants one unit - but a buyer reads kilograms and centimetres.
+// We store grams and millimetres; a buyer reads kilograms and centimetres.
 func specs(p *database.Product, hidden map[string]bool) specVM {
 	var out specVM
 	if p.WeightG != nil {
 		out.Weight = weightStr(*p.WeightG)
 	}
-	// All three or none: "длина 30 см" on its own tells a buyer nothing about
-	// whether the thing fits.
+	// All three or none: one side on its own does not tell a buyer whether it fits.
 	if p.LengthMM != nil && p.WidthMM != nil && p.HeightMM != nil {
 		out.Size = fmt.Sprintf("%s × %s × %s см",
 			cmStr(*p.LengthMM), cmStr(*p.WidthMM), cmStr(*p.HeightMM))
@@ -642,9 +551,7 @@ func specs(p *database.Product, hidden map[string]bool) specVM {
 	return out
 }
 
-// hiddenParams is what the owner ticked off in the settings. A failure shows
-// everything rather than nothing: a page missing its characteristics is worse
-// than a page carrying one the owner would rather hide.
+// On failure show everything: a page with no characteristics is the worse outcome.
 func (s *Storefront) hiddenParams() map[string]bool {
 	h, err := s.db.HiddenParams()
 	if err != nil {
@@ -653,9 +560,7 @@ func (s *Storefront) hiddenParams() map[string]bool {
 	return h
 }
 
-// propStr renders a characteristic for a buyer. A marketplace states one value
-// as a list of one, so a list is joined rather than shown with its brackets;
-// anything a buyer cannot read is left out instead of printed as Go syntax.
+// A marketplace states a single value as a list of one; unreadable values are dropped.
 func propStr(v any) string {
 	switch x := v.(type) {
 	case string:
@@ -698,14 +603,10 @@ func cmStr(mm int64) string {
 	return strconv.FormatFloat(float64(mm)/10, 'f', -1, 64)
 }
 
-// kMaxSchemaName is the ceiling search engines put on a product name in
-// structured data. Longer than this and the field is rejected, and the page
-// loses its rich result over a title nobody reads to the end anyway.
+// The ceiling search engines put on a product name in structured data.
 const kMaxSchemaName = 150
 
-// clipName cuts on a word boundary so what remains is a shorter name rather
-// than a broken one; a title with no space inside the limit is cut where it
-// stands.
+// Cut on a word boundary; a title with no space inside the limit is cut as it stands.
 func clipName(s string) string {
 	r := []rune(s)
 	if len(r) <= kMaxSchemaName {
@@ -750,11 +651,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Info publishes delivery, payment and returns. A shop that does not say how it
-// ships and how it takes money is rejected by Yandex and Google shopping alike,
-// and the buyer has nowhere to read the terms they are agreeing to. 404 while
-// the owner has not written them: an empty page under a link in every footer is
-// worse than no link.
+// Shopping engines reject a shop with no delivery and payment terms; 404 while unwritten.
 func (s *Storefront) Info(w http.ResponseWriter, r *http.Request) {
 	shop := s.shop()
 	if shop.Terms == "" {
@@ -768,23 +665,7 @@ func (s *Storefront) Info(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Contacts is a page a shop is expected to have and this one had nowhere: the
-// buyer looks for whom they are paying, and both search engines weigh a
-// published contact when they rank a shop. It writes nothing new - the phone
-// and the legal details are already in settings - so an owner who filled the
-// footer gets the page for free.
-//
-// The owner's email is on it. It doubles as the admin login, which is why it
-// was left off at first, but a contact address is what a buyer looks for and
-// what a search engine counts. Secrecy of a login is not a defence anyway: the
-// password is, and guessing it is now slowed down deliberately (see the login
-// throttle in app/handler).
-// Privacy is the one page every shop needs and no owner wants to write. The
-// text is fixed and only the shop's own name and contacts are filled in: a
-// policy assembled from a settings field would be published unread, and an
-// unread policy is worse than none. Unlike /info it has no switch - a shop
-// collecting a name and a phone owes this page whether its owner thought about
-// it or not.
+// Fixed text and no switch: a shop collecting a name and a phone owes this page.
 // ponytail: hardcoded. A settings field the day a shop needs different terms,
 // a retention period of its own or a processor we do not know about.
 func (s *Storefront) Privacy(w http.ResponseWriter, r *http.Request) {
@@ -835,8 +716,7 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 		set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/info"})
 	}
 	set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/privacy"})
-	// Category pages are the landing pages of the shop: a crawler that never
-	// sees them in the map indexes cards and nothing to hold them together.
+	// Category pages are the shop's landing pages; out of the map they go unindexed.
 	if nodes, err := s.db.VisibleCategories(); err == nil && len(nodes) > 0 {
 		set.URLs = append(set.URLs, sitemapURL{Loc: s.baseURL + "/c"})
 		for _, n := range nodes {
@@ -853,16 +733,7 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 	_ = xml.NewEncoder(w).Encode(set)
 }
 
-// kCleanParams are the query parameters that reorder or filter a page without
-// changing which page it is. A canonical already points every sorted variant at
-// the plain address, and Google honours it - but a canonical is a hint given
-// after the fetch, so the crawler still spends a request on each permutation.
-// On a live shop Yandex reported the waste directly: with 24 000 products and
-// four sort orders crossed with an in-stock filter, the sorted copies of one
-// section outnumber its real pages.
-//
-// page is deliberately absent. Page two holds different products, and telling a
-// crawler to fold it into page one would hide most of the catalogue.
+// Params that reorder a page without changing it; page is excluded, it holds other goods.
 const kCleanParams = "sort&desc&instock"
 
 func (s *Storefront) Robots(w http.ResponseWriter, r *http.Request) {
@@ -871,11 +742,7 @@ func (s *Storefront) Robots(w http.ResponseWriter, r *http.Request) {
 		kCleanParams, s.baseURL)
 }
 
-// LlmsTxt is the shop's map for AI assistants - the answer engines already
-// send buyers, measured: a visitor arrives with utm_source=chatgpt.com. A crawler pieces the shop together from twenty thousand pages;
-// an assistant asked "where do I buy X" wants the shape of the shop in one
-// read: what is sold, in which sections, how an order works. Russian on
-// purpose - the storefront speaks the language of its products.
+// The shop's shape in one read for AI assistants; Russian, like the storefront.
 func (s *Storefront) LlmsTxt(w http.ResponseWriter, r *http.Request) {
 	shop := s.shop()
 	total, err := s.db.CountVisibleProducts(database.CatalogFilter{})

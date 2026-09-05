@@ -2,12 +2,7 @@ package database
 
 import "testing"
 
-// The channel tab's four states come from two places at once: our link table
-// knows what is linked, and only the platform knows what has a card. The filter
-// is how that second half reaches a query which cannot see it - the tab passes
-// the ids it learned when it opened. So what has to hold is that the id lists
-// and the linked flag combine, and that the count agrees with the list: a table
-// that counts 24 000 while listing 7 grows pages that turn out empty.
+// The count must agree with the list, or the table grows pages that turn out empty.
 func TestCandidateFilter(t *testing.T) {
 	d := openTest(t)
 	ids := map[string]int64{}
@@ -53,9 +48,7 @@ func TestCandidateFilter(t *testing.T) {
 	}
 }
 
-// Wildberries keeps its own link table, and the tab is the same tab. A filter
-// that works for one channel and quietly ignores the other is worse than none:
-// the owner would trust a number that means something else.
+// Wildberries keeps its own link table, and the same filter has to work over it.
 func TestCandidateFilterWB(t *testing.T) {
 	d := openTest(t)
 	var linked, plain int64

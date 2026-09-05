@@ -12,19 +12,16 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// cabinet is a fake Wildberries account: one httptest mux for all four APIs,
-// because the paths do not collide and a single server keeps the tests short.
+// cabinet is a fake account: one httptest mux for all four APIs, paths do not collide.
 type cabinet struct {
 	mu sync.Mutex
 
 	cards []Card
-	// stocks records every batch pushed, per warehouse, so a test can assert
-	// what actually went on the wire.
+	// stocks records every batch pushed, per warehouse, as it went on the wire.
 	stocks   []StockItem
 	refuse   map[string]string // barcode -> reason, answered as a 409
 	stockErr int               // non-zero: fail the whole stocks call with this status
-	// noScope: answer the Marketplace section with 403, the way a token issued
-	// without it does.
+	// noScope: answer the Marketplace section with 403, as a token without it does.
 	noScope bool
 
 	priceBatches [][]PriceItem
@@ -293,8 +290,7 @@ func TestSettingsHidesTheToken(t *testing.T) {
 		t.Fatal("the token itself must never travel back to the browser")
 	}
 
-	// A body without the token leaves the stored one alone: the form has nothing
-	// to echo back, so it sends nil.
+	// A body without the token leaves the stored one alone.
 	do(t, h, "PUT", "/settings", `{"enabled":false,"warehouse_id":"9"}`)
 	got = decode[settingsResponse](t, do(t, h, "GET", "/settings", ""))
 	if !got.TokenSet || got.WarehouseID != "9" {
@@ -311,8 +307,7 @@ func mustJSON(t *testing.T, v any) []byte {
 	return b
 }
 
-// selection is the whole catalogue as a publish body: these tests are about how
-// articles match cards, not about which rows the owner ticked.
+// selection is the whole catalogue as a publish body: these tests are about matching.
 func selection(t *testing.T, d *database.Database) string {
 	t.Helper()
 	products, err := d.ListProducts()
@@ -356,8 +351,7 @@ func TestPublishMatchesByArticle(t *testing.T) {
 	}
 }
 
-// A card with several sizes has several barcodes and one article: which size the
-// product means is not knowable, so it is reported instead of guessed.
+// A multi-size card has one article and several barcodes: reported, not guessed.
 func TestPublishRefusesMultiSizeCard(t *testing.T) {
 	h, d, _ := newTest(t,
 		sizedCard(3, "ART-3", map[string]string{"M": "2000000000035", "L": "2000000000042"}),
@@ -374,8 +368,7 @@ func TestPublishRefusesMultiSizeCard(t *testing.T) {
 	}
 }
 
-// A catalogue imported from Wildberries carries "vendorCode-<size>" in its
-// article, because that is what our importer writes there.
+// A catalogue imported from Wildberries carries "vendorCode-<size>" in its article.
 func TestPublishMatchesImportedSizeArticle(t *testing.T) {
 	h, d, _ := newTest(t,
 		sizedCard(4, "ART-4", map[string]string{"M": "2000000000059", "L": "2000000000066"}),
@@ -463,14 +456,7 @@ func TestPassOrdersPricesAfterStocks(t *testing.T) {
 	}
 }
 
-// The tab exists to answer "why can I not publish these". On the live shop the
-// catalogue is 24 000 products and the cabinet holds a few dozen cards, so a
-// table that lists everything and says nothing sends the owner to tick a
-// hundred rows for ninety-nine refusals. These are the numbers that stop that.
-//
-// Wildberries adds a state Ozon does not have: a card with several sizes cannot
-// be linked by vendor code alone. It must not be filed under "no card" - the
-// card exists, and the owner told to create one would create a duplicate.
+// A multi-size card is its own state: it exists, so it must not count as "no card".
 func TestCabinetCountsWhatCanActuallyBeLinked(t *testing.T) {
 	h, d, _ := newTest(t,
 		card(100, "A", "brc-a"),
@@ -502,17 +488,13 @@ func TestCabinetCountsWhatCanActuallyBeLinked(t *testing.T) {
 	if got.Orphans != 1 {
 		t.Errorf("orphans %d, want 1", got.Orphans)
 	}
-	// Nothing here can be linked: A is already linked, SIZED is ambiguous, NOPE
-	// has no card. A button offered on any of them would fail.
+	// Nothing here can be linked: A is linked, SIZED is ambiguous, NOPE has no card.
 	if got.Ready != 0 || len(got.ReadyIDs) != 0 {
 		t.Errorf("ready %d %v, want none", got.Ready, got.ReadyIDs)
 	}
 }
 
-// TestCheckReportsMissingStockScope: a Wildberries token is issued per section,
-// and one without «Маркетплейс» answers every stock call with 403 while cards
-// and prices keep working. The tab then looks connected and the levels quietly
-// stay put. Measured on a live seller who pasted exactly such a token.
+// A token without the Marketplace section answers every stock call with 403.
 func TestCheckReportsMissingStockScope(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")

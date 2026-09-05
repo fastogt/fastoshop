@@ -151,8 +151,7 @@ func TestListProductsPaginationAndSearch(t *testing.T) {
 		t.Fatalf("per must be capped: %d", len(big.Products))
 	}
 	// Search by title and by SKU.
-	// The very last one is the only title that is not a prefix of its
-	// neighbors ("Товар 42" would also match "Товар 420").
+	// The last title is the only one that is not a prefix of a neighbor.
 	lastTitle := fmt.Sprintf("Товар %d", seeded-1)
 	if s := list("?q=" + url.QueryEscape(lastTitle)); s.Total != 1 || s.Products[0].Title != lastTitle {
 		t.Fatalf("title search: %+v", s)
@@ -201,8 +200,7 @@ func TestCreateProductPunctuationOnlyTitle(t *testing.T) {
 	}
 }
 
-// Stock lives its own life (sales decrease it), so the product form changes
-// it only when the field was explicitly sent.
+// Stock changes only when the field was explicitly sent.
 func TestUpdateProductStockOptional(t *testing.T) {
 	h := newTestHandler(t)
 	r := router(h)
@@ -245,8 +243,7 @@ func TestUpdateProductStockOptional(t *testing.T) {
 	}
 }
 
-// A photo can be removed, not just added - otherwise a mistaken upload stays
-// on the card forever. A file from our own upload leaves the disk.
+// A file from our own upload leaves the disk when the photo is removed.
 func TestUploadAndDeleteImage(t *testing.T) {
 	h := newTestHandler(t)
 	r := router(h)
@@ -293,9 +290,7 @@ func TestUploadAndDeleteImage(t *testing.T) {
 	}
 }
 
-// TestProductParams: characteristics are the shop's own data - every importer
-// writes them, so the form has to be able to correct them. A set arrives whole:
-// a body without the field leaves the stored one alone, an empty list clears it.
+// A set arrives whole: no field leaves it alone, an empty list clears it.
 func TestProductParams(t *testing.T) {
 	h := newTestHandler(t)
 	r := router(h)

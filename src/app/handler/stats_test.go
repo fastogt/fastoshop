@@ -12,9 +12,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// The shop figures must match the database, not merely look plausible: the
-// stats page is the only place where the owner sees the catalog size, and a
-// discrepancy here would go unnoticed.
+// The shop figures must match the database, not merely look plausible.
 func TestStats(t *testing.T) {
 	h := newTestHandler(t)
 	if err := h.db.CreateSettings(&database.Settings{OwnerEmail: "a@b.c", PasswordHash: "h"}); err != nil {
@@ -26,8 +24,7 @@ func TestStats(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// A file in uploads: the directory walk is counted separately from the DB,
-	// and a zero size with a non-empty folder is a silent breakage.
+	// A file in uploads: the directory walk is counted separately from the DB.
 	if err := os.WriteFile(filepath.Join(h.uploadsDir, "p1.jpg"), make([]byte, 2048), 0o600); err != nil {
 		t.Fatal(err)
 	}

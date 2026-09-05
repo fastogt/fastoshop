@@ -5,16 +5,13 @@ import (
 	"time"
 )
 
-// OzonPostingItem - a posting line in the marketplace's terms: matching it to
-// a shop product happens later, inside the apply transaction.
+// OzonPostingItem - a posting line in the marketplace's terms, matched later.
 type OzonPostingItem struct {
 	OfferID string
 	Qty     int
 }
 
-// OzonPosting - an Ozon posting in the shape the ladder applies it. Cancelled
-// is computed by the caller: the set of "cancelled" statuses is knowledge
-// about the marketplace, not about the database.
+// OzonPosting - a posting as the ladder applies it; Cancelled is set by the caller.
 type OzonPosting struct {
 	PostingNumber string
 	Status        string
@@ -23,10 +20,7 @@ type OzonPosting struct {
 	Items         []OzonPostingItem
 }
 
-// OzonStatusCancelled - the ladder stores any cancellation under it, whichever
-// of the cancelling statuses Ozon sent. Otherwise the cancelled → not_accepted
-// transition would look like a fresh cancellation and return the stock a
-// second time; this should not cost a separate "stock returned" column.
+// OzonStatusCancelled stores any Ozon cancelling status, so stock returns only once.
 const OzonStatusCancelled = "cancelled"
 
 func (p *OzonPosting) storedStatus() string {
@@ -36,17 +30,7 @@ func (p *OzonPosting) storedStatus() string {
 	return p.Status
 }
 
-// ApplyOzonPosting applies a posting exactly once and reports whether stock
-// moved in the process.
-//
-// Idempotency rests on UNIQUE(posting_number): the insert either creates the
-// row (the posting is new) or does nothing (already applied). Checking with a
-// SELECT before the insert is not an option - two sync passes would slip
-// through that gap.
-//
-// A cancellation returns stock exactly on the "applied → cancelled"
-// transition: the same cancelled posting reappearing in the cursor's overlap
-// window no longer moves anything.
+// ApplyOzonPosting applies a posting once, relying on UNIQUE(posting_number).
 func (d *Database) ApplyOzonPosting(p *OzonPosting) (moved bool, err error) {
 	err = d.withTx(func(tx *sql.Tx) error {
 		res, err := tx.Exec(
@@ -77,9 +61,7 @@ func (d *Database) ApplyOzonPosting(p *OzonPosting) (moved bool, err error) {
 	return moved, nil
 }
 
-// applyNewPosting records the lines and deducts stock. A posting we first see
-// already cancelled is only recorded: deducting and immediately returning the
-// same product is a pointless stock movement out of thin air.
+// applyNewPosting records lines and deducts stock; a cancelled one only records.
 func applyNewPosting(tx *sql.Tx, id int64, p *OzonPosting) (bool, error) {
 	moved, oversold := false, false
 	for _, it := range p.Items {
@@ -103,8 +85,7 @@ func applyNewPosting(tx *sql.Tx, id int64, p *OzonPosting) (bool, error) {
 		if have < it.Qty {
 			oversold = true
 		}
-		// MAX(0, ...) - refusing the deduction is not an option: the marketplace
-		// has already sold, and negative stock on the storefront is worse than zero.
+		// MAX(0, ...): the marketplace already sold, negative stock is worse than zero.
 		if _, err := tx.Exec(
 			`UPDATE products SET stock = MAX(0, stock - ?), updated_at = CURRENT_TIMESTAMP
 			 WHERE id = ?`, it.Qty, *productID); err != nil {
@@ -120,9 +101,7 @@ func applyNewPosting(tx *sql.Tx, id int64, p *OzonPosting) (bool, error) {
 	return moved, nil
 }
 
-// applySeenPosting handles a posting we already know: only the transition into
-// a cancelled status is interesting, everything else is a status update with
-// no stock movement.
+// applySeenPosting handles a known posting; only a move into cancelled matters.
 func applySeenPosting(tx *sql.Tx, p *OzonPosting) (bool, error) {
 	var id int64
 	var status string
@@ -136,8 +115,7 @@ func applySeenPosting(tx *sql.Tx, p *OzonPosting) (bool, error) {
 		return false, nil
 	}
 	moved := false
-	// Return only on the "not cancelled → cancelled" transition. A posting seen
-	// as cancelled from the start never deducted stock - there is nothing to return.
+	// A posting seen cancelled from the start never deducted - nothing to return.
 	if p.Cancelled && status != OzonStatusCancelled {
 		items, err := ozonOrderStock(tx, id)
 		if err != nil {
@@ -152,9 +130,7 @@ func applySeenPosting(tx *sql.Tx, p *OzonPosting) (bool, error) {
 	return moved, err
 }
 
-// ozonOrderStock reads all lines before the first Exec: the transaction has a
-// single connection, and an open Rows must not be held while writing.
-// Unmatched lines drop out - there is nowhere to return their stock.
+// ozonOrderStock reads all lines before any Exec: one connection per transaction.
 //
 // ponytail: we return the ordered qty, not what was actually deducted. They can
 // diverge only on an oversell (deducted less than sold) - if that starts to
@@ -179,8 +155,7 @@ func ozonOrderStock(tx *sql.Tx, id int64) ([]OrderItem, error) {
 	return out, rows.Err()
 }
 
-// resolveOffer looks up a product by the marketplace SKU. nil - no link: the
-// line is recorded anyway, so the owner sees an unrecognized sale, not a blank.
+// resolveOffer looks up a product by marketplace SKU; nil means no link.
 func resolveOffer(tx *sql.Tx, offerID string) (*int64, error) {
 	var id int64
 	err := tx.QueryRow(
@@ -216,8 +191,6 @@ func (d *Database) CountOzonOrders() (int, error) {
 	return n, err
 }
 
-// CountOzonOrderState - counters for the tab header: total sales, of those how
-// many oversold and how many with unmatched lines.
 func (d *Database) CountOzonOrderState() (total, oversold, unresolved int, err error) {
 	err = d.db.QueryRow(
 		`SELECT (SELECT COUNT(*) FROM ozon_orders),
@@ -227,9 +200,7 @@ func (d *Database) CountOzonOrderState() (total, oversold, unresolved int, err e
 	return total, oversold, unresolved, err
 }
 
-// ListOzonOrdersPage returns a page of sales with their lines. Lines are read
-// by a second query over the already collected ids: a JOIN would multiply rows
-// and break pagination.
+// ListOzonOrdersPage reads lines in a second query: a JOIN would break pagination.
 func (d *Database) ListOzonOrdersPage(limit, offset int) ([]OzonOrder, error) {
 	rows, err := d.db.Query(
 		`SELECT id, posting_number, status, oversold, created_at
@@ -268,8 +239,7 @@ func (d *Database) loadOzonOrderItems(orders []OzonOrder, byID map[int64]int) er
 	if lo > hi {
 		lo, hi = hi, lo
 	}
-	// An id range instead of IN (...): a page is always contiguous by id within
-	// its bounds, and there is no reason to glue placeholders together by hand.
+	// An id range instead of IN (...): a page is contiguous by id within its bounds.
 	rows, err := d.db.Query(
 		`SELECT i.ozon_order_id, i.product_id, i.offer_id, i.qty, COALESCE(p.title, '')
 		 FROM ozon_order_items i LEFT JOIN products p ON p.id = i.product_id
@@ -291,8 +261,7 @@ func (d *Database) loadOzonOrderItems(orders []OzonOrder, byID map[int64]int) er
 	return rows.Err()
 }
 
-// OzonOrdersSince returns the zero time if polling has never run - the caller
-// decides itself which window to start with the first time.
+// OzonOrdersSince returns the zero time when polling has never run.
 func (d *Database) OzonOrdersSince() (time.Time, error) {
 	var t time.Time
 	err := d.db.QueryRow(`SELECT orders_since FROM ozon_cursor WHERE id = 1`).Scan(&t)

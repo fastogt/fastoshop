@@ -1,10 +1,4 @@
-// Package i18n renders the text the shop owner reads: API error messages and
-// the emails we send them. A shop has exactly one owner, so the shop's language
-// setting is the owner's language - there is no per-request negotiation and no
-// need to hand error codes to the client.
-//
-// The storefront is deliberately absent from here: it speaks the language of the
-// products the seller sells.
+// Package i18n renders the text the shop owner reads: API errors and emails.
 package i18n
 
 import (
@@ -19,8 +13,7 @@ const (
 
 func IsValidLang(l string) bool { return l == LangRU || l == LangEN }
 
-// Message keys. Values carry %-verbs where the caller substitutes; both
-// translations of one key must take the same arguments in the same order.
+// Both translations of one key must take the same %-verbs in the same order.
 const (
 	KeyOrderStockGone   = "order_stock_gone"
 	KeyCSVParseFailed   = "csv_parse_failed"
@@ -212,8 +205,7 @@ var kMessages = map[string][2]string{
 	KeyYMLBadXML: {"не удалось разобрать XML выгрузки", "could not parse the feed XML"},
 }
 
-// T returns the message for lang, falling back to Russian: an unknown language
-// must not blank out an error the owner needs to read.
+// T falls back to Russian: an unknown language must not blank out an error.
 func T(lang, key string) string {
 	m, ok := kMessages[key]
 	if !ok {
@@ -226,8 +218,6 @@ func T(lang, key string) string {
 }
 
 // KeyError is an error the owner will read: a message key plus its arguments.
-// Error() renders English for logs and wrapping; the handler localizes it on
-// the way out with Localize.
 type KeyError struct {
 	Key  string
 	Args []any
@@ -235,8 +225,7 @@ type KeyError struct {
 
 func (e *KeyError) Error() string { return fmt.Sprintf(T(LangEN, e.Key), e.Args...) }
 
-// Localize renders err for the owner: KeyErrors in their language, anything
-// else as is - someone else's error text is not ours to rewrite.
+// Localize renders KeyErrors in the owner's language and passes other errors through.
 func Localize(lang string, err error) string {
 	var ke *KeyError
 	if errors.As(err, &ke) {
@@ -245,10 +234,7 @@ func Localize(lang string, err error) string {
 	return err.Error()
 }
 
-// TIfKey translates a string only if it is one of our keys. Errors stored in the
-// database mix two origins: our own sentinels, which must follow the owner's
-// language, and text the marketplace produced, which we pass through untouched -
-// translating someone else's error would be inventing it.
+// TIfKey translates only our own keys; text a marketplace produced passes through.
 func TIfKey(lang, s string) string {
 	if _, ok := kMessages[s]; ok {
 		return T(lang, s)

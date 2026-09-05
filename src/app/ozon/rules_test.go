@@ -9,8 +9,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// A ladder taken apart from a reseller's script: on a cheap product a percentage
-// doesn't cover the commission, so the margin is taken as a multiple.
+// On a cheap product a percentage does not cover the commission, hence a multiple.
 var kLadder = []database.PriceRule{
 	{UpTo: 5000, Multiplier: 13},
 	{UpTo: 10000, Multiplier: 8},
@@ -37,8 +36,7 @@ func TestPriceLadderBands(t *testing.T) {
 	}
 }
 
-// Without the "and above" band expensive products would silently stay without
-// a price, and that would look like "the ladder didn't work".
+// Without the "and above" band expensive products stay silently without a price.
 func TestPriceRulesRequireOpenBand(t *testing.T) {
 	h, _, _ := publishTest(t)
 	body, _ := json.Marshal(channel.PriceRulesRequest{Rules: []database.PriceRule{

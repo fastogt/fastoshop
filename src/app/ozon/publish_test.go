@@ -9,8 +9,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// publishTest wires the tab's handlers to the same mock cabinet the sync tests
-// use, so publication and pushing share one view of the platform.
+// publishTest shares the sync tests' mock cabinet: one view of the platform.
 func publishTest(t *testing.T, offers ...string) (*Handlers, *database.Database, *ozonMock) {
 	t.Helper()
 	w, d, m := newSyncTest(t)
@@ -59,9 +58,7 @@ func TestPublishReportsMissingCard(t *testing.T) {
 	}
 }
 
-// The slice's key property: the link disappears only after a zero has gone
-// out to the marketplace. Otherwise the card keeps selling from a stock we no
-// longer track.
+// The link disappears only after a zero has gone out to the marketplace.
 func TestUnpublishZeroesStockFirst(t *testing.T) {
 	h, d, m := publishTest(t, "A")
 	id := seedProduct(t, d, "A", 5)
@@ -87,8 +84,7 @@ func TestUnpublishZeroesStockFirst(t *testing.T) {
 	}
 }
 
-// If the marketplace did not accept the zero, the link must remain - otherwise
-// we forget about a card that keeps selling.
+// If the marketplace did not accept the zero, the link must remain.
 func TestUnpublishKeepsLinkWhenZeroRejected(t *testing.T) {
 	h, d, m := publishTest(t, "A")
 	id := seedProduct(t, d, "A", 5)
@@ -144,10 +140,6 @@ func TestCandidatesIncludeHidden(t *testing.T) {
 	}
 }
 
-// The tab exists to answer "why can I not publish these". On the live shop the
-// catalogue is 24 000 products and the cabinet holds a few dozen cards, so a
-// table that lists everything and says nothing sends the owner to tick a
-// hundred rows for ninety-nine refusals. These are the numbers that stop that.
 func TestCabinetCountsTheThreeStates(t *testing.T) {
 	h, d, _ := publishTest(t, "A", "B", "ORPHAN")
 	idA := seedProduct(t, d, "A", 5)
@@ -165,13 +157,11 @@ func TestCabinetCountsTheThreeStates(t *testing.T) {
 	if got.Linked != 1 || got.Ready != 1 || got.NoCard != 2 {
 		t.Errorf("linked %d ready %d no_card %d; want 1/1/2", got.Linked, got.Ready, got.NoCard)
 	}
-	// A card in the cabinet that matches nothing of ours is its own state: the
-	// owner may want to import it, and it is not a product row at all.
+	// A card matching nothing of ours is its own state, not a product row.
 	if got.Orphans != 1 {
 		t.Errorf("orphans %d, want 1", got.Orphans)
 	}
-	// The ids are what the table paints its rows from, so they must name the
-	// product that can actually be linked - not the one already linked.
+	// The ids must name the product that can be linked, not the linked one.
 	if len(got.ReadyIDs) != 1 {
 		t.Fatalf("ready_ids %v", got.ReadyIDs)
 	}
@@ -180,8 +170,7 @@ func TestCabinetCountsTheThreeStates(t *testing.T) {
 	}
 }
 
-// A shop whose owner has not created a single card must still get a usable
-// answer rather than an error: nothing is ready, everything lacks a card.
+// A cabinet with no cards is an answer, not an error: everything lacks a card.
 func TestCabinetWithAnEmptyCabinet(t *testing.T) {
 	h, d, _ := publishTest(t)
 	seedProduct(t, d, "A", 5)

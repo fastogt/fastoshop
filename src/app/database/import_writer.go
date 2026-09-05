@@ -6,20 +6,11 @@ import (
 	"strings"
 )
 
-// kImportChunk is how many writes an import commits at once. A commit per row
-// is a WAL append per row - tens of thousands on a real catalogue - while one
-// commit for the whole run would hold the pool's single connection for minutes
-// and every storefront read would wait on it.
+// kImportChunk trades WAL appends per row against holding the single connection.
 // ponytail: a fixed chunk; make it adaptive if a catalogue proves either end wrong.
 const kImportChunk = 500
 
-// ImportWriter is the importer's pen: every write goes through one open
-// transaction, committed every kImportChunk writes. Slug uniqueness is answered
-// from memory - the slugs are read once at the start, so creating a product
-// does not query the table for each candidate.
-//
-// The pool has a single connection, so nothing else may write through d.* while
-// the writer is open; the importer runs alone as a background job.
+// ImportWriter holds an open transaction; the single-connection pool blocks other writers.
 type ImportWriter struct {
 	d     *Database
 	tx    *sql.Tx
@@ -68,9 +59,7 @@ func (w *ImportWriter) tick() error {
 	return w.begin()
 }
 
-// Close commits what is still pending; with an error it rolls that back and
-// hands the error on. Chunks already committed stay: they are finished
-// products, and an import that broke halfway is repaired by running it again.
+// Close commits pending work, or rolls it back on error; earlier chunks stay committed.
 func (w *ImportWriter) Close(err error) error {
 	if err != nil {
 		_ = w.tx.Rollback()
@@ -100,8 +89,7 @@ func (w *ImportWriter) UpdateProduct(p *Product) error {
 	return w.tick()
 }
 
-// AddImages stores a product's photos in the order the source listed them, in
-// one statement. The product is new, so the positions start at zero.
+// AddImages assumes a new product: positions start at zero.
 func (w *ImportWriter) AddImages(productID int64, paths []string) error {
 	if len(paths) == 0 {
 		return nil

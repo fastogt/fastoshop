@@ -23,8 +23,7 @@ import (
 // ever grows into "rewrite the whole catalogue".
 const kEnrichTimeout = 55 * time.Second
 
-// adHuntersEnrichURL is a variable rather than a constant so a test can point
-// the handler at a fake AdHunters instead of the live one.
+// A variable, not a constant, so a test can point at a fake AdHunters.
 var adHuntersEnrichURL = "https://adhunters.fastolead.com/api/shop/enrich"
 
 type enrichRequest struct {
@@ -33,14 +32,7 @@ type enrichRequest struct {
 	Category    string   `json:"category"`
 	Lang        string   `json:"lang"`
 	Categories  []string `json:"categories"`
-	// What we already know for a fact, so the card can say it instead of
-	// leaving it out. Sent raw, in the units they are stored in: the service
-	// turns grams into kilograms for the text, and a model asked to convert
-	// units is a model given a chance to be wrong about a number.
-	//
-	// The shop's own characteristics are not here yet: without their
-	// definitions {"cvet":"белый"} is a pair of unexplained words, and there is
-	// nowhere to keep definitions until the dictionary has a home.
+	// Sent raw in stored units: the service converts, a model asked to may err.
 	WeightG  *int64 `json:"weight_g,omitempty"`
 	LengthMM *int64 `json:"length_mm,omitempty"`
 	WidthMM  *int64 `json:"width_mm,omitempty"`
@@ -65,12 +57,9 @@ type adHuntersEnvelope struct {
 	Data enrichResponse `json:"data"`
 }
 
-// kMaxUpstreamBody caps what we read back: the draft is a few kilobytes, and a
-// service answering with something enormous must not become our problem.
+// Caps what we read back: the draft is a few kilobytes.
 const kMaxUpstreamBody = 64 << 10
 
-// upstreamMessage digs the service's own explanation out of its error envelope
-// and falls back to nothing rather than to a wall of JSON.
 func upstreamMessage(body []byte) string {
 	var e struct {
 		Error struct {
@@ -83,10 +72,7 @@ func upstreamMessage(body []byte) string {
 	return e.Error.Message
 }
 
-// EnrichProduct asks AdHunters to rewrite one card and hands the draft back to
-// the admin. Nothing is written to the database: the owner reads what the model
-// produced, edits it and saves it themselves - a generated text that saved
-// itself would put invented properties on the storefront under their name.
+// Nothing is written to the database: the owner edits the draft and saves it.
 func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
@@ -108,21 +94,14 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The sections are sent only when the product has none. Measured on a live
-	// catalogue: the list is 36% of the prompt, it pushed four cards in ten past
-	// the gateway's sixty seconds, and the model kept the existing section every
-	// single time - so on a filed product it costs latency and buys nothing.
-	// What is left is the case with the value: filling an empty section.
-	// The model may pick from the list, never write one of its own; guessing a
-	// tree is the onboarding tool's job, not the shop's.
+	// Sections go out only for an unfiled product, and only from the shop's tree.
 	var offered []string
 	if nodes, err := h.db.VisibleCategories(); err == nil && p.Category == "" {
 		paths := make([]string, 0, len(nodes))
 		for _, n := range nodes {
 			paths = append(paths, n.Path)
 		}
-		// Shallow first: a top-level section is a usable answer for any product,
-		// while the deepest leaves are the ones a budget can afford to lose.
+		// Shallow first: a top-level section is a usable answer for any product.
 		slices.SortStableFunc(paths, func(a, b string) int {
 			return strings.Count(a, "/") - strings.Count(b, "/")
 		})
@@ -158,8 +137,7 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{Timeout: kEnrichTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
-		// The transport error itself is not shown or logged: it carries the
-		// request back, headers included, and the key must not leak either way.
+		// Not logged: the transport error carries the request back, key included.
 		log.Warnf("enrich: product %d: request to the AI service failed", id)
 		httpjson.WriteBadRequest(w, h.msg(i18n.KeyAIUnavailable))
 		return
@@ -176,9 +154,7 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteBadRequest(w, h.msg(i18n.KeyAINoCredits))
 		return
 	default:
-		// The service's own words rather than ours: it knows why it refused,
-		// and a generic "try again" left the owner - and us - guessing. Not
-		// translated, like every other message that came from a platform.
+		// The service's own words, untranslated like every message from a platform.
 		log.Warnf("enrich: product %d: AI service answered %d: %s",
 			id, resp.StatusCode, upstreamMessage(raw))
 		httpjson.WriteBadRequest(w, h.msg(i18n.KeyAIUnavailable)+": "+upstreamMessage(raw))
@@ -192,8 +168,7 @@ func (h *Handler) EnrichProduct(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteBadRequest(w, h.msg(i18n.KeyAIUnavailable))
 		return
 	}
-	// Checked here too, not only on the other side: this is the shop's own
-	// tree, and a section it never offered must not reach the admin form.
+	// Checked here too: a section the shop never offered must not reach the form.
 	if !slices.Contains(offered, env.Data.Category) {
 		env.Data.Category = ""
 	}

@@ -2,14 +2,7 @@ package database
 
 import "strings"
 
-// CatalogParamNames lists every characteristic the catalogue states, most used
-// first. The owner decides from this list what a buyer sees, so it is the names
-// as the sources wrote them - renaming or merging them here would hide the fact
-// that two marketplaces call one property two things.
-//
-// json_each over a column rather than a table of its own: characteristics travel
-// with the product and are read sixty at a time on a catalogue page, and this
-// query runs once on a settings screen.
+// CatalogParamNames lists characteristic names as the sources wrote them, most used first.
 func (d *Database) CatalogParamNames() ([]string, error) {
 	rows, err := d.db.Query(`
 		SELECT json_extract(p.value, '$.name') AS name, count(*) AS n
@@ -51,9 +44,7 @@ func (d *Database) HiddenParams() (map[string]bool, error) {
 	return out, rows.Err()
 }
 
-// SetHiddenParams replaces the set. The whole set, because the screen states it
-// whole: a name missing from the request is a box the owner unticked, and
-// merging would leave no way to show something again.
+// SetHiddenParams replaces the whole set: a missing name is a box the owner unticked.
 func (d *Database) SetHiddenParams(names []string) error {
 	tx, err := d.db.Begin()
 	if err != nil {

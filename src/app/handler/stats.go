@@ -35,9 +35,7 @@ type statsResponse struct {
 	Shop   shopStats     `json:"shop"`
 }
 
-// Walking uploads means tens of thousands of files on a 24,000-product catalog.
-// An open admin tab must not run du in a loop, so the size lives for a minute:
-// it doesn't change enough within a minute for anyone to notice.
+// The uploads walk touches tens of thousands of files, so its result is cached.
 const kUploadsSizeTTL = time.Minute
 
 var (
@@ -69,8 +67,7 @@ func dirSize(dir string) (int64, int) {
 	return total, count
 }
 
-// dbSize counts the -wal too: under WAL part of the data lives in it, and the
-// size of the .db alone understates the picture the more active the shop is.
+// The -wal counts too: under WAL part of the data lives outside the .db.
 func dbSize(path string) int64 {
 	var total int64
 	for _, p := range []string{path, path + "-wal"} {
@@ -99,8 +96,7 @@ func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
 		Version:         version.VersionApp,
 	}
 
-	// Ask the system about the process: RSS from runtime.MemStats shows the Go
-	// heap, while the owner needs the figure systemd uses for MemoryMax.
+	// The system's RSS, not runtime.MemStats: systemd's MemoryMax uses this one.
 	if p, err := process.NewProcess(int32(os.Getpid())); err == nil {
 		if m, err := p.MemoryInfo(); err == nil {
 			shop.ProcessRSSBytes = m.RSS

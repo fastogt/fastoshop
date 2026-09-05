@@ -6,21 +6,17 @@ import (
 	"time"
 )
 
-// WBStatusCancelled is the one canonical cancelled status we store. Wildberries
-// has several spellings for it and adds new ones; collapsing them here keeps the
-// "not cancelled → cancelled" transition a single comparison.
+// WBStatusCancelled collapses the platform's several cancelled spellings into one.
 const WBStatusCancelled = "cancelled"
 
-// WBOrder is one assembly task. Unlike an Ozon posting it carries exactly one
-// item, so there is no second table: a join would exist to hold one row.
+// WBOrder is one assembly task; Wildberries carries exactly one item per task.
 type WBOrder struct {
 	ID        int64
 	OrderID   int64
 	Status    string
 	Cancelled bool
 	ProductID *int64
-	// Title of the shop product, empty when the sale matched nothing or the
-	// product is gone. Filled on read only.
+	// Title of the shop product, filled on read only.
 	Title     string
 	Barcode   string
 	Article   string
@@ -37,15 +33,7 @@ func (o *WBOrder) storedStatus() string {
 	return o.Status
 }
 
-// ApplyWBOrder applies an assembly task exactly once and reports whether stock
-// moved in the process.
-//
-// Idempotency rests on UNIQUE(order_id): the insert either creates the row (the
-// task is new) or does nothing (already applied). A SELECT before the insert is
-// not an option - two sync passes would slip through that gap.
-//
-// A task first seen already cancelled is only recorded: deducting and returning
-// the same product is a stock movement out of thin air.
+// ApplyWBOrder applies a task once (UNIQUE(order_id)) and reports if stock moved.
 func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 	err = d.withTx(func(tx *sql.Tx) error {
 		productID, err := resolveBarcode(tx, o.Barcode)
@@ -82,8 +70,7 @@ func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 				return err
 			}
 		}
-		// MAX(0, ...) - refusing the deduction is not an option: the marketplace has
-		// already sold, and negative stock on the storefront is worse than zero.
+		// MAX(0, ...): the marketplace already sold, negative stock is worse than zero.
 		if _, err := tx.Exec(
 			`UPDATE products SET stock = MAX(0, stock - ?), updated_at = CURRENT_TIMESTAMP
 			 WHERE id = ?`, o.Qty, *productID); err != nil {
@@ -98,10 +85,7 @@ func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 	return moved, nil
 }
 
-// SetWBOrderStatus records a status the platform reported separately: the order
-// list carries no status, so it arrives one call later. Stock comes back exactly
-// on the "not cancelled → cancelled" transition, so a repeated poll moves
-// nothing.
+// SetWBOrderStatus returns stock only on the not cancelled -> cancelled transition.
 //
 // ponytail: we return the ordered qty, not what was actually deducted. They can
 // diverge only on an oversell - if that starts to hurt, add an applied_qty
@@ -143,8 +127,7 @@ func (d *Database) SetWBOrderStatus(orderID int64, status string, cancelled bool
 	return moved, nil
 }
 
-// resolveBarcode looks up a product by the platform barcode. nil - no link: the
-// sale is recorded anyway, so the owner sees an unrecognized order, not a blank.
+// resolveBarcode looks up a product by the platform barcode; nil means no link.
 func resolveBarcode(tx *sql.Tx, barcode string) (*int64, error) {
 	if barcode == "" {
 		return nil, nil
@@ -161,8 +144,7 @@ func resolveBarcode(tx *sql.Tx, barcode string) (*int64, error) {
 	return &id, nil
 }
 
-// OpenWBOrderIDs returns the tasks whose status may still change, so the poll
-// asks about those and not about the whole history.
+// OpenWBOrderIDs returns the tasks whose status may still change.
 func (d *Database) OpenWBOrderIDs(limit int) ([]int64, error) {
 	rows, err := d.db.Query(
 		`SELECT order_id FROM wb_orders WHERE status != ?
@@ -226,8 +208,7 @@ func (d *Database) ListWBOrdersPage(limit, offset int) ([]WBOrder, error) {
 	return out, rows.Err()
 }
 
-// WBOrdersSince returns the poll cursor; a zero time means the cabinet has never
-// been polled and the first window applies.
+// WBOrdersSince returns the poll cursor; a zero time means never polled.
 func (d *Database) WBOrdersSince() (time.Time, error) {
 	var t time.Time
 	err := d.db.QueryRow(`SELECT orders_since FROM wb_cursor WHERE id=1`).Scan(&t)

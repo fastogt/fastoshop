@@ -14,8 +14,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// WB: Content API (cards) + Prices API (prices) + Marketplace API (stock on
-// the seller's warehouses) - three different hosts. https://dev.wildberries.ru/
+// WB: Content, Prices and Marketplace APIs on three hosts. https://dev.wildberries.ru/
 type WB struct {
 	Token          string
 	ContentURL     string // defaults to https://content-api.wildberries.ru
@@ -88,9 +87,7 @@ type wbCardsResponse struct {
 		Photos      []struct {
 			Big string `json:"big"`
 		} `json:"photos"`
-		// Wildberries states no units: the contract fixes them - centimetres for
-		// the sides, kilograms for the weight. weightBrutto is the packed weight,
-		// which is the one a courier charges for.
+		// WB states no units: the contract fixes centimetres and kilograms.
 		Dimensions struct {
 			Length       float64 `json:"length"`
 			Width        float64 `json:"width"`
@@ -103,9 +100,7 @@ type wbCardsResponse struct {
 			WBSize   string   `json:"wbSize"`
 			Skus     []string `json:"skus"` // the size's barcodes
 		} `json:"sizes"`
-		// The seller fills these to publish at all, so a card carries a dozen
-		// of them. Value is a string, a number or a list depending on the
-		// characteristic - Wildberries states no type, only the payload.
+		// Value is a string, a number or a list: WB states no type, only the payload.
 		Characteristics []struct {
 			Name  string `json:"name"`
 			Value any    `json:"value"`
@@ -157,9 +152,7 @@ type wbStocksResponse struct {
 	} `json:"stocks"`
 }
 
-// stocks sums a size's stock across all the seller's warehouses: our model has
-// one warehouse while WB allows keeping goods on several. The key is the
-// barcode, not chrtID: on WB the FBS stock hangs off the size's barcode.
+// Summed over the seller's warehouses; the key is the barcode, not chrtID.
 func (w *WB) stocks(barcodes []string) map[string]int {
 	if len(barcodes) == 0 {
 		return nil
@@ -232,11 +225,7 @@ type wbSubjectsResponse struct {
 // kWBSubjectsPageSize - the directory method's ceiling per request.
 const kWBSubjectsPageSize = 1000
 
-// subjectParents maps a card's subject onto its parent, so a WB catalogue gets
-// two levels ("Дом/Посуда") instead of one. The directory is a few thousand
-// entries, downloaded once per import; a card carries only subjectName, and one
-// level is a worse landing page than two. A failure leaves the parent empty and
-// the import goes on: categories are worth less than the goods.
+// A card carries only subjectName, so the directory supplies the parent level.
 func (w *WB) subjectParents() map[int64]string {
 	parents := map[int64]string{}
 	for offset := 0; offset < 20*kWBSubjectsPageSize; offset += kWBSubjectsPageSize {
@@ -257,9 +246,7 @@ func (w *WB) subjectParents() map[int64]string {
 	return parents
 }
 
-// Fetch expands a WB card into a product per size: we have one price and one
-// stock per product with no variants in the model, while on WB the FBS stock
-// lives exactly on the size.
+// Fetch expands a card into a product per size: on WB the FBS stock lives on the size.
 func (w *WB) Fetch() ([]Item, error) {
 	c, err := w.cards()
 	if err != nil {
@@ -286,10 +273,7 @@ func (w *WB) Fetch() ([]Item, error) {
 			urls = append(urls, ph.Big)
 		}
 		category := database.CategoryPath(subjectParents[card.SubjectID], card.SubjectName)
-		// The value goes through as Wildberries decoded it - a number stays a
-		// number, a list stays a list. This is the one place a whole catalogue
-		// arrives already described, and it arrives typed; flattening it here
-		// would be discarding a type nobody would then be able to recover.
+		// The value goes through as WB decoded it: flattening would discard its type.
 		var params []database.Param
 		for _, ch := range card.Characteristics {
 			name := strings.TrimSpace(ch.Name)
@@ -297,8 +281,7 @@ func (w *WB) Fetch() ([]Item, error) {
 				params = append(params, database.Param{Name: name, Value: ch.Value})
 			}
 		}
-		// The card carries one weight and one box for every size: a size differs
-		// by its label and its barcode, not by its parcel.
+		// One weight and one box for every size: a size differs by label and barcode.
 		weight := grams(card.Dimensions.WeightBrutto, "kg")
 		length := millimetres(card.Dimensions.Length, "cm")
 		width := millimetres(card.Dimensions.Width, "cm")

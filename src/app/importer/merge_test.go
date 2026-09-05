@@ -25,8 +25,7 @@ func mergeDB(t *testing.T) *database.Database {
 	return d
 }
 
-// Weekly feed: the supplier price comes through, the stock updates, while the
-// title and description stay the way the owner made them.
+// Price and stock come through; title and description stay the owner's.
 func TestMergeUpdatesPriceAndStockOnly(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{
@@ -89,8 +88,7 @@ func TestMergeKeepsManualPrice(t *testing.T) {
 	}
 }
 
-// A product that disappeared from the feed is taken off sale via stock, but
-// stays itself: the slug is indexed and the Ozon link references product_id.
+// A product gone from the feed is zeroed, not deleted: slug and links point at it.
 func TestMergeZeroesMissingWithoutDeleting(t *testing.T) {
 	d := mergeDB(t)
 	src := &feed{name: "yml", items: []Item{

@@ -65,9 +65,7 @@ func (c *Client) Post(path string, body, out any) error {
 	return json.Unmarshal(raw, out)
 }
 
-// APIError is a non-200 answer from the cabinet. RetryAfter carries the
-// Retry-After header of a 429 as is: Ozon has its own per-method limits, and our
-// backoff must yield to them instead of arguing.
+// RetryAfter carries a 429's Retry-After verbatim: Ozon's limits outrank our backoff.
 type APIError struct {
 	Status     int
 	RetryAfter time.Duration
@@ -76,9 +74,7 @@ type APIError struct {
 
 func (e *APIError) Error() string { return e.msg }
 
-// retryAfter understands the "seconds" form only: Ozon never sends an HTTP date
-// in this header, and guessing from an unparsed value is worse than falling back
-// to our own backoff.
+// Ozon sends Retry-After in seconds only, never as an HTTP date.
 func retryAfter(v string) time.Duration {
 	sec, err := strconv.Atoi(v)
 	if err != nil || sec <= 0 {
@@ -106,15 +102,13 @@ type listResponse struct {
 	} `json:"result"`
 }
 
-// Offer is a card in the seller cabinet. offer_id is the seller's article, and
-// that is what we link against products.sku.
+// offer_id is the seller's article - that is what we link against products.sku.
 type Offer struct {
 	ProductID int64  `json:"product_id"`
 	OfferID   string `json:"offer_id"`
 }
 
-// ListProducts returns every card of the cabinet, hidden and archived included
-// (visibility=ALL): what is not on sale right now still has to be linked.
+// visibility=ALL: cards that are hidden or archived still have to be linkable.
 func (c *Client) ListProducts() ([]Offer, error) {
 	var out []Offer
 	lastID := ""
@@ -129,8 +123,7 @@ func (c *Client) ListProducts() ([]Offer, error) {
 			return nil, err
 		}
 		out = append(out, page.Result.Items...)
-		// Ozon leaves last_id empty on the final page, but a non-empty last_id
-		// with empty items happens too - a short page is the end as well.
+		// A short page is the end too: Ozon may still send a last_id on it.
 		if page.Result.LastID == "" || len(page.Result.Items) < kListLimit {
 			break
 		}
@@ -157,17 +150,14 @@ type itemError struct {
 	Message string `json:"message"`
 }
 
-// ItemResult is one row of a stocks or prices push answer - the two calls share
-// the shape.
+// ItemResult is one row of a stocks or prices push answer - both share the shape.
 type ItemResult struct {
 	OfferID string      `json:"offer_id"`
 	Updated bool        `json:"updated"`
 	Errors  []itemError `json:"errors"`
 }
 
-// itemErr returns the reason an item counts as rejected, or an empty string on
-// success. An item with neither updated nor errors is not "ok by default":
-// silently crediting it would mean remembering a level the platform never got.
+// An item with neither updated nor errors is not ok: never credit it as pushed.
 func itemErr(errs []itemError, updated bool) string {
 	for _, e := range errs {
 		if e.Message != "" {
@@ -189,8 +179,7 @@ type stocksResponse struct {
 	Result []ItemResult `json:"result"`
 }
 
-// SetStocks sends stocks in a single call; the caller must split the list by
-// kBatchSize itself - the client will not silently truncate someone's batch.
+// One call: the caller splits by kBatchSize, the client never truncates a batch.
 func (c *Client) SetStocks(items []StockItem) ([]ItemResult, error) {
 	var resp stocksResponse
 	if err := c.Post("/v2/products/stocks", stocksRequest{Stocks: items}, &resp); err != nil {
@@ -202,11 +191,7 @@ func (c *Client) SetStocks(items []StockItem) ([]ItemResult, error) {
 // kPriceBatchSize is the ceiling of /v1/product/import/prices per call.
 const kPriceBatchSize = 1000
 
-// PriceItem mirrors the wire format exactly: price and old_price are STRINGS in
-// whole rubles, not kopecks. old_price "0" clears the crossed-out price - we do
-// not invent fake discounts, so it is always "0". The two *_enabled fields say
-// "leave whatever the cabinet is set to": promotions and price strategies belong
-// to the seller, and a stock sync has no business flipping them.
+// Prices are wire strings; old_price "0" clears; *_enabled keeps cabinet settings.
 type PriceItem struct {
 	AutoActionEnabled    string `json:"auto_action_enabled"`
 	CurrencyCode         string `json:"currency_code"`
@@ -216,14 +201,7 @@ type PriceItem struct {
 	PriceStrategyEnabled string `json:"price_strategy_enabled"`
 }
 
-// NewPriceItem builds the wire item for a price stored in kopecks and returns
-// the value to remember as pushed. The platform takes the minor unit - "25.11"
-// is accepted and stored as 25.11, verified against a live BYN cabinet - so
-// nothing is rounded: a rouble rounded up is a kopeck, but a BYN rounded up on
-// a 2.53 item is eighteen percent of the price, charged to the buyer under the
-// seller's name. What we send is what we remember, so the next pass compares
-// like with like and the row does not flap between "needs push" and "pushed".
-// currency is the cabinet's trading currency - RUB for ozon.ru, BYN for ozon.by.
+// Ozon takes the minor unit: nothing is rounded, and we remember what we sent.
 func NewPriceItem(offerID string, kopecks int64, currency string) (PriceItem, int64) {
 	return PriceItem{
 		AutoActionEnabled:    "UNKNOWN",
@@ -249,8 +227,7 @@ type pricesResponse struct {
 	Result []ItemResult `json:"result"`
 }
 
-// SetPrices sends prices in a single call; splitting by kPriceBatchSize is the
-// caller's job, same contract as SetStocks.
+// Splitting by kPriceBatchSize is the caller's job, same contract as SetStocks.
 func (c *Client) SetPrices(items []PriceItem) ([]ItemResult, error) {
 	var resp pricesResponse
 	if err := c.Post("/v1/product/import/prices", pricesRequest{Prices: items}, &resp); err != nil {
@@ -284,9 +261,7 @@ type PostingProduct struct {
 	Quantity int    `json:"quantity"`
 }
 
-// Posting is an FBS posting. InProcessAt is a string, not a time.Time: an empty
-// or non-standard value in that field must not break parsing of the whole
-// answer - the date is here only to be shown to the owner.
+// InProcessAt stays a string: a bad date must not break parsing of the answer.
 type Posting struct {
 	PostingNumber string           `json:"posting_number"`
 	Status        string           `json:"status"`
@@ -294,8 +269,7 @@ type Posting struct {
 	Products      []PostingProduct `json:"products"`
 }
 
-// CreatedAt returns the platform's order time; on an unparsable date it returns
-// the zero time and the caller substitutes its own.
+// CreatedAt returns the zero time on an unparsable date; the caller substitutes.
 func (p Posting) CreatedAt() time.Time {
 	t, err := time.Parse(time.RFC3339, p.InProcessAt)
 	if err != nil {
@@ -316,10 +290,7 @@ type postingListResponse struct {
 // (v1/warehouse/list is already retired). Migrate on the first real posting,
 // when both shapes can be compared against actual data instead of guessed.
 //
-// ListPostings returns postings for a period. A posting without a
-// posting_number is not an "empty record" but a sign the response format has
-// drifted from ours: applying that silently would quietly lose a sale, hence an
-// error.
+// A posting without posting_number means the response format drifted: that is an error.
 func (c *Client) ListPostings(since, to time.Time) ([]Posting, error) {
 	var out []Posting
 	for page := range kMaxPostingPages {
@@ -363,8 +334,7 @@ type SellerInfo struct {
 	} `json:"company"`
 }
 
-// SellerInfo reports what the cabinet itself is: currency and country follow
-// from the legal entity the seller registered with, so they are read, not asked.
+// Currency and country follow from the cabinet's legal entity - read, not asked.
 func (c *Client) SellerInfo() (*SellerInfo, error) {
 	var resp SellerInfo
 	if err := c.Post("/v1/seller/info", struct{}{}, &resp); err != nil {
@@ -373,9 +343,7 @@ func (c *Client) SellerInfo() (*SellerInfo, error) {
 	return &resp, nil
 }
 
-// v2 answers without the "result" envelope the other methods use, and paginates
-// by cursor: v1 was retired ("obsolete method cannot be used", verified against
-// a live cabinet).
+// v2 has no "result" envelope and pages by cursor; v1 is retired.
 type warehouseListResponse struct {
 	Warehouses []Warehouse `json:"warehouses"`
 	HasNext    bool        `json:"has_next"`
@@ -401,8 +369,7 @@ func (c *Client) ListWarehouses() ([]Warehouse, error) {
 			return nil, err
 		}
 		out = append(out, resp.Warehouses...)
-		// The cabinet repeats the cursor on the last page, so has_next alone
-		// would loop forever on an empty account.
+		// The cabinet repeats the cursor on the last page, so has_next alone loops.
 		if !resp.HasNext || len(resp.Warehouses) == 0 {
 			return out, nil
 		}

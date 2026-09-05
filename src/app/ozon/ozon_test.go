@@ -40,8 +40,7 @@ func newTestHandlers(t *testing.T) (*Handlers, *database.Database) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	// A shop always has settings by the time a channel tab is opened, and its
-	// currency is what every price here is written in.
+	// A shop always has settings by the time a channel tab is opened.
 	if err := d.CreateSettings(&database.Settings{
 		ShopName: "лавка", Currency: database.ShopCurrencyRUB}); err != nil {
 		t.Fatal(err)
@@ -129,8 +128,7 @@ func TestCheckCountsCabinet(t *testing.T) {
 
 func TestCheckAndPublishRefuseWithoutCredentials(t *testing.T) {
 	h, _ := newTestHandlers(t)
-	// A body that is not empty: publishing refuses a selection of nothing before
-	// it ever looks at the keys, and that is not the refusal under test here.
+	// A non-empty body: an empty selection is refused before the keys are looked at.
 	for _, c := range []struct{ path, body string }{
 		{"/check", ""},
 		{"/publish", `{"product_ids":[1]}`},

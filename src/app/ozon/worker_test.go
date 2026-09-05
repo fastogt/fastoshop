@@ -17,8 +17,7 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// ozonMock is a cabinet accepting stocks and prices: it remembers the batches
-// and can answer like the platform on a bad day (429, an error on one article).
+// ozonMock remembers the batches and can answer like a bad day (429, item error).
 type ozonMock struct {
 	URL   string
 	calls chan struct{}
@@ -26,8 +25,7 @@ type ozonMock struct {
 	mu           sync.Mutex
 	batches      [][]StockItem
 	priceBatches [][]PriceItem
-	// order records which endpoints were hit and in what sequence - the pass has
-	// to poll orders before it pushes, and push stocks before prices.
+	// order records which endpoints were hit and in what sequence.
 	order        []string
 	status       int
 	priceStatus  int
@@ -35,12 +33,10 @@ type ozonMock struct {
 	itemErr      map[string]string
 	priceItemErr map[string]string
 	postings     []Posting
-	// postingsRaw replaces the /v3/posting/fbs/list answer wholesale - that is
-	// how we check behaviour on a format we did not expect.
+	// postingsRaw replaces the /v3/posting/fbs/list answer wholesale.
 	postingsRaw string
 	pollFilters []postingFilter
-	// offers is the cabinet's card list, needed by publication: linking matches
-	// products.sku against these offer_ids.
+	// offers is the cabinet's card list: linking matches products.sku to offer_id.
 	offers []string
 }
 
@@ -260,8 +256,7 @@ func newSyncTest(t *testing.T) (*Worker, *database.Database, *ozonMock) {
 	}
 	t.Cleanup(func() { _ = d.Close() })
 	m := newOzonMock(t)
-	// A real shop always has settings, and its currency is what prices are
-	// labelled with on the way out.
+	// A real shop always has settings; its currency labels the prices sent out.
 	if err := d.CreateSettings(&database.Settings{
 		ShopName: "лавка", Currency: database.ShopCurrencyRUB}); err != nil {
 		t.Fatal(err)
@@ -275,8 +270,7 @@ func newSyncTest(t *testing.T) (*Worker, *database.Database, *ozonMock) {
 	return w, d, m
 }
 
-// seedLinked creates a product with a stock and links it right away to the
-// cabinet card of the same name.
+// seedLinked creates a product with a stock and links it to the card of that name.
 func seedLinked(t *testing.T, d *database.Database, sku string, stock int) int64 {
 	t.Helper()
 	p := &database.Product{SKU: sku, Title: "Товар " + sku, Stock: stock}
@@ -322,9 +316,7 @@ func waitIdle(t *testing.T, w *Worker) {
 	t.Fatal("sync pass did not finish")
 }
 
-// TestPushFollowsLevelBothWays: the sync runs both ways - platform sales arrive
-// by polling, and a push upwards must not overwrite a sale we have not polled
-// yet.
+// A push upwards must not overwrite a platform sale we have not polled yet.
 func TestPushFollowsLevelBothWays(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 5)
@@ -404,8 +396,7 @@ func TestPushPerItemErrorIsIsolated(t *testing.T) {
 		t.Fatalf("error not recorded: %v %+v", err, bad)
 	}
 
-	// A row in backoff does not make the next selection, and neither does the
-	// healthy one (its level is already pushed), so there are no more calls.
+	// A row in backoff is not selected, and the healthy one is already pushed.
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 0 {
 		t.Fatalf("row in backoff retried immediately: %d/%d", pushed, failed)
 	}
@@ -430,8 +421,7 @@ func TestPushPerItemErrorIsIsolated(t *testing.T) {
 	}
 }
 
-// TestPushHonoursRetryAfter checks the recorded retry_at for real, hence a file
-// database: with ":memory:" a second connection gets its own empty database.
+// A file database: with ":memory:" a second connection gets its own empty one.
 func TestPushHonoursRetryAfter(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "shop.db")
 	d, err := database.Open(path)
@@ -440,8 +430,7 @@ func TestPushHonoursRetryAfter(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = d.Close() })
 	m := newOzonMock(t)
-	// A real shop always has settings, and its currency is what prices are
-	// labelled with on the way out.
+	// A real shop always has settings; its currency labels the prices sent out.
 	if err := d.CreateSettings(&database.Settings{
 		ShopName: "лавка", Currency: database.ShopCurrencyRUB}); err != nil {
 		t.Fatal(err)
@@ -471,10 +460,7 @@ func TestPushHonoursRetryAfter(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = raw.Close() }()
-	// CAST to TEXT: otherwise the driver parses a DATETIME column into a
-	// time.Time and hands it back in its own format, while what must be checked
-	// is exactly what lies in the database - the comparison against
-	// CURRENT_TIMESTAMP runs on that string.
+	// CAST to TEXT: the driver would parse a DATETIME column into its own format.
 	rows, err := raw.Query(
 		`SELECT offer_id, CAST(retry_at AS TEXT) FROM ozon_links ORDER BY offer_id`)
 	if err != nil {
@@ -526,8 +512,7 @@ func TestPushZeroForDeletedProduct(t *testing.T) {
 	if got := m.lastBatch(t); got[0].Stock != 0 {
 		t.Fatalf("want zero: %+v", got)
 	}
-	// The zero is sent - after that the link stays quiet instead of sending a
-	// zero every tick.
+	// The zero is sent once; after that the link stays quiet.
 	if pushed, _ := pass(t, w); pushed != 0 {
 		t.Fatal("zero pushed again")
 	}
@@ -542,14 +527,11 @@ func TestWorkerWakesOnStockChange(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// The mock signals a call before the worker writes the result to the
-	// database: leaving the test while a pass is in flight would close the
-	// database under its hands.
+	// Leaving the test while a pass is in flight would close the database under it.
 	defer waitIdle(t, w)
 	go w.Run(ctx)
 
-	// The tick is every 5 minutes; waiting for a call within a second is only
-	// possible through the wake channel.
+	// The tick is 5 minutes, so a call within a second can only come from the wake.
 	w.StockChanged()
 	select {
 	case <-m.calls:

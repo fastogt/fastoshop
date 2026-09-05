@@ -16,18 +16,12 @@ import (
 	"github.com/fastogt/fastoshop/app/i18n"
 )
 
-// YML is the Yandex.Market export format (yml_catalog): the standard export
-// of Bitrix, InSales, Tilda. A keyless source: the seller gives a link to the XML.
+// YML is the Yandex.Market export format (yml_catalog): Bitrix, InSales, Tilda.
 type YML struct {
 	URL string
-	// Data is the feed itself, when the owner uploads the file instead of
-	// hosting it. Our own tools write one too - a generator that has the
-	// catalogue in hand should hand over the format the shop already reads,
-	// not invent a flat one beside it.
+	// Data is the feed itself, when the owner uploads the file instead of hosting it.
 	Data []byte
-	// DefaultStock - the standard carries no quantity, only an availability flag,
-	// so the seller sets the stock as one number for the whole catalogue. Used
-	// for offers that state no count of their own.
+	// DefaultStock - the standard carries no quantity, only an availability flag.
 	DefaultStock int
 	// MaxBytes - body size ceiling; 0 means kMaxFeedBytes.
 	MaxBytes int64
@@ -43,8 +37,7 @@ const kMaxFeedBytes = 100 << 20
 
 func (y *YML) Name() string { return "yml" }
 
-// IsYML recognises an uploaded feed by its opening bytes, the way IsXLSX does.
-// A declaration is optional in XML, so the root element is what settles it.
+// An XML declaration is optional, so the root element is what settles it.
 func IsYML(raw []byte) bool {
 	head := raw
 	if len(head) > 512 {
@@ -56,9 +49,7 @@ func IsYML(raw []byte) bool {
 // Currency is only known after Fetch: the feed has to be parsed to see it.
 func (y *YML) Currency() string { return y.currency }
 
-// feedCurrency maps a YML code onto ours. RUR is the rouble spelling from the
-// early versions of the format and BYR the Belarusian rouble from before the
-// 2016 redenomination; both still show up in live feeds.
+// Live feeds still use the legacy codes RUR and pre-2016 BYR.
 func feedCurrency(raw string) string {
 	switch strings.ToUpper(strings.TrimSpace(raw)) {
 	case "RUB", "RUR":
@@ -87,16 +78,14 @@ type ymlOffer struct {
 	CurrencyID  string   `xml:"currencyId"`
 	CategoryID  string   `xml:"categoryId"`
 	Pictures    []string `xml:"picture"`
-	// Outside the standard: only a shop of ours puts a quantity in a feed. An
-	// empty element keeps the old behaviour for everyone else.
+	// Outside the standard: only a shop of ours puts a quantity in a feed.
 	Count      string     `xml:"count"`
 	Params     []ymlParam `xml:"param"`
 	Weight     string     `xml:"weight"`
 	Dimensions string     `xml:"dimensions"`
 }
 
-// param is the standard's own place for characteristics - colour, size,
-// material. Every exporter writes them: Bitrix, InSales, Tilda.
+// param is the standard's own place for characteristics; every exporter writes them.
 type ymlParam struct {
 	Name  string `xml:"name,attr"`
 	Unit  string `xml:"unit,attr"`
@@ -109,13 +98,10 @@ type ymlCategory struct {
 	Name     string `xml:",chardata"`
 }
 
-// kMaxCategoryDepth stops a feed whose parentId points in a circle from walking
-// forever. Ten levels is deeper than any live catalogue.
+// kMaxCategoryDepth stops a feed whose parentId points in a circle.
 const kMaxCategoryDepth = 10
 
-// path walks up the parents and returns the category as a path from the root.
-// A missing id yields an empty string: a product with no category is normal,
-// a crashed import is not.
+// A missing id yields an empty string: a product with no category is normal.
 func categoryPath(cats map[string]ymlCategory, id string) string {
 	var segments []string
 	for i := 0; i < kMaxCategoryDepth; i++ {
@@ -132,10 +118,7 @@ func categoryPath(cats map[string]ymlCategory, id string) string {
 	return database.CategoryPath(segments...)
 }
 
-// trimCommonRoot drops the segments every product shares. A feed's tree starts
-// at the site's own root - "Главная / Каталог товаров / …" in a Bitrix export -
-// and a level that holds the whole catalogue tells a buyer and a search engine
-// nothing. The leaf always survives: a shop selling one category must keep it.
+// A feed's tree starts at the site's root; the shared segments go, the leaf stays.
 func trimCommonRoot(items []Item) {
 	var common []string
 	first := true
@@ -168,9 +151,7 @@ func trimCommonRoot(items []Item) {
 	}
 }
 
-// each downloads the feed and yields offers one at a time. Parsing is streamed:
-// exports run to tens of megabytes, and xml.Unmarshal would hold both the
-// document and the tree in memory.
+// Parsing is streamed: exports run to tens of megabytes.
 func (y *YML) each(fn func(o *ymlOffer)) error {
 	y.categories = map[string]ymlCategory{}
 	limit := y.MaxBytes
@@ -194,8 +175,7 @@ func (y *YML) each(fn func(o *ymlOffer)) error {
 		}
 		body = resp.Body
 	}
-	// LimitedReader with one spare byte: when N runs out mid-document the
-	// decoder fails, and N == 0 tells truncation apart from real bad XML.
+	// One spare byte: N == 0 on a decoder failure tells truncation from bad XML.
 	lr := &io.LimitedReader{R: body, N: limit + 1}
 	dec := xml.NewDecoder(lr)
 	for {
@@ -214,9 +194,7 @@ func (y *YML) each(fn func(o *ymlOffer)) error {
 		if !ok {
 			continue
 		}
-		// <categories> comes before <offers> in the format, so by the time the
-		// first offer arrives the tree is complete. Only the map is kept in
-		// memory - hundreds of nodes against tens of megabytes of offers.
+		// <categories> comes before <offers>: the tree is complete by the first offer.
 		if se.Name.Local == "category" {
 			var c ymlCategory
 			if err := dec.DecodeElement(&c, &se); err != nil {
@@ -243,9 +221,7 @@ func (y *YML) each(fn func(o *ymlOffer)) error {
 	return nil
 }
 
-// stock prefers the feed's own number over the one the seller typed: a feed that
-// states a quantity per offer - ours does - carries the truth, and spreading one
-// number over the whole catalogue oversells everything that has less.
+// A per-offer quantity beats the seller's one number for the whole catalogue.
 func (y *YML) stock(o *ymlOffer) int {
 	if n, err := strconv.Atoi(strings.TrimSpace(o.Count)); err == nil && n >= 0 {
 		return n
@@ -253,14 +229,7 @@ func (y *YML) stock(o *ymlOffer) int {
 	return y.DefaultStock
 }
 
-// offerParams turns the feed's <param> list into ours. A nameless or empty param
-// is dropped rather than stored as a blank row on the card.
-//
-// The unit joins the caption - "Вес, кг" reads as well as "Вес: 1.5 кг" did and
-// leaves 1.5 a number a filter can compare. The unit is also what decides to
-// read the value as one: the feed stating a measure is the feed's own word that
-// the field is numeric, whereas the shape of the digits is a guess, and it is
-// the guess that turns an article number "007" into 7.
+// A stated unit joins the caption and is what makes the value numeric, never the digits.
 func offerParams(ps []ymlParam) []database.Param {
 	var out []database.Param
 	for _, p := range ps {
@@ -282,9 +251,7 @@ func offerParams(ps []ymlParam) []database.Param {
 	return out
 }
 
-// ymlWeight reads the standard's <weight>, stated in kilograms. Anything
-// unparseable is no weight at all: a number off by a thousand is worse than a
-// missing one, and it is silent.
+// The standard's <weight> is stated in kilograms.
 func ymlWeight(raw string) *int64 {
 	v, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
 	if err != nil || v <= 0 {
@@ -294,10 +261,7 @@ func ymlWeight(raw string) *int64 {
 	return &g
 }
 
-// ymlDimensions reads the standard's <dimensions>: length/width/height in
-// centimetres, slash-separated ("20.1/30.5/11"). All three or nothing - a
-// parcel with two sides is not a parcel, and a marketplace card refuses it just
-// as a delivery quote would.
+// <dimensions> is l/w/h in centimetres ("20.1/30.5/11"), all three or nothing.
 func ymlDimensions(raw string) (l, w, h *int64) {
 	parts := strings.Split(strings.TrimSpace(raw), "/")
 	if len(parts) != 3 {
@@ -321,9 +285,7 @@ func (y *YML) Fetch() ([]Item, error) {
 	y.currency = ""
 	var items []Item
 	err := y.each(func(o *ymlOffer) {
-		// The feed's currency is whatever its first offer quotes. A mixed feed is
-		// not importable: two currencies cannot share one price column and we
-		// hold no exchange rate.
+		// The first offer sets the feed's currency; a mixed feed is not importable.
 		c := feedCurrency(o.CurrencyID)
 		if c == "" && strings.TrimSpace(o.CurrencyID) != "" {
 			// A currency the shop does not deal in would land in the price as is.

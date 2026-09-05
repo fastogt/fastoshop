@@ -23,8 +23,7 @@ func jobState(t *testing.T, h *Handler) jobResponse {
 	return resp.Data
 }
 
-// One owner, one long task: the second start must be refused rather than run
-// alongside the first and fight it over the same rows.
+// One owner, one long task: a second start must be refused.
 func TestJobSlotIsSingle(t *testing.T) {
 	h := newTestHandler(t)
 
@@ -59,9 +58,7 @@ func TestJobSlotIsSingle(t *testing.T) {
 	}
 }
 
-// A job with several steps - what a fill becomes once more than photos can be
-// ticked - must show the earlier ones as finished and never claim a stopped run
-// completed everything.
+// Earlier steps show as finished, and a stopped run never claims a full bar.
 func TestJobStagesAdvanceAndStop(t *testing.T) {
 	h := newTestHandler(t)
 	if _, ok := h.job.start(kJobImport, []jobStage{
@@ -84,8 +81,7 @@ func TestJobStagesAdvanceAndStop(t *testing.T) {
 	}
 }
 
-// Nothing to download is not an error and must not take the slot: the owner can
-// press the button again straight away.
+// Nothing to download is not an error and must not take the slot.
 func TestBulkFillNothingToDo(t *testing.T) {
 	h := newTestHandler(t)
 	w := httptest.NewRecorder()

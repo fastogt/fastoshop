@@ -5,10 +5,7 @@ import (
 	"testing"
 )
 
-// The page has no switch on purpose: a shop that takes a name and a phone owes
-// it whether the owner ever opened the settings. The test guards that, and that
-// the shop's own name reaches the text - a policy naming somebody else is worse
-// than none.
+// The page has no switch: it is owed whether or not the owner opened the settings.
 func TestPrivacyAlwaysServed(t *testing.T) {
 	_, h := setup(t)
 

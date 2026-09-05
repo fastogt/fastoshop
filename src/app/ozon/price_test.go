@@ -37,8 +37,7 @@ func linkRow(t *testing.T, d *database.Database, id int64) database.OzonLinkRow 
 	return database.OzonLinkRow{}
 }
 
-// TestPriceOptIn is the core promise of the slice: a price we were not asked to
-// manage never leaves the shop.
+// A price we were not asked to manage never leaves the shop.
 func TestPriceOptIn(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 5)
@@ -85,9 +84,7 @@ func TestPriceOptIn(t *testing.T) {
 	}
 }
 
-// TestPriceKeepsKopecksWithoutFlapping: the platform takes the minor unit, so
-// 1288.50 goes as it stands. Remembering exactly what was sent is what keeps the
-// row from being "changed" on every pass.
+// The platform takes the minor unit, so 1288.50 goes as it stands.
 func TestPriceKeepsKopecksWithoutFlapping(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 1)
@@ -135,8 +132,7 @@ func TestPriceBatchesBy1000(t *testing.T) {
 	t.Logf("price batches: %v", sizes)
 }
 
-// TestPriceErrorsDoNotMixWithStock: two pushes share the row, so a complaint
-// about one of them must not erase what is known about the other.
+// Two pushes share the row: a complaint about one must not erase the other.
 func TestPriceErrorsDoNotMixWithStock(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 5)
@@ -172,8 +168,7 @@ func TestPriceErrorsDoNotMixWithStock(t *testing.T) {
 	}
 	m.failOffer("A", "склад не найден")
 	setStock(t, d, id, 3)
-	// One failure, not two: retry_at is shared, so the fresh stock backoff also
-	// postpones the price of the same row within this pass.
+	// retry_at is shared, so a fresh stock backoff also postpones the price.
 	if pushed, failed := pass(t, w); pushed != 0 || failed != 1 {
 		t.Fatalf("pass after a stock rejection: %d/%d", pushed, failed)
 	}
@@ -186,8 +181,6 @@ func TestPriceErrorsDoNotMixWithStock(t *testing.T) {
 	}
 }
 
-// TestPricesStopOnWholeStockCallFailure: a cabinet that is down does not get the
-// price batches of the same pass on top.
 func TestPricesStopOnWholeStockCallFailure(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 5)
@@ -202,8 +195,6 @@ func TestPricesStopOnWholeStockCallFailure(t *testing.T) {
 	}
 }
 
-// TestPriceCallFailureBacksOff: a dead prices call backs the whole batch off
-// instead of hammering the cabinet within the same pass.
 func TestPriceCallFailureBacksOff(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 5)
@@ -222,9 +213,7 @@ func TestPriceCallFailureBacksOff(t *testing.T) {
 	}
 }
 
-// TestPriceCurrencyBYN: an ozon.by cabinet belongs to a Belarusian entity, and
-// so does the shop in front of it - the shop's own currency is what labels the
-// price on the wire, because there is only one.
+// The shop's own currency labels the price on the wire; there is only one.
 func TestPriceCurrencyBYN(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 5)
@@ -243,8 +232,7 @@ func TestPriceCurrencyBYN(t *testing.T) {
 	}
 }
 
-// TestPassOrder pins the order the pass must keep: sales first (they lower our
-// stock), then stocks, then prices.
+// The pass order: sales first (they lower our stock), then stocks, then prices.
 func TestPassOrder(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	id := seedLinked(t, d, "A", 5)
@@ -329,8 +317,6 @@ func TestPriceEndpointValidation(t *testing.T) {
 	}
 }
 
-// TestSmokePriceSlice is the transcript of the whole slice end to end: link,
-// fill, push, edit, per-item rejection.
 func TestSmokePriceSlice(t *testing.T) {
 	h, d := newTestHandlers(t)
 	m := newOzonMock(t)
@@ -397,8 +383,7 @@ func decimal(minor int64) string {
 	return fmt.Sprintf("%d.%02d", minor/100, minor%100)
 }
 
-// The cabinet may not yet have an FBS warehouse - prices don't depend on it and
-// must go out, or the seller sees a silent "nothing happened".
+// Prices do not depend on an FBS warehouse and must go out without one.
 func TestPricesPushWithoutWarehouse(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	if err := d.SaveOzonSettings(&database.OzonSettings{
@@ -419,8 +404,7 @@ func TestPricesPushWithoutWarehouse(t *testing.T) {
 	}
 }
 
-// The tab's errors are read by the owner, so they come in the owner's language -
-// otherwise an English-language admin shows Russian text on every failure.
+// The tab's errors come in the owner's language.
 func TestErrorsFollowOwnerLanguage(t *testing.T) {
 	h, d := newTestHandlers(t)
 	if err := d.UpdateSettings(&database.Settings{
@@ -446,11 +430,7 @@ func TestErrorsFollowOwnerLanguage(t *testing.T) {
 	}
 }
 
-// TestPushNowIgnoresBackoff: the ticker waits out a failure, the button does
-// not. The owner presses "push now" right after fixing what the platform
-// refused - a wrong currency, say - and a backoff they cannot see answers
-// "0 sent, 0 failed", which is the same silence this tab has been cured of
-// everywhere else.
+// The ticker waits out a failure, the "push now" button does not.
 func TestPushNowIgnoresBackoff(t *testing.T) {
 	w, d, m := newSyncTest(t)
 	h := NewHandlers(d, w)

@@ -62,8 +62,7 @@ func TestCancellationReturnsStockOnce(t *testing.T) {
 	}
 }
 
-// The marketplace has already sold: refusing is not an option, and negative
-// stock on the storefront is worse than zero.
+// The marketplace has already sold: negative stock is worse than zero.
 func TestOversellFloorsAtZero(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")
@@ -81,8 +80,7 @@ func TestOversellFloorsAtZero(t *testing.T) {
 	}
 }
 
-// A sale for a barcode we never linked is recorded anyway: a blank is worse than
-// a warning the owner can act on.
+// A sale for a barcode we never linked is recorded anyway, as a warning.
 func TestUnknownBarcodeIsRecorded(t *testing.T) {
 	h, d, cab := newTest(t, card(1, "ART-1", "2000000000011"))
 	enable(t, d, "7")

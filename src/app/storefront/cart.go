@@ -24,9 +24,7 @@ const kCartCookie = "cart"
 // carts table keyed by a token stored in the cookie.
 const kMaxCartLines = 20
 
-// cartLine is everything we trust the buyer with: slug and quantity. Price,
-// title and availability are always re-read from the DB, otherwise editing the
-// cookie would change the order total.
+// The cookie is buyer-editable: price, title and stock are re-read from the DB.
 type cartLine struct {
 	Slug string `json:"slug"`
 	Qty  int    `json:"qty"`
@@ -84,10 +82,6 @@ type cartRowVM struct {
 	LineStr  string
 }
 
-// resolveCart re-reads every line from the DB and silently drops those whose
-// product was deleted or ran out: what no longer exists cannot be ordered. The
-// second return value flags that the cart contents changed and the cookie must
-// be rewritten.
 func (s *Storefront) resolveCart(lines []cartLine) ([]cartRowVM, int64, bool) {
 	rows := make([]cartRowVM, 0, len(lines))
 	var products []database.Product
@@ -137,10 +131,7 @@ func (s *Storefront) Cart(w http.ResponseWriter, r *http.Request) {
 		Ordered: r.URL.Query().Get("ordered") == "1"})
 }
 
-// cartSoldOut - the product ran out between rendering the cart and pressing
-// "Checkout". No order was created, so instead of redirecting to "thank you" we
-// show the same cart without the vanished line: the buyer sees exactly what
-// changed and confirms the rest themselves.
+// No order was created, so the buyer confirms the rest instead of seeing "thank you".
 func (s *Storefront) cartSoldOut(w http.ResponseWriter, r *http.Request, slug, title string) {
 	lines := make([]cartLine, 0, kMaxCartLines)
 	for _, l := range readCart(r) {
@@ -203,9 +194,6 @@ func (s *Storefront) CartAdd(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/cart", http.StatusSeeOther)
 }
 
-// CartUpdate handles the four things a row can do: less, more, a typed number
-// and remove. Buttons rather than "type 0 to delete": nobody guesses that, and
-// a cart is where a shop loses the sale it already had.
 func (s *Storefront) CartUpdate(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimSpace(r.FormValue("slug"))
 	qty, _ := strconv.Atoi(r.FormValue("qty"))
@@ -223,8 +211,6 @@ func (s *Storefront) CartUpdate(w http.ResponseWriter, r *http.Request) {
 			default:
 				l.Qty = qty
 			}
-			// Down to nothing is the same as removing the row - reached by the
-			// minus button, and still by a typed zero for anyone who tries.
 			if l.Qty < 1 {
 				continue
 			}
@@ -244,8 +230,7 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/cart", http.StatusSeeOther)
 		return
 	}
-	// One of the two is enough, but not neither: an order nobody can be reached
-	// about is a lost sale that looks like a sale.
+	// One contact is enough, but not none: an unreachable order is a lost sale.
 	if phone == "" && email == "" {
 		rows, total, _ := s.resolveCart(readCart(r))
 		s.renderCart(w, rows, total, pageVM{NoContact: true,
@@ -283,9 +268,7 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	writeCart(w, nil)
 	s.stockChanged()
-	// The order email goes to the owner, not the buyer, so it follows the owner's
-	// language - unlike the storefront around it, which speaks the language of
-	// the products.
+	// This email goes to the owner, so it uses the owner's language, not the product one.
 	lang := shop.Lang
 	body := fmt.Sprintf("%s%s: %s %s\n\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n\n%s/admin",
 		summary.String(), i18n.T(lang, i18n.KeyOrderTotal), priceStr(total), sign,
@@ -303,8 +286,6 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 		if err := mail.Send(st, subject, body); err != nil {
 			log.Warnf("order mail: %v", err)
 		}
-		// The buyer gets their copy when they left an address: a shop that takes
-		// an order and says nothing looks like a shop that lost it.
 		if email == "" {
 			return
 		}

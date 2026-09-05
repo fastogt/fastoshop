@@ -5,15 +5,13 @@ import (
 	"fmt"
 )
 
-// OrderItem - the working order line: a product reference and a quantity. Name
-// and price are deliberately absent; the orders.items_json snapshot keeps them.
+// OrderItem - the working order line; name and price live in the items_json snapshot.
 type OrderItem struct {
 	ProductID int64
 	Qty       int
 }
 
-// OutOfStockError carries the product the deduction tripped over, so the
-// storefront and the admin can name it to the buyer and the owner.
+// OutOfStockError carries the product the deduction tripped over, so it can be named.
 type OutOfStockError struct {
 	ProductID int64
 	Title     string
@@ -23,8 +21,7 @@ func (e *OutOfStockError) Error() string {
 	return fmt.Sprintf("out of stock: product %d (%s)", e.ProductID, e.Title)
 }
 
-// Name always yields something readable: the product may have been deleted
-// between rendering the cart and checkout, in which case the title is gone.
+// Name always yields something readable: the product may have been deleted.
 func (e *OutOfStockError) Name() string {
 	if e.Title == "" {
 		return "товар"
@@ -32,8 +29,7 @@ func (e *OutOfStockError) Name() string {
 	return e.Title
 }
 
-// takeStock deducts stock with a conditional UPDATE: a race between two buyers
-// for the last unit is resolved by the DB itself, the loser gets 0 rows.
+// takeStock deducts with a conditional UPDATE: the DB settles the race, loser gets 0.
 func takeStock(tx *sql.Tx, items []OrderItem) error {
 	for _, it := range items {
 		res, err := tx.Exec(
@@ -66,10 +62,7 @@ func returnStock(tx *sql.Tx, items []OrderItem) error {
 	return nil
 }
 
-// orderItems reads all lines before the first Exec: the transaction has a
-// single connection, and an open Rows must not be held while writing.
-// Deleted products (product_id IS NULL) drop out - there is nowhere to return
-// their stock.
+// orderItems reads every line before the first Exec: one connection, no open Rows.
 func orderItems(tx *sql.Tx, orderID int64) ([]OrderItem, error) {
 	rows, err := tx.Query(
 		`SELECT product_id, qty FROM order_items
@@ -89,9 +82,7 @@ func orderItems(tx *sql.Tx, orderID int64) ([]OrderItem, error) {
 	return out, rows.Err()
 }
 
-// CreateOrderWithStock creates the order and deducts stock in one transaction:
-// if even a single line falls short, neither the order nor any stock movement
-// remains. Returns *OutOfStockError in that case.
+// CreateOrderWithStock writes order and deduction in one tx; may fail *OutOfStockError.
 func (d *Database) CreateOrderWithStock(o *Order, items []OrderItem) error {
 	var id int64
 	err := d.withTx(func(tx *sql.Tx) error {

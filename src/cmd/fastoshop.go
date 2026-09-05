@@ -36,15 +36,11 @@ func expandHome(p string) string {
 	return p
 }
 
-// listen: a path starting with a slash is a unix socket, everything else is
-// a TCP address. The socket removes the question of handing out ports when
-// several independent instances live on one server.
 func listen(addr string) (net.Listener, error) {
 	if !strings.HasPrefix(addr, "/") {
 		return net.Listen("tcp", addr)
 	}
-	// systemd does not remove the socket after a process killed with SIGKILL -
-	// without this the restart would fail with "address already in use".
+	// systemd leaves the socket after a SIGKILL; without this restart hits EADDRINUSE.
 	if err := os.Remove(addr); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("stale socket: %w", err)
 	}
@@ -52,8 +48,7 @@ func listen(addr string) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Set the permissions explicitly: umask makes the socket inaccessible to
-	// the group, and nginx connects to it (the unit runs with Group=www-data).
+	// nginx connects to this socket as www-data; umask would hide it from the group.
 	if err := os.Chmod(addr, 0660); err != nil {
 		_ = ln.Close()
 		return nil, fmt.Errorf("socket perms: %w", err)
@@ -83,16 +78,14 @@ func run(cfg *config.Config) error {
 	h.LogPath = logPath
 	sf := storefront.New(db, cfg.Settings.BaseURL, uploadsDir)
 
-	// The stock sync always starts: settings are read on every pass, and
-	// enabling pushes from the admin must not require a service restart.
+	// Settings are read on every pass: enabling pushes must not require a restart.
 	syncCtx, stopSync := context.WithCancel(context.Background())
 	defer stopSync()
 	ozonWorker := ozon.NewWorker(db)
 	go ozonWorker.Run(syncCtx)
 	wbWorker := wb.NewWorker(db)
 	go wbWorker.Run(syncCtx)
-	// One signal, every channel: a sale on the storefront changes a level both
-	// platforms hold, and a channel that is not configured wakes to an empty pass.
+	// A sale changes stock both platforms hold; an unconfigured channel wakes to nothing.
 	stockChanged := func() {
 		ozonWorker.StockChanged()
 		wbWorker.StockChanged()
@@ -104,9 +97,7 @@ func run(cfg *config.Config) error {
 	r.Use(middleware.RealIP) //nolint:staticcheck // behind a trusted nginx reverse proxy
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.Recoverer)
-	// Must be here, not only on the storefront router: /admin* is registered for
-	// GET alone, and chi answers 405 to a HEAD of any page before the mounted
-	// storefront gets a say.
+	// Router-wide: /admin* is GET-only, so chi would 405 a HEAD before the storefront runs.
 	r.Use(storefront.HeadAsGet)
 
 	r.Route("/api", func(r chi.Router) {
@@ -169,18 +160,14 @@ func run(cfg *config.Config) error {
 		})
 	})
 
-	// FileServer on its own serves a directory listing: the names of all
-	// uploaded files are not something to show publicly.
+	// FileServer alone would serve a public directory listing of every uploaded file.
 	uploads := http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir)))
 	r.Handle("/uploads/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if strings.HasSuffix(req.URL.Path, "/") {
 			http.NotFound(w, req)
 			return
 		}
-		// The file name carries a random suffix and changes with the content
-		// (p<id>-<token>.jpg), so it can be cached forever. Without this
-		// header a shopper re-downloads every catalog photo on each page -
-		// on a live shop that is megabytes of wasted traffic.
+		// The name changes with the content (p<id>-<token>.jpg), so it can be cached forever.
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		uploads.ServeHTTP(w, req)
 	}))
@@ -241,10 +228,7 @@ func withDB(cfg *config.Config, fn func(dbPath string, db *database.Database) er
 	return fn(dbPath, db)
 }
 
-// resetPassword is the recovery path for when the owner forgot the password:
-// a self-hosted shop has no support desk, and SMTP is optional and usually
-// unconfigured exactly when it is needed most, so recovery lives in the
-// binary, not in an email.
+// Recovery lives in the binary: there is no support desk, and SMTP is optional.
 func resetPassword(cfg *config.Config) error {
 	return withDB(cfg, func(dbPath string, db *database.Database) error {
 		s, err := db.GetSettings()
@@ -255,20 +239,14 @@ func resetPassword(cfg *config.Config) error {
 		if err != nil {
 			return fmt.Errorf("reset password: %w", err)
 		}
-		// Print the database and owner before the password: on a server with
-		// several instances "wrong config" otherwise goes unnoticed.
+		// Database and owner first: on a multi-instance server a wrong config goes unnoticed.
 		fmt.Printf("Database: %s\nOwner: %s\nNew password: %s\nLog in at /admin with it, then change it under Profile.\n",
 			dbPath, s.OwnerEmail, pw)
 		return nil
 	})
 }
 
-// inviteOwner creates the owner and prints a one-time link instead of a
-// password: a password would have to be sent by email, where it would keep
-// living, while the link burns on first use and expires within a day. The
-// shop cannot send emails - SMTP is configured by the owner, who doesn't
-// exist yet - so the link goes to stdout and provisioning delivers it
-// through its own channel.
+// The invite link goes to stdout: there is no owner yet, so the shop cannot email it.
 func inviteOwner(cfg *config.Config, email string) error {
 	return withDB(cfg, func(dbPath string, db *database.Database) error {
 		if _, err := db.CreateOwner(email); err != nil {
@@ -284,9 +262,7 @@ func inviteOwner(cfg *config.Config, email string) error {
 	})
 }
 
-// createOwner creates the owner at provisioning time: until then a fresh
-// instance serves an open setup wizard on a public address, and whoever
-// opens it first becomes the owner.
+// Without an owner a fresh instance serves an open setup wizard to whoever finds it.
 func createOwner(cfg *config.Config, email string) error {
 	return withDB(cfg, func(dbPath string, db *database.Database) error {
 		pw, err := db.CreateOwner(email)

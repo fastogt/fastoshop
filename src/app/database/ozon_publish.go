@@ -5,9 +5,7 @@ import (
 	"strings"
 )
 
-// OzonCandidate is a shop product as the channel tab sees it: what it is called,
-// whether it is already published, and what was last pushed for it. Published is
-// the presence of a link row - the link set IS the published set.
+// OzonCandidate is a shop product for the channel tab; a link row IS published.
 type OzonCandidate struct {
 	ProductID int64
 	SKU       string
@@ -18,21 +16,14 @@ type OzonCandidate struct {
 	Published bool
 }
 
-// CandidateFilter narrows the publication table to the rows the owner can act
-// on. Which state a product is in depends on the platform's article list, and
-// that list lives in the tab's one-per-open cabinet call rather than in our
-// database - so the caller passes the ids it learned there instead of the
-// database trying to answer a question it cannot see.
+// CandidateFilter narrows publication rows; the caller passes ids from the cabinet call.
 type CandidateFilter struct {
 	Q string
-	// IDs, when set, is the whole result: "ready to link" is exactly the set
-	// the cabinet call returned.
+	// IDs, when set, is the whole result: the set the cabinet call returned.
 	IDs []int64
-	// ExcludeIDs removes those same ready ids from the unlinked rows, which is
-	// what "no card" means.
+	// ExcludeIDs removes those ready ids from the unlinked rows.
 	ExcludeIDs []int64
-	// Linked filters on our own link table: nil is any, true is linked, false
-	// is not.
+	// Linked filters our own link table: nil any, true linked, false not.
 	Linked *bool
 }
 
@@ -69,10 +60,7 @@ func (f CandidateFilter) clauses() (string, []any) {
 	return " AND " + strings.Join(conds, " AND "), args
 }
 
-// candidateWhere joins the owner's search to the state filter. The search half
-// is the same builder the product table uses, so a word typed here matches what
-// it would match there; only the category column needs the alias, the rest are
-// unambiguous because the links table has no columns of those names.
+// candidateWhere reuses the product search builder; only category needs the p. alias.
 func candidateWhere(f CandidateFilter) (string, []any) {
 	where, args := productWhere("", f.Q, AnySupplier, false)
 	where = strings.ReplaceAll(where, "category=", "p.category=")
@@ -81,17 +69,13 @@ func candidateWhere(f CandidateFilter) (string, []any) {
 		return where, args
 	}
 	if where == "" {
-		// No search: the filter becomes the whole clause, so its leading AND
-		// has to give way to WHERE.
+		// No search: the filter is the whole clause, so its leading AND becomes WHERE.
 		return " WHERE " + strings.TrimPrefix(extra, " AND "), extraArgs
 	}
 	return where + extra, append(args, extraArgs...)
 }
 
-// CountOzonCandidates counts what the same filter would list. The paged table
-// needs it to draw its page numbers, and it has to agree with the list exactly
-// - counting all products while listing a filtered subset is how a table grows
-// pages that turn out empty.
+// CountOzonCandidates must count the same filter the list uses, or pages come out empty.
 func (d *Database) CountOzonCandidates(f CandidateFilter) (int, error) {
 	where, args := candidateWhere(f)
 	var n int
@@ -101,9 +85,7 @@ func (d *Database) CountOzonCandidates(f CandidateFilter) (int, error) {
 	return n, err
 }
 
-// ListOzonCandidates returns a page of shop products with their publication
-// state. Hidden products are included on purpose: a product can be off the
-// storefront and still sold on the marketplace.
+// ListOzonCandidates includes hidden products: off the storefront, still sold on Ozon.
 func (d *Database) ListOzonCandidates(f CandidateFilter, limit, offset int) ([]OzonCandidate, error) {
 	where, args := candidateWhere(f)
 	args = append(args, limit, offset)
@@ -128,16 +110,14 @@ func (d *Database) ListOzonCandidates(f CandidateFilter, limit, offset int) ([]O
 	return out, rows.Err()
 }
 
-// OzonLinkState is a link as unpublishing sees it: the article to zero out on
-// the platform and the level we last pushed there.
+// OzonLinkState is a link as unpublishing sees it: article and last pushed level.
 type OzonLinkState struct {
 	ProductID   int64
 	OfferID     string
 	StockPushed int64
 }
 
-// OzonLinksByProducts returns the link rows for the given products, so an unlink
-// can tell what still has to be zeroed on the platform before it disappears.
+// OzonLinksByProducts returns link rows so an unlink knows what to zero on Ozon.
 func (d *Database) OzonLinksByProducts(ids []int64) ([]OzonLinkState, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -186,9 +166,6 @@ func (d *Database) ProductsByIDs(ids []int64) ([]Product, error) {
 }
 
 // OzonSKUState is every product's article and whether it is already linked.
-// The tab joins this against the cabinet's own article list: counting on the
-// hundred rows currently on screen would answer a question nobody asked, while
-// "12 of 24 000 can be published" is the one that explains the tab.
 //
 // ponytail: the whole catalogue in memory - 24 000 short strings read once when
 // the tab opens. An IN (…) against the platform's list would need thousands of
@@ -212,8 +189,7 @@ func (d *Database) OzonSKUState() (map[string]int64, map[string]bool, error) {
 			return nil, nil, err
 		}
 		ids[sku] = id
-		// A duplicate article keeps the linked side: the tab must not offer to
-		// link an article that already is.
+		// A duplicate article keeps the linked side.
 		linked[sku] = linked[sku] || isLinked
 	}
 	return ids, linked, rows.Err()

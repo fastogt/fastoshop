@@ -2,8 +2,7 @@ package database
 
 import "testing"
 
-// Every currency the profile offers must be storable and have a sign: a shop
-// saving "PLN" and then showing "₽" would misprice its whole catalogue.
+// Every currency the profile offers must be storable and have a sign of its own.
 func TestShopCurrencies(t *testing.T) {
 	d, _ := OpenInMemory()
 	defer func() { _ = d.Close() }()
@@ -30,9 +29,6 @@ func TestShopCurrencies(t *testing.T) {
 	}
 }
 
-// The counters reach the storefront only through settings, and a shop that
-// already has data gets the columns by ALTER - so both the round-trip and the
-// upgrade of an older database are checked here.
 func TestSEOSettings(t *testing.T) {
 	d, _ := OpenInMemory()
 	defer func() { _ = d.Close() }()

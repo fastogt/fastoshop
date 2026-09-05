@@ -10,18 +10,12 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// Product feeds are the storefront's second traffic channel: the same catalogue
-// the crawler sees on the pages, packaged for Yandex Tovary / Direct (YML) and
-// Google Merchant Center (RSS 2.0). The owner pastes the URL into the
-// provider's cabinet once; the provider re-fetches on its own schedule.
 // ponytail: rendered per request like the sitemap; pre-generate when a real
 // crawler makes that hurt.
 
-// Both providers cap the pictures per offer at around ten; sending more only
-// gets the tail ignored.
+// Both providers cap the pictures per offer at around ten; the tail is ignored.
 const kMaxFeedPictures = 10
 
-// kFeedCatchAllCategory names the YML category for products without one:
 // <categoryId> is mandatory per offer. Product language, like the storefront.
 const kFeedCatchAllCategory = "Товары"
 
@@ -48,14 +42,9 @@ type ymlOffer struct {
 	CategoryID  int      `xml:"categoryId"`
 	Pictures    []string `xml:"picture"`
 	Description string   `xml:"description,omitempty"`
-	// Not part of the YML standard, which carries availability as a flag and no
-	// quantity at all. Yandex ignores elements it does not know, and our own
-	// importer reads this one - without it a shop copied from another instance
-	// arrives with one made-up stock level for the whole catalogue.
+	// Not YML standard; our importer reads it and Yandex ignores unknown elements.
 	Count int `xml:"count"`
-	// A feed without a parcel size is an advertising feed: Direct never asks
-	// how big the box is, a marketplace refuses the card without it. Kilograms
-	// and centimetres are what YML states; we store grams and millimetres.
+	// YML states kilograms and centimetres; we store grams and millimetres.
 	Weight     string     `xml:"weight,omitempty"`
 	Dimensions string     `xml:"dimensions,omitempty"`
 	Params     []ymlParam `xml:"param,omitempty"`
@@ -92,11 +81,9 @@ type gmcItem struct {
 	Availability string   `xml:"g:availability"`
 	Condition    string   `xml:"g:condition"`
 	ProductType  string   `xml:"g:product_type,omitempty"`
-	// Merchant Center matches an offer against the catalogue by brand; without
-	// one a listing competes in fewer places and some categories refuse it.
+	// Merchant Center matches offers by brand; some categories refuse one without it.
 	Brand string `xml:"g:brand,omitempty"`
-	// Merchant Center quotes delivery from it; without a weight it quotes from
-	// the account default, which is one number for a catalogue of every size.
+	// Without a weight Merchant Center quotes delivery from the account default.
 	ShippingWeight string `xml:"g:shipping_weight,omitempty"`
 }
 
@@ -113,9 +100,7 @@ type gmcFeed struct {
 	Channel gmcChannel `xml:"channel"`
 }
 
-// feedData is the shared fetch for both feeds: the visible catalogue, all
-// photos in one query, and the shop currency with the same RUB fallback the
-// price sign uses - s.shop() can return settings with an empty currency.
+// s.shop() can return an empty currency; the RUB fallback matches the price sign.
 func (s *Storefront) feedData() ([]database.Product, map[int64][]string, string, error) {
 	products, err := s.db.ListVisibleProductsPage(database.CatalogFilter{}, -1, 0)
 	if err != nil {
@@ -151,8 +136,7 @@ func feedWeightKG(grams *int64) string {
 	return strconv.FormatFloat(float64(*grams)/1000, 'f', -1, 64)
 }
 
-// All three or nothing: a box stated as two sides is not a box, and a partial
-// value reads to the receiving side as a wrong one rather than a missing one.
+// All three or nothing: a partial box reads to the receiver as wrong, not missing.
 func feedDimensionsCM(l, w, h *int64) string {
 	if l == nil || w == nil || h == nil || *l <= 0 || *w <= 0 || *h <= 0 {
 		return ""
@@ -163,8 +147,7 @@ func feedDimensionsCM(l, w, h *int64) string {
 	return cm(*l) + "/" + cm(*w) + "/" + cm(*h)
 }
 
-// The owner's choice of what a buyer sees holds here too: a marketplace shows
-// these in the card, so the same checkboxes decide it.
+// A marketplace shows these in the card, so the owner's hidden-param choice holds.
 func feedParams(params []database.Param, hidden map[string]bool) []ymlParam {
 	out := make([]ymlParam, 0, len(params))
 	for _, p := range params {
@@ -198,11 +181,7 @@ func (s *Storefront) YML(w http.ResponseWriter, r *http.Request) {
 	}
 	catIDs := make(map[string]int, len(cats))
 	categories := make([]ymlCategory, 0, len(cats)+1)
-	// A segment per element, tied by parentId. Naming one element after the whole
-	// path is what a flat list forces, and it costs the tree twice: Yandex reads
-	// a shop of one level, and our own import - a feed of ours is a valid import
-	// source - rebuilds the path as a single name with the separator rewritten,
-	// so a copied catalogue lands beside the tree instead of inside it.
+	// One element per segment tied by parentId: a full-path name flattens the tree.
 	var ensure func(path string) int
 	ensure = func(path string) int {
 		if id, ok := catIDs[path]; ok {

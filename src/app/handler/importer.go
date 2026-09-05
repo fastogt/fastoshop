@@ -20,21 +20,14 @@ type importRequest struct {
 	Token        string `json:"token"`
 	URL          string `json:"url"`
 	DefaultStock int    `json:"default_stock"`
-	// Raw file for the csv source, base64: the browser sends the bytes as they
-	// are so the server can tell UTF-8 from cp1251 itself. Decoding in the client
-	// would put that logic where it cannot be tested.
+	// Raw base64: the server tells UTF-8 from cp1251 itself.
 	FileBase64 string `json:"file_base64"`
-	// Supplier group the import belongs to. Empty means the owner's own goods,
-	// which no feed touches - so an import into it is refused.
+	// Empty means the owner's own goods, which no feed touches: refused on import.
 	Supplier string `json:"supplier"`
-	// Multiplier from the source price to the shelf price. 0 means the client
-	// did not send one - keep whatever the shop already uses.
+	// 0 means the client sent none: keep whatever the shop already uses.
 	Coefficient float64 `json:"coefficient"`
 }
 
-// ImportTemplate hands back the spreadsheet the owner fills in. Ozon does the
-// same in its cabinet, and for a good reason: a fixed format beats guessing at
-// someone's layout.
 func (h *Handler) ImportTemplate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="fastoshop-template.csv"`)
@@ -45,8 +38,6 @@ type suppliersResponse struct {
 	Suppliers []string `json:"suppliers"`
 }
 
-// Suppliers feeds the group picker in the import form: the owner either reuses a
-// group or types a new one, the same way a mailing list is chosen on upload.
 func (h *Handler) Suppliers(w http.ResponseWriter, r *http.Request) {
 	list, err := h.db.Suppliers()
 	if err != nil {
@@ -81,9 +72,7 @@ func makeSource(req importRequest) (importer.Source, bool) {
 		if err != nil || len(raw) == 0 {
 			return nil, false
 		}
-		// One file field, three formats: the owner uploads what they have, and
-		// each is recognised by its own bytes rather than by a radio button
-		// nobody wants to think about.
+		// One file field, three formats, each recognised by its own bytes.
 		if importer.IsXLSX(raw) {
 			return &importer.XLSX{Data: raw}, true
 		}
@@ -100,10 +89,7 @@ func makeSource(req importRequest) (importer.Source, bool) {
 	return nil, false
 }
 
-// ImportCheck is the "Check" button: it validates the credentials and answers
-// what the import would change. Counts plus outliers rather than a full listing:
-// the owner decides on "120 new, 40 gone, this one is 80% dearer", not on three
-// thousand rows.
+// Counts plus outliers rather than a full listing of every row.
 func (h *Handler) ImportCheck(w http.ResponseWriter, r *http.Request) {
 	var req importRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -141,8 +127,7 @@ func (h *Handler) ImportCheck(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, diff)
 }
 
-// coefficient resolves what the client sent against what the shop remembers:
-// an absent value means "keep using the shop's".
+// An absent value means "keep using the shop's".
 func (h *Handler) coefficient(w http.ResponseWriter, sent float64) (float64, bool) {
 	c := sent
 	if c == 0 {
@@ -159,10 +144,7 @@ func (h *Handler) coefficient(w http.ResponseWriter, sent float64) (float64, boo
 	return c, true
 }
 
-// ImportRun starts the transfer and returns at once: answering only when the
-// whole catalogue is in would run into nginx's sixty-second proxy read timeout,
-// and 24 000 products walk right up to that line. Progress is polled from
-// GET /api/job.
+// Returns at once: a full import walks past nginx's 60 s proxy read timeout.
 func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 	var req importRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -178,10 +160,7 @@ func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// Not remembered: a run's coefficient belongs to that run. A shop that takes
-	// catalogues from several suppliers converts one of them from another
-	// currency, and storing that number as the shop's would reprice everybody
-	// else's goods on their next import.
+	// Not remembered: a run's coefficient belongs to that run, not to the shop.
 	supplier := strings.TrimSpace(req.Supplier)
 	if supplier == "" {
 		httpjson.WriteBadRequest(w, h.msg(i18n.KeySupplierRequired))
@@ -193,20 +172,17 @@ func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteBadRequest(w, h.msg(i18n.KeyJobBusy))
 		return
 	}
-	// The source keeps the cabinet keys in memory for as long as the job runs and
-	// no longer - the admin promises they are never stored.
+	// The cabinet keys live in memory only while the job runs: they are never stored.
 	go func() {
 		res, err := importer.Run(src, h.db, supplier, coefficient,
 			func(stage string, done, total int) {
 				h.job.progress(stage, done, total, nil)
 			})
-		// Remembered so next week's refresh is one button. Only the feed link: the
-		// cabinet keys stay unsaved.
+		// Only the feed link is saved; the cabinet keys stay unsaved.
 		if err == nil && req.Source == "yml" {
 			err = h.db.SaveFeed(&database.Feed{URL: req.URL, Supplier: supplier})
 		}
-		// The job stores plain text for the admin, so the owner's language is
-		// applied here, at the last point the error is still typed.
+		// The job stores plain text, so the error is translated while still typed.
 		if err != nil {
 			err = errors.New(i18n.Localize(h.db.Lang(), err))
 		}
@@ -220,8 +196,6 @@ type feedResponse struct {
 	Supplier string `json:"supplier"`
 }
 
-// Feed tells the admin whether a saved feed exists, so the tab can offer the
-// refresh button instead of an empty form.
 func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	f, err := h.db.GetFeed()
 	if err != nil {
@@ -235,7 +209,6 @@ func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteOK(w, feedResponse{URL: f.URL, Supplier: f.Supplier})
 }
 
-// RecomputePrices re-derives every imported shelf price from the source price.
 // Prices the owner typed are left alone: a rate change must not undo their work.
 func (h *Handler) RecomputePrices(w http.ResponseWriter, r *http.Request) {
 	var req recomputeRequest

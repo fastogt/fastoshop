@@ -1,5 +1,4 @@
-// Package app holds what the binary needs but no feature slice owns - today,
-// the logging setup shared with our other services.
+// Package app holds what the binary needs but no feature slice owns.
 package app
 
 import (
@@ -12,12 +11,10 @@ import (
 	"github.com/fastogt/fastoshop/app/version"
 )
 
-// kMaxLogFileSize is the ceiling the other services use: at startup a file past
-// it is dropped and started again.
+// kMaxLogFileSize: at startup a file past this is dropped and started again.
 const kMaxLogFileSize = 10 * 1024 * 1024
 
-// ProjectFormatter is the line format of our other services: time, project,
-// level, message.
+// ProjectFormatter matches our other services: time, project, level, message.
 type ProjectFormatter struct {
 	log.TextFormatter
 }
@@ -39,11 +36,7 @@ func (f *ProjectFormatter) Format(entry *log.Entry) ([]byte, error) {
 		strings.ToUpper(entry.Level.String()), entry.Message), nil
 }
 
-// SetupLogging sends the log to its file and returns the path actually used, so
-// the admin serves exactly what the logger writes. The service is a daemon: a
-// log that stays on stdout reaches journald, and the shop owner has no shell.
-// A file that cannot be opened is not fatal - a shop must still start - and then
-// the returned path is empty and the admin says there is no log.
+// SetupLogging returns the path actually used, or "" when the file cannot be opened.
 func SetupLogging(logLevel, logPath string) string {
 	level, err := log.ParseLevel(logLevel)
 	if err != nil {
