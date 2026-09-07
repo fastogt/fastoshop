@@ -255,7 +255,8 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	sign := shop.Sign()
 	raw, _ := json.Marshal(items)
 	o := &database.Order{Name: name, Phone: phone, Email: email,
-		Comment: strings.TrimSpace(r.FormValue("comment")), ItemsJSON: string(raw)}
+		Comment: strings.TrimSpace(r.FormValue("comment")), ItemsJSON: string(raw),
+		Source: sourceOf(r)}
 	if err := s.db.CreateOrderWithStock(o, stock); err != nil {
 		var oos *database.OutOfStockError
 		if errors.As(err, &oos) {

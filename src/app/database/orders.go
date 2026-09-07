@@ -12,6 +12,8 @@ type Order struct {
 	// At least one of Phone and Email is always filled.
 	Email   string `json:"email"`
 	Comment string `json:"comment"`
+	// First touch, one line: "google.com /p/basket" or "direct".
+	Source string `json:"source"`
 	// The snapshot stays on the server: the admin receives it parsed.
 	ItemsJSON string    `json:"-"`
 	Status    string    `json:"status"`
@@ -21,8 +23,8 @@ type Order struct {
 // CreateOrder leaves stock alone; the storefront uses CreateOrderWithStock instead.
 func (d *Database) CreateOrder(o *Order) error {
 	res, err := d.db.Exec(
-		`INSERT INTO orders (name, phone, email, comment, items_json) VALUES (?, ?, ?, ?, ?)`,
-		o.Name, o.Phone, o.Email, o.Comment, o.ItemsJSON)
+		`INSERT INTO orders (name, phone, email, comment, items_json, source) VALUES (?, ?, ?, ?, ?, ?)`,
+		o.Name, o.Phone, o.Email, o.Comment, o.ItemsJSON, o.Source)
 	if err != nil {
 		return err
 	}
@@ -90,12 +92,12 @@ func (d *Database) ListOrdersPage(status, sort string, desc bool, limit, offset 
 		args = append(args, status)
 	}
 	args = append(args, limit, offset)
-	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, created_at
+	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, source, created_at
 		 FROM orders`+where+orderBy(kOrderSortable, sort, desc)+` LIMIT ? OFFSET ?`, args...)
 }
 
 func (d *Database) ListOrders() ([]Order, error) {
-	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, created_at
+	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, source, created_at
 		 FROM orders ORDER BY created_at DESC, id DESC`)
 }
 
@@ -109,7 +111,7 @@ func (d *Database) scanOrders(query string, args ...any) ([]Order, error) {
 	for rows.Next() {
 		var o Order
 		if err := rows.Scan(&o.ID, &o.Name, &o.Phone, &o.Email, &o.Comment, &o.ItemsJSON,
-			&o.Status, &o.CreatedAt); err != nil {
+			&o.Status, &o.Source, &o.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, o)

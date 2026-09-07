@@ -80,6 +80,7 @@ func HeadAsGet(next http.Handler) http.Handler {
 func (s *Storefront) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(HeadAsGet)
+	r.Use(s.TrackSource)
 	r.Get("/", s.Index)
 	r.Get("/p/{slug}", s.Product)
 	r.Get("/cart", s.Cart)

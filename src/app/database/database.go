@@ -173,6 +173,10 @@ func (d *Database) migrate() error {
 		comment    TEXT NOT NULL DEFAULT '',
 		items_json TEXT NOT NULL,
 		status     TEXT NOT NULL DEFAULT 'new', -- new|done|cancelled
+		-- Where the buyer came from, taken at their first request: the referer
+		-- at checkout is always our own /cart. Empty for orders placed before
+		-- this existed, 'direct' for someone who typed the address.
+		source     TEXT NOT NULL DEFAULT '',
 		-- 0 for orders placed before stock accounting existed: cancelling them
 		-- must not return to the warehouse what was never taken from it.
 		stock_applied INTEGER NOT NULL DEFAULT 0,

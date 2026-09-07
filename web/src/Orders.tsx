@@ -31,6 +31,8 @@ const kText = {
   cardTitle: { ru: "Заказ №{n}", en: "Order #{n}" },
   cardSku: { ru: "Артикул", en: "SKU" },
   cardComment: { ru: "Комментарий покупателя", en: "Buyer's comment" },
+  cardSource: { ru: "Откуда пришёл", en: "Came from" },
+  sourceDirect: { ru: "Прямой заход", en: "Direct" },
   cardBuyer: { ru: "Покупатель", en: "Buyer" },
   cardPlaced: { ru: "Оформлен", en: "Placed" },
   cardGone: {
@@ -349,6 +351,15 @@ export default function Orders() {
               <div className="bg-surface rounded p-3">
                 <div className="label">{t("cardComment")}</div>
                 <p className="whitespace-pre-line">{card.comment}</p>
+              </div>
+            )}
+
+            {card.source && (
+              <div className="bg-surface rounded p-3">
+                <div className="label">{t("cardSource")}</div>
+                <p className="break-all">
+                  {card.source === "direct" ? t("sourceDirect") : card.source}
+                </p>
               </div>
             )}
 

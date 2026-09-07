@@ -214,6 +214,9 @@ export interface Order {
   phone: string;
   email: string;
   comment: string;
+  // First touch: "google.com /p/basket", "direct", or empty for orders placed
+  // before the shop started recording it.
+  source: string;
   items: OrderItem[];
   total: number;
   // The stored snapshot could not be read: the row needs a human, and its total
