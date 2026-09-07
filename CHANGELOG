@@ -1,3 +1,9 @@
+1.49.0 / September 7, 2026
+[Alexandr Topilski]
+- Every order now records where the buyer came from. The referer at checkout is always the shop's own cart page, because the buyer has walked the catalogue by then, so the first touch is kept from their very first request and read back when the order is placed. The order card in the admin panel shows the referring site and the page the visitor landed on, or says the visit was direct
+- This works without Metrika or Google Analytics: it runs on every shop whether or not a counter was ever configured, and the answer sits in the order rather than in somebody else's dashboard
+- The privacy policy says so: the referring site and the landing page are now kept next to the order, and the page describes it
+
 1.48.1 / September 5, 2026
 [Alexandr Topilski]
 - `base_url` has no default any more. It is the address the shop is reached at from outside, and there is no value worth guessing: a shop that started on a guessed localhost worked, and wrote that address into the sitemap, into every canonical and into the invitation link, where nothing looks broken until a search engine has read it. A config without the field now stops the service and says which field is missing. `host`, `log_level` and `database` describe local behaviour and keep their defaults
