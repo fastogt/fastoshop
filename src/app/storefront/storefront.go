@@ -222,7 +222,9 @@ type pageVM struct {
 	Category   string
 	// The owner's own words: its first sentences become the page description.
 	CategoryText string
-	Crumbs       []crumbVM
+	// The description split into paragraphs; see paragraphs().
+	DescParas []string
+	Crumbs    []crumbVM
 	// The position the product itself takes in BreadcrumbList, after its categories.
 	CrumbsEnd  int
 	Children   []categoryVM
@@ -413,6 +415,23 @@ func filterLinks(f database.CatalogFilter) []filterVM {
 }
 
 // Whole sentences up to the length a snippet shows, so the tail is never broken.
+// paragraphs splits a description on its line breaks, one paragraph per line.
+// Suppliers structure a description two different ways - a blank line between
+// paragraphs, or a break after every sentence and no blank lines at all - and a
+// single rule has to read both, so empty lines are dropped rather than kept as
+// separators. Which line is a heading is deliberately not guessed: only the text
+// itself knows, and inventing that structure on a seller's words is worse than
+// leaving them plain.
+func paragraphs(text string) []string {
+	var out []string
+	for _, line := range strings.Split(text, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
 func metaFrom(text string) string {
 	text = strings.Join(strings.Fields(strings.ReplaceAll(text, "\n", " ")), " ")
 	if len([]rune(text)) <= 160 {
@@ -637,6 +656,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		SchemaName:      clipName(p.Title),
 		OrderLinks:      orderLinks(shop, p, s.baseURL+"/p/"+p.Slug),
 		MetaDescription: metaFrom(p.Description),
+		DescParas:       paragraphs(p.Description),
 		Specs:           specs(p, s.hiddenParams()),
 		CartCount:       cartCount(r)}
 	data.WeightG, data.LengthMM = value(p.WeightG), value(p.LengthMM)

@@ -131,10 +131,10 @@
   </div>
   {{/* Full width, below all three columns: a description belongs to the product,
        not to the buy box. */}}
-  {{if .P.Description}}
+  {{if .DescParas}}
   <div class="desc">
     <h3>Описание</h3>
-    {{.P.Description}}
+    {{range .DescParas}}<p>{{.}}</p>{{end}}
   </div>
   {{end}}
 </article>

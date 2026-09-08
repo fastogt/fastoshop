@@ -1634,3 +1634,23 @@ func TestProductShowsCharacteristics(t *testing.T) {
 		t.Error("вместе с ней пропали остальные")
 	}
 }
+
+// Suppliers structure a description two ways, and one rule has to read both: a
+// blank line between paragraphs, or a break after every sentence with no blank
+// lines anywhere. Neither may come out as a single ragged block.
+func TestDescriptionParagraphs(t *testing.T) {
+	ozonStyle := "Черные кроссовки бренда Tendance.\n\nПодкладка из кожи отводит влагу.\n\nУдачное дополнение гардероба."
+	if got := paragraphs(ozonStyle); len(got) != 3 || got[0] != "Черные кроссовки бренда Tendance." {
+		t.Errorf("blank-line paragraphs read wrong: %#v", got)
+	}
+	wbStyle := "Настольный держатель для очков.\nПочему стоит выбрать наш держатель?\nНадежная фиксация.\nПодставка удерживает очки."
+	if got := paragraphs(wbStyle); len(got) != 4 {
+		t.Errorf("a break after every sentence must give a paragraph each: %#v", got)
+	}
+	if got := paragraphs("  \n\n \n"); got != nil {
+		t.Errorf("a description of only whitespace must produce nothing: %#v", got)
+	}
+	if got := paragraphs(""); got != nil {
+		t.Errorf("an empty description must produce nothing: %#v", got)
+	}
+}
