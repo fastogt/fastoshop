@@ -8,8 +8,10 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"image/color"
 	"image/jpeg"
-	_ "image/png"
+	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,6 +78,14 @@ func resize(srcPath, dstPath string, width int) error {
 	}
 	h := b.Dy() * width / b.Dx()
 	dst := image.NewRGBA(image.Rect(0, 0, width, h))
+	// A logo keeps its transparency; a photo cannot, because JPEG has no alpha.
+	keepAlpha := strings.EqualFold(filepath.Ext(dstPath), ".png")
+	if !keepAlpha {
+		// Whatever lies under a transparent pixel is what the tile shows, and a
+		// fresh RGBA canvas is transparent black. White is the background a
+		// product is photographed on, and the one the tile is drawn against.
+		draw.Draw(dst, dst.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
+	}
 	// CatmullRom over ApproxBiLinear: this runs once per photo, and the result
 	// is what every visitor sees on every catalogue page.
 	draw.CatmullRom.Scale(dst, dst.Bounds(), src, b, draw.Over, nil)
@@ -85,7 +95,13 @@ func resize(srcPath, dstPath string, width int) error {
 	if err != nil {
 		return err
 	}
-	if err := jpeg.Encode(out, dst, &jpeg.Options{Quality: kThumbQuality}); err != nil {
+	encode := func(w io.Writer) error {
+		if keepAlpha {
+			return png.Encode(w, dst)
+		}
+		return jpeg.Encode(w, dst, &jpeg.Options{Quality: kThumbQuality})
+	}
+	if err := encode(out); err != nil {
 		_ = out.Close()
 		_ = os.Remove(tmp)
 		return err

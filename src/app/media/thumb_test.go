@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
 	"os"
 	"path/filepath"
 	"testing"
@@ -185,5 +186,100 @@ func TestShrinkLeavesSVG(t *testing.T) {
 	got, _ := os.ReadFile(filepath.Join(dir, "logo-a.svg"))
 	if string(got) != string(svg) {
 		t.Fatal("SVG logo was rewritten")
+	}
+}
+
+// A PNG shot on a transparent background is a real thing to receive: platforms
+// accept it and our upload does too. JPEG has no alpha, so whatever sits under
+// the transparent pixels is what the catalogue tile shows - and an uninitialised
+// RGBA canvas is transparent *black*. The product page serves the original and
+// looks right, so nobody who uploaded it would ever see the difference.
+func TestThumbOfTransparentPNGIsNotBlack(t *testing.T) {
+	dir := t.TempDir()
+	const w, h = 900, 1200
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	// A small opaque red square in the middle, everything else transparent.
+	for y := range h {
+		for x := range w {
+			if x > 400 && x < 500 && y > 500 && y < 600 {
+				img.Set(x, y, color.RGBA{R: 220, G: 30, B: 30, A: 255})
+			}
+		}
+	}
+	name := "p1-transparent.png"
+	f, err := os.Create(filepath.Join(dir, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(f, img); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+
+	if err := MakeThumb(dir, name); err != nil {
+		t.Fatal(err)
+	}
+	tf, err := os.Open(filepath.Join(dir, ThumbName(name)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tf.Close() }()
+	got, err := jpeg.Decode(tf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A corner is transparent in the source; in the thumbnail it must read as
+	// the white a photo studio would have used, not as black.
+	r, g, b, _ := got.At(4, 4).RGBA()
+	if r>>8 < 200 || g>>8 < 200 || b>>8 < 200 {
+		t.Errorf("transparent corner became rgb(%d,%d,%d); want near-white", r>>8, g>>8, b>>8)
+	}
+}
+
+// A shop logo is nearly always a transparent PNG, and Shrink rewrites it in
+// place - there is no original left to fall back on. Flattening it onto white
+// would put a light box around the logo in the dark theme, so a PNG keeps its
+// alpha while a photo's thumbnail cannot.
+func TestShrinkKeepsLogoTransparency(t *testing.T) {
+	dir := t.TempDir()
+	const w, h = 900, 500
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := range h {
+		for x := range w {
+			if x > 300 && x < 600 {
+				img.Set(x, y, color.RGBA{R: 10, G: 90, B: 200, A: 255})
+			}
+		}
+	}
+	name := "logo-x.png"
+	f, err := os.Create(filepath.Join(dir, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(f, img); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+
+	if err := Shrink(dir, name); err != nil {
+		t.Fatal(err)
+	}
+	lf, err := os.Open(filepath.Join(dir, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = lf.Close() }()
+	got, kind, err := image.Decode(lf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kind != "png" {
+		t.Fatalf("logo re-encoded as %s; a .png must stay a png", kind)
+	}
+	if got.Bounds().Dx() != kLogoWidth {
+		t.Errorf("logo width %d, want %d", got.Bounds().Dx(), kLogoWidth)
+	}
+	if _, _, _, a := got.At(4, 4).RGBA(); a != 0 {
+		t.Errorf("transparent corner lost its alpha: %d", a>>8)
 	}
 }
