@@ -1,3 +1,8 @@
+1.50.3 / September 8, 2026
+[Alexandr Topilski]
+- A photo with a transparent background no longer turns black in the catalogue. The small copy is a JPEG and JPEG has no transparency, so whatever lay under the transparent pixels became the background - and the canvas it was drawn onto was transparent black. The tile showed the product on a black square while the product page, which serves the original, looked correct, so the person who uploaded it would never see the difference. Transparent areas are now filled with white, the background a product is photographed on
+- A shop logo keeps its transparency. The logo is resized over itself, with no original left to fall back on, so it was the same defect with nothing to recover from; it now stays a PNG with its alpha intact instead of being flattened onto a colour that only suits one of the two themes
+
 1.50.2 / September 8, 2026
 [Alexandr Topilski]
 - The thumbnail strip on a product page no longer stretches the page. Since the strip became a column beside the photo, a card carrying many pictures stood far taller than the picture itself. The strip is now capped at the height of the photo and scrolls inside itself, with the next thumbnail half-visible to show there are more. Ozon draws arrows there instead of a scrollbar, which needs JavaScript the storefront does not ship
