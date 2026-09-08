@@ -1,3 +1,13 @@
+1.50.0 / September 8, 2026
+[Alexandr Topilski]
+- The catalogue and the product page are laid out the way a buyer already expects them. Both marketplaces draw a product tile in 3:4 and let the photo reach the edge of it; a shop whose catalogue came from one of them was showing those photos inside a square frame, so a quarter of every tile was blank margin. The tile proportion is now a shop setting - square or 3:4 - because there is no single right answer: a marketplace catalogue is vertical, photos shot by hand are usually square, and the wrong choice wastes the same quarter either way. Square stays the default, so an existing shop looks exactly as it did until its owner changes it
+- The price sits above the product name on a tile, and the tile has no frame around the photo. That is how a row is scanned: by price first, then by name
+- The product page is three columns instead of two - gallery, the facts about the product, and the buy box - and the buy box travels with the screen instead of scrolling away above a long description. Characteristics moved up next to the title, where they are read, rather than below the fold. Thumbnails stand in a column beside the photo and are no longer cropped to a square: what a supplier prints at the edge of a photo is often the part that matters
+- Wider layout for the catalogue, with descriptions, delivery terms and the privacy policy each kept to a readable line length rather than stretched across the screen
+- The photo hint in the product form now states what the marketplaces require: 1200x1600 in 3:4. It does not work backwards - a card for a platform cannot be assembled from a small picture later
+- None of this costs a byte more to load: the storefront still ships no JavaScript, and the check that it does not now covers the catalogue and the product page instead of the cart alone
+- Saving the profile no longer destroys the AdHunters key. The form was sending back the masked value it had been shown, and the server stored it, so the button to improve a card's text stopped working after any unrelated settings change
+
 1.49.0 / September 7, 2026
 [Alexandr Topilski]
 - Every order now records where the buyer came from. The referer at checkout is always the shop's own cart page, because the buyer has walked the catalogue by then, so the first touch is kept from their very first request and read back when the order is placed. The order card in the admin panel shows the referring site and the page the visitor landed on, or says the visit was direct
