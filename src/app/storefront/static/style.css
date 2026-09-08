@@ -279,11 +279,26 @@ main > h1 { margin-block: 28px 20px; }
    stretched to the frame — only fitted into it. */
 .nophoto { object-fit: contain !important; background: var(--surface); }
 
-.thumbs { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+/* Capped to the height of the photo beside it and scrolled inside itself: a card
+   can carry twenty photos, and an uncapped column would stand three times taller
+   than the picture it belongs to. Ozon draws arrows here instead of a scrollbar,
+   which needs JavaScript we do not ship. */
+.thumbs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 0 auto;
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
 /* The thumbnail carries the mark the same way the big frame does: a strip of
    white squares says nothing about which photo is missing. */
+/* flex-shrink off: inside a capped column the thumbnails would squeeze to slivers
+   instead of making the strip scroll. */
 .thumbs a {
   display: block;
+  flex: 0 0 auto;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -468,7 +483,9 @@ footer {
   .product { grid-template-columns: 1fr; gap: 28px; }
   .buybox { position: static; }
   .gallery { flex-direction: column; }
-  .thumbs { flex-direction: row; flex-wrap: wrap; }
+  /* Back to a wrapping row under the photo, so the cap on the column must go
+     with it or the last row of thumbnails is clipped. */
+  .thumbs { flex-direction: row; flex-wrap: wrap; max-height: none; overflow-y: visible; }
 }
 
 @media (max-width: 780px) {
