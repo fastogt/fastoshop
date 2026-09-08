@@ -1,3 +1,7 @@
+1.50.2 / September 8, 2026
+[Alexandr Topilski]
+- The thumbnail strip on a product page no longer stretches the page. Since the strip became a column beside the photo, a card carrying many pictures stood far taller than the picture itself. The strip is now capped at the height of the photo and scrolls inside itself, with the next thumbnail half-visible to show there are more. Ozon draws arrows there instead of a scrollbar, which needs JavaScript the storefront does not ship
+
 1.50.1 / September 8, 2026
 [Alexandr Topilski]
 - Product descriptions are laid out as paragraphs. A description arrives from the source structured one of two ways - a blank line between paragraphs, or a break after every sentence and no blank lines at all - and the storefront was reproducing the breaks literally, so the second kind came out as a wall of single-spaced ragged lines with no air anywhere. Every line is now its own paragraph and empty ones are dropped, which reads correctly whichever way the supplier wrote it. Which line is a heading is deliberately not guessed: only the text itself knows, and inventing that structure on a seller's words is worse than leaving them plain
