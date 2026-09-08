@@ -51,6 +51,7 @@ const (
 	KeyNothingSelected  = "nothing_selected"
 	KeyJobBusy          = "job_busy"
 	KeyBadCurrency      = "bad_currency"
+	KeyBadTileAspect    = "bad_tile_aspect"
 	KeyYMLBadURL        = "yml_bad_url"
 	KeyYMLBadStatus     = "yml_bad_status"
 	KeyYMLTooBig        = "yml_too_big"
@@ -184,6 +185,10 @@ var kMessages = map[string][2]string{
 	KeyBadCurrency: {
 		"этой валютой магазин торговать не умеет",
 		"the shop cannot trade in this currency",
+	},
+	KeyBadTileAspect: {
+		"такой пропорции плитки нет: выберите квадрат или 3:4",
+		"no such tile proportion: choose square or 3:4",
 	},
 	KeySupplierRequired: {
 		"укажите поставщика: импорт обновляет только свою группу товаров",

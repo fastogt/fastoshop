@@ -81,10 +81,23 @@
     </div>
     {{end}}
   </div>
-  <div>
+  {{/* Middle column: what the product is. The buy box is a sibling, not a child,
+       so the facts can grow without stretching the price. */}}
+  <div class="facts">
     <h1>{{.P.Title}}</h1>
     {{if .P.SKU}}<p class="sku">Артикул: {{.P.SKU}}</p>{{end}}
-    <div class="buybox">
+    {{if not .Specs.Empty}}
+    <div class="specs">
+      <h3>Характеристики</h3>
+      <table>
+        {{if .Specs.Weight}}<tr><td>Вес</td><td>{{.Specs.Weight}}</td></tr>{{end}}
+        {{if .Specs.Size}}<tr><td>Габариты</td><td>{{.Specs.Size}}</td></tr>{{end}}
+        {{range .Specs.Props}}<tr><td>{{.Name}}</td><td>{{.Value}}</td></tr>{{end}}
+      </table>
+    </div>
+    {{end}}
+  </div>
+  <div class="buybox">
       <p class="price">{{.PriceStr}} {{.Shop.Sign}}</p>
       {{if gt .P.Stock 0}}
       <span class="badge in">В наличии: {{.P.Stock}} шт</span>
@@ -115,22 +128,9 @@
         <li>Подтверждаем заказ звонком</li>
         {{if .Shop.ShopPhone}}<li>Вопросы: <a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a></li>{{end}}
       </ul>
-    </div>
   </div>
-  {{/* Full width, below both columns: a description belongs to the product, not
-       to the buy box. Kept inside the right column it stretched that column
-       alone, and a product with one photo showed half a page of nothing where
-       the gallery had ended. */}}
-  {{if not .Specs.Empty}}
-  <div class="specs">
-    <h3>Характеристики</h3>
-    <table>
-      {{if .Specs.Weight}}<tr><td>Вес</td><td>{{.Specs.Weight}}</td></tr>{{end}}
-      {{if .Specs.Size}}<tr><td>Габариты</td><td>{{.Specs.Size}}</td></tr>{{end}}
-      {{range .Specs.Props}}<tr><td>{{.Name}}</td><td>{{.Value}}</td></tr>{{end}}
-    </table>
-  </div>
-  {{end}}
+  {{/* Full width, below all three columns: a description belongs to the product,
+       not to the buy box. */}}
   {{if .P.Description}}
   <div class="desc">
     <h3>Описание</h3>

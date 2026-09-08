@@ -111,6 +111,13 @@ const kText = {
   },
   logoUpload: { ru: "Загрузить логотип", en: "Upload a logo" },
   logoRemove: { ru: "Убрать", en: "Remove" },
+  tileAspect: { ru: "Плитка каталога", en: "Catalogue tile" },
+  tileSquare: { ru: "Квадрат 1:1", en: "Square 1:1" },
+  tilePortrait: { ru: "Вертикальная 3:4", en: "Portrait 3:4" },
+  tileAspectHint: {
+    ru: "Пропорция рамки под фото в каталоге. 3:4 - формат Ozon и Wildberries: если каталог приехал с площадки, выбирайте его, иначе четверть плитки уйдёт в пустые поля. Для снимков «квадратом» оставьте 1:1.",
+    en: "The proportion of the photo frame in the catalogue. 3:4 is what Ozon and Wildberries use: pick it if the catalogue came from a marketplace, otherwise a quarter of the tile goes to blank margins. Leave 1:1 for square photos.",
+  },
   currency: { ru: "Валюта магазина", en: "Shop currency" },
   currencyRub: { ru: "Российский рубль (₽)", en: "Russian ruble (₽)" },
   currencyByn: { ru: "Белорусский рубль (Br)", en: "Belarusian ruble (Br)" },
@@ -295,6 +302,7 @@ export default function Profile() {
     if (smtpPassword) body.smtp_password = smtpPassword;
     // The masked value the form received back must never be saved as the key,
     // so the field is sent only when the owner typed something new.
+    delete body.adhunters_api_key;
     if (aiKey) body.adhunters_api_key = aiKey;
     const saved = await api.updateSettings(body);
     setS(saved);
@@ -440,6 +448,18 @@ export default function Profile() {
                 <option value="KZT">{t("currencyKzt")}</option>
               </select>
               <p className="hint mt-1">{t("currencyHint")}</p>
+            </div>
+            <div>
+              <label className="label">{t("tileAspect")}</label>
+              <select
+                className="field"
+                value={s.tile_aspect || "square"}
+                onChange={(e) => setS({ ...s, tile_aspect: e.target.value })}
+              >
+                <option value="square">{t("tileSquare")}</option>
+                <option value="portrait">{t("tilePortrait")}</option>
+              </select>
+              <p className="hint mt-1">{t("tileAspectHint")}</p>
             </div>
           </section>
 

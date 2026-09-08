@@ -2,17 +2,19 @@
      a category page are the same listing with a different heading. */}}
 {{define "grid"}}
 {{if .Products}}
-<ul class="grid">
+<ul class="grid{{if eq $.Shop.TileAspect "portrait"}} tall{{end}}">
 {{range .Products}}
   <li><a href="/p/{{.Slug}}">
     {{/* The frame holds the "no photo" mark; a picture that loads covers it, one
          that does not lets it through. A supplier's link can answer 404 today and
          work tomorrow, so nothing is deleted over it. */}}
-    <div class="frame">{{if .ImageURL}}<img class="nomark" src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy" width="400" height="400">{{end}}</div>
+    <div class="frame">{{if .ImageURL}}<img class="nomark" src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy" width="400" height="{{$.Shop.TileHeight}}">{{end}}</div>
+    {{/* Price first, the way a marketplace tile reads: a buyer scans a row by
+         price, and the name is what they check once the price has stopped them. */}}
     <div class="body">
+      <p class="price">{{.PriceStr}} {{$.Shop.Sign}}</p>
       <h2>{{.Title}}</h2>
       {{if le .Stock 0}}<span class="badge">Нет в наличии</span>{{end}}
-      <p class="price">{{.PriceStr}} {{$.Shop.Sign}}</p>
     </div>
   </a></li>
 {{end}}

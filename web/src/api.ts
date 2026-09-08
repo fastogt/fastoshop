@@ -249,6 +249,8 @@ export interface Settings {
   // Last four characters of the stored AdHunters key, empty when none is set.
   // Never the key itself.
   adhunters_api_key: string;
+  // "square" or "portrait": the proportion of the catalogue tile on the storefront.
+  tile_aspect: string;
 }
 
 interface ImportDiffRow {

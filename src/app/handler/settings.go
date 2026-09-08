@@ -32,6 +32,7 @@ type settingsResponse struct {
 	Terms            string `json:"terms"`
 	// Only the last four characters: the key itself never leaves the server.
 	AdHuntersAPIKey string `json:"adhunters_api_key"`
+	TileAspect      string `json:"tile_aspect"`
 }
 
 type settingsRequest struct {
@@ -53,6 +54,7 @@ type settingsRequest struct {
 	Requisites       *string `json:"requisites"`
 	Terms            *string `json:"terms"`
 	AdHuntersAPIKey  *string `json:"adhunters_api_key"`
+	TileAspect       *string `json:"tile_aspect"`
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +75,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		Requisites:       s.Requisites,
 		Terms:            s.Terms,
 		AdHuntersAPIKey:  maskKey(s.AdHuntersAPIKey),
+		TileAspect:       s.TileAspect,
 	})
 }
 
@@ -111,6 +114,13 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Lang != "" {
 		s.Lang = req.Lang
+	}
+	if req.TileAspect != nil {
+		if !database.IsValidTileAspect(*req.TileAspect) {
+			httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadTileAspect))
+			return
+		}
+		s.TileAspect = *req.TileAspect
 	}
 	s.SMTPHost, s.SMTPPort, s.SMTPUser = req.SMTPHost, req.SMTPPort, req.SMTPUser
 	s.SMTPFrom = strings.TrimSpace(req.SMTPFrom)

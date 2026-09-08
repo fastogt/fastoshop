@@ -43,7 +43,11 @@ body {
 img { max-width: 100%; height: auto; display: block; }
 a { color: var(--accent); }
 
-header, main, footer { max-width: 1080px; margin: 0 auto; padding-inline: 20px; }
+/* Ozon lays its catalogue out in 1472 and Wildberries in 1873; 1440 sits at the
+   low end of that on purpose, because our tiles are larger and six columns would
+   only shrink the photo. Long prose gets its own cap below, or the line runs the
+   full width and stops being readable. */
+header, main, footer { max-width: 1440px; margin: 0 auto; padding-inline: 20px; }
 
 header {
   display: flex;
@@ -133,7 +137,6 @@ main > h1 { margin-block: 28px 20px; }
   text-decoration: none;
   color: inherit;
   background: var(--surface);
-  border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
   transition: box-shadow 0.15s, transform 0.15s;
@@ -174,6 +177,11 @@ main > h1 { margin-block: 28px 20px; }
   aspect-ratio: 1;
   object-fit: contain;
 }
+/* 3:4 is what Ozon and Wildberries draw, so a catalogue imported from either
+   fills the tile instead of sitting between two blank margins. Which one is
+   right differs per shop, so the owner picks it. */
+.grid.tall .frame,
+.grid.tall img { aspect-ratio: 3 / 4; }
 .grid .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 /* Titles arrive verbatim from the supplier's price list, sizes and fabric
    composition included: without a cap the tile turns into a wall of text and the
@@ -187,7 +195,6 @@ main > h1 { margin-block: 28px 20px; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.grid .price { margin-top: auto; }
 
 .price { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.01em; }
 .product .price { font-size: 1.75rem; }
@@ -217,9 +224,12 @@ main > h1 { margin-block: 28px 20px; }
 .notice.good { background: rgba(31, 122, 69, 0.1); border-color: rgba(31, 122, 69, 0.25); }
 
 /* Product card */
+/* Gallery, facts, buy box - the shape both marketplaces use, so the page reads
+   the way a buyer already expects. Wildberries spells its own out as
+   "48px 1020px 340px"; ours keeps the middle fluid and the rail in that range. */
 .product {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(300px, 380px);
   gap: 40px;
   margin-block: 28px 48px;
   align-items: start;
@@ -229,7 +239,9 @@ main > h1 { margin-block: 28px 20px; }
 
 .sku { color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
 
-.gallery { display: flex; flex-direction: column; gap: 12px; }
+/* row-reverse puts the thumbnail strip on the left without reordering the markup:
+   the big photo must stay first in the DOM for screen readers and for og:image. */
+.gallery { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 12px; }
 
 /* Scroll-snap strip: photos swipe with a finger on the phone and the wheel on
    desktop, thumbnails are plain anchors. Not a line of JavaScript. */
@@ -267,7 +279,7 @@ main > h1 { margin-block: 28px 20px; }
    stretched to the frame — only fitted into it. */
 .nophoto { object-fit: contain !important; background: var(--surface); }
 
-.thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.thumbs { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
 /* The thumbnail carries the mark the same way the big frame does: a strip of
    white squares says nothing about which photo is missing. */
 .thumbs a {
@@ -277,15 +289,21 @@ main > h1 { margin-block: 28px 20px; }
   border: 1px solid var(--line);
   background: var(--surface) url(/nophoto.svg) center / 70% no-repeat;
 }
+/* Same proportion and same fit as the big frame: a cropped thumbnail shows the
+   centre of a photo whose meaning is often printed at its edge. */
 .thumbs img {
   display: block;
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
+  width: 72px;
+  aspect-ratio: 3 / 4;
+  object-fit: contain;
 }
 .thumbs a:hover { border-color: var(--accent); }
 
+/* Travels with the screen while a long description scrolls past, so the price and
+   the button are never off-screen. Works because .product is align-items: start. */
 .buybox {
+  position: sticky;
+  top: 20px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -299,7 +317,7 @@ main > h1 { margin-block: 28px 20px; }
 /* The characteristics table sits next to the description and reads like it:
    the label muted, the value in the text colour, no borders — a spec sheet is
    a list, not a spreadsheet. */
-.specs { grid-column: 1 / -1; margin-top: 8px; }
+.specs { margin-top: 16px; }
 .specs h3 { font-size: 1rem; margin-bottom: 6px; }
 .specs table { border-collapse: collapse; }
 .specs td { padding: 4px 0; }
@@ -309,7 +327,9 @@ main > h1 { margin-block: 28px 20px; }
    instead of down one half of it. Capped at 78ch for the eye and centered:
    left-aligned under the photo column it left the right half of a wide screen
    looking unfinished. */
-.desc { grid-column: 1 / -1; margin-top: 8px; white-space: pre-line; color: var(--muted); }
+/* Capped independently of the layout width: a description is prose, and prose
+   stops being readable long before 1440px. */
+.desc { grid-column: 1 / -1; margin-top: 8px; max-width: 70ch; white-space: pre-line; color: var(--muted); }
 .desc h3 { font-size: 1rem; color: var(--text); margin-bottom: 6px; }
 
 .trust { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--muted); }
@@ -386,6 +406,9 @@ form.qty button:hover { background: var(--accent-soft); }
 
 .terms { max-width: 60ch; margin-block: 20px; }
 
+/* Legal prose, laid out for reading rather than for the page width. */
+.prose { max-width: 70ch; }
+
 /* Subcategory links: a horizontal list above the product grid. */
 .cats { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px 24px; }
 .cats a {
@@ -436,6 +459,15 @@ footer {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* Three columns need room; below this the rail squeezes the facts into a ribbon,
+   so the page goes single-column and the buy box stops travelling. */
+@media (max-width: 1100px) {
+  .product { grid-template-columns: 1fr; gap: 28px; }
+  .buybox { position: static; }
+  .gallery { flex-direction: column; }
+  .thumbs { flex-direction: row; flex-wrap: wrap; }
 }
 
 @media (max-width: 780px) {

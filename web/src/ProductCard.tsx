@@ -71,8 +71,8 @@ const kText = {
     en: "Photos can be dragged: the first one goes to search, to the catalogue and to a channel listing.",
   },
   photosHint: {
-    ru: "JPEG, PNG или WebP, до 10 МБ. Первое фото попадает в поисковую выдачу и в карточку канала.",
-    en: "JPEG, PNG or WebP, up to 10 MB. The first photo is what search results and the channel card show.",
+    ru: "JPEG, PNG или WebP, до 10 МБ. Первое фото попадает в поисковую выдачу и в карточку канала. Снимайте 1200×1600 в пропорции 3:4: этот размер принимают и Ozon, и Wildberries, а витрина уменьшит его сама. Обратно не работает - из маленького снимка карточку площадки уже не собрать.",
+    en: "JPEG, PNG or WebP, up to 10 MB. The first photo is what search results and the channel card show. Shoot 1200×1600 at 3:4: both Ozon and Wildberries accept that size, and the storefront makes its own smaller copy. It does not work the other way round - a small photo will not become a marketplace card later.",
   },
   remotePhoto: {
     ru: "Фото лежит на чужом сервере. Закроют его - витрина останется без картинки. «Забрать фото к себе» скачает его к нам.",

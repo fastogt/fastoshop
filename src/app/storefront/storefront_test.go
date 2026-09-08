@@ -544,6 +544,32 @@ func TestCartCheckoutRequiresPhoneAndItems(t *testing.T) {
 	}
 }
 
+// JSON-LD is a <script> tag but not code: it is the structured data search
+// engines read, and every catalogue and product page carries it. Only tags that
+// would actually execute count against the no-JavaScript rule.
+func executableScripts(body string) int {
+	n := 0
+	for _, tag := range strings.Split(body, "<script")[1:] {
+		open, _, ok := strings.Cut(tag, ">")
+		if ok && strings.Contains(open, "application/ld+json") {
+			continue
+		}
+		n++
+	}
+	return n
+}
+
+// The rule is that the storefront ships no JavaScript, so every page a buyer can
+// reach has to be checked - not just the cart.
+func TestStorefrontPagesShipNoScripts(t *testing.T) {
+	_, h := setup(t)
+	for _, path := range []string{"/", "/c/kitchen", "/p/krasnyj-chajnik"} {
+		if n := executableScripts(get(t, h, path)); n != 0 {
+			t.Errorf("%s ships %d executable script tag(s)", path, n)
+		}
+	}
+}
+
 func TestCartNoIndexNoScriptsNotInSitemap(t *testing.T) {
 	_, h := setup(t)
 	c := &client{h: h}
@@ -552,7 +578,7 @@ func TestCartNoIndexNoScriptsNotInSitemap(t *testing.T) {
 	if !strings.Contains(body, `<meta name="robots" content="noindex">`) {
 		t.Errorf("cart must be noindex\n%s", body)
 	}
-	if strings.Contains(body, "<script") {
+	if executableScripts(body) != 0 {
 		t.Error("storefront must stay JS-free")
 	}
 	if strings.Contains(get(t, h, "/sitemap.xml"), "/cart") {

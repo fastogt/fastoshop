@@ -66,6 +66,28 @@ type Settings struct {
 	MetrikaCounterID string `json:"metrika_counter_id"`
 	// A secret like the SMTP password: it never leaves the server.
 	AdHuntersAPIKey string `json:"-"`
+	// Catalogue tile proportion: TileSquare or TilePortrait.
+	TileAspect string `json:"tile_aspect"`
+}
+
+// Tile proportions the storefront can draw. Portrait is 3:4, the shape both Ozon
+// and Wildberries use, so a catalogue imported from either fills the tile exactly.
+const (
+	TileSquare   = "square"
+	TilePortrait = "portrait"
+)
+
+func IsValidTileAspect(v string) bool {
+	return v == TileSquare || v == TilePortrait
+}
+
+// Portrait tiles are 3:4, so the reserved height is the width times four thirds.
+// The <img> needs it as a number to stop the grid jumping while photos load.
+func (s *Settings) TileHeight() int {
+	if s.TileAspect == TilePortrait {
+		return 533
+	}
+	return 400
 }
 
 func (d *Database) CreateSettings(s *Settings) error {
@@ -82,12 +104,12 @@ func (d *Database) GetSettings() (*Settings, error) {
 		`SELECT owner_email, password_hash, shop_name, shop_phone, smtp_host,
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
 		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms,
-		 adhunters_api_key, telegram, whatsapp
+		 adhunters_api_key, telegram, whatsapp, tile_aspect
 		 FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
 		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms,
-		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp)
+		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp, &s.TileAspect)
 	if err != nil {
 		return nil, err
 	}
@@ -110,16 +132,25 @@ func (d *Database) UpdateSettings(s *Settings) error {
 	if !i18n.IsValidLang(lang) {
 		return fmt.Errorf("invalid shop language: %q", lang)
 	}
+	tile := s.TileAspect
+	if tile == "" {
+		tile = TileSquare
+	}
+	if !IsValidTileAspect(tile) {
+		return fmt.Errorf("invalid tile aspect: %q", tile)
+	}
 	_, err := d.db.Exec(
 		`UPDATE settings SET owner_email=?, password_hash=?, shop_name=?, shop_phone=?,
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
 		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?,
-		 smtp_from=?, terms=?, adhunters_api_key=?, telegram=?, whatsapp=?
+		 smtp_from=?, terms=?, adhunters_api_key=?, telegram=?, whatsapp=?,
+		 tile_aspect=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
 		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom, s.Terms,
-		s.AdHuntersAPIKey, strings.TrimSpace(s.Telegram), strings.TrimSpace(s.WhatsApp))
+		s.AdHuntersAPIKey, strings.TrimSpace(s.Telegram), strings.TrimSpace(s.WhatsApp),
+		tile)
 	return err
 }
 

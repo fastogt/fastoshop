@@ -238,7 +238,11 @@ func (d *Database) migrate() error {
 		-- The owner's own AdHunters key, which pays for rewriting product cards.
 		-- Empty means the button is not offered at all: there is no shop-wide
 		-- key to fall back on, every owner brings and pays for their own.
-		adhunters_api_key   TEXT NOT NULL DEFAULT ''
+		adhunters_api_key   TEXT NOT NULL DEFAULT '',
+		-- Proportion of the catalogue tile. A photo that does not match the frame
+		-- loses a quarter of the tile to blank margins, and the right value differs
+		-- per shop: a marketplace catalogue is 3:4, a hand-shot one is usually square.
+		tile_aspect         TEXT NOT NULL DEFAULT 'square'
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,
