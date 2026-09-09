@@ -95,7 +95,6 @@ func run(cfg *config.Config) error {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP) //nolint:staticcheck // behind a trusted nginx reverse proxy
-	r.Use(middleware.Compress(5))
 	r.Use(middleware.Recoverer)
 	// Router-wide: /admin* is GET-only, so chi would 405 a HEAD before the storefront runs.
 	r.Use(storefront.HeadAsGet)
