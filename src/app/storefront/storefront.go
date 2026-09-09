@@ -81,6 +81,7 @@ func (s *Storefront) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(HeadAsGet)
 	r.Use(s.TrackSource)
+	r.Use(ETag)
 	r.Get("/", s.Index)
 	r.Get("/p/{slug}", s.Product)
 	r.Get("/cart", s.Cart)
@@ -432,6 +433,14 @@ func paragraphs(text string) []string {
 	return out
 }
 
+// The offer needs a date far enough ahead not to read as stale, and the same one
+// all month: a value counted from today changes the page daily and with it every
+// cached copy and every ETag.
+func endOfMonth(now time.Time) string {
+	return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).
+		AddDate(0, 2, -1).Format(time.DateOnly)
+}
+
 func metaFrom(text string) string {
 	text = strings.Join(strings.Fields(strings.ReplaceAll(text, "\n", " ")), " ")
 	if len([]rune(text)) <= 160 {
@@ -651,7 +660,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	shop := s.shop()
 	data := pageVM{Shop: shop, BaseURL: s.baseURL,
 		CSS: template.CSS(styleCSS), P: p, Images: imgs,
-		PriceStr: priceStr(p.Price), PriceValidUntil: time.Now().AddDate(0, 1, 0).Format(time.DateOnly),
+		PriceStr: priceStr(p.Price), PriceValidUntil: endOfMonth(time.Now()),
 		PriceValidFrom:  p.UpdatedAt.Format(time.DateOnly),
 		SchemaName:      clipName(p.Title),
 		OrderLinks:      orderLinks(shop, p, s.baseURL+"/p/"+p.Slug),
@@ -747,6 +756,9 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 			Loc: s.baseURL + "/p/" + p.Slug, LastMod: p.UpdatedAt.Format(time.DateOnly)})
 	}
 	w.Header().Set("Content-Type", "application/xml")
+	// An hour, as the product feeds already say: a crawler that re-reads the map
+	// on every hop through the catalogue costs a full pass over the products.
+	w.Header().Set("Cache-Control", "public, max-age=3600")
 	_, _ = w.Write([]byte(xml.Header))
 	_ = xml.NewEncoder(w).Encode(set)
 }

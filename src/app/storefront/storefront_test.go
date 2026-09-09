@@ -1730,3 +1730,100 @@ func TestRobotsMetaAllowsLargeImagePreview(t *testing.T) {
 		t.Error("a noindex page must not also invite a large preview")
 	}
 }
+
+// A crawler re-fetches a catalogue far more often than the shop changes it, and
+// a page it already holds should cost a header exchange, not fifty kilobytes.
+func TestConditionalGetAnswers304(t *testing.T) {
+	_, h := setup(t)
+	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/sitemap.xml"} {
+		first := httptest.NewRecorder()
+		h.ServeHTTP(first, httptest.NewRequest("GET", path, nil))
+		tag := first.Header().Get("ETag")
+		if tag == "" {
+			t.Errorf("%s carries no ETag", path)
+			continue
+		}
+
+		again := httptest.NewRequest("GET", path, nil)
+		again.Header.Set("If-None-Match", tag)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, again)
+		if w.Code != http.StatusNotModified {
+			t.Errorf("%s answered %d to a matching If-None-Match, want 304", path, w.Code)
+		}
+		if w.Body.Len() != 0 {
+			t.Errorf("%s sent a body with its 304", path)
+		}
+		// A stale tag must bring the page back, not another 304.
+		stale := httptest.NewRequest("GET", path, nil)
+		stale.Header.Set("If-None-Match", `"0000"`)
+		w = httptest.NewRecorder()
+		h.ServeHTTP(w, stale)
+		if w.Code != http.StatusOK || w.Body.Len() == 0 {
+			t.Errorf("%s refused to re-send on a stale tag: %d", path, w.Code)
+		}
+	}
+}
+
+// The tag is the hash of the body, so anything the page recomputes per request
+// silently turns every visit into a miss.
+func TestPageIsByteStableBetweenRequests(t *testing.T) {
+	_, h := setup(t)
+	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/yml.xml"} {
+		a, b := httptest.NewRecorder(), httptest.NewRecorder()
+		h.ServeHTTP(a, httptest.NewRequest("GET", path, nil))
+		h.ServeHTTP(b, httptest.NewRequest("GET", path, nil))
+		if a.Body.String() != b.Body.String() {
+			t.Errorf("%s differs between two identical requests", path)
+		}
+	}
+}
+
+// The header shows the visitor's own cart, so a shared cache holding one copy
+// would hand one buyer another's basket. Only the feeds may be public.
+func TestHtmlIsNotPubliclyCacheable(t *testing.T) {
+	_, h := setup(t)
+	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/c/kitchen"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if cc := w.Header().Get("Cache-Control"); strings.Contains(cc, "public") {
+			t.Errorf("%s invites a shared cache to keep it: %q", path, cc)
+		}
+	}
+}
+
+// The offer date used to be counted from today, so the page changed at midnight
+// and took every cached copy and every ETag with it. Two requests a millisecond
+// apart cannot see that; two days can.
+func TestOfferDateHoldsForTheWholeMonth(t *testing.T) {
+	first := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	last := time.Date(2026, 9, 30, 23, 59, 0, 0, time.UTC)
+	if endOfMonth(first) != endOfMonth(last) {
+		t.Errorf("the date moved inside one month: %s then %s",
+			endOfMonth(first), endOfMonth(last))
+	}
+	if got := endOfMonth(first); got != "2026-10-31" {
+		t.Errorf("September's offers run to %s, want the end of October", got)
+	}
+	// A new month is a new date, or the offer would eventually read as stale.
+	if endOfMonth(first) == endOfMonth(last.AddDate(0, 0, 1)) {
+		t.Error("the date did not move into the next month")
+	}
+}
+
+// A feed stamped with the clock is a different document on every fetch, and
+// nothing downstream can tell a refreshed catalogue from an unchanged one.
+func TestFeedDateFollowsTheCatalogueNotTheClock(t *testing.T) {
+	older := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	newer := time.Date(2026, 9, 7, 18, 30, 0, 0, time.UTC)
+	products := []database.Product{{UpdatedAt: older}, {UpdatedAt: newer}}
+
+	got := feedDate(products)
+	if got != newer.Format("2006-01-02 15:04") {
+		t.Errorf("feed date %q, want the newest product's %q",
+			got, newer.Format("2006-01-02 15:04"))
+	}
+	if feedDate(products) != got {
+		t.Error("the feed date moved between two calls on the same catalogue")
+	}
+}

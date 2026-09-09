@@ -161,6 +161,22 @@ func feedParams(params []database.Param, hidden map[string]bool) []ymlParam {
 	return out
 }
 
+// The catalogue's own last change, not the clock: a timestamp taken at render
+// time makes every fetch a different document, and nothing downstream can tell
+// a refreshed feed from an unchanged one.
+func feedDate(products []database.Product) string {
+	newest := time.Time{}
+	for _, p := range products {
+		if p.UpdatedAt.After(newest) {
+			newest = p.UpdatedAt
+		}
+	}
+	if newest.IsZero() {
+		newest = time.Now()
+	}
+	return newest.Format("2006-01-02 15:04")
+}
+
 func writeFeed(w http.ResponseWriter, feed any) {
 	w.Header().Set("Content-Type", "application/xml")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
@@ -210,7 +226,7 @@ func (s *Storefront) YML(w http.ResponseWriter, r *http.Request) {
 	}
 	shop := s.shop()
 	catalog := ymlCatalog{
-		Date: time.Now().Format("2006-01-02 15:04"),
+		Date: feedDate(products),
 		Shop: ymlShop{
 			Name: shop.ShopName, Company: shop.ShopName, URL: s.baseURL + "/",
 			Currencies: []ymlCurrency{{ID: currency, Rate: "1"}},
