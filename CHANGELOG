@@ -1,3 +1,9 @@
+1.50.8 / September 9, 2026
+[Alexandr Topilski]
+- A page a search engine already holds is answered with a header instead of the page. Nothing carried an ETag, so every re-read of a catalogue sent the whole thing again, and a shop is re-read far more often than it changes. On a twenty-thousand-page catalogue that is most of the crawl budget spent on pages the crawler has not lost
+- Two dates had to stop moving for that to work, and both are worth having on their own. The offer date in the product markup was counted from today and turned over every midnight; it now holds for the month. The product feed was stamped with the clock to the minute, so every fetch was a different document and nothing downstream could tell a refreshed catalogue from an unchanged one; it now carries the catalogue's own newest change
+- The sitemap says how long it may be kept, as the product feeds already did. Pages deliberately do not: the header shows the visitor's own cart, and a shared cache holding one copy would hand one buyer another's basket
+
 1.50.7 / September 9, 2026
 [Alexandr Topilski]
 - An admin tab left open no longer turns a restart into a failure. Stopping the service waits for connections to fall idle, and the progress stream never falls idle by itself, so an upgrade with the panel open hung for the full ten-second deadline, ended as an error and dropped the requests in flight instead of finishing them. Measured on the same build with a stream open: ten seconds and a failure before, a tenth of a second and a clean stop after
