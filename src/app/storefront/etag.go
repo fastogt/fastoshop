@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"strings"
 )
 
 // ETag answers a crawler's second visit with 304 instead of the page. A shop of
@@ -29,7 +30,7 @@ func ETag(next http.Handler) http.Handler {
 			sum := sha256.Sum256(rec.body.Bytes())
 			tag := `"` + hex.EncodeToString(sum[:16]) + `"`
 			w.Header().Set("ETag", tag)
-			if r.Header.Get("If-None-Match") == tag {
+			if noneMatch(r.Header.Get("If-None-Match"), tag) {
 				w.WriteHeader(http.StatusNotModified)
 				return
 			}
@@ -37,6 +38,26 @@ func ETag(next http.Handler) http.Handler {
 		w.WriteHeader(rec.status)
 		_, _ = w.Write(rec.body.Bytes())
 	})
+}
+
+// noneMatch compares the way RFC 9110 asks for a conditional GET, which is not
+// string equality. nginx rewrites our tag to the weak form when it compresses,
+// so what a real client sends back carries a W/ prefix that never came from us;
+// a browser may also hold several tags for one address and offer them together.
+func noneMatch(header, tag string) bool {
+	if header == "" {
+		return false
+	}
+	if strings.TrimSpace(header) == "*" {
+		return true
+	}
+	want := strings.TrimPrefix(tag, "W/")
+	for _, candidate := range strings.Split(header, ",") {
+		if strings.TrimPrefix(strings.TrimSpace(candidate), "W/") == want {
+			return true
+		}
+	}
+	return false
 }
 
 // etagRecorder holds the body back until its hash is known; headers the handler

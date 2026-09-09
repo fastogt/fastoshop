@@ -1827,3 +1827,38 @@ func TestFeedDateFollowsTheCatalogueNotTheClock(t *testing.T) {
 		t.Error("the feed date moved between two calls on the same catalogue")
 	}
 }
+
+// nginx rewrites the tag to the weak form when it compresses, so what a real
+// client sends back is not what we handed out. Comparing the two as strings
+// meant the tag never matched for anyone who asked for compression - that is
+// every browser and every crawler.
+func TestConditionalGetAcceptsTheTagAsItComesBack(t *testing.T) {
+	_, h := setup(t)
+	first := httptest.NewRecorder()
+	h.ServeHTTP(first, httptest.NewRequest("GET", "/", nil))
+	tag := first.Header().Get("ETag")
+
+	for _, sent := range []string{
+		tag,                   // as issued
+		"W/" + tag,            // weakened by a proxy that recompressed it
+		`"stale", ` + tag,     // a client holding more than one
+		`W/"stale", W/` + tag, // both at once
+		"*",                   // any representation will do
+	} {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("If-None-Match", sent)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != http.StatusNotModified {
+			t.Errorf("If-None-Match %s answered %d, want 304", sent, w.Code)
+		}
+	}
+	// A tag that genuinely does not match must still bring the page back.
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("If-None-Match", `W/"nothing-like-it"`)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Errorf("an unrelated tag answered %d, want 200", w.Code)
+	}
+}
