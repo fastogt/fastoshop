@@ -1,3 +1,8 @@
+1.50.7 / September 9, 2026
+[Alexandr Topilski]
+- An admin tab left open no longer turns a restart into a failure. Stopping the service waits for connections to fall idle, and the progress stream never falls idle by itself, so an upgrade with the panel open hung for the full ten-second deadline, ended as an error and dropped the requests in flight instead of finishing them. Measured on the same build with a stream open: ten seconds and a failure before, a tenth of a second and a clean stop after
+- A fault that does not clear by itself is logged once instead of every few minutes. A token issued without a section, or a platform that is down, used to write the same line on every sync pass for as long as it lasted, burying the photo downloads, the rate limits and everything else worth reading. The line appears when the fault does, stays quiet while it stands, and the closing line says how many passes it lasted
+
 1.50.6 / September 9, 2026
 [Alexandr Topilski]
 - A Wildberries token issued without the Marketplace section now says so. Sales stayed at zero while the sync panel showed the platform's refusal verbatim - a line of JSON with a request id in it and nothing to act on. The panel now names the section and where to tick it, which is what the connection check had been saying all along on a tab the seller had no reason to open. Everything that is not this one refusal keeps the platform's own words: we do not rewrite someone else's error
