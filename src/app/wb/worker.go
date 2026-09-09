@@ -33,6 +33,7 @@ type Worker struct {
 	// Hosts overrides the API addresses - tests point every field at one mock.
 	Hosts   Hosts
 	running atomic.Bool
+	faults  channel.FaultLog
 }
 
 func NewWorker(db *database.Database) *Worker {
@@ -51,11 +52,17 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-w.Wake():
 		}
 		pushed, failed, err := w.Pass()
-		switch {
-		case errors.Is(err, ErrPushBusy):
-		case err != nil:
-			log.Warnf("wb sync: %v", err)
-		case pushed > 0 || failed > 0:
+		if errors.Is(err, ErrPushBusy) {
+			continue
+		}
+		fault := ""
+		if err != nil {
+			fault = fmt.Sprintf("wb sync: %v", err)
+		}
+		if line := w.faults.Line(fault); line != "" {
+			log.Warn(line)
+		}
+		if err == nil && (pushed > 0 || failed > 0) {
 			log.Infof("wb sync: pushed %d, failed %d", pushed, failed)
 		}
 	}

@@ -31,6 +31,7 @@ type Worker struct {
 	// BaseURL overrides the Seller API address - tests point it at a mock.
 	BaseURL string
 	running atomic.Bool
+	faults  channel.FaultLog
 }
 
 func NewWorker(db *database.Database) *Worker {
@@ -49,11 +50,17 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-w.Wake():
 		}
 		pushed, failed, err := w.Pass()
-		switch {
-		case errors.Is(err, ErrPushBusy):
-		case err != nil:
-			log.Warnf("ozon sync: %v", err)
-		case pushed > 0 || failed > 0:
+		if errors.Is(err, ErrPushBusy) {
+			continue
+		}
+		fault := ""
+		if err != nil {
+			fault = fmt.Sprintf("ozon sync: %v", err)
+		}
+		if line := w.faults.Line(fault); line != "" {
+			log.Warn(line)
+		}
+		if err == nil && (pushed > 0 || failed > 0) {
 			log.Infof("ozon sync: pushed %d, failed %d", pushed, failed)
 		}
 	}
