@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"context"
 	"math"
 	"net/http"
 	"strings"
@@ -121,8 +122,8 @@ const (
 var kHTTP = &http.Client{Timeout: 60 * time.Second}
 
 // Run imports into one supplier group, which alone decides what may be touched.
-func Run(src Source, db *database.Database, supplier string, coefficient float64,
-	onProgress func(stage string, done, total int)) (*Result, error) {
+func Run(ctx context.Context, src Source, db *database.Database, supplier string,
+	coefficient float64, onProgress func(stage string, done, total int)) (*Result, error) {
 	progress := func(stage string, done, total int) {
 		if onProgress != nil {
 			onProgress(stage, done, total)
@@ -158,6 +159,11 @@ func Run(src Source, db *database.Database, supplier string, coefficient float64
 		return nil, err
 	}
 	for i, it := range items {
+		// Leaving early must skip the withdrawal below: `seen` holds only the part
+		// of the feed we reached, so everything past it would be taken off sale.
+		if ctx.Err() != nil {
+			return res, w.Close(nil)
+		}
 		progress(StageProducts, i, len(items))
 		if it.SKU == "" || seen[it.SKU] {
 			res.Skipped++

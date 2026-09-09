@@ -145,6 +145,10 @@ func (h *Handler) coefficient(w http.ResponseWriter, sent float64) (float64, boo
 }
 
 // Returns at once: a full import walks past nginx's 60 s proxy read timeout.
+//
+// r.Context() would cancel the import the moment the response is written.
+//
+//nolint:contextcheck // the job outlives the request on purpose
 func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 	var req importRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -166,15 +170,16 @@ func (h *Handler) ImportRun(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteBadRequest(w, h.msg(i18n.KeySupplierRequired))
 		return
 	}
-	if _, ok := h.job.start(kJobImport, []jobStage{
+	ctx, ok := h.job.start(kJobImport, []jobStage{
 		{Task: importer.StageFetch}, {Task: importer.StageProducts},
-	}); !ok {
+	})
+	if !ok {
 		httpjson.WriteBadRequest(w, h.msg(i18n.KeyJobBusy))
 		return
 	}
 	// The cabinet keys live in memory only while the job runs: they are never stored.
 	go func() {
-		res, err := importer.Run(src, h.db, supplier, coefficient,
+		res, err := importer.Run(ctx, src, h.db, supplier, coefficient,
 			func(stage string, done, total int) {
 				h.job.progress(stage, done, total, nil)
 			})

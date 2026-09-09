@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -49,7 +50,7 @@ func TestOzonImport(t *testing.T) {
 	if items, err := imp.Fetch(); err != nil || len(items) != 1 {
 		t.Fatalf("fetch: %v %d", err, len(items))
 	}
-	res, err := Run(imp, d, "Ромашка", 1, nil)
+	res, err := Run(context.Background(), imp, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +76,7 @@ func TestOzonImport(t *testing.T) {
 		t.Fatalf("images: %+v", imgs)
 	}
 	// A repeat import - dedup by SKU.
-	res, _ = Run(imp, d, "Ромашка", 1, nil)
+	res, _ = Run(context.Background(), imp, d, "Ромашка", 1, nil)
 	if res.Imported != 0 || res.Skipped != 1 {
 		t.Fatalf("dedup: %+v", res)
 	}
@@ -134,7 +135,7 @@ func TestWBImportSizes(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &WB{Token: "tok", ContentURL: srv.URL, PricesURL: srv.URL, MarketplaceURL: srv.URL}
-	res, err := Run(imp, d, "Ромашка", 1, nil)
+	res, err := Run(context.Background(), imp, d, "Ромашка", 1, nil)
 	if err != nil || res.Imported != 3 {
 		t.Fatalf("%v %+v", err, res)
 	}
@@ -203,7 +204,7 @@ func TestWBImportSingleSize(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &WB{Token: "tok", ContentURL: srv.URL, PricesURL: srv.URL, MarketplaceURL: srv.URL}
-	res, err := Run(imp, d, "Ромашка", 1, nil)
+	res, err := Run(context.Background(), imp, d, "Ромашка", 1, nil)
 	if err != nil || res.Imported != 1 {
 		t.Fatalf("%v %+v", err, res)
 	}
@@ -294,7 +295,7 @@ func TestYMLImport(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 7}
-	res, err := Run(imp, d, "Ромашка", 1, nil)
+	res, err := Run(context.Background(), imp, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +325,7 @@ func TestYMLImport(t *testing.T) {
 		t.Fatal("BYN should not have been imported")
 	}
 
-	res, _ = Run(imp, d, "Ромашка", 1, nil)
+	res, _ = Run(context.Background(), imp, d, "Ромашка", 1, nil)
 	if res.Imported != 0 || res.Skipped != 3 {
 		t.Fatalf("dedup: %+v", res)
 	}
@@ -339,7 +340,7 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	defer func() { _ = d.Close() }()
 
 	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 7}
-	if _, err := Run(imp, d, "Ромашка", 1, nil); err != nil {
+	if _, err := Run(context.Background(), imp, d, "Ромашка", 1, nil); err != nil {
 		t.Fatal(err)
 	}
 	p, err := d.GetVisibleProductBySlug("terka-plastmassovaya")
@@ -358,7 +359,7 @@ func TestReimportKeepsTheOwnersWords(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := Run(imp, d, "Ромашка", 1, nil); err != nil {
+	if _, err := Run(context.Background(), imp, d, "Ромашка", 1, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -567,7 +568,7 @@ func TestYMLFeedCurrency(t *testing.T) {
 	}
 
 	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 1}
-	res, err := Run(imp, d, "Ромашка", 1, nil)
+	res, err := Run(context.Background(), imp, d, "Ромашка", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
