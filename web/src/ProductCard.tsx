@@ -71,8 +71,8 @@ const kText = {
     en: "Photos can be dragged: the first one goes to search, to the catalogue and to a channel listing.",
   },
   photosHint: {
-    ru: "JPEG, PNG или WebP, до 10 МБ. Первое фото попадает в поисковую выдачу и в карточку канала. Снимайте 1200×1600 в пропорции 3:4: этот размер принимают и Ozon, и Wildberries, а витрина уменьшит его сама. Обратно не работает - из маленького снимка карточку площадки уже не собрать.",
-    en: "JPEG, PNG or WebP, up to 10 MB. The first photo is what search results and the channel card show. Shoot 1200×1600 at 3:4: both Ozon and Wildberries accept that size, and the storefront makes its own smaller copy. It does not work the other way round - a small photo will not become a marketplace card later.",
+    ru: "Снимайте 1200×1600 в пропорции 3:4, формат JPEG, фон белый или однотонный светлый. Этот размер принимают и Ozon, и Wildberries, а витрина уменьшит его сама. Первое фото - товар целиком: оно попадает в поисковую выдачу и в карточку площадки. Надписи, логотипы и водяные знаки на изображении запрещены, Wildberries за них штрафует. Обратно не работает: из маленького снимка карточку площадки уже не собрать, а меньше 700 точек по короткой стороне её не примут вовсе.",
+    en: "Shoot 1200×1600 at 3:4, save as JPEG, on a white or plain light background. Both Ozon and Wildberries accept that size, and the storefront makes its own smaller copy. The first photo shows the whole product: it is what search results and the marketplace card use. Text, logos and watermarks on the image are not allowed - Wildberries fines for them. It does not work the other way round: a small photo will not become a marketplace card later, and under 700 pixels on the short side it is refused outright.",
   },
   remotePhoto: {
     ru: "Фото лежит на чужом сервере. Закроют его - витрина останется без картинки. «Забрать фото к себе» скачает его к нам.",
