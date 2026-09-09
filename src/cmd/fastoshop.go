@@ -193,7 +193,17 @@ func run(cfg *config.Config) error {
 		return fmt.Errorf("listen %s: %w", cfg.Settings.Host, err)
 	}
 
-	server := &http.Server{Handler: r}
+	// Shutdown waits for connections to fall idle and does not cancel request
+	// contexts, and the SSE progress stream never falls idle by itself: an admin
+	// tab left open would hold the stop until the deadline and end it as a
+	// failure. Every request hangs off this context, so cancelling it lets the
+	// stream return on its own.
+	baseCtx, endRequests := context.WithCancel(context.Background())
+	defer endRequests()
+	server := &http.Server{
+		Handler:     r,
+		BaseContext: func(net.Listener) context.Context { return baseCtx },
+	}
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	errChan := make(chan error, 1)
@@ -203,6 +213,7 @@ func run(cfg *config.Config) error {
 	select {
 	case sig := <-sigChan:
 		log.Printf("Received %v, shutting down", sig)
+		endRequests()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		return server.Shutdown(ctx)
