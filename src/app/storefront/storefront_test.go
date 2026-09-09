@@ -144,13 +144,18 @@ func ldImage(t *testing.T, body string) string {
 		t.Fatal("no ld+json block")
 	}
 	raw, _, _ := strings.Cut(rest, "</script>")
+	// image is a list so a card with several photos offers them all to the rich
+	// snippet; the helper returns the first, which is the one that represents it.
 	var ld struct {
-		Image string `json:"image"`
+		Image []string `json:"image"`
 	}
 	if err := json.Unmarshal([]byte(raw), &ld); err != nil {
 		t.Fatalf("ld+json invalid: %v\n%s", err, raw)
 	}
-	return ld.Image
+	if len(ld.Image) == 0 {
+		return ""
+	}
+	return ld.Image[0]
 }
 
 // An absolute source URL must reach <img>, og:image and JSON-LD as it stands.
@@ -575,7 +580,7 @@ func TestCartNoIndexNoScriptsNotInSitemap(t *testing.T) {
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "1")
 	body := c.cart(t)
-	if !strings.Contains(body, `<meta name="robots" content="noindex">`) {
+	if !strings.Contains(body, `<meta name="robots" content="noindex,follow">`) {
 		t.Errorf("cart must be noindex\n%s", body)
 	}
 	if executableScripts(body) != 0 {
@@ -1540,14 +1545,14 @@ func TestContactsAppearsOnlyWhenThereIsSomethingToShow(t *testing.T) {
 	}
 
 	s, _ := d.GetSettings()
-	s.ShopPhone = "+375 33 652 92 91"
-	s.Requisites = "ИП Петровский, УНП 191234567"
+	s.ShopPhone = "+375 29 123 45 67"
+	s.Requisites = "ИП Иванов, УНП 123456789"
 	if err := d.UpdateSettings(s); err != nil {
 		t.Fatal(err)
 	}
 
 	body := get(t, h, "/contacts")
-	for _, want := range []string{"+375 33 652 92 91", "191234567", "Контакты"} {
+	for _, want := range []string{"+375 29 123 45 67", "123456789", "Контакты"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("/contacts is missing %q", want)
 		}
@@ -1652,5 +1657,76 @@ func TestDescriptionParagraphs(t *testing.T) {
 	}
 	if got := paragraphs(""); got != nil {
 		t.Errorf("an empty description must produce nothing: %#v", got)
+	}
+}
+
+// Pages 2..N used to carry the first page's title and description, which Search
+// Console reports as duplicates; the canonical was already per-page.
+func TestPaginationPagesDoNotShareTitleWithTheFirst(t *testing.T) {
+	d, h := setup(t)
+	for i := range 70 {
+		p := &database.Product{Title: fmt.Sprintf("Товар %d", i), Price: 1000,
+			Stock: 1, Category: "kitchen"}
+		if err := d.CreateProduct(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first, second := get(t, h, "/"), get(t, h, "/?page=2")
+	title := func(body string) string {
+		_, rest, _ := strings.Cut(body, "<title>")
+		got, _, _ := strings.Cut(rest, "</title>")
+		return got
+	}
+	if title(first) == title(second) {
+		t.Errorf("page 2 repeats the first page's title: %q", title(first))
+	}
+	if !strings.Contains(title(second), "2") {
+		t.Errorf("page 2 title does not say which page it is: %q", title(second))
+	}
+	if !strings.Contains(second, "Страница 2.") {
+		t.Error("page 2 description repeats the first page's")
+	}
+}
+
+// Lazy-loading the image above the fold is the usual way a catalogue fails LCP.
+func TestFirstTilesLoadEagerly(t *testing.T) {
+	d, h := setup(t)
+	for i := range 8 {
+		p := &database.Product{Title: fmt.Sprintf("Товар %d", i), Price: 1000,
+			Stock: 1, Category: "kitchen"}
+		if err := d.CreateProduct(p); err != nil {
+			t.Fatal(err)
+		}
+		if err := d.AddImage(p.ID, fmt.Sprintf("https://cdn.example/%d.jpg", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	body := get(t, h, "/")
+	if n := strings.Count(body, `fetchpriority="high"`); n == 0 {
+		t.Error("no tile is fetched eagerly, so the LCP image waits for layout")
+	}
+	if !strings.Contains(body, `loading="lazy"`) {
+		t.Error("tiles below the fold must stay lazy")
+	}
+}
+
+// Without max-image-preview Google shows a thumbnail where a catalogue is browsed
+// by picture; a noindex page must keep saying noindex instead.
+func TestRobotsMetaAllowsLargeImagePreview(t *testing.T) {
+	_, h := setup(t)
+	if !strings.Contains(get(t, h, "/"), `content="max-image-preview:large"`) {
+		t.Error("catalogue does not allow a large image preview")
+	}
+	c := &client{h: h}
+	c.add(t, "krasnyj-chajnik", "1")
+	body := c.cart(t)
+	if !strings.Contains(body, `content="noindex,follow"`) {
+		t.Error("cart must stay noindex")
+	}
+	if strings.Count(body, `name="robots"`) != 1 {
+		t.Error("a page must carry exactly one robots directive")
+	}
+	if strings.Contains(body, "max-image-preview") {
+		t.Error("a noindex page must not also invite a large preview")
 	}
 }
