@@ -433,6 +433,27 @@ func paragraphs(text string) []string {
 	return out
 }
 
+// setLastModified states when the page's contents last changed, which is what a
+// conditional request behind a CDN has to go on: the tag is the hash of the
+// bytes and does not survive the edge recompressing them, while a date describes
+// the resource itself. Zero means we have nothing honest to claim.
+func setLastModified(w http.ResponseWriter, t time.Time) {
+	if !t.IsZero() {
+		w.Header().Set("Last-Modified", t.UTC().Format(http.TimeFormat))
+	}
+}
+
+// newest is the freshest change among the products a page shows.
+func newest(products []database.Product) time.Time {
+	var t time.Time
+	for _, p := range products {
+		if p.UpdatedAt.After(t) {
+			t = p.UpdatedAt
+		}
+	}
+	return t
+}
+
 // The offer needs a date far enough ahead not to read as stale, and the same one
 // all month: a value counted from today changes the page daily and with it every
 // cached copy and every ETag.
@@ -494,6 +515,7 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
+	setLastModified(w, newest(products))
 	images, _ := s.db.ImagesFor(productIDs(products))
 	cards := make([]cardVM, 0, len(products))
 	for _, p := range products {
@@ -652,6 +674,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	setLastModified(w, p.UpdatedAt)
 	raw, _ := s.db.ListImages(p.ID)
 	imgs := make([]imageVM, 0, len(raw))
 	for _, im := range raw {
@@ -755,6 +778,7 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 		set.URLs = append(set.URLs, sitemapURL{
 			Loc: s.baseURL + "/p/" + p.Slug, LastMod: p.UpdatedAt.Format(time.DateOnly)})
 	}
+	setLastModified(w, newest(products))
 	w.Header().Set("Content-Type", "application/xml")
 	// An hour, as the product feeds already say: a crawler that re-reads the map
 	// on every hop through the catalogue costs a full pass over the products.

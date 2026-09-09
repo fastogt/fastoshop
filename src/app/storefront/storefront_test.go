@@ -1862,3 +1862,61 @@ func TestConditionalGetAcceptsTheTagAsItComesBack(t *testing.T) {
 		t.Errorf("an unrelated tag answered %d, want 200", w.Code)
 	}
 }
+
+// Behind a CDN the tag does not survive: Cloudflare recompresses the page at the
+// edge and strips it, so the only validator that reaches a crawler is the date.
+// A shop with a CDN in front and one served straight from nginx must both answer
+// a conditional request, by different halves of the same middleware.
+func TestConditionalGetWorksOnTheDateAlone(t *testing.T) {
+	_, h := setup(t)
+	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/sitemap.xml"} {
+		first := httptest.NewRecorder()
+		h.ServeHTTP(first, httptest.NewRequest("GET", path, nil))
+		stamp := first.Header().Get("Last-Modified")
+		if stamp == "" {
+			t.Errorf("%s states no Last-Modified", path)
+			continue
+		}
+		if _, err := http.ParseTime(stamp); err != nil {
+			t.Errorf("%s: Last-Modified %q is not an HTTP date", path, stamp)
+			continue
+		}
+
+		// The crawler holds a copy from exactly then, and offers no tag at all.
+		r := httptest.NewRequest("GET", path, nil)
+		r.Header.Set("If-Modified-Since", stamp)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != http.StatusNotModified {
+			t.Errorf("%s answered %d to If-Modified-Since, want 304", path, w.Code)
+		}
+
+		// A copy from before the change must bring the page back.
+		older := time.Now().Add(-72 * time.Hour).UTC().Format(http.TimeFormat)
+		r = httptest.NewRequest("GET", path, nil)
+		r.Header.Set("If-Modified-Since", older)
+		w = httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != http.StatusOK {
+			t.Errorf("%s withheld a page changed since the client's copy: %d", path, w.Code)
+		}
+	}
+}
+
+// A client that offers a tag is asking about that tag; a date it also sends must
+// not override the answer, or a changed page would read as unchanged.
+func TestTagBeatsTheDateWhenBothAreOffered(t *testing.T) {
+	_, h := setup(t)
+	first := httptest.NewRecorder()
+	h.ServeHTTP(first, httptest.NewRequest("GET", "/", nil))
+	stamp := first.Header().Get("Last-Modified")
+
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("If-None-Match", `"not-the-page-you-hold"`)
+	r.Header.Set("If-Modified-Since", stamp)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Errorf("a stale tag was overruled by a matching date: %d", w.Code)
+	}
+}

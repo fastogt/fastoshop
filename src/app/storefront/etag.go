@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // ETag answers a crawler's second visit with 304 instead of the page. A shop of
@@ -30,7 +31,7 @@ func ETag(next http.Handler) http.Handler {
 			sum := sha256.Sum256(rec.body.Bytes())
 			tag := `"` + hex.EncodeToString(sum[:16]) + `"`
 			w.Header().Set("ETag", tag)
-			if noneMatch(r.Header.Get("If-None-Match"), tag) {
+			if fresh(r, tag, w.Header().Get("Last-Modified")) {
 				w.WriteHeader(http.StatusNotModified)
 				return
 			}
@@ -38,6 +39,34 @@ func ETag(next http.Handler) http.Handler {
 		w.WriteHeader(rec.status)
 		_, _ = w.Write(rec.body.Bytes())
 	})
+}
+
+// fresh reports whether the client already holds this page.
+//
+// Two validators, because they survive different things. The tag is the hash of
+// the bytes, and Cloudflare recompresses HTML at the edge, which strips it - so
+// behind a CDN the only one that reaches a crawler is the date, which describes
+// the resource rather than its encoding. A shop with the CDN in front and a shop
+// served straight from nginx therefore answer the same conditional request by
+// different halves of this function.
+//
+// If-None-Match wins when it is present, as the specification requires: a client
+// that offers a tag is asking about that tag, and a date must not overrule it.
+func fresh(r *http.Request, tag, lastModified string) bool {
+	if match := r.Header.Get("If-None-Match"); match != "" {
+		return noneMatch(match, tag)
+	}
+	since := r.Header.Get("If-Modified-Since")
+	if since == "" || lastModified == "" {
+		return false
+	}
+	held, err1 := http.ParseTime(since)
+	changed, err2 := http.ParseTime(lastModified)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+	// HTTP dates carry whole seconds, so anything finer would never compare equal.
+	return !changed.Truncate(time.Second).After(held.Truncate(time.Second))
 }
 
 // noneMatch compares the way RFC 9110 asks for a conditional GET, which is not
