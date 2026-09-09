@@ -46,6 +46,7 @@ const (
 	KeyWBPriceConflict  = "wb_price_conflict"
 	KeyWBPriceTaskStuck = "wb_price_task_stuck"
 	KeyWBAmbiguousCard  = "wb_ambiguous_card"
+	KeyWBNoOrdersScope  = "wb_no_orders_scope"
 	KeySupplierRequired = "supplier_required"
 	KeyBadStock         = "bad_stock"
 	KeyNothingSelected  = "nothing_selected"
@@ -145,6 +146,10 @@ var kMessages = map[string][2]string{
 	},
 	KeyWBNoToken: {
 		"сначала сохраните токен Wildberries", "save the Wildberries token first",
+	},
+	KeyWBNoOrdersScope: {
+		"в токене Wildberries нет раздела «Маркетплейс», поэтому заказы закрыты: выпустите токен заново в кабинете WB Партнёры → Настройки → Доступ к API, отметив этот раздел",
+		"the Wildberries token has no Marketplace section, so orders are closed: issue it again under WB Partners → Settings → API access with that section ticked",
 	},
 	KeyWBNotLinked: {
 		"товар не связан с карточкой Wildberries",

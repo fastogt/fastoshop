@@ -138,6 +138,12 @@ func newCabinet(t *testing.T, cards ...Card) (*cabinet, Hosts) {
 	mux.HandleFunc("/api/v3/orders", func(w http.ResponseWriter, r *http.Request) {
 		c.record("orders")
 		c.mu.Lock()
+		if c.noScope {
+			c.mu.Unlock()
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"status":403,"detail":"scope is not allowed for this resource","requestId":"17d5","origin":"ag-marketplace"}`))
+			return
+		}
 		orders := append([]Order(nil), c.orders...)
 		c.mu.Unlock()
 		_ = json.NewEncoder(w).Encode(ordersResponse{Orders: orders})
@@ -513,5 +519,35 @@ func TestCheckReportsMissingStockScope(t *testing.T) {
 	}
 	if !got.NoStockScope {
 		t.Error("отказ склада по правам должен доходить до владельца")
+	}
+}
+
+// A token issued without the Marketplace section answers the orders endpoint
+// with a 403 carrying a requestId and an origin. Shown as it stands, that is a
+// wall of JSON on the seller's screen with nothing to act on, while the one
+// thing they need to know - reissue the token with that section - is already
+// written down for the connection check.
+func TestOrdersWithoutMarketplaceScopeExplainItself(t *testing.T) {
+	h, d, cab := newTest(t)
+	cab.noScope = true
+	if err := d.SaveWBSettings(&database.WBSettings{
+		Token: "t", WarehouseID: "7", Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := d.GetWBSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.worker.pollOrders(h.worker.client(st)); err == nil {
+		t.Fatal("a 403 from the orders endpoint must surface as an error")
+	}
+	got := decode[settingsResponse](t, do(t, h, "GET", "/settings", "")).PollError
+
+	if strings.Contains(got, "requestId") || strings.Contains(got, "ag-marketplace") {
+		t.Errorf("the platform's raw body reached the seller: %q", got)
+	}
+	if !strings.Contains(got, "Маркетплейс") {
+		t.Errorf("the message does not name the section to tick: %q", got)
 	}
 }

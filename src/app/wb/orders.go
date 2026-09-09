@@ -1,12 +1,27 @@
 package wb
 
 import (
+	"errors"
+	"net/http"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/i18n"
 )
+
+// pollError turns a platform refusal into something the seller can act on. A 403
+// here means one thing only: the token was issued without the Marketplace
+// section, and no amount of retrying will change that. Everything else keeps the
+// platform's own words, which we do not rewrite.
+func pollError(err error) string {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) && apiErr.Status == http.StatusForbidden {
+		return i18n.KeyWBNoOrdersScope
+	}
+	return err.Error()
+}
 
 // One day: reaching deeper would zero out stocks with old orders on the first poll.
 const kFirstPollWindow = 24 * time.Hour
@@ -40,7 +55,7 @@ func (w *Worker) pollOrders(c *Client) error {
 
 	orders, err := c.ListOrders(since.Add(-kPollOverlap))
 	if err != nil {
-		w.SetPollError(err.Error())
+		w.SetPollError(pollError(err))
 		return err
 	}
 
@@ -61,7 +76,7 @@ func (w *Worker) pollOrders(c *Client) error {
 			CreatedAt: created,
 		})
 		if err != nil {
-			w.SetPollError(err.Error())
+			w.SetPollError(pollError(err))
 			return err
 		}
 		if moved {
@@ -71,7 +86,7 @@ func (w *Worker) pollOrders(c *Client) error {
 
 	returned, err := w.refreshStatuses(c)
 	if err != nil {
-		w.SetPollError(err.Error())
+		w.SetPollError(pollError(err))
 		return err
 	}
 

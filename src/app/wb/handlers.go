@@ -222,7 +222,7 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 		PricePending: pricePending, PriceInFlight: priceInFlight,
 		PriceFailed: priceFailed, PriceErrors: priceErrs,
 		OrdersTotal: total, OrdersOversold: oversold, OrdersUnresolved: unresolved,
-		PollError: h.worker.PollError(),
+		PollError: i18n.TIfKey(lang, h.worker.PollError()),
 	})
 }
 
