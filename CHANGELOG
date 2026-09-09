@@ -1,3 +1,8 @@
+1.50.5 / September 9, 2026
+[Alexandr Topilski]
+- Compression is nginx's job again. The application carried a gzip middleware while the bundled nginx sample carried no gzip_types, so the arrangement was the reverse of what it should be. The sample now compresses the sitemap, the product feeds, robots.txt, llms.txt and the admin bundle; photos stay out, because JPEG and WebP are already compressed and a second pass only costs CPU. Anyone running the bundled sample should take the new gzip_types across before upgrading, or those files travel uncompressed
+- The photo hint in the product form states what a marketplace requires rather than what the upload accepts: 1200x1600 at 3:4, JPEG, a plain light background, the whole product in the first shot, and no text or logos on the image. Under 700 pixels on the short side no platform accepts a photo at all, and a small one cannot be enlarged later
+
 1.50.4 / September 9, 2026
 [Alexandr Topilski]
 - Stopping an import actually stops it. The button reported success while the run carried on to the end, and the fix had a trap in it: the last step of an import withdraws every product the feed no longer lists, judged from the articles the run reached, so a run stopped at a tenth would have taken nine tenths of the shop off sale. A stopped import now leaves the catalogue exactly as it found it
