@@ -1,3 +1,13 @@
+1.50.4 / September 9, 2026
+[Alexandr Topilski]
+- Stopping an import actually stops it. The button reported success while the run carried on to the end, and the fix had a trap in it: the last step of an import withdraws every product the feed no longer lists, judged from the articles the run reached, so a run stopped at a tenth would have taken nine tenths of the shop off sale. A stopped import now leaves the catalogue exactly as it found it
+- The Save button is on the tab you are editing. It lived inside "Promotion", so the shop name, phone, logo, currency, tile proportion and every mail setting could only be saved by switching to another tab first
+- A selection no longer survives paging or filtering, where a delete could aim at rows nobody could see. Saving a price on Wildberries clears the cell's draft, so it shows what was stored rather than what was typed
+- The first row of a catalogue loads its photos immediately instead of waiting, which is what search engines measure as the largest paint. Later rows still wait, so nothing extra is fetched
+- Pages 2 and beyond carry their own title and description instead of repeating the first page's, which search consoles report as duplicates
+- Structured data offers every photo of a card rather than the first one, drops the article number instead of declaring it empty, and a product shared to a messenger now carries its address and the shop's name. Search engines are told they may show a full-size preview
+- Only one robots directive per page: the cart declared its own while the layout added a second
+
 1.50.3 / September 8, 2026
 [Alexandr Topilski]
 - A photo with a transparent background no longer turns black in the catalogue. The small copy is a JPEG and JPEG has no transparency, so whatever lay under the transparent pixels became the background - and the canvas it was drawn onto was transparent black. The tile showed the product on a black square while the product page, which serves the original, looked correct, so the person who uploaded it would never see the difference. Transparent areas are now filled with white, the background a product is photographed on
