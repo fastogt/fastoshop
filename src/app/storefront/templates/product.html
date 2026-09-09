@@ -6,14 +6,19 @@
 <meta property="og:description" content="{{.MetaDescription}}">
 {{if .Images}}<meta property="og:image" content="{{(index .Images 0).AbsURL}}">{{end}}
 <meta property="og:type" content="product">
+<meta property="og:url" content="{{.Canonical}}">
+<meta property="og:site_name" content="{{.Shop.ShopName}}">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Product",
   "name": {{.SchemaName}},
   "description": {{.MetaDescription}},
-  {{if .Images}}"image": "{{(index .Images 0).AbsURL}}",{{end}}
-  "sku": {{.P.SKU}},
+  {{/* An array, not one URL: Google picks among the first few for the rich
+       snippet, and a card with one photo still answers as a list of one. */}}
+  {{if .Images}}"image": [{{range $i, $im := .Images}}{{if $i}}, {{end}}"{{$im.AbsURL}}"{{end}}],{{end}}
+  {{/* An empty sku is worse than no sku: it declares the field and states nothing. */}}
+  {{if .P.SKU}}"sku": {{.P.SKU}},{{end}}
   {{if .P.Brand}}"brand": {"@type": "Brand", "name": {{.P.Brand}}},{{end}}
   {{/* Only what the owner stated: an empty node in the markup is worse than an
        absent one, and a made-up weight is worse than both. */}}

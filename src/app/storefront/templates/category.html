@@ -1,6 +1,6 @@
-{{define "title"}}{{if .Query}}{{.Query}} — поиск{{else}}{{.Category}} — купить в {{.Shop.ShopName}}{{end}}{{end}}
+{{define "title"}}{{if .Query}}{{.Query}} — поиск{{else}}{{.Category}} — купить в {{.Shop.ShopName}}{{end}}{{if gt .Page 1}} - страница {{.Page}}{{end}}{{end}}
 {{define "head"}}
-<meta name="description" content="{{if .MetaDescription}}{{.MetaDescription}}{{else}}{{.Category}} — {{.FoundStr}} в магазине «{{.Shop.ShopName}}»: цены, наличие, доставка.{{end}}">
+<meta name="description" content="{{if .MetaDescription}}{{.MetaDescription}}{{else}}{{.Category}} — {{.FoundStr}} в магазине «{{.Shop.ShopName}}»: цены, наличие, доставка.{{end}}{{if gt .Page 1}} Страница {{.Page}}.{{end}}">
 {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">{{end}}
 {{/* The path a buyer walked, spelled out for the search engine: the snippet
      shows it instead of a bare address. */}}

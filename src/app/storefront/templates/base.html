@@ -3,12 +3,15 @@
 {{define "grid"}}
 {{if .Products}}
 <ul class="grid{{if eq $.Shop.TileAspect "portrait"}} tall{{end}}">
-{{range .Products}}
+{{range $i, $p := .Products}}
   <li><a href="/p/{{.Slug}}">
     {{/* The frame holds the "no photo" mark; a picture that loads covers it, one
          that does not lets it through. A supplier's link can answer 404 today and
          work tomorrow, so nothing is deleted over it. */}}
-    <div class="frame">{{if .ImageURL}}<img class="nomark" src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy" width="400" height="{{$.Shop.TileHeight}}">{{end}}</div>
+    {{/* The first row is the largest thing above the fold, and lazy-loading it is
+         the usual way a catalogue fails Core Web Vitals: the browser waits for
+         layout before it will even ask for the picture. */}}
+    <div class="frame">{{if .ImageURL}}<img class="nomark" src="{{.ImageURL}}" alt="{{.Title}}" {{if lt $i 5}}fetchpriority="high"{{else}}loading="lazy"{{end}} width="400" height="{{$.Shop.TileHeight}}">{{end}}</div>
     {{/* Price first, the way a marketplace tile reads: a buyer scans a row by
          price, and the name is what they check once the price has stopped them. */}}
     <div class="body">
@@ -63,7 +66,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{block "title" .}}{{.Shop.ShopName}}{{end}}</title>
 {{if .Shop.Logo}}<link rel="icon" href="/uploads/{{.Shop.Logo}}">{{else}}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{{end}}
-{{if .NoIndex}}<meta name="robots" content="noindex,follow">{{end}}
+{{/* Without max-image-preview the photo is shown thumbnail-sized in Discover and
+     in image snippets, which is where a catalogue is browsed by picture. */}}
+{{if .NoIndex}}<meta name="robots" content="noindex,follow">{{else}}<meta name="robots" content="max-image-preview:large">{{end}}
 {{block "head" .}}{{end}}
 <style>{{.CSS}}</style>
 </head>

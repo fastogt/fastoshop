@@ -146,6 +146,8 @@ func (s *Storefront) cartSoldOut(w http.ResponseWriter, r *http.Request, slug, t
 func (s *Storefront) renderCart(w http.ResponseWriter, rows []cartRowVM, total int64, data pageVM) {
 	data.Shop, data.BaseURL, data.CSS = s.shop(), s.baseURL, template.CSS(styleCSS)
 	data.Cart, data.TotalStr, data.CartCount = rows, priceStr(total), countRows(rows)
+	// Robots lives in one place, or a page ends up carrying two contradicting tags.
+	data.NoIndex = true
 	if err := s.cart.ExecuteTemplate(w, "base", data); err != nil {
 		log.Errorf("render cart: %v", err)
 	}

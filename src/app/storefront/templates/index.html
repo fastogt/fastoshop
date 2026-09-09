@@ -1,6 +1,6 @@
-{{define "title"}}{{if .Query}}{{.Query}} — поиск{{else}}{{.Shop.ShopName}} — каталог товаров{{end}}{{end}}
+{{define "title"}}{{if .Query}}{{.Query}} — поиск{{else}}{{.Shop.ShopName}} — каталог товаров{{end}}{{if gt .Page 1}} - страница {{.Page}}{{end}}{{end}}
 {{define "head"}}
-<meta name="description" content="{{.Shop.ShopName}}: каталог товаров, цены, наличие.">
+<meta name="description" content="{{.Shop.ShopName}}: каталог товаров, цены, наличие.{{if gt .Page 1}} Страница {{.Page}}.{{end}}">
 {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">{{end}}
 {{end}}
 {{define "content"}}
