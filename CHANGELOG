@@ -1,3 +1,7 @@
+1.50.9 / September 9, 2026
+[Alexandr Topilski]
+- The conditional request added in 1.50.8 now works for clients that ask for compression, which is all of them. nginx rewrites the tag to its weak form when it compresses a page, so what a browser sends back is not character-for-character what it was given, and comparing the two as text matched for nobody
+
 1.50.8 / September 9, 2026
 [Alexandr Topilski]
 - A page a search engine already holds is answered with a header instead of the page. Nothing carried an ETag, so every re-read of a catalogue sent the whole thing again, and a shop is re-read far more often than it changes. On a twenty-thousand-page catalogue that is most of the crawl budget spent on pages the crawler has not lost
