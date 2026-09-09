@@ -1,3 +1,7 @@
+1.50.6 / September 9, 2026
+[Alexandr Topilski]
+- A Wildberries token issued without the Marketplace section now says so. Sales stayed at zero while the sync panel showed the platform's refusal verbatim - a line of JSON with a request id in it and nothing to act on. The panel now names the section and where to tick it, which is what the connection check had been saying all along on a tab the seller had no reason to open. Everything that is not this one refusal keeps the platform's own words: we do not rewrite someone else's error
+
 1.50.5 / September 9, 2026
 [Alexandr Topilski]
 - Compression is nginx's job again. The application carried a gzip middleware while the bundled nginx sample carried no gzip_types, so the arrangement was the reverse of what it should be. The sample now compresses the sitemap, the product feeds, robots.txt, llms.txt and the admin bundle; photos stay out, because JPEG and WebP are already compressed and a second pass only costs CPU. Anyone running the bundled sample should take the new gzip_types across before upgrading, or those files travel uncompressed
