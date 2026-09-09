@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useT } from "./i18n";
 
 // Shared admin table: selection, bulk actions, server-side paging and sorting.
@@ -129,6 +129,8 @@ export default function DataTable<T>({
     setPicked(new Set());
     setAll(false);
   };
+  // A new page or filter is a new set of rows: ticks must not survive off-screen.
+  useEffect(reset, [rows]);
 
   const toggle = (id: string | number) => {
     setAll(false);

@@ -348,8 +348,13 @@ export default function WB() {
     });
 
   const savePrice = async (l: WBLink, value: string) => {
+    setPriceDraft((d) => {
+      const next = { ...d };
+      delete next[l.product_id];
+      return next;
+    });
     const minor = toMinor(value);
-    if (Number.isNaN(minor) || minor < 0 || minor === l.price) return;
+    if (!Number.isFinite(minor) || minor < 0 || minor === l.price) return;
     await run(setPriceMsg, async () => {
       await api.wbSetPrice(l.product_id, minor);
       await loadLinks();

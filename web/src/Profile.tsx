@@ -626,24 +626,26 @@ export default function Profile() {
           </section>
 
           {/* ponytail: the Kufar/Avito section lands in phase 2 with its adapters */}
-
-          <div className="flex items-center gap-4">
-            <button className="btn" onClick={save}>
-              {t("save")}
-            </button>
-            {msg && (
-              <span
-                className={
-                  msg.startsWith(t("errorPrefix"))
-                    ? "text-red-600"
-                    : "text-green-700"
-                }
-              >
-                {msg}
-              </span>
-            )}
-          </div>
         </>
+      )}
+      {/* One settings object across three tabs: the button follows the fields. */}
+      {(tab === "tabShop" || tab === "tabMail" || tab === "tabSeo") && (
+        <div className="flex items-center gap-4">
+          <button className="btn" onClick={save}>
+            {t("save")}
+          </button>
+          {msg && (
+            <span
+              className={
+                msg.startsWith(t("errorPrefix"))
+                  ? "text-red-600"
+                  : "text-green-700"
+              }
+            >
+              {msg}
+            </span>
+          )}
+        </div>
       )}
       {tab === "tabParams" && <ParamVisibility t={t} />}
       {tab === "tabSecurity" && (
