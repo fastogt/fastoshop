@@ -1,3 +1,7 @@
+1.50.11 / September 9, 2026
+[Alexandr Topilski]
+- The Telegram and WhatsApp accounts the owner filled in are now shown in the footer of every page, not only as an order button on a product. A buyer who came to ask a question rather than to order had no way to see them, and a messenger nobody can find is a channel the shop does not have. The footer link carries no order text: it opens the account and nothing else
+
 1.50.10 / September 9, 2026
 [Alexandr Topilski]
 - The conditional request now also works behind a CDN. A tag is the hash of the bytes, and a CDN that recompresses a page at the edge strips it, so the saving added in 1.50.8 reached only a shop served straight from nginx. Pages now also state when they last changed, which recompression does not invalidate: a product gives its own last change, a listing and the sitemap the freshest among the products they show
