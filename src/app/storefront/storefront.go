@@ -50,7 +50,9 @@ func (s *Storefront) stockChanged() {
 }
 
 func New(db *database.Database, baseURL, uploadsDir string) *Storefront {
-	base := template.Must(template.ParseFS(templatesFS, "templates/base.html"))
+	base := template.Must(template.New("base.html").
+		Funcs(template.FuncMap{"contactLinks": contactLinks}).
+		ParseFS(templatesFS, "templates/base.html"))
 	return &Storefront{
 		db: db, baseURL: strings.TrimRight(baseURL, "/"), uploads: uploadsDir,
 		index:         template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/index.html")),

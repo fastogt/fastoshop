@@ -92,6 +92,7 @@
 <a href="/privacy">Обработка данных</a>
 {{if or .Shop.ShopPhone .Shop.Requisites}}<a href="/contacts">Контакты</a>{{end}}
 {{if .Shop.ShopPhone}}<a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a>{{end}}
+{{range contactLinks .Shop}}<a href="{{.URL}}" rel="nofollow noopener" target="_blank">{{.Label}}</a>{{end}}
 </footer>
 {{/* Organization ties the site to a legal entity: search engines show the
 contacts in the snippet, and the buyer sees whom they are paying. Rendered only

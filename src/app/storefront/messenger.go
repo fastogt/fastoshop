@@ -52,6 +52,21 @@ func orderMessage(shop *database.Settings, p *database.Product, pageURL string) 
 	return b.String()
 }
 
+// The same accounts without a product: a buyer who came to ask, not to order.
+func contactLinks(shop *database.Settings) []orderLinkVM {
+	if shop == nil {
+		return nil
+	}
+	var out []orderLinkVM
+	if h := telegramHandle(shop.Telegram); h != "" {
+		out = append(out, orderLinkVM{Label: "Telegram", URL: "https://t.me/" + h})
+	}
+	if n := whatsappNumber(shop.WhatsApp); n != "" {
+		out = append(out, orderLinkVM{Label: "WhatsApp", URL: "https://wa.me/" + n})
+	}
+	return out
+}
+
 // Escaped here, not in the template: quotes and slashes in a title break the href.
 func orderLinks(shop *database.Settings, p *database.Product, pageURL string) []orderLinkVM {
 	if shop == nil || p == nil {

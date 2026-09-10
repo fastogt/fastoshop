@@ -60,3 +60,19 @@ func TestNoMessengerNoButtons(t *testing.T) {
 		t.Errorf("buttons without a messenger: %+v", links)
 	}
 }
+
+// The footer link carries no product, so it must carry no query either: a bare
+// account, and nothing that a page without a product could interpolate empty.
+func TestContactLinksAreBare(t *testing.T) {
+	shop := &database.Settings{Telegram: "https://t.me/lavka/", WhatsApp: "+375 (29) 123-45-67"}
+	links := contactLinks(shop)
+	if len(links) != 2 {
+		t.Fatalf("links: %d, want telegram and whatsapp", len(links))
+	}
+	if links[0].URL != "https://t.me/lavka" || links[1].URL != "https://wa.me/375291234567" {
+		t.Errorf("not bare accounts: %+v", links)
+	}
+	if len(contactLinks(&database.Settings{})) != 0 {
+		t.Error("a shop without messengers got footer buttons")
+	}
+}
