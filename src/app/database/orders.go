@@ -14,6 +14,13 @@ type Order struct {
 	Comment string `json:"comment"`
 	// First touch, one line: "google.com /p/basket" or "direct".
 	Source string `json:"source"`
+	// An empty OrgName is what makes an order private: a company order cannot be
+	// created without both of these, so no third "kind" column is needed.
+	OrgName string `json:"org_name"`
+	OrgUNP  string `json:"org_unp"`
+	// Name inside the requisites directory; optional, and the seller calls back
+	// whether or not it is there.
+	RequisitesFile string `json:"requisites_file"`
 	// The snapshot stays on the server: the admin receives it parsed.
 	ItemsJSON string    `json:"-"`
 	Status    string    `json:"status"`
@@ -23,8 +30,10 @@ type Order struct {
 // CreateOrder leaves stock alone; the storefront uses CreateOrderWithStock instead.
 func (d *Database) CreateOrder(o *Order) error {
 	res, err := d.db.Exec(
-		`INSERT INTO orders (name, phone, email, comment, items_json, source) VALUES (?, ?, ?, ?, ?, ?)`,
-		o.Name, o.Phone, o.Email, o.Comment, o.ItemsJSON, o.Source)
+		`INSERT INTO orders (name, phone, email, comment, items_json, source,
+		 org_name, org_unp, requisites_file) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		o.Name, o.Phone, o.Email, o.Comment, o.ItemsJSON, o.Source,
+		o.OrgName, o.OrgUNP, o.RequisitesFile)
 	if err != nil {
 		return err
 	}
@@ -92,12 +101,14 @@ func (d *Database) ListOrdersPage(status, sort string, desc bool, limit, offset 
 		args = append(args, status)
 	}
 	args = append(args, limit, offset)
-	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, source, created_at
+	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, source,
+		 org_name, org_unp, requisites_file, created_at
 		 FROM orders`+where+orderBy(kOrderSortable, sort, desc)+` LIMIT ? OFFSET ?`, args...)
 }
 
 func (d *Database) ListOrders() ([]Order, error) {
-	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, source, created_at
+	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, source,
+		 org_name, org_unp, requisites_file, created_at
 		 FROM orders ORDER BY created_at DESC, id DESC`)
 }
 
@@ -111,7 +122,8 @@ func (d *Database) scanOrders(query string, args ...any) ([]Order, error) {
 	for rows.Next() {
 		var o Order
 		if err := rows.Scan(&o.ID, &o.Name, &o.Phone, &o.Email, &o.Comment, &o.ItemsJSON,
-			&o.Status, &o.Source, &o.CreatedAt); err != nil {
+			&o.Status, &o.Source, &o.OrgName, &o.OrgUNP, &o.RequisitesFile,
+			&o.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, o)

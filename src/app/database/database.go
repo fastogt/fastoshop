@@ -180,6 +180,14 @@ func (d *Database) migrate() error {
 		-- 0 for orders placed before stock accounting existed: cancelling them
 		-- must not return to the warehouse what was never taken from it.
 		stock_applied INTEGER NOT NULL DEFAULT 0,
+		-- Enough for the seller to recognise a legal entity and call back; the
+		-- rest of the requisites arrive as a file, because there are twelve of
+		-- them and nobody retypes that into a form. Empty means a private buyer.
+		org_name TEXT NOT NULL DEFAULT '',
+		org_unp  TEXT NOT NULL DEFAULT '',
+		-- File name inside the requisites directory, which is NOT served: it
+		-- carries a bank account and a signatory.
+		requisites_file TEXT NOT NULL DEFAULT '',
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 	-- Duplicates the order contents from items_json deliberately: items_json is
@@ -242,7 +250,10 @@ func (d *Database) migrate() error {
 		-- Proportion of the catalogue tile. A photo that does not match the frame
 		-- loses a quarter of the tile to blank margins, and the right value differs
 		-- per shop: a marketplace catalogue is 3:4, a hand-shot one is usually square.
-		tile_aspect         TEXT NOT NULL DEFAULT 'square'
+		tile_aspect         TEXT NOT NULL DEFAULT 'square',
+		-- Who the shop sells to: private|company|both. 'private' is the safe
+		-- default - a shop that upgrades must look exactly as it did.
+		customer_kind       TEXT NOT NULL DEFAULT 'private'
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,

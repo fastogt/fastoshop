@@ -34,6 +34,9 @@ const kText = {
   cardSource: { ru: "Откуда пришёл", en: "Came from" },
   sourceDirect: { ru: "Прямой заход", en: "Direct" },
   cardBuyer: { ru: "Покупатель", en: "Buyer" },
+  cardOrg: { ru: "Организация", en: "Organisation" },
+  cardOrgUNP: { ru: "УНП", en: "Tax id" },
+  cardRequisites: { ru: "Скачать реквизиты", en: "Download requisites" },
   cardPlaced: { ru: "Оформлен", en: "Placed" },
   cardGone: {
     ru: "товара больше нет в каталоге",
@@ -317,6 +320,23 @@ export default function Orders() {
                   <a className="text-brand block" href={`mailto:${card.email}`}>
                     {card.email}
                   </a>
+                )}
+                {card.org_name && (
+                  <div className="mt-2">
+                    <div className="label">{t("cardOrg")}</div>
+                    <div className="font-medium">{card.org_name}</div>
+                    <div>
+                      {t("cardOrgUNP")}: {card.org_unp}
+                    </div>
+                    {card.requisites_file && (
+                      <a
+                        className="text-brand block"
+                        href={`/api/orders/${card.id}/requisites`}
+                      >
+                        {t("cardRequisites")}
+                      </a>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="text-right">

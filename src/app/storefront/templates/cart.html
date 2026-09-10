@@ -37,7 +37,10 @@
        the page it sat above the fold while the empty field sat below it. */}}
   {{if .NoContact}}<p class="notice oos">Заполните телефон или почту — иначе мы не сможем подтвердить заказ.</p>{{end}}
   <p class="oos">Оплата при получении. Мы перезвоним и подтвердим.</p>
-  <form method="post" action="/cart/order">
+  {{if .BadOrg}}<p class="notice oos">Укажите название организации и УНП — по ним продавец выставит счёт.</p>{{end}}
+  {{/* enctype only because of the requisites file; a shop without organisations
+       posts exactly what it posted before. */}}
+  <form method="post" action="/cart/order"{{if or .Shop.OrgOnly .Shop.OrgChoice}} enctype="multipart/form-data"{{end}}>
     <div>
       <label for="name">Ваше имя</label>
       <input id="name" name="name" placeholder="Иван" autocomplete="name" required value="{{.FormName}}">
@@ -46,17 +49,33 @@
       <label for="phone">Телефон</label>
       {{/* The sample number matches the shop's own money: +7 on a shop that
            sells in Br tells the buyer the shop is not for them. */}}
-      <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="{{if eq .Shop.Currency "BYN"}}+375 29 000-00-00{{else}}+7 999 000-00-00{{end}}">
+      <input id="phone" name="phone" type="tel" autocomplete="tel" value="{{.FormPhone}}" placeholder="{{if eq .Shop.Currency "BYN"}}+375 29 000-00-00{{else}}+7 999 000-00-00{{end}}">
     </div>
     <div>
       <label for="email">Почта</label>
-      <input id="email" name="email" type="email" autocomplete="email" placeholder="ivan@example.com">
+      <input id="email" name="email" type="email" autocomplete="email" value="{{.FormEmail}}" placeholder="ivan@example.com">
       <p class="oos">Оставьте телефон или почту — можно и то, и другое. На почту пришлём подтверждение заказа.</p>
     </div>
     <div>
       <label for="comment">Комментарий</label>
       <textarea id="comment" name="comment" placeholder="Удобное время для звонка, пожелания к доставке">{{.FormComment}}</textarea>
     </div>
+    {{if .Shop.OrgOnly}}
+    {{template "orgFields" .}}
+    {{else if .Shop.OrgChoice}}
+    {{/* The reveal is a sibling selector, not a script: the storefront ships no
+         JavaScript, and a radio already carries the state. */}}
+    {{/* The radios are siblings of .org-fields, not children of their labels:
+         "~" only reaches a sibling, and nesting them would hide the block for
+         good. */}}
+    <div class="buyer-kind">
+      <input type="radio" name="customer" value="private" id="kind-private"{{if not .Org}} checked{{end}}>
+      <label class="kind" for="kind-private">Частное лицо</label>
+      <input type="radio" name="customer" value="company" id="kind-company"{{if .Org}} checked{{end}}>
+      <label class="kind" for="kind-company">Организация</label>
+      <div class="org-fields">{{template "orgFields" .}}</div>
+    </div>
+    {{end}}
     <button type="submit">Оформить заказ</button>
     {{/* The consent has to sit where the data is handed over, not on a page
          nobody opens: the buyer types a name and a phone into this form, and
@@ -71,4 +90,22 @@
   <p><a href="/">Перейти в каталог</a></p>
 </div>
 {{end}}
+{{end}}
+
+{{/* Two fields, not twelve: the rest of the requisites arrive as the file the
+     buyer already has, and the seller asks the delivery address on the call. */}}
+{{define "orgFields"}}
+    <div>
+      <label for="org_name">Название организации</label>
+      <input id="org_name" name="org_name" placeholder="ООО «Ромашка»" value="{{.FormOrgName}}"{{if .Shop.OrgOnly}} required{{end}}>
+    </div>
+    <div>
+      <label for="org_unp">УНП или ИНН</label>
+      <input id="org_unp" name="org_unp" placeholder="190304936" value="{{.FormOrgUNP}}"{{if .Shop.OrgOnly}} required{{end}}>
+    </div>
+    <div>
+      <label for="requisites">Реквизиты файлом</label>
+      <input id="requisites" name="requisites" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.odt">
+      <p class="oos">Необязательно. Можно приложить карточку предприятия — или просто написать реквизиты в комментарии.</p>
+    </div>
 {{end}}

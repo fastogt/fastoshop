@@ -225,8 +225,10 @@ func (h *Handler) ExportOrdersCSV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="orders.csv"`)
 	cw := csv.NewWriter(w)
+	// Appended, never inserted: an accountant's saved import maps columns by position.
 	_ = cw.Write([]string{
 		"id", "date", "name", "phone", "email", "comment", "items", "total", "status",
+		"org_name", "org_unp",
 	})
 	for _, o := range list {
 		items, total, ok := orderLines(o)
@@ -244,6 +246,7 @@ func (h *Handler) ExportOrdersCSV(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%d", o.ID), o.CreatedAt.Format("2006-01-02 15:04"),
 			csvSafe(o.Name), csvSafe(o.Phone), csvSafe(o.Email), csvSafe(o.Comment),
 			csvSafe(desc), totalCell, o.Status,
+			csvSafe(o.OrgName), csvSafe(o.OrgUNP),
 		})
 	}
 	cw.Flush()

@@ -111,6 +111,14 @@ const kText = {
   },
   logoUpload: { ru: "Загрузить логотип", en: "Upload a logo" },
   logoRemove: { ru: "Убрать", en: "Remove" },
+  customerKind: { ru: "Кому продаём", en: "Who we sell to" },
+  customerPrivate: { ru: "Частным лицам", en: "Private buyers" },
+  customerCompany: { ru: "Организациям", en: "Organisations" },
+  customerBoth: { ru: "И тем, и другим", en: "Both" },
+  customerKindHint: {
+    ru: "Организациям в форме заказа добавляются название, УНП и необязательное вложение с реквизитами - по ним продавец выставляет счёт. «И тем, и другим» показывает переключатель, остальные режимы обходятся без него.",
+    en: 'Organisations get a name, a tax id and an optional requisites file in the checkout form, which is what an invoice is written from. "Both" shows a switch; the other two modes need none.',
+  },
   tileAspect: { ru: "Плитка каталога", en: "Catalogue tile" },
   tileSquare: { ru: "Квадрат 1:1", en: "Square 1:1" },
   tilePortrait: { ru: "Вертикальная 3:4", en: "Portrait 3:4" },
@@ -448,6 +456,19 @@ export default function Profile() {
                 <option value="KZT">{t("currencyKzt")}</option>
               </select>
               <p className="hint mt-1">{t("currencyHint")}</p>
+            </div>
+            <div>
+              <label className="label">{t("customerKind")}</label>
+              <select
+                className="field"
+                value={s.customer_kind || "private"}
+                onChange={(e) => setS({ ...s, customer_kind: e.target.value })}
+              >
+                <option value="private">{t("customerPrivate")}</option>
+                <option value="company">{t("customerCompany")}</option>
+                <option value="both">{t("customerBoth")}</option>
+              </select>
+              <p className="hint mt-1">{t("customerKindHint")}</p>
             </div>
             <div>
               <label className="label">{t("tileAspect")}</label>

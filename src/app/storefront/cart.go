@@ -223,19 +223,33 @@ func (s *Storefront) CartUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
+	// Capped before the form is parsed: the only large thing an order may carry
+	// is one requisites file, and a private-only shop carries none.
+	r.Body = http.MaxBytesReader(w, r.Body, kMaxRequisitesSize+(1<<20))
+	shop := s.shop()
 	name := strings.TrimSpace(r.FormValue("name"))
 	phone := strings.TrimSpace(r.FormValue("phone"))
 	email := strings.TrimSpace(r.FormValue("email"))
+	comment := strings.TrimSpace(r.FormValue("comment"))
+	org := readOrgForm(shop, r)
 	rows, total, _ := s.resolveCart(readCart(r))
 	if name == "" || len(rows) == 0 {
 		http.Redirect(w, r, "/cart", http.StatusSeeOther)
 		return
 	}
+	typed := pageVM{FormName: name, FormComment: comment, FormPhone: phone,
+		FormEmail: email, Org: org.Chosen, FormOrgName: org.Name, FormOrgUNP: org.UNP}
 	// One contact is enough, but not none: an unreachable order is a lost sale.
 	if phone == "" && email == "" {
-		rows, total, _ := s.resolveCart(readCart(r))
-		s.renderCart(w, rows, total, pageVM{NoContact: true,
-			FormName: name, FormComment: strings.TrimSpace(r.FormValue("comment"))})
+		typed.NoContact = true
+		s.renderCart(w, rows, total, typed)
+		return
+	}
+	// An organisation half-introduced is worse than none: the seller would have a
+	// company order they cannot put on an invoice.
+	if !org.Valid() {
+		typed.BadOrg = true
+		s.renderCart(w, rows, total, typed)
 		return
 	}
 	items := make([]orderItemJSON, 0, len(rows))
@@ -253,12 +267,14 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 		slugByID[p.ID] = p.Slug
 		fmt.Fprintf(&summary, "%s x%d - %s\n", p.Title, row.Qty, row.LineStr)
 	}
-	shop := s.shop()
 	sign := shop.Sign()
 	raw, _ := json.Marshal(items)
 	o := &database.Order{Name: name, Phone: phone, Email: email,
-		Comment: strings.TrimSpace(r.FormValue("comment")), ItemsJSON: string(raw),
-		Source: sourceOf(r)}
+		Comment: comment, ItemsJSON: string(raw), Source: sourceOf(r),
+		OrgName: org.Name, OrgUNP: org.UNP}
+	if org.Chosen {
+		o.RequisitesFile = s.saveRequisites(r)
+	}
 	if err := s.db.CreateOrderWithStock(o, stock); err != nil {
 		var oos *database.OutOfStockError
 		if errors.As(err, &oos) {
@@ -272,12 +288,7 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	s.stockChanged()
 	// This email goes to the owner, so it uses the owner's language, not the product one.
 	lang := shop.Lang
-	body := fmt.Sprintf("%s%s: %s %s\n\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n\n%s/admin",
-		summary.String(), i18n.T(lang, i18n.KeyOrderTotal), priceStr(total), sign,
-		i18n.T(lang, i18n.KeyOrderName), name,
-		i18n.T(lang, i18n.KeyOrderPhone), phone,
-		i18n.T(lang, i18n.KeyOrderEmail), email,
-		i18n.T(lang, i18n.KeyOrderComment), o.Comment, s.baseURL)
+	body := orderMailBody(lang, summary.String(), priceStr(total)+" "+sign, o, s.baseURL)
 	subject := fmt.Sprintf(i18n.T(lang, i18n.KeyNewOrderSubject), o.ID)
 	// A failed email must not fail the order: async, errors only to the log.
 	go func() {

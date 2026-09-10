@@ -68,6 +68,8 @@ type Settings struct {
 	AdHuntersAPIKey string `json:"-"`
 	// Catalogue tile proportion: TileSquare or TilePortrait.
 	TileAspect string `json:"tile_aspect"`
+	// Who the shop sells to: CustomerPrivate, CustomerCompany or CustomerBoth.
+	CustomerKind string `json:"customer_kind"`
 }
 
 // Tile proportions the storefront can draw. Portrait is 3:4, the shape both Ozon
@@ -80,6 +82,24 @@ const (
 func IsValidTileAspect(v string) bool {
 	return v == TileSquare || v == TilePortrait
 }
+
+// Who may order. Named after the buyer rather than after retail/wholesale: the
+// wholesale axis is about price, and this one is only about who introduces
+// themselves in the checkout form.
+const (
+	CustomerPrivate = "private"
+	CustomerCompany = "company"
+	CustomerBoth    = "both"
+)
+
+func IsValidCustomerKind(v string) bool {
+	return v == CustomerPrivate || v == CustomerCompany || v == CustomerBoth
+}
+
+// The templates cannot reach a Go constant, so the two questions they ask about
+// the checkout form are answered here.
+func (s *Settings) OrgOnly() bool   { return s.CustomerKind == CustomerCompany }
+func (s *Settings) OrgChoice() bool { return s.CustomerKind == CustomerBoth }
 
 // Portrait tiles are 3:4, so the reserved height is the width times four thirds.
 // The <img> needs it as a number to stop the grid jumping while photos load.
@@ -104,12 +124,12 @@ func (d *Database) GetSettings() (*Settings, error) {
 		`SELECT owner_email, password_hash, shop_name, shop_phone, smtp_host,
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
 		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms,
-		 adhunters_api_key, telegram, whatsapp, tile_aspect
+		 adhunters_api_key, telegram, whatsapp, tile_aspect, customer_kind
 		 FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
 		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms,
-		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp, &s.TileAspect)
+		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp, &s.TileAspect, &s.CustomerKind)
 	if err != nil {
 		return nil, err
 	}
@@ -139,18 +159,25 @@ func (d *Database) UpdateSettings(s *Settings) error {
 	if !IsValidTileAspect(tile) {
 		return fmt.Errorf("invalid tile aspect: %q", tile)
 	}
+	customer := s.CustomerKind
+	if customer == "" {
+		customer = CustomerPrivate
+	}
+	if !IsValidCustomerKind(customer) {
+		return fmt.Errorf("invalid customer kind: %q", customer)
+	}
 	_, err := d.db.Exec(
 		`UPDATE settings SET owner_email=?, password_hash=?, shop_name=?, shop_phone=?,
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
 		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?,
 		 smtp_from=?, terms=?, adhunters_api_key=?, telegram=?, whatsapp=?,
-		 tile_aspect=?
+		 tile_aspect=?, customer_kind=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
 		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom, s.Terms,
 		s.AdHuntersAPIKey, strings.TrimSpace(s.Telegram), strings.TrimSpace(s.WhatsApp),
-		tile)
+		tile, customer)
 	return err
 }
 

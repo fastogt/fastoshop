@@ -27,15 +27,18 @@ var templatesFS embed.FS
 var styleCSS string
 
 type Storefront struct {
-	db       *database.Database
-	baseURL  string
-	uploads  string
-	index    *template.Template
-	product  *template.Template
-	cart     *template.Template
-	info     *template.Template
-	privacy  *template.Template
-	contacts *template.Template
+	db      *database.Database
+	baseURL string
+	uploads string
+	// Sibling of uploads and deliberately NOT served: a requisites file carries a
+	// bank account, and /uploads/ is a plain FileServer.
+	requisites string
+	index      *template.Template
+	product    *template.Template
+	cart       *template.Template
+	info       *template.Template
+	privacy    *template.Template
+	contacts   *template.Template
 	// Suffixed: a field may not share a name with the Category/Categories methods.
 	categoryTpl   *template.Template
 	categoriesTpl *template.Template
@@ -55,6 +58,7 @@ func New(db *database.Database, baseURL, uploadsDir string) *Storefront {
 		ParseFS(templatesFS, "templates/base.html"))
 	return &Storefront{
 		db: db, baseURL: strings.TrimRight(baseURL, "/"), uploads: uploadsDir,
+		requisites:    RequisitesDir(uploadsDir),
 		index:         template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/index.html")),
 		product:       template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/product.html")),
 		cart:          template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/cart.html")),
@@ -245,9 +249,17 @@ type pageVM struct {
 	// Neither a phone nor an email was left, so no order was created.
 	NoContact bool
 	SoldOut   string
+	// The buyer chose "organisation", so the radio comes back selected.
+	Org bool
+	// The organisation was named without a usable tax id, or the other way round.
+	BadOrg bool
 	// Typed before the order was refused, rendered back so nothing has to be retyped.
 	FormName    string
 	FormComment string
+	FormPhone   string
+	FormEmail   string
+	FormOrgName string
+	FormOrgUNP  string
 }
 
 // A category is a page of its own, not a query parameter on the catalogue.

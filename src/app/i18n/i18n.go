@@ -53,12 +53,16 @@ const (
 	KeyJobBusy          = "job_busy"
 	KeyBadCurrency      = "bad_currency"
 	KeyBadTileAspect    = "bad_tile_aspect"
+	KeyBadCustomerKind  = "bad_customer_kind"
 	KeyYMLBadURL        = "yml_bad_url"
 	KeyYMLBadStatus     = "yml_bad_status"
 	KeyYMLTooBig        = "yml_too_big"
 	KeyYMLBadXML        = "yml_bad_xml"
 
 	KeyOrderEmail          = "order_email"
+	KeyOrderOrgName        = "order_org_name"
+	KeyOrderOrgUNP         = "order_org_unp"
+	KeyOrderRequisites     = "order_requisites"
 	KeyOrderConfirmSubject = "order_confirm_subject"
 	KeyOrderConfirmBody    = "order_confirm_body"
 
@@ -87,6 +91,9 @@ var kMessages = map[string][2]string{
 	KeyOrderPhone:      {"Телефон", "Phone"},
 	KeyOrderComment:    {"Комментарий", "Comment"},
 	KeyOrderEmail:      {"Почта", "Email"},
+	KeyOrderOrgName:    {"Организация", "Organisation"},
+	KeyOrderOrgUNP:     {"УНП", "Tax id"},
+	KeyOrderRequisites: {"Реквизиты", "Requisites"},
 	// %s - the shop name.
 	KeyOrderConfirmSubject: {"Ваш заказ в «%s»", "Your order at %s"},
 	// %d - the order number.
@@ -194,6 +201,10 @@ var kMessages = map[string][2]string{
 	KeyBadTileAspect: {
 		"такой пропорции плитки нет: выберите квадрат или 3:4",
 		"no such tile proportion: choose square or 3:4",
+	},
+	KeyBadCustomerKind: {
+		"выберите, с кем работает магазин: частные лица, организации или оба",
+		"choose who the shop sells to: private buyers, organisations or both",
 	},
 	KeySupplierRequired: {
 		"укажите поставщика: импорт обновляет только свою группу товаров",

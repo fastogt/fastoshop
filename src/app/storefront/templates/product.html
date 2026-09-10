@@ -120,6 +120,12 @@
       <span class="badge">Нет в наличии</span>
       <p class="oos">Напишите нам — сообщим, когда товар вернётся.</p>
       {{end}}
+      {{/* The one buyer we measured never opened the cart: he read the card,
+           checked delivery and went to contacts. So the invoice is offered
+           here, where he actually was. */}}
+      {{if or .Shop.OrgOnly .Shop.OrgChoice}}
+      <p class="oos">Нужен счёт для организации? Оформите заказ — в форме укажете название, УНП и приложите реквизиты.</p>
+      {{end}}
       {{/* A messenger button is a link, not a widget: the storefront ships no
            JavaScript, and a deep link needs none. Shown only when the owner
            filled a messenger in. */}}

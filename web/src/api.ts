@@ -217,6 +217,11 @@ export interface Order {
   // First touch: "google.com /p/basket", "direct", or empty for orders placed
   // before the shop started recording it.
   source: string;
+  // Empty org_name means a private buyer: a company order cannot be created
+  // without both fields.
+  org_name: string;
+  org_unp: string;
+  requisites_file: string;
   items: OrderItem[];
   total: number;
   // The stored snapshot could not be read: the row needs a human, and its total
@@ -251,6 +256,7 @@ export interface Settings {
   adhunters_api_key: string;
   // "square" or "portrait": the proportion of the catalogue tile on the storefront.
   tile_aspect: string;
+  customer_kind: string;
 }
 
 interface ImportDiffRow {

@@ -531,3 +531,10 @@ footer {
   font-weight: 600;
 }
 .btn-msg:hover { background: var(--surface); }
+
+/* Private/organisation choice. A sibling selector rather than a script: the
+   storefront ships no JavaScript, and the radio already holds the state. If the
+   CSS ever fails to load the fields stay visible, which is a working form. */
+.buyer-kind .kind { display: inline-block; margin: 0 1rem .5rem .25rem; font-weight: 600; }
+.buyer-kind .org-fields { display: none; }
+.buyer-kind #kind-company:checked ~ .org-fields { display: block; }
