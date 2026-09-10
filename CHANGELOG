@@ -1,3 +1,9 @@
+1.51.0 / September 10, 2026
+[Alexandr Topilski]
+- A shop can now say who it sells to: private buyers, organisations, or both. A shop that sells to organisations asks a company for two things in the checkout form - its name and its tax id - and lets it attach the requisites file it already has, because there are twelve fields in one and nobody retypes that into a form. The seller writes the invoice where they always did; the shop only makes sure the request arrives instead of the buyer closing the tab. Measured on the one such buyer we have: he read the card, checked delivery, went to contacts and wrote an email - he never opened the cart, so the offer of an invoice also appears on the product card
+- The attachment is optional in every mode. A buyer may attach it, write the requisites in the comment, or leave both empty: the seller has a name and a phone and calls back either way. The file is stored outside the served uploads directory - it carries a bank account - and is downloaded from the order card under the owner's session
+- The rule that an order needs a phone or an email is unchanged and applies to a company too, and a shop that sells to private buyers only renders exactly the form it rendered before, down to the absence of the enctype
+
 1.50.11 / September 9, 2026
 [Alexandr Topilski]
 - The Telegram and WhatsApp accounts the owner filled in are now shown in the footer of every page, not only as an order button on a product. A buyer who came to ask a question rather than to order had no way to see them, and a messenger nobody can find is a channel the shop does not have. The footer link carries no order text: it opens the account and nothing else
