@@ -1,3 +1,7 @@
+1.51.1 / September 11, 2026
+[Alexandr Topilski]
+- The private/organisation choice in the checkout is drawn as two tabs instead of two stray radio buttons. The form styles every input full width, so the radios stretched across the card and their captions fell underneath, which read as a broken layout rather than a choice. The radios stay in the markup and in the tab order - only their own box is hidden, because removing them would leave the choice unreachable from a keyboard
+
 1.51.0 / September 10, 2026
 [Alexandr Topilski]
 - A shop can now say who it sells to: private buyers, organisations, or both. A shop that sells to organisations asks a company for two things in the checkout form - its name and its tax id - and lets it attach the requisites file it already has, because there are twelve fields in one and nobody retypes that into a form. The seller writes the invoice where they always did; the shop only makes sure the request arrives instead of the buyer closing the tab. Measured on the one such buyer we have: he read the card, checked delivery, went to contacts and wrote an email - he never opened the cart, so the offer of an invoice also appears on the product card
