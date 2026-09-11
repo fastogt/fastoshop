@@ -532,9 +532,49 @@ footer {
 }
 .btn-msg:hover { background: var(--surface); }
 
-/* Private/organisation choice. A sibling selector rather than a script: the
-   storefront ships no JavaScript, and the radio already holds the state. If the
-   CSS ever fails to load the fields stay visible, which is a working form. */
-.buyer-kind .kind { display: inline-block; margin: 0 1rem .5rem .25rem; font-weight: 600; }
-.buyer-kind .org-fields { display: none; }
+/* Private/organisation choice, drawn as two tabs. The state is a radio and the
+   reveal a sibling selector: the storefront has no JavaScript, so there is
+   nothing else to hold it. */
+.buyer-kind { margin: 16px 0 0; }
+/* Moved out of sight rather than removed: display:none would drop the radios
+   out of the tab order and the choice could not be made from a keyboard. */
+.buyer-kind input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: auto;
+  pointer-events: none;
+}
+.buyer-kind .kind {
+  display: inline-block;
+  cursor: pointer;
+  padding: 9px 16px;
+  margin: 0 4px -1px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.buyer-kind #kind-private:checked ~ .kind[for="kind-private"],
+.buyer-kind #kind-company:checked ~ .kind[for="kind-company"] {
+  background: var(--surface);
+  border-color: var(--line);
+  border-bottom-color: var(--surface);
+  color: var(--text);
+}
+/* The label is the only visible part, so it has to show the focus ring itself.
+   Each radio names its own label: "~" reaches every later sibling, so the
+   generic form would ring the second tab while the first one has focus. */
+.buyer-kind #kind-private:focus-visible ~ .kind[for="kind-private"],
+.buyer-kind #kind-company:focus-visible ~ .kind[for="kind-company"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.buyer-kind .org-fields {
+  display: none;
+  border: 1px solid var(--line);
+  border-radius: 0 8px 8px 8px;
+  padding: 14px 14px 2px;
+  background: var(--surface);
+}
 .buyer-kind #kind-company:checked ~ .org-fields { display: block; }
