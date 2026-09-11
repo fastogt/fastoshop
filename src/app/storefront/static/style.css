@@ -535,7 +535,9 @@ footer {
 /* Private/organisation choice, drawn as two tabs. The state is a radio and the
    reveal a sibling selector: the storefront has no JavaScript, so there is
    nothing else to hold it. */
-.buyer-kind { margin: 16px 0 0; }
+/* At the head of the form: who is ordering changes what the form asks for, so
+   the choice cannot sit below the fields it governs. */
+.buyer-kind { margin: 4px 0 18px; }
 /* Moved out of sight rather than removed: display:none would drop the radios
    out of the tab order and the choice could not be made from a keyboard. */
 .buyer-kind input[type="radio"] {

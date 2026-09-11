@@ -41,6 +41,22 @@
   {{/* enctype only because of the requisites file; a shop without organisations
        posts exactly what it posted before. */}}
   <form method="post" action="/cart/order"{{if or .Shop.OrgOnly .Shop.OrgChoice}} enctype="multipart/form-data"{{end}}>
+    {{if .Shop.OrgOnly}}
+    {{template "orgFields" .}}
+    {{else if .Shop.OrgChoice}}
+    {{/* The reveal is a sibling selector, not a script: the storefront ships no
+         JavaScript, and a radio already carries the state. */}}
+    {{/* The radios are siblings of .org-fields, not children of their labels:
+         "~" only reaches a sibling, and nesting them would hide the block for
+         good. */}}
+    <div class="buyer-kind">
+      <input type="radio" name="customer" value="private" id="kind-private"{{if not .Org}} checked{{end}}>
+      <label class="kind" for="kind-private">Частное лицо</label>
+      <input type="radio" name="customer" value="company" id="kind-company"{{if .Org}} checked{{end}}>
+      <label class="kind" for="kind-company">Организация</label>
+      <div class="org-fields">{{template "orgFields" .}}</div>
+    </div>
+    {{end}}
     <div>
       <label for="name">Ваше имя</label>
       <input id="name" name="name" placeholder="Иван" autocomplete="name" required value="{{.FormName}}">
@@ -60,22 +76,6 @@
       <label for="comment">Комментарий</label>
       <textarea id="comment" name="comment" placeholder="Удобное время для звонка, пожелания к доставке">{{.FormComment}}</textarea>
     </div>
-    {{if .Shop.OrgOnly}}
-    {{template "orgFields" .}}
-    {{else if .Shop.OrgChoice}}
-    {{/* The reveal is a sibling selector, not a script: the storefront ships no
-         JavaScript, and a radio already carries the state. */}}
-    {{/* The radios are siblings of .org-fields, not children of their labels:
-         "~" only reaches a sibling, and nesting them would hide the block for
-         good. */}}
-    <div class="buyer-kind">
-      <input type="radio" name="customer" value="private" id="kind-private"{{if not .Org}} checked{{end}}>
-      <label class="kind" for="kind-private">Частное лицо</label>
-      <input type="radio" name="customer" value="company" id="kind-company"{{if .Org}} checked{{end}}>
-      <label class="kind" for="kind-company">Организация</label>
-      <div class="org-fields">{{template "orgFields" .}}</div>
-    </div>
-    {{end}}
     <button type="submit">Оформить заказ</button>
     {{/* The consent has to sit where the data is handed over, not on a page
          nobody opens: the buyer types a name and a phone into this form, and
