@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	log "github.com/sirupsen/logrus"
 
 	"time"
@@ -86,6 +87,9 @@ func HeadAsGet(next http.Handler) http.Handler {
 func (s *Storefront) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(HeadAsGet)
+	// A link copied or advertised with a trailing slash answered 404 on a product
+	// and a second address on a category; the canonical address carries none.
+	r.Use(middleware.RedirectSlashes)
 	r.Use(s.TrackSource)
 	r.Use(ETag)
 	r.Get("/", s.Index)

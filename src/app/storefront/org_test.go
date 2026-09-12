@@ -244,3 +244,33 @@ func TestOrderMailBodyCarriesOrg(t *testing.T) {
 		t.Errorf("a private order carries organisation labels:\n%s", private)
 	}
 }
+
+// A link copied or advertised with a trailing slash used to answer 404 on a
+// product and a second address on a category. The canonical address has none.
+func TestTrailingSlashRedirects(t *testing.T) {
+	_, h := setup(t)
+	cases := map[string]string{
+		"/p/krasnyj-chajnik/":     "/p/krasnyj-chajnik",
+		"/contacts/":              "/contacts",
+		"/info/":                  "/info",
+		"/c/kitchen/":             "/c/kitchen",
+		"/p/krasnyj-chajnik/?a=1": "/p/krasnyj-chajnik?a=1",
+	}
+	for from, want := range cases {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", from, nil))
+		if w.Code != http.StatusMovedPermanently {
+			t.Errorf("%s: %d, want 301", from, w.Code)
+			continue
+		}
+		if got := w.Header().Get("Location"); got != want {
+			t.Errorf("%s -> %s, want %s", from, got, want)
+		}
+	}
+	// The root is not a stray slash and must keep answering.
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
+	if w.Code != http.StatusOK {
+		t.Errorf("/: %d, want 200", w.Code)
+	}
+}
