@@ -1,3 +1,9 @@
+1.51.3 / September 12, 2026
+[Alexandr Topilski]
+- The order goal now fires once per order instead of once per view of the confirmation page. That address stays in the browser history, so a reload counted another conversion: the ad system was being taught on orders that never happened, and the owner would have priced an order below what it really costs. The goal travels as a one-shot token the order itself issues and the first read burns
+- The conversion carries the order number, its total and the shop's currency. A bare purchase event records no revenue and nothing to deduplicate on, so the money report stayed empty while the shop sold. The total is sent as a number: in a script html/template quotes a string, and a quoted price is no price to either counter
+- The traffic source of an order now keeps the search phrase and the advertisement alongside the campaign. Those two are what answer, in a paid channel, which words brought the order
+
 1.51.2 / September 12, 2026
 [Alexandr Topilski]
 - An address copied or advertised with a trailing slash is redirected to the canonical one instead of answering 404. A product page and the pages of terms, contacts and privacy refused such a link outright; a category answered it with a second copy of itself at an address nobody chose. The shop now sends every one of them to the address the sitemap and the canonical tag already name
