@@ -80,6 +80,55 @@ func TestCounters(t *testing.T) {
 	}
 }
 
+// The goal is what a paid channel optimises on, so it has to fire once per
+// order: the confirmation address stays in history, and a reload that counted
+// again would teach the ad system on an order that never happened.
+func TestOrderGoalFiresOncePerOrder(t *testing.T) {
+	d, h := setup(t)
+	s, _ := d.GetSettings()
+	s.GAMeasurementID = "G-ABC123"
+	s.MetrikaCounterID = "12345678"
+	s.Currency = "BYN"
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	c := &client{h: h}
+	c.add(t, "krasnyj-chajnik", "2")
+	if strings.Contains(c.cart(t), "reachGoal") {
+		t.Error("goal fires on a cart nobody ordered from")
+	}
+	if w := c.do(t, "POST", "/cart/order",
+		url.Values{"name": {"Иван"}, "phone": {"+79990001122"}}); w.Code != http.StatusSeeOther {
+		t.Fatalf("checkout: %d", w.Code)
+	}
+	body := c.cart(t)
+	// 2 x 2500.00. html/template pads a number in a script with spaces; that is
+	// its escaping, and the value is what makes the conversion worth anything.
+	for _, want := range []string{"'reachGoal','order'", "order_price: 5000 ",
+		"gtag('event','purchase'", "value: 5000 ", "currency:'BYN'", "transaction_id:'1'"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("confirmation missing %q", want)
+		}
+	}
+	if strings.Contains(c.cart(t), "reachGoal") {
+		t.Error("the goal fired again when the confirmation was reopened")
+	}
+}
+
+// The zero-script rule is easiest to break on the page that carries the goal.
+func TestConfirmationShipsNoScriptsWithoutCounters(t *testing.T) {
+	_, h := setup(t)
+	c := &client{h: h}
+	c.add(t, "krasnyj-chajnik", "1")
+	if w := c.do(t, "POST", "/cart/order",
+		url.Values{"name": {"Иван"}, "phone": {"+79990001122"}}); w.Code != http.StatusSeeOther {
+		t.Fatalf("checkout: %d", w.Code)
+	}
+	if n := executableScripts(c.cart(t)); n != 0 {
+		t.Errorf("confirmation ships %d script(s) with no counters configured", n)
+	}
+}
+
 func TestCatalogPage(t *testing.T) {
 	_, h := setup(t)
 	body := get(t, h, "/")
@@ -321,10 +370,12 @@ func TestLlmsTxt(t *testing.T) {
 	}
 }
 
-// client is a minimal cookie jar: it carries `cart` between requests, like a browser.
+// client is a minimal cookie jar: it carries what the shop sets between
+// requests, like a browser. Not just `cart`: the order goal travels the same way.
 type client struct {
-	h      http.Handler
-	cookie *http.Cookie
+	h       http.Handler
+	cookie  *http.Cookie
+	cookies map[string]*http.Cookie
 }
 
 func (c *client) do(t *testing.T, method, path string, form url.Values) *httptest.ResponseRecorder {
@@ -339,16 +390,27 @@ func (c *client) do(t *testing.T, method, path string, form url.Values) *httptes
 	if c.cookie != nil {
 		req.AddCookie(c.cookie)
 	}
+	for _, ck := range c.cookies {
+		req.AddCookie(ck)
+	}
 	w := httptest.NewRecorder()
 	c.h.ServeHTTP(w, req)
+	if c.cookies == nil {
+		c.cookies = map[string]*http.Cookie{}
+	}
 	for _, ck := range w.Result().Cookies() {
-		if ck.Name != "cart" {
+		if ck.Name == "cart" {
+			if ck.MaxAge < 0 {
+				c.cookie = nil
+			} else {
+				c.cookie = ck
+			}
 			continue
 		}
 		if ck.MaxAge < 0 {
-			c.cookie = nil
+			delete(c.cookies, ck.Name)
 		} else {
-			c.cookie = ck
+			c.cookies[ck.Name] = ck
 		}
 	}
 	return w

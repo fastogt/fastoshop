@@ -250,6 +250,8 @@ type pageVM struct {
 	TotalStr   string
 	CartCount  int
 	Dropped    bool
+	// Set once, right after the order: the confirmation page may be reopened.
+	Goal *orderGoal
 	// Neither a phone nor an email was left, so no order was created.
 	NoContact bool
 	SoldOut   string

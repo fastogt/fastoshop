@@ -127,6 +127,7 @@ func (s *Storefront) Cart(w http.ResponseWriter, r *http.Request) {
 	}
 	s.renderCart(w, rows, total, pageVM{
 		Dropped: changed && len(rows) > 0,
+		Goal:    takeGoal(w, r),
 		Ordered: r.URL.Query().Get("ordered") == "1"})
 }
 
@@ -285,6 +286,7 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeCart(w, nil)
+	writeGoal(w, o.ID, total)
 	s.stockChanged()
 	// This email goes to the owner, so it uses the owner's language, not the product one.
 	lang := shop.Lang

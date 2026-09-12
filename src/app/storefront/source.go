@@ -75,8 +75,10 @@ func externalHost(referer, self string) string {
 }
 
 func utmOf(q url.Values) string {
-	parts := make([]string, 0, 3)
-	for _, k := range []string{"utm_source", "utm_medium", "utm_campaign"} {
+	parts := make([]string, 0, 5)
+	// term и content нужны не для красоты: в контексте именно они отвечают на
+	// вопрос, какая фраза и какое объявление привели заказ.
+	for _, k := range []string{"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"} {
 		if v := strings.TrimSpace(q.Get(k)); v != "" {
 			parts = append(parts, k[4:]+"="+v)
 		}

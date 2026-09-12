@@ -115,5 +115,11 @@ single script on the page, which is the point of the storefront. */}}
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','{{.Shop.GAMeasurementID}}');</script>{{end}}
 {{if .Shop.MetrikaCounterID}}<script>(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<e.scripts.length;j++){if(e.scripts[j].src===r){return}}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');ym('{{.Shop.MetrikaCounterID}}','init',{clickmap:true,trackLinks:true,accurateTrackBounce:true});</script>
 <noscript><div><img src="https://mc.yandex.ru/watch/{{.Shop.MetrikaCounterID}}" style="position:absolute;left:-9999px" alt=""></div></noscript>{{end}}
+{{/* Цель заказа. Без неё контекстная реклама магазина неизмерима: система
+     не на чем оптимизироваться, а владелец не посчитает цену заказа.
+     По .Goal, а не по адресу: страница подтверждения остаётся в истории, и
+     каждое её открытие заново засчитывалось бы как ещё один заказ.
+     Номер заказа обязателен - по нему площадка отбрасывает дубли. */}}
+{{with .Goal}}{{if $.Shop.MetrikaCounterID}}<script>ym('{{$.Shop.MetrikaCounterID}}','reachGoal','order',{order_id:'{{.IDStr}}',order_price:{{.Value}},currency:'{{$.Shop.Currency}}'});</script>{{end}}{{if $.Shop.GAMeasurementID}}<script>gtag('event','purchase',{transaction_id:'{{.IDStr}}',value:{{.Value}},currency:'{{$.Shop.Currency}}'});</script>{{end}}{{end}}
 </body>
 </html>{{end}}
