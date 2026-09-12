@@ -1,3 +1,7 @@
+1.51.2 / September 12, 2026
+[Alexandr Topilski]
+- An address copied or advertised with a trailing slash is redirected to the canonical one instead of answering 404. A product page and the pages of terms, contacts and privacy refused such a link outright; a category answered it with a second copy of itself at an address nobody chose. The shop now sends every one of them to the address the sitemap and the canonical tag already name
+
 1.51.1 / September 11, 2026
 [Alexandr Topilski]
 - The private/organisation choice in the checkout is drawn as two tabs instead of two stray radio buttons. The form styles every input full width, so the radios stretched across the card and their captions fell underneath, which read as a broken layout rather than a choice. The radios stay in the markup and in the tab order - only their own box is hidden, because removing them would leave the choice unreachable from a keyboard
