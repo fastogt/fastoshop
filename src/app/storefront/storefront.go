@@ -95,6 +95,7 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/", s.Index)
 	r.Get("/p/{slug}", s.Product)
 	r.Get("/cart", s.Cart)
+	r.Get("/go/{messenger}/{slug}", s.OrderRedirect)
 	r.Get("/info", s.Info)
 	r.Get("/privacy", s.Privacy)
 	r.Get("/contacts", s.Contacts)
@@ -706,7 +707,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		PriceStr: priceStr(p.Price), PriceValidUntil: endOfMonth(time.Now()),
 		PriceValidFrom:  p.UpdatedAt.Format(time.DateOnly),
 		SchemaName:      clipName(p.Title),
-		OrderLinks:      orderLinks(shop, p, s.baseURL+"/p/"+p.Slug),
+		OrderLinks:      orderLinks(shop, p),
 		MetaDescription: metaFrom(p.Description),
 		DescParas:       paragraphs(p.Description),
 		Specs:           specs(p, s.hiddenParams()),
@@ -812,7 +813,7 @@ const kCleanParams = "sort&desc&instock"
 
 func (s *Storefront) Robots(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
-	fmt.Fprintf(w, "User-agent: *\nDisallow: /admin\nDisallow: /api\nDisallow: /cart\nClean-param: %s\n\nSitemap: %s/sitemap.xml\n",
+	fmt.Fprintf(w, "User-agent: *\nDisallow: /admin\nDisallow: /api\nDisallow: /cart\nDisallow: /go/\nClean-param: %s\n\nSitemap: %s/sitemap.xml\n",
 		kCleanParams, s.baseURL)
 }
 

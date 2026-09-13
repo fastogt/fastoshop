@@ -2,10 +2,18 @@ package storefront
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/fastogt/fastoshop/app/database"
+)
+
+const (
+	kTelegram = "telegram"
+	kWhatsApp = "whatsapp"
 )
 
 // A plain link, never a widget: the storefront ships no JavaScript.
@@ -68,23 +76,52 @@ func contactLinks(shop *database.Settings) []orderLinkVM {
 }
 
 // Escaped here, not in the template: quotes and slashes in a title break the href.
-func orderLinks(shop *database.Settings, p *database.Product, pageURL string) []orderLinkVM {
+// messengerURL is built from the settings and the product, never from the request:
+// taking the target from a parameter would turn /go/ into an open redirect.
+func messengerURL(shop *database.Settings, p *database.Product, pageURL, kind string) string {
+	text := url.QueryEscape(orderMessage(shop, p, pageURL))
+	switch kind {
+	case kTelegram:
+		if h := telegramHandle(shop.Telegram); h != "" {
+			return "https://t.me/" + h + "?text=" + text
+		}
+	case kWhatsApp:
+		if n := whatsappNumber(shop.WhatsApp); n != "" {
+			return "https://wa.me/" + n + "?text=" + text
+		}
+	}
+	return ""
+}
+
+// A direct t.me link never reaches the server, so the button goes through our own address.
+func orderLinks(shop *database.Settings, p *database.Product) []orderLinkVM {
 	if shop == nil || p == nil {
 		return nil
 	}
-	text := url.QueryEscape(orderMessage(shop, p, pageURL))
 	var out []orderLinkVM
-	if h := telegramHandle(shop.Telegram); h != "" {
-		out = append(out, orderLinkVM{
-			Label: "Заказать в Telegram",
-			URL:   "https://t.me/" + h + "?text=" + text,
-		})
+	if telegramHandle(shop.Telegram) != "" {
+		out = append(out, orderLinkVM{Label: "Заказать в Telegram", URL: "/go/" + kTelegram + "/" + url.PathEscape(p.Slug)})
 	}
-	if n := whatsappNumber(shop.WhatsApp); n != "" {
-		out = append(out, orderLinkVM{
-			Label: "Заказать в WhatsApp",
-			URL:   "https://wa.me/" + n + "?text=" + text,
-		})
+	if whatsappNumber(shop.WhatsApp) != "" {
+		out = append(out, orderLinkVM{Label: "Заказать в WhatsApp", URL: "/go/" + kWhatsApp + "/" + url.PathEscape(p.Slug)})
 	}
 	return out
+}
+
+// OrderRedirect is a messenger button click: nginx logs it, and the answer is only a redirect.
+func (s *Storefront) OrderRedirect(w http.ResponseWriter, r *http.Request) {
+	p, err := s.db.GetVisibleProductBySlug(chi.URLParam(r, "slug"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	target := messengerURL(s.shop(), p, s.baseURL+"/p/"+p.Slug, chi.URLParam(r, "messenger"))
+	if target == "" {
+		http.NotFound(w, r)
+		return
+	}
+	// A cached redirect is a click the log never sees.
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Robots-Tag", "noindex")
+	http.Redirect(w, r, target, http.StatusFound)
 }
