@@ -1,3 +1,9 @@
+1.52.0 / September 13, 2026
+[Alexandr Topilski]
+- The "Order in Telegram" and "Order in WhatsApp" buttons on a product card are now counted. They linked straight to the messenger, so a click never reached the shop and nothing could tell a button nobody pressed from one pressed every day. They now lead to an address of the shop's own, /go/telegram/<product> and /go/whatsapp/<product>, which sends the buyer on to the same prefilled chat; the web server's access log keeps the click, and the database is not touched
+- A click is an intent, not an order: whether the buyer sent the message is visible only in the chat. It creates no order, reserves no stock, sends no email and fires no conversion goal
+- The messenger address is built from the shop settings and the product alone, never taken from the request, so the shop's domain cannot be used to redirect anyone elsewhere. The redirect is not cached and is closed to crawlers in robots.txt
+
 1.51.3 / September 12, 2026
 [Alexandr Topilski]
 - The order goal now fires once per order instead of once per view of the confirmation page. That address stays in the browser history, so a reload counted another conversion: the ad system was being taught on orders that never happened, and the owner would have priced an order below what it really costs. The goal travels as a one-shot token the order itself issues and the first read burns
