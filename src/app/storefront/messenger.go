@@ -21,6 +21,7 @@ type orderLinkVM struct {
 	// Label is what the button says; URL is already escaped and safe to print.
 	Label string
 	URL   string
+	Ping  string
 }
 
 // "@shop", "shop" and "https://t.me/shop" all mean the same account.
@@ -75,9 +76,7 @@ func contactLinks(shop *database.Settings) []orderLinkVM {
 	return out
 }
 
-// Escaped here, not in the template: quotes and slashes in a title break the href.
-// messengerURL is built from the settings and the product, never from the request:
-// taking the target from a parameter would turn /go/ into an open redirect.
+// From settings and product only; a title's quotes are escaped here, not in the template.
 func messengerURL(shop *database.Settings, p *database.Product, pageURL, kind string) string {
 	text := url.QueryEscape(orderMessage(shop, p, pageURL))
 	switch kind {
@@ -93,35 +92,30 @@ func messengerURL(shop *database.Settings, p *database.Product, pageURL, kind st
 	return ""
 }
 
-// A direct t.me link never reaches the server, so the button goes through our own address.
-func orderLinks(shop *database.Settings, p *database.Product) []orderLinkVM {
+// href stays the messenger for Metrika's messenger auto-goal; ping counts the click.
+func orderLinks(shop *database.Settings, p *database.Product, pageURL string) []orderLinkVM {
 	if shop == nil || p == nil {
 		return nil
 	}
 	var out []orderLinkVM
-	if telegramHandle(shop.Telegram) != "" {
-		out = append(out, orderLinkVM{Label: "Заказать в Telegram", URL: "/go/" + kTelegram + "/" + url.PathEscape(p.Slug)})
-	}
-	if whatsappNumber(shop.WhatsApp) != "" {
-		out = append(out, orderLinkVM{Label: "Заказать в WhatsApp", URL: "/go/" + kWhatsApp + "/" + url.PathEscape(p.Slug)})
+	for _, m := range []struct{ kind, label string }{
+		{kTelegram, "Заказать в Telegram"},
+		{kWhatsApp, "Заказать в WhatsApp"},
+	} {
+		if u := messengerURL(shop, p, pageURL, m.kind); u != "" {
+			out = append(out, orderLinkVM{Label: m.label, URL: u,
+				Ping: "/go/" + m.kind + "/" + url.PathEscape(p.Slug)})
+		}
 	}
 	return out
 }
 
-// OrderRedirect is a messenger button click: nginx logs it, and the answer is only a redirect.
-func (s *Storefront) OrderRedirect(w http.ResponseWriter, r *http.Request) {
+// OrderPing answers a button's ping: nginx logs the POST, and nothing is stored.
+func (s *Storefront) OrderPing(w http.ResponseWriter, r *http.Request) {
 	p, err := s.db.GetVisibleProductBySlug(chi.URLParam(r, "slug"))
-	if err != nil {
+	if err != nil || messengerURL(s.shop(), p, "", chi.URLParam(r, "messenger")) == "" {
 		http.NotFound(w, r)
 		return
 	}
-	target := messengerURL(s.shop(), p, s.baseURL+"/p/"+p.Slug, chi.URLParam(r, "messenger"))
-	if target == "" {
-		http.NotFound(w, r)
-		return
-	}
-	// A cached redirect is a click the log never sees.
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Robots-Tag", "noindex")
-	http.Redirect(w, r, target, http.StatusFound)
+	w.WriteHeader(http.StatusNoContent)
 }

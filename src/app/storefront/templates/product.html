@@ -131,7 +131,7 @@
            filled a messenger in. */}}
       {{if .OrderLinks}}
       <div class="msg-order">
-        {{range .OrderLinks}}<a class="btn-msg" href="{{.URL}}" rel="nofollow noopener" target="_blank">{{.Label}}</a>{{end}}
+        {{range .OrderLinks}}<a class="btn-msg" href="{{.URL}}"{{with .Ping}} ping="{{.}}"{{end}} rel="nofollow noopener" target="_blank">{{.Label}}</a>{{end}}
       </div>
       {{end}}
       <ul class="trust">

@@ -95,7 +95,7 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/", s.Index)
 	r.Get("/p/{slug}", s.Product)
 	r.Get("/cart", s.Cart)
-	r.Get("/go/{messenger}/{slug}", s.OrderRedirect)
+	r.Post("/go/{messenger}/{slug}", s.OrderPing)
 	r.Get("/info", s.Info)
 	r.Get("/privacy", s.Privacy)
 	r.Get("/contacts", s.Contacts)
@@ -707,7 +707,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		PriceStr: priceStr(p.Price), PriceValidUntil: endOfMonth(time.Now()),
 		PriceValidFrom:  p.UpdatedAt.Format(time.DateOnly),
 		SchemaName:      clipName(p.Title),
-		OrderLinks:      orderLinks(shop, p),
+		OrderLinks:      orderLinks(shop, p, s.baseURL+"/p/"+p.Slug),
 		MetaDescription: metaFrom(p.Description),
 		DescParas:       paragraphs(p.Description),
 		Specs:           specs(p, s.hiddenParams()),
