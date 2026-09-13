@@ -1,3 +1,5 @@
+//go:build live
+
 package importer
 
 import (
@@ -11,12 +13,12 @@ import (
 	"github.com/fastogt/fastoshop/app/database"
 )
 
-// A live source against the parser, on demand:
+// Integration tests against a live source, not unit tests; built only with -tags live:
 //
-//	FEED_URL=https://example.com/export.xml   go test ./app/importer -run Live -v
-//	FEED_FILE=/path/to/price.xlsx             go test ./app/importer -run Live -v
-//	WB_TOKEN=…                                go test ./app/importer -run Live -v
-//	OZON_CLIENT_ID=… OZON_API_KEY=…           go test ./app/importer -run Live -v
+//	FEED_URL=https://example.com/export.xml   go test -tags live ./app/importer -run Live -v
+//	FEED_FILE=/path/to/price.xlsx             go test -tags live ./app/importer -run Live -v
+//	WB_TOKEN=…                                go test -tags live ./app/importer -run Live -v
+//	OZON_CLIENT_ID=… OZON_API_KEY=…           go test -tags live ./app/importer -run Live -v
 //
 // They assert almost nothing: only that something parsed and most of it survived.
 func TestLiveYML(t *testing.T) {
