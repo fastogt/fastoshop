@@ -12,7 +12,7 @@ func linkAndPrice(t *testing.T, h *Handlers, d *database.Database, sku string, p
 	t.Helper()
 	id := seedProduct(t, d, sku, 5, 1000)
 	do(t, h, "POST", "/publish", selection(t, d))
-	if _, err := d.SetWBPrice(id, price); err != nil {
+	if _, err := d.SetWBPrice(linkOfProduct(t, d, id), price); err != nil {
 		t.Fatal(err)
 	}
 	return id
@@ -121,10 +121,10 @@ func TestSizesDisagreeingOnPriceSendNothing(t *testing.T) {
 	a := seedProduct(t, d, "ART-9-M", 5, 1000)
 	b := seedProduct(t, d, "ART-9-L", 5, 1000)
 	do(t, h, "POST", "/publish", selection(t, d))
-	if _, err := d.SetWBPrice(a, 1500); err != nil {
+	if _, err := d.SetWBPrice(linkOfProduct(t, d, a), 1500); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.SetWBPrice(b, 1900); err != nil {
+	if _, err := d.SetWBPrice(linkOfProduct(t, d, b), 1900); err != nil {
 		t.Fatal(err)
 	}
 
@@ -156,7 +156,7 @@ func TestAgreeingSizesCollapseToOneItem(t *testing.T) {
 	b := seedProduct(t, d, "ART-9-L", 5, 1000)
 	do(t, h, "POST", "/publish", selection(t, d))
 	for _, id := range []int64{a, b} {
-		if _, err := d.SetWBPrice(id, 1500); err != nil {
+		if _, err := d.SetWBPrice(linkOfProduct(t, d, id), 1500); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -12,6 +12,7 @@ import {
   type Warehouse,
   type CandidateView,
 } from "./api";
+import CabinetCards from "./CabinetCards";
 import { ChannelTabs, WarehousePicker, type ChannelTab } from "./Channel";
 import DataTable from "./DataTable";
 import { useFeedback } from "./feedback";
@@ -138,6 +139,7 @@ const kText = {
   thStatus: { ru: "Статус", en: "Status" },
   thDate: { ru: "Дата", en: "Date" },
   thQty: { ru: "Кол-во", en: "Qty" },
+  thUnits: { ru: "Списано", en: "Taken" },
   retryAt: { ru: "повтор в {time}", en: "retry at {time}" },
   inFlight: { ru: "в пути", en: "in flight" },
   oversold: { ru: "сверх остатка", en: "oversold" },
@@ -350,13 +352,13 @@ export default function WB() {
   const savePrice = async (l: WBLink, value: string) => {
     setPriceDraft((d) => {
       const next = { ...d };
-      delete next[l.product_id];
+      delete next[l.id];
       return next;
     });
     const minor = toMinor(value);
     if (!Number.isFinite(minor) || minor < 0 || minor === l.price) return;
     await run(setPriceMsg, async () => {
-      await api.wbSetPrice(l.product_id, minor);
+      await api.wbSetPrice(l.id, minor);
       await loadLinks();
       return "";
     });
@@ -390,7 +392,7 @@ export default function WB() {
   // reach the platform, not about which of the two calls carried it.
   const syncErrors = [
     ...s.stock_errors.map((e) => ({
-      key: `stock-${e.product_id}`,
+      key: `stock-${e.barcode}`,
       ref: e.barcode,
       kind: t("kindStock"),
       want: String(e.stock),
@@ -398,7 +400,7 @@ export default function WB() {
       error: `${e.error} ${when(e.retry_at)}`.trim(),
     })),
     ...s.price_errors.map((e) => ({
-      key: `price-${e.product_id}`,
+      key: `price-${e.product_id}-${e.nm_id}`,
       ref: `nmID ${e.nm_id}`,
       kind: t("kindPrice"),
       want: toRubles(e.price),
@@ -509,6 +511,29 @@ export default function WB() {
           message={line(pubMsg)}
           noCard={noCard}
           zeroFailed={zeroFailed}
+          cards={
+            <CabinetCards
+              platform="WB"
+              load={api.wbCards}
+              cardKey={(c) => c.barcode}
+              cardLabel={(c) => (
+                <>
+                  {c.article}
+                  <div className="text-muted text-xs">
+                    nm {c.nm_id} · {c.barcode}
+                  </div>
+                </>
+              )}
+              link={(c, productId, qty) =>
+                api.wbLinkCard(c.barcode, productId, qty)
+              }
+              unlink={api.wbUnlinkCard}
+              price={(minor) => `${toRubles(minor)} ₽`}
+              onChanged={() =>
+                void Promise.all([loadLinks(), loadCandidates(), loadCabinet()])
+              }
+            />
+          }
         />
       )}
 
@@ -574,6 +599,7 @@ export default function WB() {
                 render: (l) => l.barcode,
               },
               { key: "stock", label: t("thStock"), render: (l) => l.stock },
+              { key: "qty", label: t("thQty"), render: (l) => l.qty },
               {
                 key: "shop_price",
                 label: t("thShopPrice"),
@@ -586,11 +612,11 @@ export default function WB() {
                 render: (l) => (
                   <input
                     className="field w-28"
-                    value={priceDraft[l.product_id] ?? toRubles(l.price)}
+                    value={priceDraft[l.id] ?? toRubles(l.price)}
                     onChange={(e) =>
                       setPriceDraft({
                         ...priceDraft,
-                        [l.product_id]: e.target.value,
+                        [l.id]: e.target.value,
                       })
                     }
                     onBlur={(e) => void savePrice(l, e.target.value)}
@@ -615,7 +641,7 @@ export default function WB() {
               },
             ]}
             rows={links}
-            rowId={(l) => l.product_id}
+            rowId={(l) => l.id}
             total={linkTotal}
             page={linkPage}
             pageSize={100}
@@ -718,6 +744,7 @@ export default function WB() {
                   render: (o) => o.barcode,
                 },
                 { key: "qty", label: t("thQty"), render: (o) => o.qty },
+                { key: "units", label: t("thUnits"), render: (o) => o.units },
                 {
                   key: "status",
                   label: t("thStatus"),

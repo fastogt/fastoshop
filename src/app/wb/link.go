@@ -90,7 +90,7 @@ func matchProducts(products []database.Product, idx *cardIndex) ([]database.WBLi
 			continue
 		}
 		links = append(links, database.WBLink{
-			ProductID: p.ID, NmID: m.NmID, Barcode: m.Barcode, VendorCode: m.VendorCode,
+			ProductID: p.ID, Qty: 1, NmID: m.NmID, Barcode: m.Barcode, VendorCode: m.VendorCode,
 		})
 	}
 	return links, missing

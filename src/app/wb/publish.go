@@ -140,6 +140,11 @@ func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	links, missing := matchProducts(products, newCardIndex(cards))
+	linked, err := h.db.AllWBLinks()
+	if err != nil {
+		httpjson.WriteInternalError(w, err)
+		return
+	}
 	lang := h.db.Lang()
 	res := publishResponse{NoCard: []unlinkedProduct{}}
 	for _, m := range missing {
@@ -147,6 +152,11 @@ func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 		res.NoCard = append(res.NoCard, m)
 	}
 	for i := range links {
+		// A card the owner already linked by hand keeps its product and pack size.
+		if _, done := linked[links[i].Barcode]; done {
+			res.Published++
+			continue
+		}
 		if err := h.db.UpsertWBLink(&links[i]); err != nil {
 			httpjson.WriteInternalError(w, err)
 			return
@@ -176,7 +186,7 @@ func (h *Handlers) Unpublish(w http.ResponseWriter, r *http.Request) {
 			needZero = append(needZero, l)
 			continue
 		}
-		if err := h.db.DeleteWBLink(l.ProductID); err != nil {
+		if err := h.db.DeleteWBLink(l.ID); err != nil {
 			httpjson.WriteInternalError(w, err)
 			return
 		}
@@ -193,7 +203,7 @@ func (h *Handlers) Unpublish(w http.ResponseWriter, r *http.Request) {
 					unlinkedProduct{ProductID: l.ProductID, SKU: l.Barcode, Title: msg})
 				continue
 			}
-			if err := h.db.DeleteWBLink(l.ProductID); err != nil {
+			if err := h.db.DeleteWBLink(l.ID); err != nil {
 				httpjson.WriteInternalError(w, err)
 				return
 			}

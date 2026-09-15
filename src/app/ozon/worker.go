@@ -147,7 +147,7 @@ func (w *Worker) pushStocks(c *Client, warehouse int64) (pushed, failed int, hal
 				failed++
 				continue
 			}
-			if err := w.db.MarkOzonStockPushed(r.ProductID, r.Stock); err != nil {
+			if err := w.db.MarkOzonStockPushed(r.ID, r.Stock); err != nil {
 				log.Warnf("ozon stock sync: mark %s: %v", r.OfferID, err)
 				continue
 			}
@@ -194,7 +194,7 @@ func (w *Worker) pushPrices(c *Client, currency string) (pushed, failed int, err
 				failed++
 				continue
 			}
-			if err := w.db.MarkOzonPricePushed(r.ProductID, sent[i]); err != nil {
+			if err := w.db.MarkOzonPricePushed(r.ID, sent[i]); err != nil {
 				log.Warnf("ozon price sync: mark %s: %v", r.OfferID, err)
 				continue
 			}
@@ -226,13 +226,13 @@ func (w *Worker) backoffPrices(batch []database.OzonPriceRow, callErr error) {
 }
 
 func (w *Worker) markStockError(r database.OzonStockRow, msg string, delay time.Duration) {
-	if err := w.db.MarkOzonStockError(r.ProductID, msg, time.Now().Add(delay)); err != nil {
+	if err := w.db.MarkOzonStockError(r.ID, msg, time.Now().Add(delay)); err != nil {
 		log.Warnf("ozon stock sync: mark error %s: %v", r.OfferID, err)
 	}
 }
 
 func (w *Worker) markPriceError(r database.OzonPriceRow, msg string, delay time.Duration) {
-	if err := w.db.MarkOzonPriceError(r.ProductID, msg, time.Now().Add(delay)); err != nil {
+	if err := w.db.MarkOzonPriceError(r.ID, msg, time.Now().Add(delay)); err != nil {
 		log.Warnf("ozon price sync: mark error %s: %v", r.OfferID, err)
 	}
 }

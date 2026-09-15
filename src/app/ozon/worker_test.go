@@ -405,7 +405,7 @@ func TestPushPerItemErrorIsIsolated(t *testing.T) {
 	}
 
 	// The backoff has expired - retry, successfully this time.
-	if err := d.MarkOzonStockError(bad[0].ProductID, "склад не найден",
+	if err := d.MarkOzonStockError(bad[0].ID, "склад не найден",
 		time.Now().Add(-time.Minute)); err != nil {
 		t.Fatal(err)
 	}

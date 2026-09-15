@@ -77,7 +77,7 @@ func (w *Worker) pushPrices(c *Client) (pushed, failed int, err error) {
 			var value int64
 			items[i], value = NewPriceItem(g.nmID, g.price)
 			for _, r := range g.rows {
-				sent = append(sent, database.WBPriceSent{ProductID: r.ProductID, Sent: value})
+				sent = append(sent, database.WBPriceSent{LinkID: r.ID, Sent: value})
 			}
 		}
 		if pushed > 0 {

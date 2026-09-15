@@ -1,3 +1,13 @@
+1.53.0 / September 15, 2026
+[Alexandr Topilski]
+- A marketplace card is now linked to a shop product with a pack size: one card can sell 4, 8 or 30 units of the same product. The card shows whole packs, the shop's stock divided by the pack size and rounded down, so every pack of one product draws on one stock and a big pack goes to zero on its own when too few units are left
+- One product can sell through several cards on Wildberries and on Ozon. Unpublishing zeroes every card of the product before the links are dropped
+- The publication panel has a new "Cabinet cards" view: every card of the cabinet with what it sells, filters for unlinked cards and packs, and a manual link to any product for cards whose article differs from the shop's. The pack size is suggested from the article ("/4шт", "x12") and never guessed from a bare number. Unlinking sends zero to the platform first
+- An order takes the ordered quantity times the pack size off stock, and the sales tables show how many units were taken. A cancel returns exactly what the order took, even if the pack size was changed in between
+- The platform price is kept per card: filling prices multiplies the shelf price by the pack size, and a price is edited on the card's own row
+- Publishing by article keeps a card that was already linked by hand with its product and pack size
+- Schema change: wb_links and ozon_links are keyed by their own id with a unique barcode or offer_id and gain qty; wb_orders and ozon_order_items gain units. There is no automatic migration: an existing database has to be brought to the new tables before the upgrade
+
 1.52.1 / September 13, 2026
 [Alexandr Topilski]
 - The messenger order buttons link straight to Telegram and WhatsApp again, so Yandex Metrika's "open messenger" goal counts them as it did before 1.52.0. The shop still counts the click: the button carries a ping attribute, the browser reports the click to the shop on its own, and the web server's log keeps it. A browser that sends no ping, Firefox by default, is simply not counted

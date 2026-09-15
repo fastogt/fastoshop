@@ -87,7 +87,10 @@ export interface WBSettings {
 
 // Money in kopecks, like everywhere else in the admin.
 export interface WBLink {
+  id: number;
   product_id: number;
+  // Units of the product one card sells: a pack of 4 is one card with qty 4.
+  qty: number;
   nm_id: number;
   barcode: string;
   vendor_code: string;
@@ -119,6 +122,8 @@ export interface WBOrder {
   article: string;
   nm_id: number;
   qty: number;
+  // Units taken from the shop's stock: qty times the pack size at the time.
+  units: number;
   oversold: boolean;
   created_at: string;
 }
@@ -354,7 +359,9 @@ export interface OzonSettings {
 // shop_price is the shelf price. An empty title means the product is gone and
 // only the platform card is left.
 export interface OzonLink {
+  id: number;
   product_id: number;
+  qty: number;
   offer_id: string;
   title: string;
   sku: string;
@@ -380,6 +387,7 @@ interface OzonOrderItem {
   offer_id: string;
   title: string;
   qty: number;
+  units: number;
 }
 
 export interface OzonOrder {
@@ -415,6 +423,40 @@ export interface CabinetState {
   // The articles behind `orphans`, capped by the server. The number says
   // whether they matter, the list says which they are.
   orphan_skus: string[];
+}
+
+// One card of the cabinet with what it sells; link_id 0 means it is not linked.
+export interface CabinetCardBase {
+  link_id: number;
+  product_id: number;
+  product_title: string;
+  product_sku: string;
+  product_stock: number;
+  qty: number;
+  suggested_qty: number;
+  card_stock: number;
+  price: number;
+}
+
+export interface WBCabinetCard extends CabinetCardBase {
+  barcode: string;
+  nm_id: number;
+  article: string;
+  title: string;
+}
+
+export interface OzonCabinetCard extends CabinetCardBase {
+  offer_id: string;
+  ozon_product_id: number;
+}
+
+export type CardsView = "all" | "unlinked" | "packs";
+
+interface CabinetCardsPage<T> {
+  cards: T[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 export interface PriceRule {
@@ -630,8 +672,19 @@ export const api = {
     http
       .post("/ozon/unpublish", { product_ids: ids })
       .then(data<UnpublishResult>),
-  ozonSetPrice: (productId: number, price: number) =>
-    http.put(`/ozon/price/${productId}`, { price }),
+  ozonSetPrice: (linkId: number, price: number) =>
+    http.put(`/ozon/price/${linkId}`, { price }),
+  ozonCards: (page: number, q: string, view: CardsView) =>
+    http
+      .get("/ozon/cards", { params: { page, q, view } })
+      .then(data<CabinetCardsPage<OzonCabinetCard>>),
+  ozonLinkCard: (offerId: string, productId: number, qty: number) =>
+    http.put("/ozon/links", {
+      offer_id: offerId,
+      product_id: productId,
+      qty,
+    }),
+  ozonUnlinkCard: (linkId: number) => http.delete(`/ozon/links/${linkId}`),
   priceRules: () =>
     http
       .get("/products/price-rules")
@@ -684,8 +737,15 @@ export const api = {
     http
       .post("/wb/unpublish", { product_ids: ids })
       .then(data<UnpublishResult>),
-  wbSetPrice: (productId: number, price: number) =>
-    http.put(`/wb/price/${productId}`, { price }),
+  wbSetPrice: (linkId: number, price: number) =>
+    http.put(`/wb/price/${linkId}`, { price }),
+  wbCards: (page: number, q: string, view: CardsView) =>
+    http
+      .get("/wb/cards", { params: { page, q, view } })
+      .then(data<CabinetCardsPage<WBCabinetCard>>),
+  wbLinkCard: (barcode: string, productId: number, qty: number) =>
+    http.put("/wb/links", { barcode, product_id: productId, qty }),
+  wbUnlinkCard: (linkId: number) => http.delete(`/wb/links/${linkId}`),
   wbPriceRules: () =>
     http.get("/wb/price/rules").then(data<{ rules: PriceRule[] }>),
   wbSetPriceRules: (rules: PriceRule[]) =>

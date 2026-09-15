@@ -37,7 +37,7 @@ func (h *Handlers) Routes() chi.Router {
 	r.Post("/push", h.Push)
 	r.Get("/orders", h.Orders)
 	r.Get("/links", h.Links)
-	r.Put("/price/{productID}", h.SetPrice)
+	r.Put("/price/{linkID}", h.SetPrice)
 	r.Post("/price/fill", h.FillPrices)
 	r.Get("/price/rules", h.GetPriceRules)
 	r.Put("/price/rules", h.SetPriceRules)
@@ -46,6 +46,9 @@ func (h *Handlers) Routes() chi.Router {
 	r.Get("/candidates", h.Candidates)
 	r.Post("/publish", h.Publish)
 	r.Post("/unpublish", h.Unpublish)
+	r.Get("/cards", h.Cards)
+	r.Put("/links", h.LinkCard)
+	r.Delete("/links/{linkID}", h.UnlinkCard)
 	return r
 }
 
@@ -106,7 +109,9 @@ type settingsRequest struct {
 
 // Prices are in kopecks; an empty Title means only the platform card is left.
 type wbLinkRow struct {
+	ID          int64  `json:"id"`
 	ProductID   int64  `json:"product_id"`
+	Qty         int64  `json:"qty"`
 	NmID        int64  `json:"nm_id"`
 	Barcode     string `json:"barcode"`
 	VendorCode  string `json:"vendor_code"`
@@ -155,6 +160,7 @@ type wbOrderRow struct {
 	Article   string    `json:"article"`
 	NmID      int64     `json:"nm_id"`
 	Qty       int       `json:"qty"`
+	Units     int       `json:"units"`
 	Oversold  bool      `json:"oversold"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -357,7 +363,7 @@ func (h *Handlers) Orders(w http.ResponseWriter, r *http.Request) {
 		res.Orders = append(res.Orders, wbOrderRow{
 			OrderID: o.OrderID, Status: o.Status, ProductID: o.ProductID,
 			Title: o.Title, Barcode: o.Barcode, Article: o.Article, NmID: o.NmID,
-			Qty: o.Qty, Oversold: o.Oversold, CreatedAt: o.CreatedAt,
+			Qty: o.Qty, Units: o.Units, Oversold: o.Oversold, CreatedAt: o.CreatedAt,
 		})
 	}
 	httpjson.WriteOK(w, res)
@@ -383,7 +389,7 @@ func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, l := range list {
 		res.Links = append(res.Links, wbLinkRow{
-			ProductID: l.ProductID, NmID: l.NmID, Barcode: l.Barcode,
+			ID: l.ID, ProductID: l.ProductID, Qty: l.Qty, NmID: l.NmID, Barcode: l.Barcode,
 			VendorCode: l.VendorCode, Title: l.Title, SKU: l.SKU,
 			Stock: l.Stock, ShopPrice: l.ShopPrice, Price: l.Price,
 			StockPushed: l.StockPushed, PricePushed: l.PricePushed,
@@ -397,9 +403,9 @@ func (h *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 
 // Kopecks; zero switches management off and leaves whatever the cabinet holds.
 func (h *Handlers) SetPrice(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "productID"), 10, 64)
+	id, err := strconv.ParseInt(chi.URLParam(r, "linkID"), 10, 64)
 	if err != nil {
-		httpjson.WriteBadRequest(w, "invalid product id")
+		httpjson.WriteBadRequest(w, "invalid link id")
 		return
 	}
 	var req channel.SetPriceRequest

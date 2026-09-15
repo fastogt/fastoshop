@@ -46,6 +46,9 @@ const (
 	KeyWBPriceConflict  = "wb_price_conflict"
 	KeyWBPriceTaskStuck = "wb_price_task_stuck"
 	KeyWBAmbiguousCard  = "wb_ambiguous_card"
+	KeyBadPackQty       = "bad_pack_qty"
+	KeyCardNotInCabinet = "card_not_in_cabinet"
+	KeyLinkProductGone  = "link_product_gone"
 	KeyWBNoOrdersScope  = "wb_no_orders_scope"
 	KeySupplierRequired = "supplier_required"
 	KeyBadStock         = "bad_stock"
@@ -183,6 +186,17 @@ var kMessages = map[string][2]string{
 	KeyWBAmbiguousCard: {
 		"карточка с несколькими размерами: укажите штрихкод нужного размера в артикуле",
 		"a card with several sizes: put the barcode of the right size in the article",
+	},
+	KeyBadPackQty: {
+		"сколько штук в карточке - целое число от 1 до 10000",
+		"units per card must be a whole number from 1 to 10000",
+	},
+	KeyCardNotInCabinet: {
+		"такой карточки нет в кабинете площадки",
+		"there is no such card in the marketplace cabinet",
+	},
+	KeyLinkProductGone: {
+		"такого товара нет в магазине", "there is no such product in the shop",
 	},
 	KeyBadStock: {
 		"остаток не может быть отрицательным", "stock cannot be negative",

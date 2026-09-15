@@ -16,7 +16,7 @@ import (
 
 func setPrice(t *testing.T, d *database.Database, id, price int64) {
 	t.Helper()
-	found, err := d.SetOzonPrice(id, price)
+	found, err := d.SetOzonPrice(linkRow(t, d, id).ID, price)
 	if err != nil || !found {
 		t.Fatalf("set price %d: %v %v", id, err, found)
 	}
@@ -24,7 +24,7 @@ func setPrice(t *testing.T, d *database.Database, id, price int64) {
 
 func linkRow(t *testing.T, d *database.Database, id int64) database.OzonLinkRow {
 	t.Helper()
-	rows, err := d.ListOzonLinksPage(1000, 0)
+	rows, err := d.ListOzonLinksPage(5000, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestPriceErrorsDoNotMixWithStock(t *testing.T) {
 	}
 
 	// Now the platform rejects the stock. The price error must survive.
-	if err := d.MarkOzonPriceError(id, r.PriceError, time.Now().Add(-time.Minute)); err != nil {
+	if err := d.MarkOzonPriceError(r.ID, r.PriceError, time.Now().Add(-time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	m.failOffer("A", "склад не найден")

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   type CabinetState,
   type Candidate,
@@ -22,6 +22,7 @@ const kText = {
   viewLinked: { ru: "Связано", en: "Linked" },
   viewNoCard: { ru: "Нет карточки", en: "No card" },
   viewAll: { ru: "Все товары", en: "All products" },
+  viewCards: { ru: "Карточки кабинета", en: "Cabinet cards" },
   searchProducts: {
     ru: "Поиск по названию или артикулу",
     en: "Search by title or article",
@@ -121,6 +122,7 @@ export default function PublicationPanel({
   message,
   noCard,
   zeroFailed,
+  cards,
 }: {
   hint?: string;
   // A platform-specific sentence after the card count (WB: ambiguous cards).
@@ -140,8 +142,11 @@ export default function PublicationPanel({
   message: ReactNode;
   noCard: UnlinkedProduct[];
   zeroFailed: UnlinkedProduct[];
+  // The cabinet-cards view: linking by hand, packs, articles that differ.
+  cards: ReactNode;
 }) {
   const t = useT(kText);
+  const [showCards, setShowCards] = useState(false);
   const ready = useMemo(() => new Set(cabinet?.ready_ids ?? []), [cabinet]);
 
   return (
@@ -172,10 +177,13 @@ export default function PublicationPanel({
             ).map(([kind, label, n]) => (
               <button
                 key={kind}
-                onClick={() => onView(kind)}
+                onClick={() => {
+                  setShowCards(false);
+                  onView(kind);
+                }}
                 className={
                   "rounded-full border px-3 py-1 text-sm " +
-                  (view === kind
+                  (!showCards && view === kind
                     ? "border-brand text-brand font-semibold"
                     : "border-line text-muted")
                 }
@@ -183,85 +191,101 @@ export default function PublicationPanel({
                 {label} {n}
               </button>
             ))}
+            <button
+              onClick={() => setShowCards(true)}
+              className={
+                "rounded-full border px-3 py-1 text-sm sm:ml-4 " +
+                (showCards
+                  ? "border-brand text-brand font-semibold"
+                  : "border-line text-muted")
+              }
+            >
+              {t("viewCards")} {cabinet.cards}
+            </button>
           </div>
         )}
-        <input
-          className="field w-64"
-          placeholder={t("searchProducts")}
-          value={search}
-          onChange={(e) => onSearch(e.target.value)}
-        />
+        {showCards && cards}
+        {!showCards && (
+          <>
+            <input
+              className="field w-64"
+              placeholder={t("searchProducts")}
+              value={search}
+              onChange={(e) => onSearch(e.target.value)}
+            />
 
-        <DataTable<Candidate>
-          columns={[
-            {
-              key: "title",
-              label: t("colProduct"),
-              render: (p) => (
-                <>
-                  {p.title}
-                  {p.hidden && (
-                    <span className="text-muted ml-2 text-xs">
-                      {t("hiddenBadge")}
-                    </span>
-                  )}
-                </>
-              ),
-            },
-            {
-              key: "sku",
-              label: t("colArticle"),
-              hideMobile: true,
-              render: (p) => p.sku || "-",
-            },
-            { key: "stock", label: t("colStock"), render: (p) => p.stock },
-            {
-              key: "published",
-              label: t("colPublished"),
-              render: (p) => {
-                if (p.published) return t("yes");
-                // Without the cabinet we know nothing and say nothing: a row
-                // guessing "no card" would send the owner to create one that
-                // may already exist.
-                if (!cabinet)
-                  return <span className="text-muted">{t("no")}</span>;
-                return ready.has(p.product_id) ? (
-                  <span className="text-green-700">{t("stateReady")}</span>
-                ) : (
-                  <span className="text-muted">{t("stateNoCard")}</span>
-                );
-              },
-            },
-          ]}
-          rows={candidates}
-          rowId={(p) => p.product_id}
-          total={total}
-          page={page}
-          pageSize={pageSize}
-          onPage={onPage}
-          selectable
-          // Which goods go to a marketplace is a decision, and a filter is not
-          // one; publishing also matches SKUs against the cabinet's card list,
-          // and "everything matching" would sweep the whole catalogue through
-          // it.
-          allowAll={false}
-          bulkActions={[
-            {
-              label: t("publish"),
-              icon: <IconUpload />,
-              idsOnly: true,
-              onClick: (sel) => onPublish(sel.ids),
-            },
-            {
-              label: t("unpublish"),
-              icon: <IconDownload />,
-              danger: true,
-              idsOnly: true,
-              onClick: (sel) => onUnpublish(sel.ids),
-            },
-          ]}
-          emptyTitle={t("noCandidates")}
-        />
+            <DataTable<Candidate>
+              columns={[
+                {
+                  key: "title",
+                  label: t("colProduct"),
+                  render: (p) => (
+                    <>
+                      {p.title}
+                      {p.hidden && (
+                        <span className="text-muted ml-2 text-xs">
+                          {t("hiddenBadge")}
+                        </span>
+                      )}
+                    </>
+                  ),
+                },
+                {
+                  key: "sku",
+                  label: t("colArticle"),
+                  hideMobile: true,
+                  render: (p) => p.sku || "-",
+                },
+                { key: "stock", label: t("colStock"), render: (p) => p.stock },
+                {
+                  key: "published",
+                  label: t("colPublished"),
+                  render: (p) => {
+                    if (p.published) return t("yes");
+                    // Without the cabinet we know nothing and say nothing: a row
+                    // guessing "no card" would send the owner to create one that
+                    // may already exist.
+                    if (!cabinet)
+                      return <span className="text-muted">{t("no")}</span>;
+                    return ready.has(p.product_id) ? (
+                      <span className="text-green-700">{t("stateReady")}</span>
+                    ) : (
+                      <span className="text-muted">{t("stateNoCard")}</span>
+                    );
+                  },
+                },
+              ]}
+              rows={candidates}
+              rowId={(p) => p.product_id}
+              total={total}
+              page={page}
+              pageSize={pageSize}
+              onPage={onPage}
+              selectable
+              // Which goods go to a marketplace is a decision, and a filter is not
+              // one; publishing also matches SKUs against the cabinet's card list,
+              // and "everything matching" would sweep the whole catalogue through
+              // it.
+              allowAll={false}
+              bulkActions={[
+                {
+                  label: t("publish"),
+                  icon: <IconUpload />,
+                  idsOnly: true,
+                  onClick: (sel) => onPublish(sel.ids),
+                },
+                {
+                  label: t("unpublish"),
+                  icon: <IconDownload />,
+                  danger: true,
+                  idsOnly: true,
+                  onClick: (sel) => onUnpublish(sel.ids),
+                },
+              ]}
+              emptyTitle={t("noCandidates")}
+            />
+          </>
+        )}
 
         {message}
 

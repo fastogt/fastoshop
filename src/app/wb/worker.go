@@ -152,7 +152,7 @@ func (w *Worker) pushStocks(c *Client, warehouse int64) (pushed, failed int, hal
 				failed++
 				continue
 			}
-			if err := w.db.MarkWBStockPushed(r.ProductID, r.Stock); err != nil {
+			if err := w.db.MarkWBStockPushed(r.ID, r.Stock); err != nil {
 				log.Warnf("wb stock sync: mark %s: %v", r.Barcode, err)
 				continue
 			}
@@ -172,7 +172,7 @@ func callDelay(callErr error, fallback time.Duration) time.Duration {
 }
 
 func (w *Worker) markStockError(r database.WBStockRow, msg string, delay time.Duration) {
-	if err := w.db.MarkWBStockError(r.ProductID, msg, time.Now().Add(delay)); err != nil {
+	if err := w.db.MarkWBStockError(r.ID, msg, time.Now().Add(delay)); err != nil {
 		log.Warnf("wb stock sync: mark error %s: %v", r.Barcode, err)
 	}
 }

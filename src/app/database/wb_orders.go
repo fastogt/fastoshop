@@ -17,11 +17,13 @@ type WBOrder struct {
 	Cancelled bool
 	ProductID *int64
 	// Title of the shop product, filled on read only.
-	Title     string
-	Barcode   string
-	Article   string
-	NmID      int64
-	Qty       int
+	Title   string
+	Barcode string
+	Article string
+	NmID    int64
+	Qty     int
+	// Units is what the order took off the shop's stock: Qty times the card's pack size.
+	Units     int
 	Oversold  bool
 	CreatedAt time.Time
 }
@@ -36,16 +38,20 @@ func (o *WBOrder) storedStatus() string {
 // ApplyWBOrder applies a task once (UNIQUE(order_id)) and reports if stock moved.
 func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 	err = d.withTx(func(tx *sql.Tx) error {
-		productID, err := resolveBarcode(tx, o.Barcode)
+		productID, pack, err := resolveBarcode(tx, o.Barcode)
 		if err != nil {
 			return err
 		}
+		units := 0
+		if productID != nil && !o.Cancelled && o.Qty > 0 {
+			units = o.Qty * pack
+		}
 		res, err := tx.Exec(
 			`INSERT INTO wb_orders (order_id, status, product_id, barcode, article,
-			   nm_id, qty, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(order_id) DO NOTHING`,
+			   nm_id, qty, units, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(order_id) DO NOTHING`,
 			o.OrderID, o.storedStatus(), productID, o.Barcode, o.Article, o.NmID,
-			o.Qty, o.CreatedAt.UTC().Format(time.DateTime))
+			o.Qty, units, o.CreatedAt.UTC().Format(time.DateTime))
 		if err != nil {
 			return err
 		}
@@ -53,7 +59,7 @@ func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 		if err != nil || n == 0 {
 			return err
 		}
-		if productID == nil || o.Cancelled || o.Qty <= 0 {
+		if units == 0 {
 			return nil
 		}
 		id, err := res.LastInsertId()
@@ -65,7 +71,7 @@ func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 			`SELECT stock FROM products WHERE id = ?`, *productID).Scan(&have); err != nil {
 			return err
 		}
-		if have < o.Qty {
+		if have < units {
 			if _, err := tx.Exec(`UPDATE wb_orders SET oversold = 1 WHERE id = ?`, id); err != nil {
 				return err
 			}
@@ -73,7 +79,7 @@ func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 		// MAX(0, ...): the marketplace already sold, negative stock is worse than zero.
 		if _, err := tx.Exec(
 			`UPDATE products SET stock = MAX(0, stock - ?), updated_at = CURRENT_TIMESTAMP
-			 WHERE id = ?`, o.Qty, *productID); err != nil {
+			 WHERE id = ?`, units, *productID); err != nil {
 			return err
 		}
 		moved = true
@@ -86,18 +92,15 @@ func (d *Database) ApplyWBOrder(o *WBOrder) (moved bool, err error) {
 }
 
 // SetWBOrderStatus returns stock only on the not cancelled -> cancelled transition.
-//
-// ponytail: we return the ordered qty, not what was deducted; they diverge on an oversell.
-// If that starts to hurt, add an applied_qty column to wb_orders.
 func (d *Database) SetWBOrderStatus(orderID int64, status string, cancelled bool) (moved bool, err error) {
 	err = d.withTx(func(tx *sql.Tx) error {
 		var id int64
 		var prev string
 		var productID sql.NullInt64
-		var qty int
+		var units int
 		err := tx.QueryRow(
-			`SELECT id, status, product_id, qty FROM wb_orders WHERE order_id = ?`,
-			orderID).Scan(&id, &prev, &productID, &qty)
+			`SELECT id, status, product_id, units FROM wb_orders WHERE order_id = ?`,
+			orderID).Scan(&id, &prev, &productID, &units)
 		if err == sql.ErrNoRows {
 			return nil
 		}
@@ -111,8 +114,8 @@ func (d *Database) SetWBOrderStatus(orderID int64, status string, cancelled bool
 		if prev == next {
 			return nil
 		}
-		if cancelled && prev != WBStatusCancelled && productID.Valid && qty > 0 {
-			if err := returnStock(tx, []OrderItem{{ProductID: productID.Int64, Qty: qty}}); err != nil {
+		if cancelled && prev != WBStatusCancelled && productID.Valid && units > 0 {
+			if err := returnStock(tx, []OrderItem{{ProductID: productID.Int64, Qty: units}}); err != nil {
 				return err
 			}
 			moved = true
@@ -126,21 +129,22 @@ func (d *Database) SetWBOrderStatus(orderID int64, status string, cancelled bool
 	return moved, nil
 }
 
-// resolveBarcode looks up a product by the platform barcode; nil means no link.
-func resolveBarcode(tx *sql.Tx, barcode string) (*int64, error) {
+// resolveBarcode returns the linked product and its pack size; a nil product means no link.
+func resolveBarcode(tx *sql.Tx, barcode string) (*int64, int, error) {
 	if barcode == "" {
-		return nil, nil
+		return nil, 0, nil
 	}
 	var id int64
+	var pack int
 	err := tx.QueryRow(
-		`SELECT product_id FROM wb_links WHERE barcode = ? LIMIT 1`, barcode).Scan(&id)
+		`SELECT product_id, qty FROM wb_links WHERE barcode = ?`, barcode).Scan(&id, &pack)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, 0, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return &id, nil
+	return &id, pack, nil
 }
 
 // OpenWBOrderIDs returns the tasks whose status may still change.
@@ -181,7 +185,7 @@ func (d *Database) CountWBOrderState() (total, oversold, unresolved int, err err
 func (d *Database) ListWBOrdersPage(limit, offset int) ([]WBOrder, error) {
 	rows, err := d.db.Query(
 		`SELECT o.id, o.order_id, o.status, o.product_id, o.barcode, o.article,
-		        o.nm_id, o.qty, o.oversold, o.created_at, COALESCE(p.title, '')
+		        o.nm_id, o.qty, o.units, o.oversold, o.created_at, COALESCE(p.title, '')
 		 FROM wb_orders o LEFT JOIN products p ON p.id = o.product_id
 		 ORDER BY o.created_at DESC, o.id DESC LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
@@ -194,7 +198,7 @@ func (d *Database) ListWBOrdersPage(limit, offset int) ([]WBOrder, error) {
 		var productID sql.NullInt64
 		var title string
 		if err := rows.Scan(&o.ID, &o.OrderID, &o.Status, &productID, &o.Barcode,
-			&o.Article, &o.NmID, &o.Qty, &o.Oversold, &o.CreatedAt, &title); err != nil {
+			&o.Article, &o.NmID, &o.Qty, &o.Units, &o.Oversold, &o.CreatedAt, &title); err != nil {
 			return nil, err
 		}
 		if productID.Valid {

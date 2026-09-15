@@ -78,7 +78,7 @@ func (d *Database) CountOzonCandidates(f CandidateFilter) (int, error) {
 	var n int
 	err := d.db.QueryRow(
 		`SELECT count(*) FROM products p
-		 LEFT JOIN ozon_links l ON l.product_id = p.id`+where, args...).Scan(&n)
+		 LEFT JOIN (`+kOzonLinkedProducts+`) l ON l.product_id = p.id`+where, args...).Scan(&n)
 	return n, err
 }
 
@@ -89,7 +89,7 @@ func (d *Database) ListOzonCandidates(f CandidateFilter, limit, offset int) ([]O
 	rows, err := d.db.Query(
 		`SELECT p.id, p.sku, p.title, MAX(p.stock, 0), p.price, p.hidden,
 		        l.product_id IS NOT NULL
-		 FROM products p LEFT JOIN ozon_links l ON l.product_id = p.id`+
+		 FROM products p LEFT JOIN (`+kOzonLinkedProducts+`) l ON l.product_id = p.id`+
 			where+` ORDER BY p.id LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return nil, err
@@ -107,11 +107,23 @@ func (d *Database) ListOzonCandidates(f CandidateFilter, limit, offset int) ([]O
 	return out, rows.Err()
 }
 
+// kOzonLinkedProducts collapses a product's several cards into one row for product lists.
+const kOzonLinkedProducts = `SELECT DISTINCT product_id FROM ozon_links`
+
 // OzonLinkState is a link as unpublishing sees it: article and last pushed level.
 type OzonLinkState struct {
+	ID          int64
 	ProductID   int64
+	Qty         int64
 	OfferID     string
 	StockPushed int64
+	Price       int64
+}
+
+const kOzonLinkStateCols = `id, product_id, qty, offer_id, stock_pushed, price`
+
+func scanOzonLinkState(row interface{ Scan(...any) error }, l *OzonLinkState) error {
+	return row.Scan(&l.ID, &l.ProductID, &l.Qty, &l.OfferID, &l.StockPushed, &l.Price)
 }
 
 // OzonLinksByProducts returns link rows so an unlink knows what to zero on Ozon.
@@ -121,8 +133,8 @@ func (d *Database) OzonLinksByProducts(ids []int64) ([]OzonLinkState, error) {
 	}
 	in, args := inClause(ids)
 	q := fmt.Sprintf(
-		`SELECT product_id, offer_id, stock_pushed FROM ozon_links
-		 WHERE product_id IN (%s)`, in)
+		`SELECT `+kOzonLinkStateCols+` FROM ozon_links
+		 WHERE product_id IN (%s) ORDER BY id`, in)
 	rows, err := d.db.Query(q, args...)
 	if err != nil {
 		return nil, err
@@ -131,7 +143,7 @@ func (d *Database) OzonLinksByProducts(ids []int64) ([]OzonLinkState, error) {
 	var out []OzonLinkState
 	for rows.Next() {
 		var l OzonLinkState
-		if err := rows.Scan(&l.ProductID, &l.OfferID, &l.StockPushed); err != nil {
+		if err := scanOzonLinkState(rows, &l); err != nil {
 			return nil, err
 		}
 		out = append(out, l)
@@ -169,7 +181,7 @@ func (d *Database) ProductsByIDs(ids []int64) ([]Product, error) {
 func (d *Database) OzonSKUState() (map[string]int64, map[string]bool, error) {
 	rows, err := d.db.Query(
 		`SELECT p.sku, p.id, l.product_id IS NOT NULL
-		 FROM products p LEFT JOIN ozon_links l ON l.product_id = p.id
+		 FROM products p LEFT JOIN (` + kOzonLinkedProducts + `) l ON l.product_id = p.id
 		 WHERE p.sku != ''`)
 	if err != nil {
 		return nil, nil, err
