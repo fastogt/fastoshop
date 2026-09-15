@@ -113,7 +113,7 @@ func (w *ImportWriter) ZeroStock(ids []int64) error {
 		in, args := inClause(ids[:n])
 		ids = ids[n:]
 		if _, err := w.tx.Exec(`UPDATE products SET stock=0, updated_at=CURRENT_TIMESTAMP
-			WHERE id IN (`+in+`)`, args...); err != nil {
+			WHERE id IN (`+in+`) AND NOT `+kDerived, args...); err != nil {
 			return err
 		}
 		if err := w.tick(); err != nil {

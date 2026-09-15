@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
-import { api, apiError, type Product } from "./api";
+import { useEffect, useRef, useState } from "react";
+import { api, apiError, type Component, type Product } from "./api";
 import { useT } from "./i18n";
 import Modal from "./Modal";
+import ProductPicker from "./ProductPicker";
 import { toMinor, toRubles } from "./money";
 import { imageURL, isRemoteImage, useSign } from "./shop";
 
@@ -22,6 +23,27 @@ const kText = {
   labelSku: { ru: "Артикул (SKU)", en: "SKU" },
   labelPrice: { ru: "Цена, {sign}", en: "Price, {sign}" },
   labelStock: { ru: "Остаток", en: "In stock" },
+  setTitle: { ru: "Это набор?", en: "Is this a set?" },
+  modeNone: { ru: "Нет, обычный товар", en: "No, an ordinary product" },
+  modeAssemble: {
+    ru: "Да, собираю при заказе - остаток считается из товаров ниже, продажа списывает их",
+    en: "Yes, put together per order - stock is counted from the products below and a sale takes them",
+  },
+  modePacked: {
+    ru: "Да, уже упакован - остаток свой, товары ниже только для описания на витрине",
+    en: "Yes, already packed - it has its own stock, the products below only describe it on the storefront",
+  },
+  setAdd: { ru: "Добавить товар в состав", en: "Add a product" },
+  setEnough: { ru: "хватит на {n}", en: "enough for {n}" },
+  setStockHint: {
+    ru: "Считается из состава",
+    en: "Counted from the contents",
+  },
+  makeSet: {
+    ru: "Сделать набор из этого товара",
+    en: "Make a set of this product",
+  },
+  remove: { ru: "Убрать", en: "Remove" },
   labelWeight: { ru: "Вес, г", en: "Weight, g" },
   labelSize: { ru: "Габариты, мм", en: "Size, mm" },
   sizeHint: {
@@ -124,8 +146,13 @@ export default function ProductCard({
   onClose,
   onSaved,
   onReload,
+  initialComponents,
+  onMakeSet,
 }: {
   initial: Partial<Product>;
+  // A new set opened from the product list arrives with its contents filled in.
+  initialComponents?: Component[];
+  onMakeSet?: (p: Partial<Product>) => void;
   suppliers: string[];
   categories: string[];
   brands: string[];
@@ -139,7 +166,9 @@ export default function ProductCard({
   const t = useT(kText);
   const sign = useSign();
   const [edit, setEdit] = useState<Partial<Product>>(initial);
-  const [cardTab, setCardTab] = useState<CardTab>("cardShop");
+  const [cardTab, setCardTab] = useState<CardTab>(
+    initialComponents ? "cardStock" : "cardShop",
+  );
   // Index of the photo being dragged. A ref, not state: it changes on every
   // dragover and re-rendering the strip mid-drag drops the drag itself.
   const dragFrom = useRef<number | null>(null);
@@ -149,6 +178,34 @@ export default function ProductCard({
   // null = the stock field was never touched. Sending it means re-declaring the
   // physical stock: a form opened before a sale would resurrect sold units.
   const [stock, setStock] = useState<number | null>(null);
+  const [components, setComponents] = useState<Component[]>(
+    initialComponents ?? [],
+  );
+  // Sent only when touched, like stock: an untouched card keeps its contents.
+  const [componentsDirty, setComponentsDirty] = useState(!!initialComponents);
+  const [mode, setMode] = useState<"none" | "assemble" | "packed">(
+    initialComponents || (initial.is_set && !initial.packed)
+      ? "assemble"
+      : initial.is_set
+        ? "packed"
+        : "none",
+  );
+  const [saveMsg, setSaveMsg] = useState("");
+
+  useEffect(() => {
+    if (!initial.id || !initial.is_set) return;
+    void api.components(initial.id).then(setComponents);
+  }, [initial.id, initial.is_set]);
+
+  const changeComponents = (rows: Component[]) => {
+    setComponents(rows);
+    setComponentsDirty(true);
+  };
+  // Only a set put together per order owns no stock of its own.
+  const isSet = mode === "assemble" && components.length > 0;
+  const setStockPreview = Math.min(
+    ...components.map((c) => Math.floor(Math.max(c.stock, 0) / c.qty)),
+  );
 
   // The draft lands straight in the form: the dialog is already a draft -
   // nothing reaches the database until Save, and closing the window undoes it.
@@ -195,14 +252,32 @@ export default function ProductCard({
 
   const save = async () => {
     if (!edit.title) return;
-    const p = { ...edit, price: toMinor(priceRub) };
+    const p: Partial<Product> & {
+      components?: { product_id: number; qty: number }[];
+    } = { ...edit, price: toMinor(priceRub) };
     delete p.stock;
-    if (stock !== null) p.stock = stock;
+    if (stock !== null && !isSet) p.stock = stock;
     // supplier is always sent explicitly: the field is in the form, and an
     // empty value is a deliberate "no supplier" choice, not "leave as is".
     p.supplier = edit.supplier ?? "";
-    if (edit.id) await api.updateProduct(edit.id, p);
-    else await api.createProduct(p);
+    p.packed = mode === "packed";
+    if (mode === "none") {
+      if (initial.is_set || components.length > 0) p.components = [];
+    } else if (componentsDirty) {
+      p.components = components.map((c) => ({
+        product_id: c.product_id,
+        qty: c.qty,
+      }));
+    }
+    setSaveMsg("");
+    try {
+      if (edit.id) await api.updateProduct(edit.id, p);
+      else await api.createProduct(p);
+    } catch (e) {
+      setSaveMsg(apiError(e) ?? t("failed"));
+      setCardTab("cardStock");
+      return;
+    }
     onClose();
     await onSaved();
   };
@@ -219,6 +294,7 @@ export default function ProductCard({
           <button className="btn-ghost" onClick={onClose}>
             {t("cancel")}
           </button>
+          {saveMsg && <span className="text-red-600">{saveMsg}</span>}
         </>
       }
     >
@@ -350,9 +426,11 @@ export default function ProductCard({
                 <input
                   className="field"
                   type="number"
-                  value={stock ?? edit.stock ?? 0}
+                  readOnly={isSet}
+                  value={isSet ? setStockPreview : (stock ?? edit.stock ?? 0)}
                   onChange={(e) => setStock(Number(e.target.value))}
                 />
+                {isSet && <p className="hint mt-1">{t("setStockHint")}</p>}
               </div>
               <div className="min-w-40 flex-1">
                 <label className="label">{t("labelSupplier")}</label>
@@ -384,6 +462,113 @@ export default function ProductCard({
               <span>{t("showOnStorefront")}</span>
             </label>
             <p className="hint -mt-2">{t("hiddenHint")}</p>
+
+            <div className="border-line flex flex-col gap-2 border-t pt-3">
+              <h3 className="font-semibold">{t("setTitle")}</h3>
+              {(["none", "assemble", "packed"] as const).map((m) => (
+                <label key={m} className="flex items-start gap-2">
+                  <input
+                    id={`set-mode-${m}`}
+                    type="radio"
+                    name="set-mode"
+                    className="mt-1"
+                    checked={mode === m}
+                    onChange={() => setMode(m)}
+                  />
+                  <span>
+                    {t(
+                      m === "none"
+                        ? "modeNone"
+                        : m === "assemble"
+                          ? "modeAssemble"
+                          : "modePacked",
+                    )}
+                  </span>
+                </label>
+              ))}
+              {mode !== "none" &&
+                components.map((c, i) => (
+                  <div
+                    key={c.product_id}
+                    className="flex flex-wrap items-center gap-2 text-sm"
+                  >
+                    <span className="min-w-40 flex-1">
+                      {c.title}
+                      {c.sku && <span className="text-muted"> · {c.sku}</span>}
+                      <span className="text-muted"> · {c.stock}</span>
+                    </span>
+                    <span>×</span>
+                    <input
+                      className="field w-20"
+                      type="number"
+                      min={1}
+                      value={c.qty}
+                      onChange={(e) =>
+                        changeComponents(
+                          components.map((x, n) =>
+                            n === i
+                              ? {
+                                  ...x,
+                                  qty: Math.max(1, Number(e.target.value)),
+                                }
+                              : x,
+                          ),
+                        )
+                      }
+                    />
+                    <span className="text-muted w-28">
+                      {mode === "assemble" &&
+                        t("setEnough", {
+                          n: Math.floor(Math.max(c.stock, 0) / c.qty),
+                        })}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() =>
+                        changeComponents(components.filter((_, n) => n !== i))
+                      }
+                    >
+                      {t("remove")}
+                    </button>
+                  </div>
+                ))}
+              {mode !== "none" && (
+                <ProductPicker
+                  placeholder={t("setAdd")}
+                  accept={(p) =>
+                    !p.is_set &&
+                    p.id !== edit.id &&
+                    !components.some((c) => c.product_id === p.id)
+                  }
+                  onPick={(p) =>
+                    changeComponents([
+                      ...components,
+                      {
+                        product_id: p.id,
+                        qty: 1,
+                        title: p.title,
+                        sku: p.sku,
+                        slug: p.slug,
+                        stock: p.stock,
+                        hidden: p.hidden,
+                      },
+                    ])
+                  }
+                />
+              )}
+              {edit.id && mode === "none" && onMakeSet && (
+                <div>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => onMakeSet(edit)}
+                  >
+                    {t("makeSet")}
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         )}
         {cardTab === "cardPhotos" && (

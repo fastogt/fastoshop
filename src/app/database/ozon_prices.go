@@ -4,7 +4,6 @@ import "time"
 
 // OzonPriceRow is a link due for a price push; Price is the Ozon price in kopecks.
 type OzonPriceRow struct {
-	ID          int64
 	ProductID   int64
 	OfferID     string
 	Price       int64
@@ -18,17 +17,17 @@ const kOzonPriceGuard = `offer_id != '' AND price > 0
 
 func (d *Database) OzonPriceToPush() ([]OzonPriceRow, error) {
 	return d.ozonPriceRows(
-		`SELECT id, product_id, offer_id, price, price_pushed, price_error
+		`SELECT product_id, offer_id, price, price_pushed, price_error
 		 FROM ozon_links
 		 WHERE ` + kOzonPriceGuard + `
 		   AND (retry_at IS NULL OR retry_at <= CURRENT_TIMESTAMP)
-		 ORDER BY id`)
+		 ORDER BY product_id`)
 }
 
 func (d *Database) ListOzonPriceErrors() ([]OzonPriceRow, error) {
 	return d.ozonPriceRows(
-		`SELECT id, product_id, offer_id, price, price_pushed, price_error
-		 FROM ozon_links WHERE price_error != '' ORDER BY id`)
+		`SELECT product_id, offer_id, price, price_pushed, price_error
+		 FROM ozon_links WHERE price_error != '' ORDER BY product_id`)
 }
 
 func (d *Database) ozonPriceRows(query string) ([]OzonPriceRow, error) {
@@ -40,7 +39,7 @@ func (d *Database) ozonPriceRows(query string) ([]OzonPriceRow, error) {
 	var out []OzonPriceRow
 	for rows.Next() {
 		var r OzonPriceRow
-		if err := rows.Scan(&r.ID, &r.ProductID, &r.OfferID, &r.Price, &r.PricePushed, &r.Error); err != nil {
+		if err := rows.Scan(&r.ProductID, &r.OfferID, &r.Price, &r.PricePushed, &r.Error); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -49,18 +48,18 @@ func (d *Database) ozonPriceRows(query string) ([]OzonPriceRow, error) {
 }
 
 // MarkOzonPricePushed stores the value actually sent, so the row stops flapping.
-func (d *Database) MarkOzonPricePushed(id, level int64) error {
+func (d *Database) MarkOzonPricePushed(productID, level int64) error {
 	_, err := d.db.Exec(
 		`UPDATE ozon_links SET price_pushed=?, price_error='', retry_at=NULL
-		 WHERE id=?`, level, id)
+		 WHERE product_id=?`, level, productID)
 	return err
 }
 
 // MarkOzonPriceError writes retry_at as UTC - the column is shared with the stock side.
-func (d *Database) MarkOzonPriceError(id int64, msg string, retryAt time.Time) error {
+func (d *Database) MarkOzonPriceError(productID int64, msg string, retryAt time.Time) error {
 	_, err := d.db.Exec(
-		`UPDATE ozon_links SET price_error=?, retry_at=? WHERE id=?`,
-		msg, retryAt.UTC().Format(time.DateTime), id)
+		`UPDATE ozon_links SET price_error=?, retry_at=? WHERE product_id=?`,
+		msg, retryAt.UTC().Format(time.DateTime), productID)
 	return err
 }
 
@@ -73,10 +72,10 @@ func (d *Database) CountOzonPriceState() (pending, failed int, err error) {
 	return pending, failed, err
 }
 
-// SetOzonPrice returns false when the link does not exist; it also clears price_error.
-func (d *Database) SetOzonPrice(linkID, price int64) (bool, error) {
+// SetOzonPrice returns false when the product has no link; it also clears price_error.
+func (d *Database) SetOzonPrice(productID, price int64) (bool, error) {
 	res, err := d.db.Exec(
-		`UPDATE ozon_links SET price=?, price_error='' WHERE id=?`, price, linkID)
+		`UPDATE ozon_links SET price=?, price_error='' WHERE product_id=?`, price, productID)
 	if err != nil {
 		return false, err
 	}
@@ -84,11 +83,11 @@ func (d *Database) SetOzonPrice(linkID, price int64) (bool, error) {
 	return n > 0, err
 }
 
-// FillOzonPrices marks up the pack's shelf price only where no Ozon price was set yet.
+// FillOzonPrices marks up the shelf price only where no Ozon price was set yet.
 func (d *Database) FillOzonPrices(markupBP int64) (int, error) {
 	res, err := d.db.Exec(
 		`UPDATE ozon_links SET price = (
-		   SELECT (p.price * ozon_links.qty * (10000 + ?) + 9999) / 10000
+		   SELECT (p.price * (10000 + ?) + 9999) / 10000
 		   FROM products p WHERE p.id = ozon_links.product_id)
 		 WHERE price = 0 AND offer_id != ''
 		   AND EXISTS (SELECT 1 FROM products p
@@ -102,9 +101,7 @@ func (d *Database) FillOzonPrices(markupBP int64) (int, error) {
 
 // OzonLinkRow is one linked-products row; Title and SKU are empty for a gone product.
 type OzonLinkRow struct {
-	ID          int64
 	ProductID   int64
-	Qty         int64
 	OfferID     string
 	Title       string
 	SKU         string
@@ -125,11 +122,11 @@ func (d *Database) CountOzonLinkRows() (int, error) {
 
 func (d *Database) ListOzonLinksPage(limit, offset int) ([]OzonLinkRow, error) {
 	rows, err := d.db.Query(
-		`SELECT l.id, l.product_id, l.qty, l.offer_id, COALESCE(p.title, ''), COALESCE(p.sku, ''),
-		        `+kOzonCardStock+`, COALESCE(p.price, 0),
+		`SELECT l.product_id, l.offer_id, COALESCE(p.title, ''), COALESCE(p.sku, ''),
+		        MAX(COALESCE(p.stock, 0), 0), COALESCE(p.price, 0),
 		        l.price, l.stock_pushed, l.price_pushed, l.stock_error, l.price_error
 		 FROM ozon_links l LEFT JOIN products p ON p.id = l.product_id
-		 ORDER BY l.product_id, l.id LIMIT ? OFFSET ?`, limit, offset)
+		 ORDER BY l.product_id LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +134,7 @@ func (d *Database) ListOzonLinksPage(limit, offset int) ([]OzonLinkRow, error) {
 	var out []OzonLinkRow
 	for rows.Next() {
 		var r OzonLinkRow
-		if err := rows.Scan(&r.ID, &r.ProductID, &r.Qty, &r.OfferID, &r.Title, &r.SKU, &r.Stock,
+		if err := rows.Scan(&r.ProductID, &r.OfferID, &r.Title, &r.SKU, &r.Stock,
 			&r.ShopPrice, &r.Price, &r.StockPushed, &r.PricePushed,
 			&r.StockError, &r.PriceError); err != nil {
 			return nil, err

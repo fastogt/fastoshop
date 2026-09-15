@@ -26,6 +26,9 @@ type Product struct {
 	Supplier string `json:"supplier"`
 	// Hidden governs the storefront only, not marketplace publication.
 	Hidden bool `json:"hidden"`
+	// IsSet marks a product with a composition; Packed says its stock is its own anyway.
+	IsSet  bool `json:"is_set"`
+	Packed bool `json:"packed"`
 	// Weight in grams and size in millimetres; an unweighed product is absent, not zero.
 	WeightG  *int64 `json:"weight_g"`
 	LengthMM *int64 `json:"length_mm"`
@@ -105,11 +108,11 @@ func (d *Database) CreateProduct(p *Product) error {
 func insertProduct(q execer, p *Product) error {
 	res, err := q.Exec(
 		`INSERT INTO products (sku, title, slug, description, price, source_price,
-		 price_manual, stock, category, brand, supplier, hidden,
+		 price_manual, stock, packed, category, brand, supplier, hidden,
 		 weight_g, length_mm, width_mm, height_mm, params)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.SKU, p.Title, p.Slug, p.Description, p.Price, p.SourcePrice,
-		p.PriceManual, p.Stock, p.Category, p.Brand, p.Supplier, p.Hidden,
+		p.PriceManual, p.Stock, p.Packed, p.Category, p.Brand, p.Supplier, p.Hidden,
 		p.WeightG, p.LengthMM, p.WidthMM, p.HeightMM, paramsJSON(p.Params))
 	if err != nil {
 		return err
@@ -124,10 +127,11 @@ func (d *Database) UpdateProduct(p *Product) error { return updateProduct(d.db, 
 func updateProduct(q execer, p *Product) error {
 	_, err := q.Exec(
 		`UPDATE products SET sku=?, title=?, description=?, price=?, source_price=?,
-		 stock=?, category=?, brand=?, supplier=?, hidden=?, price_manual=?,
+		 stock=CASE WHEN ? = 0 AND `+kIsSet+` THEN stock ELSE ? END, packed=?,
+		 category=?, brand=?, supplier=?, hidden=?, price_manual=?,
 		 weight_g=?, length_mm=?, width_mm=?, height_mm=?, params=?,
 		 updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-		p.SKU, p.Title, p.Description, p.Price, p.SourcePrice, p.Stock,
+		p.SKU, p.Title, p.Description, p.Price, p.SourcePrice, p.Packed, p.Stock, p.Packed,
 		p.Category, p.Brand, p.Supplier, p.Hidden, p.PriceManual,
 		p.WeightG, p.LengthMM, p.WidthMM, p.HeightMM, paramsJSON(p.Params), p.ID)
 	return err
@@ -139,16 +143,16 @@ func (d *Database) DeleteProduct(id int64) error {
 }
 
 const kProductCols = `id, sku, title, slug, description, price, source_price,
-	price_manual, stock, category, brand, supplier, hidden,
-	weight_g, length_mm, width_mm, height_mm, params, created_at, updated_at`
+	price_manual, stock, packed, category, brand, supplier, hidden,
+	weight_g, length_mm, width_mm, height_mm, params, created_at, updated_at, ` + kIsSet
 
 func scanProduct(row interface{ Scan(...any) error }) (*Product, error) {
 	var p Product
 	var params string
 	err := row.Scan(&p.ID, &p.SKU, &p.Title, &p.Slug, &p.Description, &p.Price,
-		&p.SourcePrice, &p.PriceManual, &p.Stock, &p.Category, &p.Brand,
+		&p.SourcePrice, &p.PriceManual, &p.Stock, &p.Packed, &p.Category, &p.Brand,
 		&p.Supplier, &p.Hidden, &p.WeightG, &p.LengthMM, &p.WidthMM, &p.HeightMM,
-		&params, &p.CreatedAt, &p.UpdatedAt)
+		&params, &p.CreatedAt, &p.UpdatedAt, &p.IsSet)
 	if err != nil {
 		return nil, err
 	}

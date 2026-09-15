@@ -19,7 +19,6 @@ import { useSign } from "./shop";
 import { useFeedback } from "./feedback";
 import { ChannelTabs, WarehousePicker, type ChannelTab } from "./Channel";
 import PublicationPanel from "./PublicationPanel";
-import CabinetCards from "./CabinetCards";
 import DataTable from "./DataTable";
 import PriceLadder from "./PriceLadder";
 
@@ -186,7 +185,6 @@ const kText = {
   colPosting: { ru: "Отправление", en: "Shipment" },
   colDate: { ru: "Дата", en: "Date" },
   colItems: { ru: "Состав", en: "Items" },
-  itemUnits: { ru: "списано {n}", en: "{n} taken" },
   itemUnmatched: {
     ru: "{offer} × {qty} - не смогли сопоставить товар",
     en: "{offer} × {qty} - could not match a product",
@@ -314,7 +312,7 @@ export default function Ozon() {
   // reach Ozon, not about which of the two calls carried it.
   const syncErrors = [
     ...s.stock_errors.map((e) => ({
-      key: `stock-${e.offer_id}`,
+      key: `stock-${e.product_id}`,
       offer_id: e.offer_id,
       kind: t("kindStock"),
       want: String(e.stock),
@@ -322,7 +320,7 @@ export default function Ozon() {
       error: e.error,
     })),
     ...s.price_errors.map((e) => ({
-      key: `price-${e.offer_id}`,
+      key: `price-${e.product_id}`,
       offer_id: e.offer_id,
       kind: t("kindPrice"),
       want: `${toRubles(e.price)} ${s.currency}`,
@@ -352,18 +350,18 @@ export default function Ozon() {
   // Saving on blur: a per-row button would double the width of the table, and
   // leaving the tab without saving what was typed is worse than one extra
   // request on a field the owner merely tabbed through.
-  const savePrice = async (linkId: number, current: number) => {
-    const draft = priceDraft[linkId];
+  const savePrice = async (productId: number, current: number) => {
+    const draft = priceDraft[productId];
     if (draft === undefined) return;
     setPriceDraft((d) => {
       const next = { ...d };
-      delete next[linkId];
+      delete next[productId];
       return next;
     });
     const minor = toMinor(draft);
     if (!Number.isFinite(minor) || minor < 0 || minor === current) return;
     await run(setPriceMsg, async () => {
-      await api.ozonSetPrice(linkId, minor);
+      await api.ozonSetPrice(productId, minor);
       await loadLinks();
       return "";
     });
@@ -553,22 +551,6 @@ export default function Ozon() {
           message={line(pubMsg)}
           noCard={noCard}
           zeroFailed={zeroFailed}
-          cards={
-            <CabinetCards
-              platform="Ozon"
-              load={api.ozonCards}
-              cardKey={(c) => c.offer_id}
-              cardLabel={(c) => c.offer_id}
-              link={(c, productId, qty) =>
-                api.ozonLinkCard(c.offer_id, productId, qty)
-              }
-              unlink={api.ozonUnlinkCard}
-              price={(minor) => `${toRubles(minor)} ${sign}`}
-              onChanged={() =>
-                void Promise.all([loadLinks(), loadCandidates(), loadCabinet()])
-              }
-            />
-          }
         />
       )}
 
@@ -634,8 +616,7 @@ export default function Ozon() {
                     key: "offer_id",
                     label: t("colArticle"),
                     hideMobile: true,
-                    render: (l) =>
-                      l.qty > 1 ? `${l.offer_id} × ${l.qty}` : l.offer_id,
+                    render: (l) => l.offer_id,
                   },
                   {
                     key: "stock",
@@ -654,14 +635,14 @@ export default function Ozon() {
                     render: (l) => (
                       <input
                         className="field w-28"
-                        value={priceDraft[l.id] ?? toRubles(l.price)}
+                        value={priceDraft[l.product_id] ?? toRubles(l.price)}
                         onChange={(e) =>
                           setPriceDraft({
                             ...priceDraft,
-                            [l.id]: e.target.value,
+                            [l.product_id]: e.target.value,
                           })
                         }
-                        onBlur={() => savePrice(l.id, l.price)}
+                        onBlur={() => savePrice(l.product_id, l.price)}
                       />
                     ),
                   },
@@ -701,7 +682,7 @@ export default function Ozon() {
                   },
                 ]}
                 rows={links.links}
-                rowId={(l) => l.id}
+                rowId={(l) => l.product_id}
                 total={links.total}
                 page={linkPage}
                 pageSize={links.page_size}
@@ -837,11 +818,6 @@ export default function Ozon() {
                             ) : (
                               <span>
                                 {it.title} × {it.qty}
-                                {it.units !== it.qty && (
-                                  <span className="text-muted ml-2 text-xs">
-                                    {t("itemUnits", { n: it.units })}
-                                  </span>
-                                )}
                               </span>
                             )}
                           </li>

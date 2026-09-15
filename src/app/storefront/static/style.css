@@ -580,3 +580,6 @@ footer {
   background: var(--surface);
 }
 .buyer-kind #kind-company:checked ~ .org-fields { display: block; }
+
+/* A set line's count stays on one line next to a long product name. */
+.specs td.qty { white-space: nowrap; }

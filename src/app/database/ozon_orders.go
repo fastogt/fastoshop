@@ -65,20 +65,16 @@ func (d *Database) ApplyOzonPosting(p *OzonPosting) (moved bool, err error) {
 func applyNewPosting(tx *sql.Tx, id int64, p *OzonPosting) (bool, error) {
 	moved, oversold := false, false
 	for _, it := range p.Items {
-		productID, pack, err := resolveOffer(tx, it.OfferID)
+		productID, err := resolveOffer(tx, it.OfferID)
 		if err != nil {
 			return false, err
 		}
-		units := 0
-		if productID != nil && !p.Cancelled && it.Qty > 0 {
-			units = it.Qty * pack
-		}
 		if _, err := tx.Exec(
-			`INSERT INTO ozon_order_items (ozon_order_id, product_id, offer_id, qty, units)
-			 VALUES (?, ?, ?, ?, ?)`, id, productID, it.OfferID, it.Qty, units); err != nil {
+			`INSERT INTO ozon_order_items (ozon_order_id, product_id, offer_id, qty)
+			 VALUES (?, ?, ?, ?)`, id, productID, it.OfferID, it.Qty); err != nil {
 			return false, err
 		}
-		if units == 0 {
+		if productID == nil || p.Cancelled || it.Qty <= 0 {
 			continue
 		}
 		var have int
@@ -86,13 +82,10 @@ func applyNewPosting(tx *sql.Tx, id int64, p *OzonPosting) (bool, error) {
 			`SELECT stock FROM products WHERE id = ?`, *productID).Scan(&have); err != nil {
 			return false, err
 		}
-		if have < units {
+		if have < it.Qty {
 			oversold = true
 		}
-		// MAX(0, ...): the marketplace already sold, negative stock is worse than zero.
-		if _, err := tx.Exec(
-			`UPDATE products SET stock = MAX(0, stock - ?), updated_at = CURRENT_TIMESTAMP
-			 WHERE id = ?`, units, *productID); err != nil {
+		if err := drainStock(tx, []OrderItem{{ProductID: *productID, Qty: it.Qty}}); err != nil {
 			return false, err
 		}
 		moved = true
@@ -134,11 +127,14 @@ func applySeenPosting(tx *sql.Tx, p *OzonPosting) (bool, error) {
 	return moved, err
 }
 
-// ozonOrderStock reads the units each line took, before any Exec: one connection per tx.
+// ozonOrderStock reads all lines before any Exec: one connection per transaction.
+//
+// ponytail: we return the ordered qty, not what was deducted; they diverge on an oversell.
+// If that starts to hurt, add an applied_qty column to ozon_order_items.
 func ozonOrderStock(tx *sql.Tx, id int64) ([]OrderItem, error) {
 	rows, err := tx.Query(
-		`SELECT product_id, units FROM ozon_order_items
-		 WHERE ozon_order_id = ? AND product_id IS NOT NULL AND units > 0`, id)
+		`SELECT product_id, qty FROM ozon_order_items
+		 WHERE ozon_order_id = ? AND product_id IS NOT NULL`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -154,19 +150,18 @@ func ozonOrderStock(tx *sql.Tx, id int64) ([]OrderItem, error) {
 	return out, rows.Err()
 }
 
-// resolveOffer returns the linked product and its pack size; a nil product means no link.
-func resolveOffer(tx *sql.Tx, offerID string) (*int64, int, error) {
+// resolveOffer looks up a product by marketplace SKU; nil means no link.
+func resolveOffer(tx *sql.Tx, offerID string) (*int64, error) {
 	var id int64
-	var pack int
 	err := tx.QueryRow(
-		`SELECT product_id, qty FROM ozon_links WHERE offer_id = ?`, offerID).Scan(&id, &pack)
+		`SELECT product_id FROM ozon_links WHERE offer_id = ? LIMIT 1`, offerID).Scan(&id)
 	if err == sql.ErrNoRows {
-		return nil, 0, nil
+		return nil, nil
 	}
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	return &id, pack, nil
+	return &id, nil
 }
 
 type OzonOrderItem struct {
@@ -174,8 +169,6 @@ type OzonOrderItem struct {
 	OfferID   string
 	Title     string
 	Qty       int
-	// Units is what the line took off the shop's stock: Qty times the card's pack size.
-	Units int
 }
 
 type OzonOrder struct {
@@ -243,7 +236,7 @@ func (d *Database) loadOzonOrderItems(orders []OzonOrder, byID map[int64]int) er
 	}
 	// An id range instead of IN (...): a page is contiguous by id within its bounds.
 	rows, err := d.db.Query(
-		`SELECT i.ozon_order_id, i.product_id, i.offer_id, i.qty, i.units, COALESCE(p.title, '')
+		`SELECT i.ozon_order_id, i.product_id, i.offer_id, i.qty, COALESCE(p.title, '')
 		 FROM ozon_order_items i LEFT JOIN products p ON p.id = i.product_id
 		 WHERE i.ozon_order_id BETWEEN ? AND ? ORDER BY i.rowid`, lo, hi)
 	if err != nil {
@@ -253,7 +246,7 @@ func (d *Database) loadOzonOrderItems(orders []OzonOrder, byID map[int64]int) er
 	for rows.Next() {
 		var orderID int64
 		var it OzonOrderItem
-		if err := rows.Scan(&orderID, &it.ProductID, &it.OfferID, &it.Qty, &it.Units, &it.Title); err != nil {
+		if err := rows.Scan(&orderID, &it.ProductID, &it.OfferID, &it.Qty, &it.Title); err != nil {
 			return err
 		}
 		if idx, ok := byID[orderID]; ok {

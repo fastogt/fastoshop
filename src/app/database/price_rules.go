@@ -109,7 +109,7 @@ func (d *Database) fillPricesByRules(rulesTable, linksTable, linkedPred string) 
 		return 0, nil
 	}
 	rows, err := d.db.Query(
-		`SELECT l.id, p.price * l.qty FROM ` + linksTable + ` l
+		`SELECT l.product_id, p.price FROM ` + linksTable + ` l
 		 JOIN products p ON p.id = l.product_id
 		 WHERE l.price = 0 AND ` + linkedPred + ` AND p.price > 0`)
 	if err != nil {
@@ -141,7 +141,7 @@ func (d *Database) fillPricesByRules(rulesTable, linksTable, linkedPred string) 
 				continue
 			}
 			if _, err := tx.Exec(
-				`UPDATE `+linksTable+` SET price=? WHERE id=?`, price, t.id); err != nil {
+				`UPDATE `+linksTable+` SET price=? WHERE product_id=?`, price, t.id); err != nil {
 				return err
 			}
 			n++

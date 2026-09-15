@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type Product } from "./api";
+import { api, type Component, type Product } from "./api";
 import { toRubles } from "./money";
 import DataTable, { type Selection, type Sort } from "./DataTable";
 import Modal from "./Modal";
@@ -69,6 +69,12 @@ const kText = {
   bulkHide: { ru: "Скрыть с витрины", en: "Hide from storefront" },
   bulkGroup: { ru: "Перенести в группу", en: "Move to group" },
   bulkDelete: { ru: "Удалить", en: "Delete" },
+  bulkMakeSet: { ru: "Создать набор", en: "Make a set" },
+  setOfSets: {
+    ru: "Набор нельзя положить в другой набор - уберите наборы из выбора.",
+    en: "A set cannot go inside another set - leave the sets out of the selection.",
+  },
+  setBadge: { ru: "набор", en: "set" },
   askStock: {
     ru: "Какой остаток проставить выбранным товарам?",
     en: "What stock should the selected products get?",
@@ -129,6 +135,7 @@ const isRemote = isRemoteImage;
 export default function Products() {
   const [list, setList] = useState<Product[]>([]);
   const [edit, setEdit] = useState<Partial<Product> | null>(null);
+  const [newSet, setNewSet] = useState<Component[] | undefined>();
   // Whether the shop has an AdHunters key: the button is not offered without
   // one, because there is nothing to pay the rewriting with.
   const [hasAIKey, setHasAIKey] = useState(false);
@@ -152,6 +159,27 @@ export default function Products() {
   // typed once per product and the list only has to save the retyping.
   const brands = [...new Set(list.map((p) => p.brand).filter(Boolean))].sort();
   const t = useT(kText);
+
+  // A new set opens as a product whose contents are the chosen goods, one of each.
+  const makeSet = (goods: Product[]) => {
+    if (goods.length === 0) return;
+    if (goods.some((p) => p.is_set)) {
+      alert(t("setOfSets"));
+      return;
+    }
+    setNewSet(
+      goods.map((p) => ({
+        product_id: p.id,
+        qty: 1,
+        title: p.title,
+        sku: p.sku,
+        slug: p.slug,
+        stock: p.stock,
+        hidden: p.hidden,
+      })),
+    );
+    setEdit({ ...kEmpty, price: goods.reduce((sum, p) => sum + p.price, 0) });
+  };
   const lang = useLang();
   const sign = useSign();
 
@@ -359,14 +387,21 @@ export default function Products() {
 
       {edit && (
         <ProductCard
+          // A new set replaces an open card: remount so the form starts from it.
+          key={`${edit.id ?? "new"}-${newSet?.map((c) => c.product_id).join(",") ?? ""}`}
           initial={edit}
           suppliers={suppliers}
           categories={categories}
           brands={brands}
           hasAIKey={hasAIKey}
-          onClose={() => setEdit(null)}
+          onClose={() => {
+            setEdit(null);
+            setNewSet(undefined);
+          }}
           onSaved={afterSave}
           onReload={reload}
+          initialComponents={newSet}
+          onMakeSet={(p) => makeSet([p as Product])}
         />
       )}
 
@@ -487,6 +522,11 @@ export default function Products() {
                   )}
                 </span>
                 <span className="font-medium">{p.title}</span>
+                {p.is_set && (
+                  <span className="border-brand text-brand rounded border px-2 py-0.5 text-xs">
+                    {t("setBadge")}
+                  </span>
+                )}
                 {p.hidden && (
                   <span className="text-muted border-line rounded border px-2 py-0.5 text-xs">
                     {t("hiddenBadge")}
@@ -590,6 +630,13 @@ export default function Products() {
             label: t("bulkFill"),
             icon: <IconDownload />,
             onClick: (sel) => void runFill(sel),
+          },
+          {
+            label: t("bulkMakeSet"),
+            icon: <IconBox />,
+            idsOnly: true,
+            onClick: (sel) =>
+              makeSet(list.filter((p) => sel.ids.includes(p.id))),
           },
           {
             label: t("bulkDelete"),

@@ -91,6 +91,15 @@
   <div class="facts">
     <h1>{{.P.Title}}</h1>
     {{if .P.SKU}}<p class="sku">Артикул: {{.P.SKU}}</p>{{end}}
+    {{with .InSets}}<p class="sku">Также наборами:{{range $i, $s := .}}{{if $i}},{{end}} <a href="/p/{{$s.Slug}}">{{$s.Title}}</a>{{end}}</p>{{end}}
+    {{with .Components}}
+    <div class="specs">
+      <h3>Состав набора</h3>
+      <table>
+        {{range .}}<tr><td>{{if .Hidden}}{{.Title}}{{else}}<a href="/p/{{.Slug}}">{{.Title}}</a>{{end}}</td><td class="qty">{{.Qty}} шт</td></tr>{{end}}
+      </table>
+    </div>
+    {{end}}
     {{if not .Specs.Empty}}
     <div class="specs">
       <h3>Характеристики</h3>

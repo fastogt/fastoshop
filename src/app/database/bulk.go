@@ -46,7 +46,7 @@ func (d *Database) SetStockBulk(s Selection, stock int) (int, error) {
 	if stock < 0 {
 		return 0, fmt.Errorf("stock cannot be negative: %d", stock)
 	}
-	return d.bulkUpdate(s, "stock=?", stock)
+	return d.bulkUpdate(s, "stock=CASE WHEN "+kDerived+" THEN stock ELSE ? END", stock)
 }
 
 // SetHiddenBulk takes products off the storefront; channel links are untouched.

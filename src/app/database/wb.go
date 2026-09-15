@@ -14,10 +14,7 @@ type WBSettings struct {
 
 // WBLink carries both platform keys: stock is set per barcode, price per card.
 type WBLink struct {
-	ID        int64
-	ProductID int64
-	// Qty is how many units of the product one card sells.
-	Qty        int64
+	ProductID  int64
 	NmID       int64
 	Barcode    string
 	VendorCode string
@@ -49,63 +46,24 @@ func (d *Database) SaveWBSettings(s *WBSettings) error {
 	return err
 }
 
-// UpsertWBLink keys on the barcode; a card moved to another product or pack size starts over.
+// UpsertWBLink leaves price and push state alone so re-linking resets neither.
 func (d *Database) UpsertWBLink(l *WBLink) error {
-	if l.Qty < 1 {
-		l.Qty = 1
-	}
 	_, err := d.db.Exec(
-		`INSERT INTO wb_links (barcode, product_id, qty, nm_id, vendor_code)
-		 VALUES (?, ?, ?, ?, ?)
-		 ON CONFLICT(barcode) DO UPDATE SET nm_id=excluded.nm_id,
-		   vendor_code=excluded.vendor_code, product_id=excluded.product_id,
-		   qty=excluded.qty,
-		   stock_pushed=CASE WHEN wb_links.product_id = excluded.product_id
-		     AND wb_links.qty = excluded.qty THEN wb_links.stock_pushed ELSE -1 END`,
-		l.Barcode, l.ProductID, l.Qty, l.NmID, l.VendorCode)
+		`INSERT INTO wb_links (product_id, nm_id, barcode, vendor_code)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(product_id) DO UPDATE SET nm_id=excluded.nm_id,
+		   barcode=excluded.barcode, vendor_code=excluded.vendor_code`,
+		l.ProductID, l.NmID, l.Barcode, l.VendorCode)
 	return err
 }
 
-func (d *Database) DeleteWBLink(id int64) error {
-	_, err := d.db.Exec(`DELETE FROM wb_links WHERE id=?`, id)
+func (d *Database) DeleteWBLink(productID int64) error {
+	_, err := d.db.Exec(`DELETE FROM wb_links WHERE product_id=?`, productID)
 	return err
 }
 
-// WBLinkByID returns nil when there is no such link.
-func (d *Database) WBLinkByID(id int64) (*WBLinkState, error) {
-	var l WBLinkState
-	err := scanWBLinkState(d.db.QueryRow(
-		`SELECT `+kWBLinkStateCols+` FROM wb_links WHERE id=?`, id), &l)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &l, nil
-}
-
-// AllWBLinks is every link keyed by barcode, for matching against the cabinet's cards.
-func (d *Database) AllWBLinks() (map[string]WBLinkState, error) {
-	rows, err := d.db.Query(`SELECT ` + kWBLinkStateCols + ` FROM wb_links`)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	out := make(map[string]WBLinkState)
-	for rows.Next() {
-		var l WBLinkState
-		if err := scanWBLinkState(rows, &l); err != nil {
-			return nil, err
-		}
-		out[l.Barcode] = l
-	}
-	return out, rows.Err()
-}
-
-// WBStockRow is a link whose stock is due for a push; Stock is already in cards, not units.
+// WBStockRow is a link whose stock is due for a push.
 type WBStockRow struct {
-	ID          int64
 	ProductID   int64
 	Barcode     string
 	Stock       int64
@@ -115,12 +73,9 @@ type WBStockRow struct {
 	RetryAt sql.NullTime
 }
 
-// kWBCardStock: whole packs only - integer division rounds down.
-const kWBCardStock = `MAX(COALESCE(p.stock, 0), 0) / l.qty`
-
 // kWBStockGuard: stock_pushed = -1 means no baseline yet, so the first push passes.
 const kWBStockGuard = `l.barcode != ''
-	 AND (l.stock_pushed = -1 OR ` + kWBCardStock + ` != l.stock_pushed)`
+	 AND (l.stock_pushed = -1 OR MAX(COALESCE(p.stock, 0), 0) != l.stock_pushed)`
 
 func (d *Database) WBStockToPush() ([]WBStockRow, error) {
 	return d.wbStockRows(
@@ -134,10 +89,10 @@ func (d *Database) ListWBStockErrors() ([]WBStockRow, error) {
 
 func (d *Database) wbStockRows(where string) ([]WBStockRow, error) {
 	rows, err := d.db.Query(
-		`SELECT l.id, l.product_id, l.barcode, ` + kWBCardStock + `,
+		`SELECT l.product_id, l.barcode, MAX(COALESCE(p.stock, 0), 0),
 		        l.stock_pushed, l.stock_error, l.retry_at
 		 FROM wb_links l LEFT JOIN products p ON p.id = l.product_id ` +
-			where + ` ORDER BY l.id`)
+			where + ` ORDER BY l.product_id`)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +100,7 @@ func (d *Database) wbStockRows(where string) ([]WBStockRow, error) {
 	var out []WBStockRow
 	for rows.Next() {
 		var r WBStockRow
-		if err := rows.Scan(&r.ID, &r.ProductID, &r.Barcode, &r.Stock, &r.StockPushed,
+		if err := rows.Scan(&r.ProductID, &r.Barcode, &r.Stock, &r.StockPushed,
 			&r.Error, &r.RetryAt); err != nil {
 			return nil, err
 		}
@@ -155,18 +110,18 @@ func (d *Database) wbStockRows(where string) ([]WBStockRow, error) {
 }
 
 // MarkWBStockPushed clears retry_at, which is shared with the price push.
-func (d *Database) MarkWBStockPushed(id, level int64) error {
+func (d *Database) MarkWBStockPushed(productID, level int64) error {
 	_, err := d.db.Exec(
 		`UPDATE wb_links SET stock_pushed=?, stock_error='', retry_at=NULL
-		 WHERE id=?`, level, id)
+		 WHERE product_id=?`, level, productID)
 	return err
 }
 
 // MarkWBStockError writes retry_at as a UTC string to match CURRENT_TIMESTAMP.
-func (d *Database) MarkWBStockError(id int64, msg string, retryAt time.Time) error {
+func (d *Database) MarkWBStockError(productID int64, msg string, retryAt time.Time) error {
 	_, err := d.db.Exec(
-		`UPDATE wb_links SET stock_error=?, retry_at=? WHERE id=?`,
-		msg, retryAt.UTC().Format(time.DateTime), id)
+		`UPDATE wb_links SET stock_error=?, retry_at=? WHERE product_id=?`,
+		msg, retryAt.UTC().Format(time.DateTime), productID)
 	return err
 }
 

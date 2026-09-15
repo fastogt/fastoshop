@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/httpjson"
+	"github.com/fastogt/fastoshop/app/i18n"
 	"github.com/fastogt/fastoshop/app/media"
 )
 
@@ -34,6 +36,8 @@ type productRequest struct {
 	Supplier *string `json:"supplier"`
 	// An absent field means "leave as is".
 	Hidden *bool `json:"hidden"`
+	// A packed set keeps its own stock; nil leaves the mode as it is.
+	Packed *bool `json:"packed"`
 	// Grams and millimetres. Here nil means "clear it" rather than "leave as is".
 	WeightG  *int64 `json:"weight_g"`
 	LengthMM *int64 `json:"length_mm"`
@@ -41,6 +45,56 @@ type productRequest struct {
 	HeightMM *int64 `json:"height_mm"`
 	// Nil means "leave as is", an empty list means "clear them": a set arrives whole.
 	Params []database.Param `json:"params"`
+	// Same contract as Params: nil keeps the composition, an empty list dissolves the set.
+	Components []componentRequest `json:"components"`
+}
+
+type componentRequest struct {
+	ProductID int64 `json:"product_id"`
+	Qty       int   `json:"qty"`
+}
+
+type listComponentsResponse struct {
+	Components []database.Component `json:"components"`
+}
+
+// saveComponents writes a composition when one was sent; false means the reply is written.
+func (h *Handler) saveComponents(w http.ResponseWriter, setID int64, req []componentRequest) bool {
+	if req == nil {
+		return true
+	}
+	rows := make([]database.Component, 0, len(req))
+	for _, c := range req {
+		if c.ProductID <= 0 || c.Qty < 1 {
+			httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadComponent))
+			return false
+		}
+		rows = append(rows, database.Component{ProductID: c.ProductID, Qty: c.Qty})
+	}
+	err := h.db.SetComponents(setID, rows)
+	switch {
+	case errors.Is(err, database.ErrNested):
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyNestedSet))
+		return false
+	case err != nil:
+		httpjson.WriteInternalError(w, err)
+		return false
+	}
+	return true
+}
+
+func (h *Handler) ListComponents(w http.ResponseWriter, r *http.Request) {
+	id, err := idParam(r)
+	if err != nil {
+		httpjson.WriteBadRequest(w, "bad id")
+		return
+	}
+	rows, err := h.db.ListComponents(id)
+	if err != nil {
+		httpjson.WriteInternalError(w, err)
+		return
+	}
+	httpjson.WriteOK(w, listComponentsResponse{Components: rows})
 }
 
 // A form's blank and half-filled rows are dropped rather than stored.
@@ -126,11 +180,18 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	if req.Hidden != nil {
 		p.Hidden = *req.Hidden
 	}
+	if req.Packed != nil {
+		p.Packed = *req.Packed
+	}
 	if req.Supplier != nil {
 		p.Supplier = *req.Supplier
 	}
 	if err := h.db.CreateProduct(p); err != nil {
 		httpjson.WriteInternalError(w, err)
+		return
+	}
+	if !h.saveComponents(w, p.ID, req.Components) {
+		_ = h.db.DeleteProduct(p.ID)
 		return
 	}
 	// Re-read: the slug and timestamps are set by the DB, the request lacks them.
@@ -161,6 +222,7 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	p := &database.Product{ID: id, SKU: req.SKU, Title: req.Title,
 		Description: req.Description, Price: req.Price,
 		Stock: old.Stock, Category: req.Category, Brand: req.Brand, Hidden: old.Hidden,
+		Packed: old.Packed,
 		// The admin form has no source price; dropping it would skip later recomputes.
 		SourcePrice: old.SourcePrice, PriceManual: old.PriceManual,
 		Supplier: old.Supplier,
@@ -178,6 +240,9 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	if req.Hidden != nil {
 		p.Hidden = *req.Hidden
 	}
+	if req.Packed != nil {
+		p.Packed = *req.Packed
+	}
 	if req.Supplier != nil {
 		p.Supplier = *req.Supplier
 	}
@@ -187,6 +252,9 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.db.UpdateProduct(p); err != nil {
 		httpjson.WriteInternalError(w, err)
+		return
+	}
+	if !h.saveComponents(w, id, req.Components) {
 		return
 	}
 	saved, err := h.db.GetProduct(id)

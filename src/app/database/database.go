@@ -73,6 +73,8 @@ func (d *Database) migrate() error {
 		-- their work.
 		price_manual INTEGER NOT NULL DEFAULT 0,
 		stock       INTEGER NOT NULL DEFAULT 0,
+		-- 1 = a set already packed: its own stock, the composition only describes it.
+		packed      INTEGER NOT NULL DEFAULT 0,
 		category    TEXT NOT NULL DEFAULT '',
 		-- The manufacturer's brand, as the source stated it. Not the supplier:
 		-- one supplier ships many brands, and a buyer searches for the brand.
@@ -270,13 +272,9 @@ func (d *Database) migrate() error {
 	-- Deliberately without an FK on products: the link must outlive the product.
 	-- Once a product is removed from the shop its Ozon card is still up, and the
 	-- sync must push a zero there instead of losing offer_id with the row.
-	-- One row per platform card: a product may sell as several packs drawing on one stock.
 	CREATE TABLE IF NOT EXISTS ozon_links (
-		id           INTEGER PRIMARY KEY AUTOINCREMENT,
-		offer_id     TEXT NOT NULL UNIQUE,
-		product_id   INTEGER NOT NULL,
-		-- Units of the product one card sells; the card's stock is stock / qty.
-		qty          INTEGER NOT NULL DEFAULT 1 CHECK (qty >= 1),
+		product_id   INTEGER PRIMARY KEY,
+		offer_id     TEXT NOT NULL,
 		-- Price ON OZON in kopecks; 0 = we do not manage this product's price on
 		-- the platform (products.price is the shelf price, a different number).
 		price        INTEGER NOT NULL DEFAULT 0,
@@ -293,7 +291,8 @@ func (d *Database) migrate() error {
 		-- a whole.
 		retry_at     DATETIME
 	);
-	CREATE INDEX IF NOT EXISTS idx_ozon_links_product ON ozon_links(product_id);
+	-- A posting's lines are resolved by offer_id inside the apply transaction.
+	CREATE INDEX IF NOT EXISTS idx_ozon_links_offer ON ozon_links(offer_id);
 	-- Ledger of applied Ozon postings. Idempotency rests on UNIQUE: a posting
 	-- seen twice is rejected by the constraint, not by an "did we apply it
 	-- already" check - that check can be lost between SELECT and INSERT.
@@ -316,9 +315,7 @@ func (d *Database) migrate() error {
 		ozon_order_id INTEGER NOT NULL REFERENCES ozon_orders(id) ON DELETE CASCADE,
 		product_id    INTEGER,
 		offer_id      TEXT NOT NULL,
-		qty           INTEGER NOT NULL,
-		-- Units taken off stock; a cancel returns these, whatever the link says by then.
-		units         INTEGER NOT NULL DEFAULT 0
+		qty           INTEGER NOT NULL
 	);
 	CREATE INDEX IF NOT EXISTS idx_ozon_order_items_order
 		ON ozon_order_items(ozon_order_id);
@@ -359,16 +356,13 @@ func (d *Database) migrate() error {
 	-- No currency column: a Wildberries seller account settles in roubles only.
 
 	-- Deliberately without an FK on products, same reason as ozon_links.
-	-- One row per card size, like ozon_links: several may draw on one product.
 	CREATE TABLE IF NOT EXISTS wb_links (
-		id           INTEGER PRIMARY KEY AUTOINCREMENT,
+		product_id   INTEGER PRIMARY KEY,
 		-- Two platform keys, because WB splits them: stock hangs off the size's
 		-- barcode, price off the card. Both come from the card list at link time;
 		-- our own catalogue never carries a barcode.
-		barcode      TEXT NOT NULL UNIQUE,
-		product_id   INTEGER NOT NULL,
-		qty          INTEGER NOT NULL DEFAULT 1 CHECK (qty >= 1),
 		nm_id        INTEGER NOT NULL,
+		barcode      TEXT NOT NULL,
 		vendor_code  TEXT NOT NULL DEFAULT '',
 		price        INTEGER NOT NULL DEFAULT 0,
 		stock_pushed INTEGER NOT NULL DEFAULT -1,
@@ -382,7 +376,8 @@ func (d *Database) migrate() error {
 		price_error  TEXT NOT NULL DEFAULT '',
 		retry_at     DATETIME
 	);
-	CREATE INDEX IF NOT EXISTS idx_wb_links_product ON wb_links(product_id);
+	-- Two products on one barcode would push two levels into one slot every pass.
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_wb_links_barcode ON wb_links(barcode);
 	-- Deliberately not unique: every size of a card shares its nmID.
 	CREATE INDEX IF NOT EXISTS idx_wb_links_nm ON wb_links(nm_id);
 
@@ -406,8 +401,6 @@ func (d *Database) migrate() error {
 		article    TEXT NOT NULL DEFAULT '',
 		nm_id      INTEGER NOT NULL DEFAULT 0,
 		qty        INTEGER NOT NULL DEFAULT 1,
-		-- Units taken off stock; a cancel returns these, whatever the link says by then.
-		units      INTEGER NOT NULL DEFAULT 0,
 		oversold   INTEGER NOT NULL DEFAULT 0,
 		created_at DATETIME NOT NULL
 	);
@@ -421,5 +414,9 @@ func (d *Database) migrate() error {
 		id           INTEGER PRIMARY KEY CHECK (id = 1),
 		orders_since DATETIME NOT NULL
 	);`)
+	if err != nil {
+		return err
+	}
+	_, err = d.db.Exec(kComponentsSchema)
 	return err
 }

@@ -1982,3 +1982,31 @@ func TestTagBeatsTheDateWhenBothAreOffered(t *testing.T) {
 		t.Errorf("a stale tag was overruled by a matching date: %d", w.Code)
 	}
 }
+
+// A set lists its components, a single product links to its visible sets only.
+func TestSetPageShowsCompositionAndLinks(t *testing.T) {
+	d, h := setup(t)
+	pork := &database.Product{Title: "Свинина 338 г", Price: 1100, Stock: 120}
+	box := &database.Product{Title: "Свинина 12 банок", Price: 12000}
+	secret := &database.Product{Title: "Свинина 50 банок", Price: 50000, Hidden: true}
+	for _, p := range []*database.Product{pork, box, secret} {
+		if err := d.CreateProduct(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for set, qty := range map[int64]int{box.ID: 12, secret.ID: 50} {
+		if err := d.SetComponents(set, []database.Component{{ProductID: pork.ID, Qty: qty}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	setPage := get(t, h, "/p/"+box.Slug)
+	for _, want := range []string{"Состав набора", `href="/p/` + pork.Slug + `"`, "12 шт", "В наличии: 10 шт", "InStock"} {
+		if !strings.Contains(setPage, want) {
+			t.Errorf("set page lacks %q", want)
+		}
+	}
+	unitPage := get(t, h, "/p/"+pork.Slug)
+	if !strings.Contains(unitPage, `href="/p/`+box.Slug+`"`) || strings.Contains(unitPage, secret.Slug) {
+		t.Errorf("unit page links: want the visible set only")
+	}
+}

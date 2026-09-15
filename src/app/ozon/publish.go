@@ -135,11 +135,6 @@ func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteInternalError(w, err)
 		return
 	}
-	linked, err := h.db.AllOzonLinks()
-	if err != nil {
-		httpjson.WriteInternalError(w, err)
-		return
-	}
 	res := publishResponse{NoCard: []unlinkedProduct{}}
 	for _, p := range products {
 		o, found := byOffer[p.SKU]
@@ -148,12 +143,7 @@ func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 				unlinkedProduct{ID: p.ID, Title: p.Title, SKU: p.SKU})
 			continue
 		}
-		// A card the owner already linked by hand keeps its product and pack size.
-		if _, done := linked[o.OfferID]; done {
-			res.Published++
-			continue
-		}
-		link := &database.OzonLink{ProductID: p.ID, OfferID: o.OfferID, Qty: 1}
+		link := &database.OzonLink{ProductID: p.ID, OfferID: o.OfferID}
 		if err := h.db.UpsertOzonLink(link); err != nil {
 			httpjson.WriteInternalError(w, err)
 			return
@@ -183,7 +173,7 @@ func (h *Handlers) Unpublish(w http.ResponseWriter, r *http.Request) {
 			needZero = append(needZero, l)
 			continue
 		}
-		if err := h.db.DeleteOzonLink(l.ID); err != nil {
+		if err := h.db.DeleteOzonLink(l.ProductID); err != nil {
 			httpjson.WriteInternalError(w, err)
 			return
 		}
@@ -200,7 +190,7 @@ func (h *Handlers) Unpublish(w http.ResponseWriter, r *http.Request) {
 					unlinkedProduct{ID: l.ProductID, SKU: l.OfferID, Title: msg})
 				continue
 			}
-			if err := h.db.DeleteOzonLink(l.ID); err != nil {
+			if err := h.db.DeleteOzonLink(l.ProductID); err != nil {
 				httpjson.WriteInternalError(w, err)
 				return
 			}

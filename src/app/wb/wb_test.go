@@ -444,7 +444,7 @@ func TestPassOrdersPricesAfterStocks(t *testing.T) {
 	enable(t, d, "7")
 	id := seedProduct(t, d, "ART-1", 3, 1000)
 	do(t, h, "POST", "/publish", selection(t, d))
-	if _, err := d.SetWBPrice(linkOfProduct(t, d, id), 1500); err != nil {
+	if _, err := d.SetWBPrice(id, 1500); err != nil {
 		t.Fatal(err)
 	}
 

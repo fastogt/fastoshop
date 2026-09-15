@@ -337,3 +337,31 @@ func TestProductParams(t *testing.T) {
 		t.Errorf("пустой список должен очищать: %+v", params(cleared))
 	}
 }
+
+// A set is created with its composition; a sent stock loses to the derived one.
+func TestCreateSetDerivesStock(t *testing.T) {
+	h := newTestHandler(t)
+	r := router(h)
+	send := func(method, url, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(method, url, strings.NewReader(body)))
+		return w
+	}
+	if w := send("POST", "/api/products", `{"title":"Свинина","price":1,"stock":120}`); w.Code != http.StatusOK {
+		t.Fatalf("unit: %d %s", w.Code, w.Body.String())
+	}
+	w := send("POST", "/api/products", `{"title":"Свинина ×12","price":1,"stock":999,"components":[{"product_id":1,"qty":12}]}`)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"stock":10`) || !strings.Contains(w.Body.String(), `"is_set":true`) {
+		t.Fatalf("set: %d %s", w.Code, w.Body.String())
+	}
+	if w := send("PUT", "/api/products/2", `{"title":"Свинина ×12","price":1,"stock":5}`); !strings.Contains(w.Body.String(), `"stock":10`) {
+		t.Fatalf("hand stock on a set: %s", w.Body.String())
+	}
+	if w := send("POST", "/api/products", `{"title":"Вложенный","price":1,"components":[{"product_id":2,"qty":1}]}`); w.Code != http.StatusBadRequest {
+		t.Fatalf("nested: %d", w.Code)
+	}
+	if p, _ := h.db.GetProduct(3); p != nil {
+		t.Fatalf("a refused set was kept: %+v", p)
+	}
+}

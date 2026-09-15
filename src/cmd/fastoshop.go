@@ -111,6 +111,7 @@ func run(cfg *config.Config) error {
 			r.Put("/products/{id}", h.UpdateProduct)
 			r.Delete("/products/{id}", h.DeleteProduct)
 			r.Post("/products/{id}/images", h.UploadImage)
+			r.Get("/products/{id}/components", h.ListComponents)
 			r.Delete("/products/{id}/images/{imageID}", h.DeleteImage)
 			r.Put("/products/{id}/images/order", h.SetImageOrder)
 			r.Post("/products/{id}/enrich", h.EnrichProduct)

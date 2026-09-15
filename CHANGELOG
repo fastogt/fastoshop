@@ -1,3 +1,15 @@
+1.54.0 / September 15, 2026
+[Alexandr Topilski]
+- Sets and assortments are products with contents. A set is an ordinary product with its own name, price, photos, page and article, plus a list of the shop's products it is made of and how many of each: four cans of one kind, or three of pork and three of beef. On the "Price and stock" tab the owner answers "Is this a set?" with one of three choices: an ordinary product; a set put together per order; a set already packed
+- A set put together per order has no stock of its own: it shows how many whole sets its contents allow, and any sale of it - from the cart, an order changed in the admin, a Wildberries or Ozon order - takes the contained products off stock. A cancel returns them. The count follows every change of a contained product, so the storefront, the feeds and the marketplace cards stay right without anyone editing the set
+- A packed set keeps its own stock and sells itself; its contents only describe it on the storefront
+- "Make a set" in the product list turns the selected products into a new set, one of each, priced at their sum; a single product card offers "Make a set of this product". A set cannot go inside another set
+- The storefront shows a set's contents with links to each product, and a single product links to the visible sets it is part of
+- Bulk stock, manual edits and imports do not overwrite the counted stock of a set put together per order
+- A set reaches Wildberries and Ozon like any product: its article matches the card's, and Publish links it
+- The pack size on a marketplace link from 1.53.0 is removed together with the cabinet cards view and manual linking: a variant is now a product of its own, which also lets the storefront sell it
+- Schema change, no automatic migration: a database created or upgraded by 1.53.0 must rebuild wb_links and ozon_links in their 1.52 form keyed by product_id, and products gains a packed column. The product_components table and its triggers are created on start
+
 1.53.0 / September 15, 2026
 [Alexandr Topilski]
 - A marketplace card is now linked to a shop product with a pack size: one card can sell 4, 8 or 30 units of the same product. The card shows whole packs, the shop's stock divided by the pack size and rounded down, so every pack of one product draws on one stock and a big pack goes to zero on its own when too few units are left

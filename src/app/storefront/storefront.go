@@ -221,6 +221,9 @@ type pageVM struct {
 	SchemaName      string
 	MetaDescription string
 	Specs           specVM
+	// Components of a set, and the visible sets a single product belongs to.
+	Components []database.Component
+	InSets     []database.SetRef
 	// Stored units as plain numbers: a template cannot deref a pointer, 0 means unset.
 	WeightG    int64
 	LengthMM   int64
@@ -712,6 +715,11 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		DescParas:       paragraphs(p.Description),
 		Specs:           specs(p, s.hiddenParams()),
 		CartCount:       cartCount(r)}
+	if p.IsSet {
+		data.Components, _ = s.db.ListComponents(p.ID)
+	} else {
+		data.InSets, _ = s.db.SetsOf(p.ID)
+	}
 	data.WeightG, data.LengthMM = value(p.WeightG), value(p.LengthMM)
 	data.WidthMM, data.HeightMM = value(p.WidthMM), value(p.HeightMM)
 	if p.Category != "" {

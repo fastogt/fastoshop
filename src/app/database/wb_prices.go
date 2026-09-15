@@ -7,7 +7,6 @@ import (
 
 // WBPriceRow is a link due for a price push; Price is the Wildberries price in kopecks.
 type WBPriceRow struct {
-	ID          int64
 	ProductID   int64
 	NmID        int64
 	Barcode     string
@@ -20,8 +19,8 @@ type WBPriceRow struct {
 
 // WBPriceSent is one upload row: what went on the wire, rounded up to whole roubles.
 type WBPriceSent struct {
-	LinkID int64
-	Sent   int64
+	ProductID int64
+	Sent      int64
 }
 
 type WBPriceTask struct {
@@ -37,16 +36,16 @@ func (d *Database) WBPriceToPush() ([]WBPriceRow, error) {
 	return d.wbPriceRows(
 		`WHERE ` + kWBPriceGuard + `
 		   AND (retry_at IS NULL OR retry_at <= CURRENT_TIMESTAMP)
-		 ORDER BY nm_id, id`)
+		 ORDER BY nm_id, product_id`)
 }
 
 func (d *Database) ListWBPriceErrors() ([]WBPriceRow, error) {
-	return d.wbPriceRows(`WHERE price_error != '' ORDER BY id`)
+	return d.wbPriceRows(`WHERE price_error != '' ORDER BY product_id`)
 }
 
 func (d *Database) wbPriceRows(where string) ([]WBPriceRow, error) {
 	rows, err := d.db.Query(
-		`SELECT id, product_id, nm_id, barcode, price, price_pushed, price_error, retry_at
+		`SELECT product_id, nm_id, barcode, price, price_pushed, price_error, retry_at
 		 FROM wb_links ` + where)
 	if err != nil {
 		return nil, err
@@ -55,7 +54,7 @@ func (d *Database) wbPriceRows(where string) ([]WBPriceRow, error) {
 	var out []WBPriceRow
 	for rows.Next() {
 		var r WBPriceRow
-		if err := rows.Scan(&r.ID, &r.ProductID, &r.NmID, &r.Barcode, &r.Price,
+		if err := rows.Scan(&r.ProductID, &r.NmID, &r.Barcode, &r.Price,
 			&r.PricePushed, &r.Error, &r.RetryAt); err != nil {
 			return nil, err
 		}
@@ -75,8 +74,8 @@ func (d *Database) MarkWBPriceSent(uploadID string, at time.Time, sent []WBPrice
 		}
 		for _, s := range sent {
 			if _, err := tx.Exec(
-				`UPDATE wb_links SET price_task=?, price_sent=? WHERE id=?`,
-				uploadID, s.Sent, s.LinkID); err != nil {
+				`UPDATE wb_links SET price_task=?, price_sent=? WHERE product_id=?`,
+				uploadID, s.Sent, s.ProductID); err != nil {
 				return err
 			}
 		}
@@ -163,10 +162,10 @@ func (d *Database) CountWBPriceState() (pending, inFlight, failed int, err error
 	return pending, inFlight, failed, err
 }
 
-// SetWBPrice reports false when the link does not exist, and clears price_error.
-func (d *Database) SetWBPrice(linkID, price int64) (bool, error) {
+// SetWBPrice reports false when the product has no link, and clears price_error.
+func (d *Database) SetWBPrice(productID, price int64) (bool, error) {
 	res, err := d.db.Exec(
-		`UPDATE wb_links SET price=?, price_error='' WHERE id=?`, price, linkID)
+		`UPDATE wb_links SET price=?, price_error='' WHERE product_id=?`, price, productID)
 	if err != nil {
 		return false, err
 	}
@@ -174,11 +173,11 @@ func (d *Database) SetWBPrice(linkID, price int64) (bool, error) {
 	return n > 0, err
 }
 
-// FillWBPrices sets only empty prices: the pack's shelf price plus a markup in basis points.
+// FillWBPrices sets only empty prices: the shelf price plus a markup in basis points.
 func (d *Database) FillWBPrices(markupBP int64) (int, error) {
 	res, err := d.db.Exec(
 		`UPDATE wb_links SET price = (
-		   SELECT (p.price * wb_links.qty * (10000 + ?) + 9999) / 10000
+		   SELECT (p.price * (10000 + ?) + 9999) / 10000
 		   FROM products p WHERE p.id = wb_links.product_id)
 		 WHERE price = 0 AND nm_id != 0
 		   AND EXISTS (SELECT 1 FROM products p
@@ -192,9 +191,7 @@ func (d *Database) FillWBPrices(markupBP int64) (int, error) {
 
 // WBLinkRow is one line of the linked-products table; Title and SKU may be empty.
 type WBLinkRow struct {
-	ID          int64
 	ProductID   int64
-	Qty         int64
 	NmID        int64
 	Barcode     string
 	VendorCode  string
@@ -218,13 +215,13 @@ func (d *Database) CountWBLinkRows() (int, error) {
 
 func (d *Database) ListWBLinksPage(limit, offset int) ([]WBLinkRow, error) {
 	rows, err := d.db.Query(
-		`SELECT l.id, l.product_id, l.qty, l.nm_id, l.barcode, l.vendor_code,
+		`SELECT l.product_id, l.nm_id, l.barcode, l.vendor_code,
 		        COALESCE(p.title, ''), COALESCE(p.sku, ''),
-		        `+kWBCardStock+`, COALESCE(p.price, 0),
+		        MAX(COALESCE(p.stock, 0), 0), COALESCE(p.price, 0),
 		        l.price, l.stock_pushed, l.price_pushed, l.price_task != '',
 		        l.stock_error, l.price_error
 		 FROM wb_links l LEFT JOIN products p ON p.id = l.product_id
-		 ORDER BY l.product_id, l.id LIMIT ? OFFSET ?`, limit, offset)
+		 ORDER BY l.product_id LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +229,7 @@ func (d *Database) ListWBLinksPage(limit, offset int) ([]WBLinkRow, error) {
 	var out []WBLinkRow
 	for rows.Next() {
 		var r WBLinkRow
-		if err := rows.Scan(&r.ID, &r.ProductID, &r.Qty, &r.NmID, &r.Barcode, &r.VendorCode,
+		if err := rows.Scan(&r.ProductID, &r.NmID, &r.Barcode, &r.VendorCode,
 			&r.Title, &r.SKU, &r.Stock, &r.ShopPrice, &r.Price,
 			&r.StockPushed, &r.PricePushed, &r.InFlight,
 			&r.StockError, &r.PriceError); err != nil {

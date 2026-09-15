@@ -31,6 +31,10 @@ func (e *OutOfStockError) Name() string {
 
 // takeStock deducts with a conditional UPDATE: the DB settles the race, loser gets 0.
 func takeStock(tx *sql.Tx, items []OrderItem) error {
+	items, err := unitItems(tx, items)
+	if err != nil {
+		return err
+	}
 	for _, it := range items {
 		res, err := tx.Exec(
 			`UPDATE products SET stock = stock - ?, updated_at = CURRENT_TIMESTAMP
@@ -52,6 +56,10 @@ func takeStock(tx *sql.Tx, items []OrderItem) error {
 }
 
 func returnStock(tx *sql.Tx, items []OrderItem) error {
+	items, err := unitItems(tx, items)
+	if err != nil {
+		return err
+	}
 	for _, it := range items {
 		if _, err := tx.Exec(
 			`UPDATE products SET stock = stock + ?, updated_at = CURRENT_TIMESTAMP

@@ -16,6 +16,8 @@ func IsValidLang(l string) bool { return l == LangRU || l == LangEN }
 // Both translations of one key must take the same %-verbs in the same order.
 const (
 	KeyOrderStockGone   = "order_stock_gone"
+	KeyNestedSet        = "nested_set"
+	KeyBadComponent     = "bad_component"
 	KeyCSVParseFailed   = "csv_parse_failed"
 	KeyTestMailSubject  = "test_mail_subject"
 	KeyTestMailBody     = "test_mail_body"
@@ -46,9 +48,6 @@ const (
 	KeyWBPriceConflict  = "wb_price_conflict"
 	KeyWBPriceTaskStuck = "wb_price_task_stuck"
 	KeyWBAmbiguousCard  = "wb_ambiguous_card"
-	KeyBadPackQty       = "bad_pack_qty"
-	KeyCardNotInCabinet = "card_not_in_cabinet"
-	KeyLinkProductGone  = "link_product_gone"
 	KeyWBNoOrdersScope  = "wb_no_orders_scope"
 	KeySupplierRequired = "supplier_required"
 	KeyBadStock         = "bad_stock"
@@ -76,6 +75,14 @@ const (
 
 var kMessages = map[string][2]string{
 	// [0] = ru, [1] = en
+	KeyNestedSet: {
+		"Набор не может входить в другой набор",
+		"A set cannot be part of another set",
+	},
+	KeyBadComponent: {
+		"В составе набора нужен товар и количество от 1",
+		"Each set line needs a product and a quantity of at least 1",
+	},
 	KeyOrderStockGone: {
 		"Нельзя вернуть заказ в работу: «%s» закончился",
 		"Cannot reopen the order: %q is out of stock",
@@ -186,17 +193,6 @@ var kMessages = map[string][2]string{
 	KeyWBAmbiguousCard: {
 		"карточка с несколькими размерами: укажите штрихкод нужного размера в артикуле",
 		"a card with several sizes: put the barcode of the right size in the article",
-	},
-	KeyBadPackQty: {
-		"сколько штук в карточке - целое число от 1 до 10000",
-		"units per card must be a whole number from 1 to 10000",
-	},
-	KeyCardNotInCabinet: {
-		"такой карточки нет в кабинете площадки",
-		"there is no such card in the marketplace cabinet",
-	},
-	KeyLinkProductGone: {
-		"такого товара нет в магазине", "there is no such product in the shop",
 	},
 	KeyBadStock: {
 		"остаток не может быть отрицательным", "stock cannot be negative",

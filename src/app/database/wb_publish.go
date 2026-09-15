@@ -19,7 +19,7 @@ func (d *Database) CountWBCandidates(f CandidateFilter) (int, error) {
 	var n int
 	err := d.db.QueryRow(
 		`SELECT count(*) FROM products p
-		 LEFT JOIN (`+kWBLinkedProducts+`) l ON l.product_id = p.id`+where, args...).Scan(&n)
+		 LEFT JOIN wb_links l ON l.product_id = p.id`+where, args...).Scan(&n)
 	return n, err
 }
 
@@ -30,7 +30,7 @@ func (d *Database) ListWBCandidates(f CandidateFilter, limit, offset int) ([]WBC
 	rows, err := d.db.Query(
 		`SELECT p.id, p.sku, p.title, MAX(p.stock, 0), p.price, p.hidden,
 		        l.product_id IS NOT NULL
-		 FROM products p LEFT JOIN (`+kWBLinkedProducts+`) l ON l.product_id = p.id`+
+		 FROM products p LEFT JOIN wb_links l ON l.product_id = p.id`+
 			where+` ORDER BY p.id LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return nil, err
@@ -48,24 +48,12 @@ func (d *Database) ListWBCandidates(f CandidateFilter, limit, offset int) ([]WBC
 	return out, rows.Err()
 }
 
-const kWBLinkStateCols = `id, product_id, qty, nm_id, barcode, stock_pushed, price`
-
-func scanWBLinkState(row interface{ Scan(...any) error }, l *WBLinkState) error {
-	return row.Scan(&l.ID, &l.ProductID, &l.Qty, &l.NmID, &l.Barcode, &l.StockPushed, &l.Price)
-}
-
-// kWBLinkedProducts collapses a product's several cards into one row for product lists.
-const kWBLinkedProducts = `SELECT DISTINCT product_id FROM wb_links`
-
 // WBLinkState is a link as unpublishing sees it: barcode to zero out, last level.
 type WBLinkState struct {
-	ID          int64
 	ProductID   int64
-	Qty         int64
 	NmID        int64
 	Barcode     string
 	StockPushed int64
-	Price       int64
 }
 
 func (d *Database) WBLinksByProducts(ids []int64) ([]WBLinkState, error) {
@@ -74,8 +62,8 @@ func (d *Database) WBLinksByProducts(ids []int64) ([]WBLinkState, error) {
 	}
 	in, args := inClause(ids)
 	rows, err := d.db.Query(fmt.Sprintf(
-		`SELECT `+kWBLinkStateCols+` FROM wb_links
-		 WHERE product_id IN (%s) ORDER BY id`, in), args...)
+		`SELECT product_id, nm_id, barcode, stock_pushed FROM wb_links
+		 WHERE product_id IN (%s)`, in), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +71,7 @@ func (d *Database) WBLinksByProducts(ids []int64) ([]WBLinkState, error) {
 	var out []WBLinkState
 	for rows.Next() {
 		var l WBLinkState
-		if err := scanWBLinkState(rows, &l); err != nil {
+		if err := rows.Scan(&l.ProductID, &l.NmID, &l.Barcode, &l.StockPushed); err != nil {
 			return nil, err
 		}
 		out = append(out, l)
@@ -98,7 +86,7 @@ func (d *Database) WBLinksByProducts(ids []int64) ([]WBLinkState, error) {
 func (d *Database) WBSKUState() (map[string]int64, map[string]bool, error) {
 	rows, err := d.db.Query(
 		`SELECT p.sku, p.id, l.product_id IS NOT NULL
-		 FROM products p LEFT JOIN (` + kWBLinkedProducts + `) l ON l.product_id = p.id
+		 FROM products p LEFT JOIN wb_links l ON l.product_id = p.id
 		 WHERE p.sku != ''`)
 	if err != nil {
 		return nil, nil, err
