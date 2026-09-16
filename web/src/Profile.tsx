@@ -126,7 +126,11 @@ const kText = {
     ru: "Кнопки на странице товара",
     en: "Buttons on a product page",
   },
-  buyCart: { ru: "Корзина", en: "Cart" },
+  buyCart: { ru: "Корзина на странице товара", en: "Cart on a product page" },
+  buyCartHint: {
+    ru: "Своя касса магазина: количество и кнопка «В корзину». Выключите, если заказы вы не принимаете и продажа закрывается где-то ещё.",
+    en: "The shop's own checkout: a quantity and an “Add to cart” button. Turn it off when you take no orders and the sale is closed elsewhere.",
+  },
   buyMsg: { ru: "Telegram и WhatsApp", en: "Telegram and WhatsApp" },
   buyWB: { ru: "Wildberries", en: "Wildberries" },
   buyOzon: { ru: "Ozon", en: "Ozon" },
@@ -494,18 +498,26 @@ export default function Profile() {
               </select>
               <p className="hint mt-1">{t("tileAspectHint")}</p>
             </div>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={s.cart_enabled}
+                onChange={(e) => setS({ ...s, cart_enabled: e.target.checked })}
+              />
+              <span>{t("buyCart")}</span>
+            </label>
+            <p className="hint -mt-2">{t("buyCartHint")}</p>
             <div>
               <label className="label">{t("buyButtons")}</label>
               <div className="flex flex-wrap gap-4">
                 {(
                   [
-                    ["cart", "buyCart"],
                     ["msg", "buyMsg"],
                     ["wb", "buyWB"],
                     ["ozon", "buyOzon"],
                   ] as const
                 ).map(([key, label]) => {
-                  const on = (s.buy_buttons || "cart,msg")
+                  const on = (s.buy_buttons || "msg")
                     .split(",")
                     .filter(Boolean);
                   return (

@@ -134,25 +134,26 @@
       {{end}}
       {{/* The buttons stand in the order the owner arranged them: a cart of ours,
            a messenger, the seller's own card elsewhere - whatever closes the sale. */}}
-      {{range .Buy}}
-        {{if eq .Kind "cart"}}
-        <form method="post" action="/cart/add">
-          <input type="hidden" name="slug" value="{{$.P.Slug}}">
-          <div class="qty-row">
-            <div class="field">
-              <label for="qty">Количество</label>
-              <input id="qty" name="qty" type="number" value="1" min="1" max="{{$.P.Stock}}">
-            </div>
-            <button type="submit">В корзину</button>
+      {{if .CanBuy}}
+      <form method="post" action="/cart/add">
+        <input type="hidden" name="slug" value="{{.P.Slug}}">
+        <div class="qty-row">
+          <div class="field">
+            <label for="qty">Количество</label>
+            <input id="qty" name="qty" type="number" value="1" min="1" max="{{.P.Stock}}">
           </div>
-        </form>
-        {{else if eq .Kind "msg"}}
+          <button type="submit">В корзину</button>
+        </div>
+      </form>
+      {{end}}
+      {{range .Buy}}
+        {{if eq .Kind "msg"}}
         <div class="msg-order"><a class="btn-msg" href="{{.URL}}" ping="{{.Ping}}" rel="nofollow noopener" target="_blank">{{.Label}}</a></div>
         {{else}}
         <div class="msg-order"><a class="btn-out" href="{{.URL}}" ping="{{.Ping}}" rel="nofollow sponsored noopener" target="_blank">{{.Label}}</a></div>
         {{end}}
       {{end}}
-      {{if not .Buy}}
+      {{if and (not .CanBuy) (not .Buy)}}
       <p class="oos">Напишите нам — сообщим, когда товар вернётся.</p>
       {{end}}
       {{/* The one buyer we measured never opened the cart: he read the card,

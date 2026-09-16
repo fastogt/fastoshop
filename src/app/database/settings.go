@@ -71,16 +71,16 @@ type Settings struct {
 	TileAspect string `json:"tile_aspect"`
 	// Who the shop sells to: CustomerPrivate, CustomerCompany or CustomerBoth.
 	CustomerKind string `json:"customer_kind"`
-	// BuyButtons lists what closes a sale on a product page: BuyCart, BuyMsg,
-	// BuyWB, BuyOzon, comma separated.
+	// CartEnabled offers the shop's own checkout on a product page.
+	CartEnabled bool `json:"cart_enabled"`
+	// BuyButtons lists what stands beside the cart: BuyMsg, BuyWB, BuyOzon.
 	BuyButtons string `json:"buy_buttons"`
 }
 
-// Ways a product page can close a sale. Which of them a page carries is the
+// Buttons that stand beside the cart. Which of them a page carries is the
 // owner's call: an order of ours and a lead that buys on a marketplace both beat
 // a page with nothing to press.
 const (
-	BuyCart = "cart"
 	BuyMsg  = "msg"
 	BuyWB   = "wb"
 	BuyOzon = "ozon"
@@ -91,7 +91,7 @@ const (
 func ValidBuyButtons(list string) bool {
 	for _, b := range splitButtons(list) {
 		switch {
-		case b == BuyCart, b == BuyMsg, b == BuyWB, b == BuyOzon:
+		case b == BuyMsg, b == BuyWB, b == BuyOzon:
 		case strings.HasPrefix(b, BuyLink):
 			if _, err := strconv.Atoi(strings.TrimPrefix(b, BuyLink)); err != nil {
 				return false
@@ -203,12 +203,12 @@ func (d *Database) GetSettings() (*Settings, error) {
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
 		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms,
 		 adhunters_api_key, telegram, whatsapp, tile_aspect, customer_kind,
-		 buy_buttons FROM settings WHERE id=1`).Scan(
+		 cart_enabled, buy_buttons FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
 		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms,
 		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp, &s.TileAspect, &s.CustomerKind,
-		&s.BuyButtons)
+		&s.CartEnabled, &s.BuyButtons)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +247,7 @@ func (d *Database) UpdateSettings(s *Settings) error {
 	}
 	buttons := s.BuyButtons
 	if buttons == "" {
-		buttons = BuyCart + "," + BuyMsg
+		buttons = BuyMsg
 	}
 	if !ValidBuyButtons(buttons) {
 		return fmt.Errorf("invalid buy buttons: %q", buttons)
@@ -257,13 +257,13 @@ func (d *Database) UpdateSettings(s *Settings) error {
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
 		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?,
 		 smtp_from=?, terms=?, adhunters_api_key=?, telegram=?, whatsapp=?,
-		 tile_aspect=?, customer_kind=?, buy_buttons=?
+		 tile_aspect=?, customer_kind=?, cart_enabled=?, buy_buttons=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
 		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom, s.Terms,
 		s.AdHuntersAPIKey, strings.TrimSpace(s.Telegram), strings.TrimSpace(s.WhatsApp),
-		tile, customer, buttons)
+		tile, customer, s.CartEnabled, buttons)
 	return err
 }
 

@@ -267,7 +267,9 @@ export interface Settings {
   whatsapp: string;
   currency: string;
   lang: string;
-  // Which buttons a product page carries by default: cart, msg, wb, ozon.
+  // The shop's own checkout on a product page, and the buttons beside it.
+  cart_enabled: boolean;
+  // msg, wb, ozon - comma separated, in the order they stand.
   buy_buttons: string;
   logo: string;
   smtp_host: string;

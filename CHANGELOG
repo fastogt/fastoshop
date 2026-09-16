@@ -1,3 +1,8 @@
+1.58.0 / September 16, 2026
+[Alexandr Topilski]
+- The cart is no longer one button among others. It is the shop's own checkout and it is switched on or off for the whole shop, in the profile; the product's "Buying" tab arranges only what stands beside it - the messengers, a marketplace button, the seller's own links
+- Schema change, no automatic migration: settings gains cart_enabled, and the cart drops out of buy_buttons
+
 1.57.0 / September 16, 2026
 [Alexandr Topilski]
 - A product page's buttons are now arranged by the owner. The new "Buying" tab on a product lists what closes the sale and in what order: the cart, the messengers, a Wildberries or Ozon button built from the card the product is linked to, and the seller's own links - up to two, with the text and the address typed in. An empty list means the product follows the shop

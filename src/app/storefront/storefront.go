@@ -232,8 +232,9 @@ type pageVM struct {
 	LengthMM int64
 	WidthMM  int64
 	HeightMM int64
-	// What this page offers to close the sale with, in the owner's own order.
-	Buy []orderLinkVM
+	// The shop's own checkout on a product page, and the buttons beside it.
+	CanBuy bool
+	Buy    []orderLinkVM
 	// The seller's own buttons out of the shop, placed by the shop setting.
 	// Who this page asks the buyer to be: a company only, or their own choice.
 	OrgOnly   bool
@@ -731,6 +732,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	data.OrgOnly, data.OrgChoice = kind == database.CustomerCompany, kind == database.CustomerBoth
 	nmID, sku := s.db.PlatformCards(p.ID)
 	links, _ := s.db.OutsideLinks(p.ID)
+	data.CanBuy = shop.CartEnabled && p.Stock > 0
 	data.Buy = buyBox(p.ButtonsWith(shop), shop, p, s.baseURL+"/p/"+p.Slug, nmID, sku, links)
 	if family, _ := s.db.PackFamily(p); len(family) > 0 {
 		data.Variants = variants(family, p.Slug)

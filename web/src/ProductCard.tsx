@@ -75,7 +75,6 @@ const kText = {
   },
   buyAdd: { ru: "Добавить кнопку", en: "Add a button" },
   buyAsShop: { ru: "Как в магазине", en: "As the shop says" },
-  buyCart: { ru: "Корзина", en: "Cart" },
   buyMsg: { ru: "Telegram и WhatsApp", en: "Telegram and WhatsApp" },
   buyWB: { ru: "Кнопка Wildberries", en: "Wildberries button" },
   buyOzon: { ru: "Кнопка Ozon", en: "Ozon button" },
@@ -682,15 +681,13 @@ export default function ProductCard({
                     className="border-line flex flex-wrap items-center gap-2 rounded border px-2 py-1"
                   >
                     <span className="min-w-40 flex-1 text-sm font-semibold">
-                      {b === "cart"
-                        ? t("buyCart")
-                        : b === "msg"
-                          ? t("buyMsg")
-                          : b === "wb"
-                            ? t("buyWB")
-                            : b === "ozon"
-                              ? t("buyOzon")
-                              : (link?.label ?? t("buyLink"))}
+                      {b === "msg"
+                        ? t("buyMsg")
+                        : b === "wb"
+                          ? t("buyWB")
+                          : b === "ozon"
+                            ? t("buyOzon")
+                            : (link?.label ?? t("buyLink"))}
                       {b === "wb" && !cards.wb && (
                         <span className="text-muted ml-2 text-xs font-normal">
                           {t("buyNoCardWB")}
@@ -743,7 +740,6 @@ export default function ProductCard({
                   }}
                 >
                   <option value="">{t("buyAdd")}</option>
-                  <option value="cart">{t("buyCart")}</option>
                   <option value="msg">{t("buyMsg")}</option>
                   <option value="wb">{t("buyWB")}</option>
                   <option value="ozon">{t("buyOzon")}</option>

@@ -34,6 +34,7 @@ type settingsResponse struct {
 	AdHuntersAPIKey string `json:"adhunters_api_key"`
 	TileAspect      string `json:"tile_aspect"`
 	CustomerKind    string `json:"customer_kind"`
+	CartEnabled     bool   `json:"cart_enabled"`
 	BuyButtons      string `json:"buy_buttons"`
 }
 
@@ -58,6 +59,7 @@ type settingsRequest struct {
 	AdHuntersAPIKey  *string `json:"adhunters_api_key"`
 	TileAspect       *string `json:"tile_aspect"`
 	CustomerKind     *string `json:"customer_kind"`
+	CartEnabled      *bool   `json:"cart_enabled"`
 	BuyButtons       *string `json:"buy_buttons"`
 }
 
@@ -81,6 +83,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		AdHuntersAPIKey:  maskKey(s.AdHuntersAPIKey),
 		TileAspect:       s.TileAspect,
 		CustomerKind:     s.CustomerKind,
+		CartEnabled:      s.CartEnabled,
 		BuyButtons:       s.BuyButtons,
 	})
 }
@@ -134,6 +137,9 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.CustomerKind = *req.CustomerKind
+	}
+	if req.CartEnabled != nil {
+		s.CartEnabled = *req.CartEnabled
 	}
 	if req.BuyButtons != nil {
 		if !database.ValidBuyButtons(*req.BuyButtons) {

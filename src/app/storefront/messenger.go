@@ -130,10 +130,6 @@ func buyBox(names []string, shop *database.Settings, p *database.Product, pageUR
 	}
 	for _, name := range names {
 		switch {
-		case name == database.BuyCart:
-			if p.Stock > 0 {
-				out = append(out, orderLinkVM{Kind: database.BuyCart})
-			}
 		case name == database.BuyMsg:
 			out = append(out, orderLinks(shop, p, pageURL)...)
 		case name == database.BuyWB && nmID > 0:

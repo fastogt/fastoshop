@@ -111,8 +111,9 @@ func (d *Database) CreateProduct(p *Product) error {
 func insertProduct(q execer, p *Product) error {
 	res, err := q.Exec(
 		`INSERT INTO products (sku, title, slug, description, price, source_price,
-		 price_manual, stock, packed, customer_kind, buy_buttons, category, brand,
-		 supplier, hidden, weight_g, length_mm, width_mm, height_mm, params)
+		 price_manual, stock, packed, customer_kind, buy_buttons,
+		 category, brand, supplier, hidden, weight_g, length_mm, width_mm,
+		 height_mm, params)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.SKU, p.Title, p.Slug, p.Description, p.Price, p.SourcePrice,
 		p.PriceManual, p.Stock, p.Packed, p.CustomerKind, p.BuyButtons,

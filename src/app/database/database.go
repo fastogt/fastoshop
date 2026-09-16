@@ -260,9 +260,12 @@ func (d *Database) migrate() error {
 		-- Who the shop sells to: private|company|both. 'private' is the safe
 		-- default - a shop that upgrades must look exactly as it did.
 		customer_kind       TEXT NOT NULL DEFAULT 'private',
-		-- Which buttons close a sale on a product page, comma separated:
-		-- cart, msg, wb, ozon. The shop's default; a product may say its own.
-		buy_buttons         TEXT NOT NULL DEFAULT 'cart,msg'
+		-- The cart is not a button among others: it is the shop's own checkout,
+		-- and it is either offered or not.
+		cart_enabled        INTEGER NOT NULL DEFAULT 1,
+		-- Buttons beside the cart, comma separated: msg, wb, ozon. The shop's
+		-- default; a product may arrange its own.
+		buy_buttons         TEXT NOT NULL DEFAULT 'msg'
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,

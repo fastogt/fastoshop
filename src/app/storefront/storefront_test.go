@@ -2062,6 +2062,13 @@ func TestBuyButtonsAreArrangedByTheOwner(t *testing.T) {
 	if err := d.UpdateProduct(p); err != nil {
 		t.Fatal(err)
 	}
+	// The cart is the shop's own checkout and leaves with a shop setting, not
+	// with the buttons beside it.
+	shop, _ := d.GetSettings()
+	shop.CartEnabled = false
+	if err := d.UpdateSettings(shop); err != nil {
+		t.Fatal(err)
+	}
 	page := get(t, h, "/p/"+p.Slug)
 	for _, want := range []string{"Купить в Instagram", "utm_source=fastoshop",
 		`rel="nofollow sponsored noopener"`, `ping="/go/out/1/` + p.Slug + `"`} {
@@ -2074,7 +2081,7 @@ func TestBuyButtonsAreArrangedByTheOwner(t *testing.T) {
 	}
 
 	// A Wildberries button appears only once the card number is known.
-	p.BuyButtons = "wb,cart"
+	p.BuyButtons = "wb,msg"
 	if err := d.UpdateProduct(p); err != nil {
 		t.Fatal(err)
 	}
@@ -2089,8 +2096,8 @@ func TestBuyButtonsAreArrangedByTheOwner(t *testing.T) {
 		!strings.Contains(page, `ping="/go/out/wb/`+p.Slug+`"`) {
 		t.Error("the Wildberries button must carry the card and the count")
 	}
-	if strings.Index(page, "Купить на Wildberries") > strings.Index(page, "В корзину") {
-		t.Error("the order in the list is the order on the page")
+	if strings.Contains(page, "В корзину") {
+		t.Error("a shop with its checkout off must not draw the cart")
 	}
 
 	w := httptest.NewRecorder()
