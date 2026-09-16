@@ -38,8 +38,8 @@ const kText = {
   publish: { ru: "Опубликовать", en: "Publish" },
   unpublish: { ru: "Снять с публикации", en: "Unpublish" },
   noCandidates: {
-    ru: "Товаров нет. Заведите их вручную или перенесите каталог на вкладке «Импорт».",
-    en: "No products yet. Add them by hand or bring a catalogue over on the Import tab.",
+    ru: "Товаров нет. Заведите их вручную или перенесите каталог кнопкой «Перенести товары» в товарах.",
+    en: "No products yet. Add them by hand, or bring a catalogue over with “Bring products in” on the products screen.",
   },
   noCardTitle: { ru: "Карточка не найдена", en: "No card found" },
   noCardHint: {
@@ -60,8 +60,8 @@ const kText = {
     en: "In the account, not in the shop",
   },
   orphansHint: {
-    ru: "Эти карточки не совпали ни с одним товаром - их можно перенести на вкладке «Импорт».",
-    en: "These cards matched no product - you can bring them over on the Import tab.",
+    ru: "Эти карточки не совпали ни с одним товаром - их можно забрать кнопкой «Перенести товары» в товарах.",
+    en: "These cards matched no product - you can pull them in with “Bring products in” on the products screen.",
   },
   orphansMore: { ru: "…и ещё {n}", en: "…and {n} more" },
 };

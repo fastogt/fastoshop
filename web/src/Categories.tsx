@@ -13,7 +13,7 @@ const kText = {
   addChild: { ru: "+ подкатегория", en: "+ subcategory" },
   namePrompt: { ru: "Название категории", en: "Category name" },
   empty: {
-    ru: "Категорий пока нет. Заведите первую или загрузите каталог с категориями на вкладке «Импорт».",
+    ru: "Категорий пока нет. Заведите первую или перенесите каталог с категориями кнопкой «Перенести товары» в товарах.",
     en: "No categories yet. Create the first one, or import a catalogue that has them.",
   },
   pick: {

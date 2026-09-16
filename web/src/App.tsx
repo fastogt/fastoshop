@@ -10,28 +10,17 @@ import Categories from "./Categories";
 import Orders from "./Orders";
 import Profile from "./Profile";
 import Stats from "./Stats";
-import Import from "./Import";
-import Ozon from "./Ozon";
-import WB from "./WB";
+import Channels from "./Channels";
 
 type Screen = "loading" | "setup" | "invite" | "login" | "app";
 type Tab =
-  | "products"
-  | "categories"
-  | "orders"
-  | "profile"
-  | "import"
-  | "ozon"
-  | "wb"
-  | "stats";
+  "products" | "categories" | "orders" | "profile" | "channels" | "stats";
 
 const kText = {
   products: { ru: "Товары", en: "Products" },
   categories: { ru: "Категории", en: "Categories" },
   orders: { ru: "Заказы", en: "Orders" },
-  import: { ru: "Импорт", en: "Import" },
-  ozon: { ru: "Ozon", en: "Ozon" },
-  wb: { ru: "Wildberries", en: "Wildberries" },
+  channels: { ru: "Площадки", en: "Marketplaces" },
   stats: { ru: "Статистика", en: "Stats" },
   profile: { ru: "Профиль", en: "Profile" },
   openShop: { ru: "Открыть магазин ↗", en: "Open shop ↗" },
@@ -42,15 +31,12 @@ const kText = {
   },
 };
 
-const kTabs: Tab[] = [
-  "products",
-  "categories",
-  "orders",
-  "import",
-  "ozon",
-  "wb",
-  "stats",
-  "profile",
+// Three groups, in the order the owner thinks: the storefront they run daily,
+// the marketplaces they sell through, and what is set up once.
+const kGroups: Tab[][] = [
+  ["products", "categories", "orders"],
+  ["channels"],
+  ["stats", "profile"],
 ];
 
 export default function App() {
@@ -116,7 +102,7 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <header className="border-line border-b bg-white">
-        {/* flex-wrap: eight tabs plus three links do not fit a phone, and a row
+        {/* flex-wrap: the tabs plus three links do not fit a phone, and a row
             that cannot wrap stretched the whole page to 999px on a 390px screen.
             The overflow was not scrollable, so the price column and half the menu
             sat past the right edge with no way to reach them. */}
@@ -124,19 +110,24 @@ export default function App() {
           <span className="mr-6 text-lg font-extrabold tracking-tight">
             FastoShop
           </span>
-          {kTabs.map((k) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={
-                "-mb-px border-b-2 px-3 py-4 text-sm font-semibold transition-colors " +
-                (tab === k
-                  ? "border-brand text-brand"
-                  : "text-muted hover:text-ink border-transparent")
-              }
-            >
-              {t(k)}
-            </button>
+          {kGroups.map((group, i) => (
+            <div key={group[0]} className="flex items-center gap-1">
+              {i > 0 && <span className="border-line mr-2 h-5 border-l" />}
+              {group.map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setTab(k)}
+                  className={
+                    "-mb-px border-b-2 px-3 py-4 text-sm font-semibold transition-colors " +
+                    (tab === k
+                      ? "border-brand text-brand"
+                      : "text-muted hover:text-ink border-transparent")
+                  }
+                >
+                  {t(k)}
+                </button>
+              ))}
+            </div>
           ))}
           <a
             href="/"
@@ -165,9 +156,7 @@ export default function App() {
         {tab === "categories" && <Categories />}
         {tab === "orders" && <Orders />}
         {tab === "profile" && <Profile />}
-        {tab === "import" && <Import />}
-        {tab === "ozon" && <Ozon />}
-        {tab === "wb" && <WB />}
+        {tab === "channels" && <Channels />}
         {tab === "stats" && <Stats />}
       </main>
       {/* AGPL §13: whoever is offered the shop as a service must have access to

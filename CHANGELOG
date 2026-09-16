@@ -1,3 +1,9 @@
+1.56.0 / September 16, 2026
+[Alexandr Topilski]
+- The admin menu now says what belongs where: the storefront on the left (products, categories, orders), the marketplaces behind one word in the middle, and what is set up once on the right. Six words instead of eight, and on a phone each group keeps its own line
+- Wildberries and Ozon live under one "Marketplaces" tab with a switch between them; the channel opens on the platform whose key is already saved, and its own sections are unchanged
+- Bringing a catalogue in is a button on the products screen rather than a tab of its own: it is done once, and it was taking a place next to the daily work. The screen behind it is the same one, and the product list re-reads itself on the way back
+
 1.55.1 / September 16, 2026
 [Alexandr Topilski]
 - The warehouse button is gone from a channel's Connection tab: the list already loads itself, and the button only repeated that without a page reload. A warehouse created in the cabinet mid-session appears after reloading the page

@@ -5,6 +5,7 @@ import DataTable, { type Selection, type Sort } from "./DataTable";
 import Modal from "./Modal";
 import PricingPanel from "./PricingPanel";
 import ProductCard from "./ProductCard";
+import Import from "./Import";
 import {
   IconBox,
   IconEye,
@@ -70,6 +71,8 @@ const kText = {
   bulkGroup: { ru: "Перенести в группу", en: "Move to group" },
   bulkDelete: { ru: "Удалить", en: "Delete" },
   bulkMakeSet: { ru: "Создать набор", en: "Make a set" },
+  bringIn: { ru: "Перенести товары", en: "Bring products in" },
+  backToProducts: { ru: "← К товарам", en: "← Back to products" },
   setOfSets: {
     ru: "Набор нельзя положить в другой набор - уберите наборы из выбора.",
     en: "A set cannot go inside another set - leave the sets out of the selection.",
@@ -120,8 +123,8 @@ const kText = {
     en: 'Nothing under this filter. There are products in other groups - pick "All suppliers".',
   },
   empty: {
-    ru: "Товаров пока нет. Добавьте вручную или перенесите каталог с Ozon/WB на вкладке «Импорт».",
-    en: "No products yet. Add one by hand, or bring your catalog over from Ozon/WB on the Import tab.",
+    ru: "Товаров пока нет. Добавьте вручную или нажмите «Перенести товары», чтобы забрать каталог с Ozon, WB или из фида.",
+    en: "No products yet. Add one by hand, or press “Bring products in” to pull a catalogue from Ozon, WB or a feed.",
   },
   thProduct: { ru: "Товар", en: "Product" },
   thPrice: { ru: "Цена", en: "Price" },
@@ -136,6 +139,9 @@ export default function Products() {
   const [list, setList] = useState<Product[]>([]);
   const [edit, setEdit] = useState<Partial<Product> | null>(null);
   const [newSet, setNewSet] = useState<Component[] | undefined>();
+  // Bringing a catalogue in happens once; it lives behind a button rather than
+  // holding a place in the menu next to the daily work.
+  const [importing, setImporting] = useState(false);
   // Whether the shop has an AdHunters key: the button is not offered without
   // one, because there is nothing to pay the rewriting with.
   const [hasAIKey, setHasAIKey] = useState(false);
@@ -331,6 +337,24 @@ export default function Products() {
     setCategories(cat.categories);
   };
 
+  if (importing)
+    return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <button
+            className="btn-ghost"
+            onClick={() => {
+              setImporting(false);
+              void reload();
+            }}
+          >
+            {t("backToProducts")}
+          </button>
+        </div>
+        <Import />
+      </div>
+    );
+
   return (
     <div>
       <JobBar job={job} />
@@ -379,6 +403,9 @@ export default function Products() {
               ))}
             </select>
           )}
+          <button className="btn-ghost" onClick={() => setImporting(true)}>
+            {t("bringIn")}
+          </button>
           <button className="btn" onClick={() => setEdit({ ...kEmpty })}>
             {t("add")}
           </button>
