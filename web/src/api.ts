@@ -155,6 +155,10 @@ export interface Product {
   hidden: boolean;
   // A set's stock is derived from its components and cannot be typed.
   is_set: boolean;
+  outside?: OutsideLink[];
+  // Empty means the shop answers for this product.
+  customer_kind: string;
+  buy_buttons: string;
   // A packed set keeps its own stock; its contents only describe it.
   packed: boolean;
   // When the row last moved. The admin shows and sorts by it: after an import
@@ -184,6 +188,13 @@ export interface Component {
   slug: string;
   stock: number;
   hidden: boolean;
+}
+
+// A button leading out of the shop: the seller's own card elsewhere.
+export interface OutsideLink {
+  id?: number;
+  label: string;
+  url: string;
 }
 
 export interface CategoryNode {
@@ -256,6 +267,8 @@ export interface Settings {
   whatsapp: string;
   currency: string;
   lang: string;
+  // Which buttons a product page carries by default: cart, msg, wb, ozon.
+  buy_buttons: string;
   logo: string;
   smtp_host: string;
   smtp_port: number;
@@ -540,6 +553,15 @@ export const api = {
   stopJob: () => http.post("/job/stop"),
   bulkDelete: (ids: number[]) =>
     http.post("/products/bulk/delete", { ids }).then(data<{ updated: number }>),
+  outside: (id: number) =>
+    http
+      .get(`/products/${id}/outside`)
+      .then(data<{ outside: OutsideLink[] }>)
+      .then((r) => r.outside),
+  platformCards: (id: number) =>
+    http
+      .get(`/products/${id}/cards`)
+      .then(data<{ wb: boolean; ozon: boolean }>),
   components: (id: number) =>
     http
       .get(`/products/${id}/components`)

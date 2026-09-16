@@ -96,6 +96,7 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/p/{slug}", s.Product)
 	r.Get("/cart", s.Cart)
 	r.Post("/go/{messenger}/{slug}", s.OrderPing)
+	r.Post("/go/out/{id}/{slug}", s.OutsidePing)
 	r.Get("/info", s.Info)
 	r.Get("/privacy", s.Privacy)
 	r.Get("/contacts", s.Contacts)
@@ -227,16 +228,21 @@ type pageVM struct {
 	// Packs of the same goods, the unit included: the size row above the price.
 	Variants []variantVM
 	// Stored units as plain numbers: a template cannot deref a pointer, 0 means unset.
-	WeightG    int64
-	LengthMM   int64
-	WidthMM    int64
-	HeightMM   int64
-	OrderLinks []orderLinkVM
-	Canonical  string
-	NoIndex    bool
-	Query      string
-	FoundStr   string
-	Category   string
+	WeightG  int64
+	LengthMM int64
+	WidthMM  int64
+	HeightMM int64
+	// What this page offers to close the sale with, in the owner's own order.
+	Buy []orderLinkVM
+	// The seller's own buttons out of the shop, placed by the shop setting.
+	// Who this page asks the buyer to be: a company only, or their own choice.
+	OrgOnly   bool
+	OrgChoice bool
+	Canonical string
+	NoIndex   bool
+	Query     string
+	FoundStr  string
+	Category  string
 	// The owner's own words: its first sentences become the page description.
 	CategoryText string
 	// The description split into paragraphs; see paragraphs().
@@ -712,7 +718,6 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		PriceStr: priceStr(p.Price), PriceValidUntil: endOfMonth(time.Now()),
 		PriceValidFrom:  p.UpdatedAt.Format(time.DateOnly),
 		SchemaName:      clipName(p.Title),
-		OrderLinks:      orderLinks(shop, p, s.baseURL+"/p/"+p.Slug),
 		MetaDescription: metaFrom(p.Description),
 		DescParas:       paragraphs(p.Description),
 		Specs:           specs(p, s.hiddenParams()),
@@ -722,6 +727,11 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	} else {
 		data.InSets, _ = s.db.SetsOf(p.ID)
 	}
+	kind := p.KindWith(shop)
+	data.OrgOnly, data.OrgChoice = kind == database.CustomerCompany, kind == database.CustomerBoth
+	nmID, sku := s.db.PlatformCards(p.ID)
+	links, _ := s.db.OutsideLinks(p.ID)
+	data.Buy = buyBox(p.ButtonsWith(shop), shop, p, s.baseURL+"/p/"+p.Slug, nmID, sku, links)
 	if family, _ := s.db.PackFamily(p); len(family) > 0 {
 		data.Variants = variants(family, p.Slug)
 		// The size row carries the same links and says more, so the plain list goes.

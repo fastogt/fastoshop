@@ -2041,3 +2041,69 @@ func TestPackSizeRow(t *testing.T) {
 		t.Error("the size row replaces the plain list of sets")
 	}
 }
+
+// The owner arranges the buttons; a platform button needs a card to point at.
+func TestBuyButtonsAreArrangedByTheOwner(t *testing.T) {
+	d, h := setup(t)
+	p := &database.Product{Title: "Шапка", Price: 5000, Stock: 3}
+	if err := d.CreateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.SetOutsideLinks(p.ID, []database.OutsideLink{
+		{Label: "Купить в Instagram", URL: "https://instagram.com/shop"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(get(t, h, "/p/"+p.Slug), "В корзину") {
+		t.Fatal("a product left to the shop's rule keeps the cart")
+	}
+
+	p.BuyButtons = "link:0"
+	if err := d.UpdateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+	page := get(t, h, "/p/"+p.Slug)
+	for _, want := range []string{"Купить в Instagram", "utm_source=fastoshop",
+		`rel="nofollow sponsored noopener"`, `ping="/go/out/1/` + p.Slug + `"`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+	if strings.Contains(page, "В корзину") {
+		t.Error("a list without the cart must not draw it")
+	}
+
+	// A Wildberries button appears only once the card number is known.
+	p.BuyButtons = "wb,cart"
+	if err := d.UpdateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(get(t, h, "/p/"+p.Slug), "Купить на Wildberries") {
+		t.Error("no card, no button")
+	}
+	if err := d.UpsertWBLink(&database.WBLink{ProductID: p.ID, NmID: 777, Barcode: "b"}); err != nil {
+		t.Fatal(err)
+	}
+	page = get(t, h, "/p/"+p.Slug)
+	if !strings.Contains(page, "https://www.wildberries.ru/catalog/777/detail.aspx") ||
+		!strings.Contains(page, `ping="/go/out/wb/`+p.Slug+`"`) {
+		t.Error("the Wildberries button must carry the card and the count")
+	}
+	if strings.Index(page, "Купить на Wildberries") > strings.Index(page, "В корзину") {
+		t.Error("the order in the list is the order on the page")
+	}
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("POST", "/go/out/1/"+p.Slug, nil))
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("ping: %d", w.Code)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("POST", "/go/out/99/"+p.Slug, nil))
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("ping for an unknown link: %d", w.Code)
+	}
+	if err := d.SetOutsideLinks(p.ID, []database.OutsideLink{{Label: "x", URL: "javascript:alert(1)"}}); err == nil {
+		t.Error("a javascript: address must be refused")
+	}
+}

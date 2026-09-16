@@ -61,6 +61,9 @@ func (f CandidateFilter) clauses() (string, []any) {
 func candidateWhere(f CandidateFilter) (string, []any) {
 	where, args := productWhere("", f.Q, AnySupplier, false)
 	where = strings.ReplaceAll(where, "category=", "p.category=")
+	// The join carries an sku of its own now, so the search has to name the table.
+	where = strings.ReplaceAll(where, "ulower(sku)", "ulower(p.sku)")
+	where = strings.ReplaceAll(where, "ulower(title)", "ulower(p.title)")
 	extra, extraArgs := f.clauses()
 	if extra == "" {
 		return where, args

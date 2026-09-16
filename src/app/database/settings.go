@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -70,6 +71,46 @@ type Settings struct {
 	TileAspect string `json:"tile_aspect"`
 	// Who the shop sells to: CustomerPrivate, CustomerCompany or CustomerBoth.
 	CustomerKind string `json:"customer_kind"`
+	// BuyButtons lists what closes a sale on a product page: BuyCart, BuyMsg,
+	// BuyWB, BuyOzon, comma separated.
+	BuyButtons string `json:"buy_buttons"`
+}
+
+// Ways a product page can close a sale. Which of them a page carries is the
+// owner's call: an order of ours and a lead that buys on a marketplace both beat
+// a page with nothing to press.
+const (
+	BuyCart = "cart"
+	BuyMsg  = "msg"
+	BuyWB   = "wb"
+	BuyOzon = "ozon"
+	// BuyLink points at one of the product's own links by position: "link:0".
+	BuyLink = "link:"
+)
+
+func ValidBuyButtons(list string) bool {
+	for _, b := range splitButtons(list) {
+		switch {
+		case b == BuyCart, b == BuyMsg, b == BuyWB, b == BuyOzon:
+		case strings.HasPrefix(b, BuyLink):
+			if _, err := strconv.Atoi(strings.TrimPrefix(b, BuyLink)); err != nil {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func splitButtons(list string) []string {
+	out := []string{}
+	for _, b := range strings.Split(list, ",") {
+		if b = strings.TrimSpace(b); b != "" {
+			out = append(out, b)
+		}
+	}
+	return out
 }
 
 // Tile proportions the storefront can draw. Portrait is 3:4, the shape both Ozon
@@ -101,6 +142,43 @@ func IsValidCustomerKind(v string) bool {
 func (s *Settings) OrgOnly() bool   { return s.CustomerKind == CustomerCompany }
 func (s *Settings) OrgChoice() bool { return s.CustomerKind == CustomerBoth }
 
+// KindWith answers who may buy this product: its own answer, or the shop's.
+func (p *Product) KindWith(shop *Settings) string {
+	if p.CustomerKind != "" {
+		return p.CustomerKind
+	}
+	if shop == nil {
+		return CustomerPrivate
+	}
+	return shop.CustomerKind
+}
+
+// ButtonsWith is the page's buttons in the order the owner arranged them: the
+// product's own list, or the shop's. A name like "link:3" is one of the seller's
+// own links, kept in product_outside_links.
+func (p *Product) ButtonsWith(shop *Settings) []string {
+	list := p.BuyButtons
+	if list == "" && shop != nil {
+		list = shop.BuyButtons
+	}
+	return splitButtons(list)
+}
+
+// StrictestKind is what a cart of several products asks of the buyer: one
+// company-only line makes the whole order a company one.
+func StrictestKind(kinds []string) string {
+	out := CustomerPrivate
+	for _, k := range kinds {
+		switch k {
+		case CustomerCompany:
+			return CustomerCompany
+		case CustomerBoth:
+			out = CustomerBoth
+		}
+	}
+	return out
+}
+
 // Portrait tiles are 3:4, so the reserved height is the width times four thirds.
 // The <img> needs it as a number to stop the grid jumping while photos load.
 func (s *Settings) TileHeight() int {
@@ -124,12 +202,13 @@ func (d *Database) GetSettings() (*Settings, error) {
 		`SELECT owner_email, password_hash, shop_name, shop_phone, smtp_host,
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
 		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms,
-		 adhunters_api_key, telegram, whatsapp, tile_aspect, customer_kind
-		 FROM settings WHERE id=1`).Scan(
+		 adhunters_api_key, telegram, whatsapp, tile_aspect, customer_kind,
+		 buy_buttons FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
 		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms,
-		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp, &s.TileAspect, &s.CustomerKind)
+		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp, &s.TileAspect, &s.CustomerKind,
+		&s.BuyButtons)
 	if err != nil {
 		return nil, err
 	}
@@ -166,18 +245,25 @@ func (d *Database) UpdateSettings(s *Settings) error {
 	if !IsValidCustomerKind(customer) {
 		return fmt.Errorf("invalid customer kind: %q", customer)
 	}
+	buttons := s.BuyButtons
+	if buttons == "" {
+		buttons = BuyCart + "," + BuyMsg
+	}
+	if !ValidBuyButtons(buttons) {
+		return fmt.Errorf("invalid buy buttons: %q", buttons)
+	}
 	_, err := d.db.Exec(
 		`UPDATE settings SET owner_email=?, password_hash=?, shop_name=?, shop_phone=?,
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
 		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?,
 		 smtp_from=?, terms=?, adhunters_api_key=?, telegram=?, whatsapp=?,
-		 tile_aspect=?, customer_kind=?
+		 tile_aspect=?, customer_kind=?, buy_buttons=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
 		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom, s.Terms,
 		s.AdHuntersAPIKey, strings.TrimSpace(s.Telegram), strings.TrimSpace(s.WhatsApp),
-		tile, customer)
+		tile, customer, buttons)
 	return err
 }
 

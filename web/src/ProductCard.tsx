@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { api, apiError, type Component, type Product } from "./api";
+import {
+  api,
+  apiError,
+  type Component,
+  type OutsideLink,
+  type Product,
+} from "./api";
 import { useT } from "./i18n";
 import Modal from "./Modal";
 import ProductPicker from "./ProductPicker";
@@ -44,6 +50,14 @@ const kText = {
     en: "Make a set of this product",
   },
   remove: { ru: "Убрать", en: "Remove" },
+  outsideTitle: { ru: "Ссылки наружу", en: "Outside links" },
+  outsideHint: {
+    ru: "Кнопка на карточку этого товара у продавца: маркетплейс, Instagram, свой сайт. Не больше двух. Показывать их или нет, решает настройка магазина в профиле; переходы считаются.",
+    en: "A button to the seller's own page for this product: a marketplace, Instagram, their own site. Two at most. Whether they show at all is the shop setting in the profile; clicks are counted.",
+  },
+  outsideLabel: { ru: "Надпись на кнопке", en: "Button text" },
+  outsideURL: { ru: "Адрес", en: "Address" },
+  outsideAdd: { ru: "Добавить ссылку", en: "Add a link" },
   labelWeight: { ru: "Вес, г", en: "Weight, g" },
   labelSize: { ru: "Габариты, мм", en: "Size, mm" },
   sizeHint: {
@@ -54,6 +68,32 @@ const kText = {
   cardStock: { ru: "Цена и склад", en: "Price and stock" },
   cardPhotos: { ru: "Фото", en: "Photos" },
   cardChannels: { ru: "Для площадок", en: "For marketplaces" },
+  cardBuy: { ru: "Покупка", en: "Buying" },
+  buyHint: {
+    ru: "Как закрывается продажа этого товара. Порядок кнопок здесь - порядок на странице. Пусто значит «как в магазине».",
+    en: "How a sale of this product is closed. The order here is the order on the page. Empty means “as the shop says”.",
+  },
+  buyAdd: { ru: "Добавить кнопку", en: "Add a button" },
+  buyAsShop: { ru: "Как в магазине", en: "As the shop says" },
+  buyCart: { ru: "Корзина", en: "Cart" },
+  buyMsg: { ru: "Telegram и WhatsApp", en: "Telegram and WhatsApp" },
+  buyWB: { ru: "Кнопка Wildberries", en: "Wildberries button" },
+  buyOzon: { ru: "Кнопка Ozon", en: "Ozon button" },
+  buyLink: { ru: "Своя ссылка", en: "A link of your own" },
+  buyNoCardWB: {
+    ru: "нет связи с карточкой WB - кнопка не появится",
+    en: "no Wildberries card linked - the button will not appear",
+  },
+  buyNoCardOzon: {
+    ru: "нет номера карточки Ozon - кнопка не появится",
+    en: "no Ozon card number - the button will not appear",
+  },
+  buyUp: { ru: "Выше", en: "Up" },
+  buyDown: { ru: "Ниже", en: "Down" },
+  customerKind: { ru: "Кому продаём", en: "Who we sell to" },
+  customerPrivate: { ru: "Частным лицам", en: "Private buyers" },
+  customerCompany: { ru: "Организациям", en: "Companies" },
+  customerBoth: { ru: "И тем и другим", en: "Both" },
   paramAdd: { ru: "+ Свойство", en: "+ Property" },
   paramRemove: { ru: "Убрать", en: "Remove" },
   labelParams: { ru: "Характеристики", en: "Characteristics" },
@@ -125,6 +165,7 @@ const kText = {
 const kCardTabs = [
   "cardShop",
   "cardStock",
+  "cardBuy",
   "cardPhotos",
   "cardChannels",
 ] as const;
@@ -191,11 +232,45 @@ export default function ProductCard({
         : "none",
   );
   const [saveMsg, setSaveMsg] = useState("");
+  const [outside, setOutside] = useState<OutsideLink[]>(initial.outside ?? []);
+  const [outsideDirty, setOutsideDirty] = useState(false);
+  // The buttons in the order they will stand on the page; empty is "as the shop".
+  const [buttons, setButtons] = useState<string[]>(
+    (initial.buy_buttons ?? "").split(",").filter(Boolean),
+  );
+  const [buttonsDirty, setButtonsDirty] = useState(false);
+  const [kind, setKind] = useState(initial.customer_kind ?? "");
+  const [cards, setCards] = useState<{ wb: boolean; ozon: boolean }>({
+    wb: false,
+    ozon: false,
+  });
+
+  const changeButtons = (rows: string[]) => {
+    setButtons(rows);
+    setButtonsDirty(true);
+  };
+  const moveButton = (i: number, to: number) => {
+    if (to < 0 || to >= buttons.length) return;
+    const rows = [...buttons];
+    [rows[i], rows[to]] = [rows[to], rows[i]];
+    changeButtons(rows);
+  };
+
+  const changeOutside = (rows: OutsideLink[]) => {
+    setOutside(rows);
+    setOutsideDirty(true);
+  };
 
   useEffect(() => {
     if (!initial.id || !initial.is_set) return;
     void api.components(initial.id).then(setComponents);
   }, [initial.id, initial.is_set]);
+
+  useEffect(() => {
+    if (!initial.id) return;
+    void api.outside(initial.id).then(setOutside);
+    void api.platformCards(initial.id).then(setCards);
+  }, [initial.id]);
 
   const changeComponents = (rows: Component[]) => {
     setComponents(rows);
@@ -261,6 +336,12 @@ export default function ProductCard({
     // empty value is a deliberate "no supplier" choice, not "leave as is".
     p.supplier = edit.supplier ?? "";
     p.packed = mode === "packed";
+    if (outsideDirty)
+      p.outside = outside
+        .filter((l) => l.label.trim() && l.url.trim())
+        .map((l) => ({ label: l.label.trim(), url: l.url.trim() }));
+    p.customer_kind = kind;
+    if (buttonsDirty) p.buy_buttons = buttons.join(",");
     if (mode === "none") {
       if (initial.is_set || components.length > 0) p.components = [];
     } else if (componentsDirty) {
@@ -568,6 +649,150 @@ export default function ProductCard({
                   </button>
                 </div>
               )}
+            </div>
+          </>
+        )}
+        {cardTab === "cardBuy" && (
+          <>
+            <div>
+              <label className="label">{t("customerKind")}</label>
+              <select
+                className="field"
+                value={kind}
+                onChange={(e) => setKind(e.target.value)}
+              >
+                <option value="">{t("buyAsShop")}</option>
+                <option value="private">{t("customerPrivate")}</option>
+                <option value="company">{t("customerCompany")}</option>
+                <option value="both">{t("customerBoth")}</option>
+              </select>
+            </div>
+
+            <div className="border-line flex flex-col gap-2 border-t pt-3">
+              <h3 className="font-semibold">{t("cardBuy")}</h3>
+              <p className="hint">{t("buyHint")}</p>
+              {buttons.length === 0 && <p className="hint">{t("buyAsShop")}</p>}
+              {buttons.map((b, i) => {
+                const link = b.startsWith("link:")
+                  ? outside[Number(b.slice(5))]
+                  : undefined;
+                return (
+                  <div
+                    key={`${b}-${i}`}
+                    className="border-line flex flex-wrap items-center gap-2 rounded border px-2 py-1"
+                  >
+                    <span className="min-w-40 flex-1 text-sm font-semibold">
+                      {b === "cart"
+                        ? t("buyCart")
+                        : b === "msg"
+                          ? t("buyMsg")
+                          : b === "wb"
+                            ? t("buyWB")
+                            : b === "ozon"
+                              ? t("buyOzon")
+                              : (link?.label ?? t("buyLink"))}
+                      {b === "wb" && !cards.wb && (
+                        <span className="text-muted ml-2 text-xs font-normal">
+                          {t("buyNoCardWB")}
+                        </span>
+                      )}
+                      {b === "ozon" && !cards.ozon && (
+                        <span className="text-muted ml-2 text-xs font-normal">
+                          {t("buyNoCardOzon")}
+                        </span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => moveButton(i, i - 1)}
+                    >
+                      {t("buyUp")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => moveButton(i, i + 1)}
+                    >
+                      {t("buyDown")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() =>
+                        changeButtons(buttons.filter((_, n) => n !== i))
+                      }
+                    >
+                      {t("remove")}
+                    </button>
+                  </div>
+                );
+              })}
+              <div>
+                <select
+                  className="field w-64"
+                  value=""
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    if (e.target.value === "link") {
+                      changeOutside([...outside, { label: "", url: "" }]);
+                      changeButtons([...buttons, `link:${outside.length}`]);
+                    } else {
+                      changeButtons([...buttons, e.target.value]);
+                    }
+                  }}
+                >
+                  <option value="">{t("buyAdd")}</option>
+                  <option value="cart">{t("buyCart")}</option>
+                  <option value="msg">{t("buyMsg")}</option>
+                  <option value="wb">{t("buyWB")}</option>
+                  <option value="ozon">{t("buyOzon")}</option>
+                  <option value="link">{t("buyLink")}</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="border-line flex flex-col gap-2 border-t pt-3">
+              <h3 className="font-semibold">{t("outsideTitle")}</h3>
+              <p className="hint">{t("outsideHint")}</p>
+              {outside.map((l, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2">
+                  <input
+                    className="field w-48"
+                    placeholder={t("outsideLabel")}
+                    value={l.label}
+                    onChange={(e) =>
+                      changeOutside(
+                        outside.map((x, n) =>
+                          n === i ? { ...x, label: e.target.value } : x,
+                        ),
+                      )
+                    }
+                  />
+                  <input
+                    className="field min-w-60 flex-1"
+                    placeholder="https://www.wildberries.ru/catalog/123/detail.aspx"
+                    value={l.url}
+                    onChange={(e) =>
+                      changeOutside(
+                        outside.map((x, n) =>
+                          n === i ? { ...x, url: e.target.value } : x,
+                        ),
+                      )
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => {
+                      changeOutside(outside.filter((_, n) => n !== i));
+                      changeButtons(buttons.filter((b) => b !== `link:${i}`));
+                    }}
+                  >
+                    {t("remove")}
+                  </button>
+                </div>
+              ))}
             </div>
           </>
         )}

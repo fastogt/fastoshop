@@ -365,3 +365,35 @@ func TestCreateSetDerivesStock(t *testing.T) {
 		t.Fatalf("a refused set was kept: %+v", p)
 	}
 }
+
+// Outside links are saved with the product and refused when they are not links.
+func TestOutsideLinksOnProduct(t *testing.T) {
+	h := newTestHandler(t)
+	r := router(h)
+	send := func(method, url, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(method, url, strings.NewReader(body)))
+		return w
+	}
+	w := send("POST", "/api/products", `{"title":"Шапка","price":1,"outside":[{"label":"На WB","url":"https://www.wildberries.ru/catalog/1/detail.aspx"}]}`)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"label":"На WB"`) {
+		t.Fatalf("create: %d %s", w.Code, w.Body.String())
+	}
+	if w := send("PUT", "/api/products/1", `{"title":"Шапка","price":1,"outside":[{"label":"x","url":"javascript:alert(1)"}]}`); w.Code != http.StatusBadRequest {
+		t.Fatalf("javascript url: %d", w.Code)
+	}
+	if w := send("PUT", "/api/products/1", `{"title":"Шапка","price":1,"outside":[{"label":"a","url":"https://a.by"},{"label":"b","url":"https://b.by"},{"label":"c","url":"https://c.by"}]}`); w.Code != http.StatusBadRequest {
+		t.Fatalf("three links: %d", w.Code)
+	}
+	links, err := h.db.OutsideLinks(1)
+	if err != nil || len(links) != 1 || links[0].Label != "На WB" {
+		t.Fatalf("a refused change must keep the old links: %+v %v", links, err)
+	}
+	if w := send("PUT", "/api/products/1", `{"title":"Шапка","price":1,"outside":[]}`); w.Code != http.StatusOK {
+		t.Fatalf("clear: %d", w.Code)
+	}
+	if links, _ := h.db.OutsideLinks(1); len(links) != 0 {
+		t.Fatalf("an empty list must remove them: %+v", links)
+	}
+}

@@ -122,6 +122,18 @@ const kText = {
   tileAspect: { ru: "Плитка каталога", en: "Catalogue tile" },
   tileSquare: { ru: "Квадрат 1:1", en: "Square 1:1" },
   tilePortrait: { ru: "Вертикальная 3:4", en: "Portrait 3:4" },
+  buyButtons: {
+    ru: "Кнопки на странице товара",
+    en: "Buttons on a product page",
+  },
+  buyCart: { ru: "Корзина", en: "Cart" },
+  buyMsg: { ru: "Telegram и WhatsApp", en: "Telegram and WhatsApp" },
+  buyWB: { ru: "Wildberries", en: "Wildberries" },
+  buyOzon: { ru: "Ozon", en: "Ozon" },
+  buyButtonsHint: {
+    ru: "Чем закрывать продажу по умолчанию. В самом товаре набор можно собрать свой, там же добавляются свои ссылки. Кнопки площадок появляются, только когда стоит ключ и товар связан с карточкой; переходы по ним считаются.",
+    en: "How a sale is closed by default. A product can arrange its own set and add the seller's own links. Marketplace buttons appear only when a key is set and the product is linked to a card; clicks on them are counted.",
+  },
   tileAspectHint: {
     ru: "Пропорция рамки под фото в каталоге. 3:4 - формат Ozon и Wildberries: если каталог приехал с площадки, выбирайте его, иначе четверть плитки уйдёт в пустые поля. Для снимков «квадратом» оставьте 1:1.",
     en: "The proportion of the photo frame in the catalogue. 3:4 is what Ozon and Wildberries use: pick it if the catalogue came from a marketplace, otherwise a quarter of the tile goes to blank margins. Leave 1:1 for square photos.",
@@ -481,6 +493,42 @@ export default function Profile() {
                 <option value="portrait">{t("tilePortrait")}</option>
               </select>
               <p className="hint mt-1">{t("tileAspectHint")}</p>
+            </div>
+            <div>
+              <label className="label">{t("buyButtons")}</label>
+              <div className="flex flex-wrap gap-4">
+                {(
+                  [
+                    ["cart", "buyCart"],
+                    ["msg", "buyMsg"],
+                    ["wb", "buyWB"],
+                    ["ozon", "buyOzon"],
+                  ] as const
+                ).map(([key, label]) => {
+                  const on = (s.buy_buttons || "cart,msg")
+                    .split(",")
+                    .filter(Boolean);
+                  return (
+                    <label key={key} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={on.includes(key)}
+                        onChange={(e) =>
+                          setS({
+                            ...s,
+                            buy_buttons: (e.target.checked
+                              ? [...on, key]
+                              : on.filter((x) => x !== key)
+                            ).join(","),
+                          })
+                        }
+                      />
+                      <span>{t(label)}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="hint mt-1">{t("buyButtonsHint")}</p>
             </div>
           </section>
 

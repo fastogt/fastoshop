@@ -18,6 +18,9 @@ const (
 	KeyOrderStockGone   = "order_stock_gone"
 	KeyNestedSet        = "nested_set"
 	KeyBadComponent     = "bad_component"
+	KeyTooManyOutside   = "too_many_outside"
+	KeyBadOutsideURL    = "bad_outside_url"
+	KeyBadBuyButtons    = "bad_buy_buttons"
 	KeyCSVParseFailed   = "csv_parse_failed"
 	KeyTestMailSubject  = "test_mail_subject"
 	KeyTestMailBody     = "test_mail_body"
@@ -75,6 +78,18 @@ const (
 
 var kMessages = map[string][2]string{
 	// [0] = ru, [1] = en
+	KeyBadBuyButtons: {
+		"Неизвестная кнопка: доступны корзина, мессенджеры, Wildberries и Ozon",
+		"Unknown button: the choices are the cart, messengers, Wildberries and Ozon",
+	},
+	KeyTooManyOutside: {
+		"На карточку можно поставить не больше двух ссылок наружу",
+		"A product page takes at most two buttons leading out of the shop",
+	},
+	KeyBadOutsideURL: {
+		"Ссылка должна начинаться с http:// или https://",
+		"A link must start with http:// or https://",
+	},
 	KeyNestedSet: {
 		"Набор не может входить в другой набор",
 		"A set cannot be part of another set",

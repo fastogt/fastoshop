@@ -34,6 +34,7 @@ type settingsResponse struct {
 	AdHuntersAPIKey string `json:"adhunters_api_key"`
 	TileAspect      string `json:"tile_aspect"`
 	CustomerKind    string `json:"customer_kind"`
+	BuyButtons      string `json:"buy_buttons"`
 }
 
 type settingsRequest struct {
@@ -57,6 +58,7 @@ type settingsRequest struct {
 	AdHuntersAPIKey  *string `json:"adhunters_api_key"`
 	TileAspect       *string `json:"tile_aspect"`
 	CustomerKind     *string `json:"customer_kind"`
+	BuyButtons       *string `json:"buy_buttons"`
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +81,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		AdHuntersAPIKey:  maskKey(s.AdHuntersAPIKey),
 		TileAspect:       s.TileAspect,
 		CustomerKind:     s.CustomerKind,
+		BuyButtons:       s.BuyButtons,
 	})
 }
 
@@ -131,6 +134,13 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.CustomerKind = *req.CustomerKind
+	}
+	if req.BuyButtons != nil {
+		if !database.ValidBuyButtons(*req.BuyButtons) {
+			httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadBuyButtons))
+			return
+		}
+		s.BuyButtons = *req.BuyButtons
 	}
 	s.SMTPHost, s.SMTPPort, s.SMTPUser = req.SMTPHost, req.SMTPPort, req.SMTPUser
 	s.SMTPFrom = strings.TrimSpace(req.SMTPFrom)

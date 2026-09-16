@@ -1,3 +1,13 @@
+1.57.0 / September 16, 2026
+[Alexandr Topilski]
+- A product page's buttons are now arranged by the owner. The new "Buying" tab on a product lists what closes the sale and in what order: the cart, the messengers, a Wildberries or Ozon button built from the card the product is linked to, and the seller's own links - up to two, with the text and the address typed in. An empty list means the product follows the shop
+- The shop's own default lives in the profile as a set of ticks: cart, messengers, Wildberries, Ozon. It is what every product starts from
+- A marketplace button appears only where it can work: a key is set and the product is linked to a card. Without one the tab says so plainly instead of offering a dead button
+- Every button out of the shop is counted: the link carries a ping, the web server logs the click, and nothing is stored in the database. The address also carries utm_source, so the receiving side can see where the visitor came from if its own panel shows that
+- Outside links are marked nofollow sponsored, and an address that is not http or https is refused: a page that shows somebody else's goods must not become a way to run somebody else's script
+- Who a product is sold to - private buyers, companies or both - is now answered by the product as well, with the shop's rule as its default
+- Schema change, no automatic migration: settings gains buy_buttons, products gain customer_kind and buy_buttons, ozon_links gains sku, and product_outside_links is created on start
+
 1.56.0 / September 16, 2026
 [Alexandr Topilski]
 - The admin menu now says what belongs where: the storefront on the left (products, categories, orders), the marketplaces behind one word in the middle, and what is set up once on the right. Six words instead of eight, and on a phone each group keeps its own line

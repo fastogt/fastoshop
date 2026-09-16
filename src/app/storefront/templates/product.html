@@ -129,34 +129,42 @@
       <p class="price">{{.PriceStr}} {{.Shop.Sign}}</p>
       {{if gt .P.Stock 0}}
       <span class="badge in">В наличии: {{.P.Stock}} шт</span>
-      <form method="post" action="/cart/add">
-        <input type="hidden" name="slug" value="{{.P.Slug}}">
-        <div class="qty-row">
-          <div class="field">
-            <label for="qty">Количество</label>
-            <input id="qty" name="qty" type="number" value="1" min="1" max="{{.P.Stock}}">
-          </div>
-          <button type="submit">В корзину</button>
-        </div>
-      </form>
       {{else}}
       <span class="badge">Нет в наличии</span>
+      {{end}}
+      {{/* The buttons stand in the order the owner arranged them: a cart of ours,
+           a messenger, the seller's own card elsewhere - whatever closes the sale. */}}
+      {{range .Buy}}
+        {{if eq .Kind "cart"}}
+        <form method="post" action="/cart/add">
+          <input type="hidden" name="slug" value="{{$.P.Slug}}">
+          <div class="qty-row">
+            <div class="field">
+              <label for="qty">Количество</label>
+              <input id="qty" name="qty" type="number" value="1" min="1" max="{{$.P.Stock}}">
+            </div>
+            <button type="submit">В корзину</button>
+          </div>
+        </form>
+        {{else if eq .Kind "msg"}}
+        <div class="msg-order"><a class="btn-msg" href="{{.URL}}" ping="{{.Ping}}" rel="nofollow noopener" target="_blank">{{.Label}}</a></div>
+        {{else}}
+        <div class="msg-order"><a class="btn-out" href="{{.URL}}" ping="{{.Ping}}" rel="nofollow sponsored noopener" target="_blank">{{.Label}}</a></div>
+        {{end}}
+      {{end}}
+      {{if not .Buy}}
       <p class="oos">Напишите нам — сообщим, когда товар вернётся.</p>
       {{end}}
       {{/* The one buyer we measured never opened the cart: he read the card,
            checked delivery and went to contacts. So the invoice is offered
            here, where he actually was. */}}
-      {{if or .Shop.OrgOnly .Shop.OrgChoice}}
+      {{if or .OrgOnly .OrgChoice}}
       <p class="oos">Нужен счёт для организации? Оформите заказ — в форме укажете название, УНП и приложите реквизиты.</p>
       {{end}}
       {{/* A messenger button is a link, not a widget: the storefront ships no
            JavaScript, and a deep link needs none. Shown only when the owner
            filled a messenger in. */}}
-      {{if .OrderLinks}}
-      <div class="msg-order">
-        {{range .OrderLinks}}<a class="btn-msg" href="{{.URL}}"{{with .Ping}} ping="{{.}}"{{end}} rel="nofollow noopener" target="_blank">{{.Label}}</a>{{end}}
-      </div>
-      {{end}}
+
       <ul class="trust">
         <li>Оплата при получении — без предоплаты</li>
         <li>Подтверждаем заказ звонком</li>

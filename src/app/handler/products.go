@@ -38,6 +38,9 @@ type productRequest struct {
 	Hidden *bool `json:"hidden"`
 	// A packed set keeps its own stock; nil leaves the mode as it is.
 	Packed *bool `json:"packed"`
+	// How this product is bought; nil leaves it as it is, "" hands it back to the shop.
+	CustomerKind *string `json:"customer_kind"`
+	BuyButtons   *string `json:"buy_buttons"`
 	// Grams and millimetres. Here nil means "clear it" rather than "leave as is".
 	WeightG  *int64 `json:"weight_g"`
 	LengthMM *int64 `json:"length_mm"`
@@ -47,6 +50,8 @@ type productRequest struct {
 	Params []database.Param `json:"params"`
 	// Same contract as Params: nil keeps the composition, an empty list dissolves the set.
 	Components []componentRequest `json:"components"`
+	// Buttons out of the shop; nil keeps them, an empty list removes them.
+	Outside []database.OutsideLink `json:"outside"`
 }
 
 type componentRequest struct {
@@ -81,6 +86,83 @@ func (h *Handler) saveComponents(w http.ResponseWriter, setID int64, req []compo
 		return false
 	}
 	return true
+}
+
+// applyBuying takes the two answers about how a product is bought; an empty
+// string hands the question back to the shop.
+func applyBuying(w http.ResponseWriter, h *Handler, p *database.Product, req productRequest) bool {
+	if req.CustomerKind != nil {
+		if *req.CustomerKind != "" && !database.IsValidCustomerKind(*req.CustomerKind) {
+			httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadCustomerKind))
+			return false
+		}
+		p.CustomerKind = *req.CustomerKind
+	}
+	if req.BuyButtons != nil {
+		if !database.ValidBuyButtons(*req.BuyButtons) {
+			httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadBuyButtons))
+			return false
+		}
+		p.BuyButtons = *req.BuyButtons
+	}
+	return true
+}
+
+// saveOutside writes the seller's own buttons; false means the reply is written.
+func (h *Handler) saveOutside(w http.ResponseWriter, productID int64, links []database.OutsideLink) bool {
+	if links == nil {
+		return true
+	}
+	if len(links) > database.MaxOutsideLinks {
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyTooManyOutside))
+		return false
+	}
+	for _, l := range links {
+		if !database.ValidOutsideURL(l.URL) {
+			httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadOutsideURL))
+			return false
+		}
+	}
+	if err := h.db.SetOutsideLinks(productID, links); err != nil {
+		httpjson.WriteInternalError(w, err)
+		return false
+	}
+	return true
+}
+
+type outsideResponse struct {
+	Outside []database.OutsideLink `json:"outside"`
+}
+
+type platformCardsResponse struct {
+	WB   bool `json:"wb"`
+	Ozon bool `json:"ozon"`
+}
+
+// ListPlatformCards says whether a marketplace button can exist for this product
+// at all: the card in the cabinet is what the address is built from.
+func (h *Handler) ListPlatformCards(w http.ResponseWriter, r *http.Request) {
+	id, err := idParam(r)
+	if err != nil {
+		httpjson.WriteBadRequest(w, "bad id")
+		return
+	}
+	nmID, sku := h.db.PlatformCards(id)
+	httpjson.WriteOK(w, platformCardsResponse{WB: nmID > 0, Ozon: sku > 0})
+}
+
+func (h *Handler) ListOutside(w http.ResponseWriter, r *http.Request) {
+	id, err := idParam(r)
+	if err != nil {
+		httpjson.WriteBadRequest(w, "bad id")
+		return
+	}
+	links, err := h.db.OutsideLinks(id)
+	if err != nil {
+		httpjson.WriteInternalError(w, err)
+		return
+	}
+	httpjson.WriteOK(w, outsideResponse{Outside: links})
 }
 
 func (h *Handler) ListComponents(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +206,8 @@ func positive(v *int64) *int64 {
 
 type productResponse struct {
 	database.Product
-	Images []database.ProductImage `json:"images"`
+	Images  []database.ProductImage `json:"images"`
+	Outside []database.OutsideLink  `json:"outside"`
 }
 
 type listProductsResponse struct {
@@ -160,7 +243,8 @@ func (h *Handler) enrich(p database.Product) productResponse {
 	if imgs == nil {
 		imgs = []database.ProductImage{}
 	}
-	return productResponse{Product: p, Images: imgs}
+	outside, _ := h.db.OutsideLinks(p.ID)
+	return productResponse{Product: p, Images: imgs, Outside: outside}
 }
 
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
@@ -183,6 +267,9 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	if req.Packed != nil {
 		p.Packed = *req.Packed
 	}
+	if !applyBuying(w, h, p, req) {
+		return
+	}
 	if req.Supplier != nil {
 		p.Supplier = *req.Supplier
 	}
@@ -191,6 +278,10 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !h.saveComponents(w, p.ID, req.Components) {
+		_ = h.db.DeleteProduct(p.ID)
+		return
+	}
+	if !h.saveOutside(w, p.ID, req.Outside) {
 		_ = h.db.DeleteProduct(p.ID)
 		return
 	}
@@ -222,7 +313,7 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	p := &database.Product{ID: id, SKU: req.SKU, Title: req.Title,
 		Description: req.Description, Price: req.Price,
 		Stock: old.Stock, Category: req.Category, Brand: req.Brand, Hidden: old.Hidden,
-		Packed: old.Packed,
+		Packed: old.Packed, CustomerKind: old.CustomerKind, BuyButtons: old.BuyButtons,
 		// The admin form has no source price; dropping it would skip later recomputes.
 		SourcePrice: old.SourcePrice, PriceManual: old.PriceManual,
 		Supplier: old.Supplier,
@@ -243,6 +334,9 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	if req.Packed != nil {
 		p.Packed = *req.Packed
 	}
+	if !applyBuying(w, h, p, req) {
+		return
+	}
 	if req.Supplier != nil {
 		p.Supplier = *req.Supplier
 	}
@@ -255,6 +349,9 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !h.saveComponents(w, id, req.Components) {
+		return
+	}
+	if !h.saveOutside(w, id, req.Outside) {
 		return
 	}
 	saved, err := h.db.GetProduct(id)

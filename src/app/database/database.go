@@ -75,6 +75,10 @@ func (d *Database) migrate() error {
 		stock       INTEGER NOT NULL DEFAULT 0,
 		-- 1 = a set already packed: its own stock, the composition only describes it.
 		packed      INTEGER NOT NULL DEFAULT 0,
+		-- Empty means "as the shop says": both answers about how this product is
+		-- bought are the shop's rule until a product overrides it.
+		customer_kind TEXT NOT NULL DEFAULT '',
+		buy_buttons   TEXT NOT NULL DEFAULT '',
 		category    TEXT NOT NULL DEFAULT '',
 		-- The manufacturer's brand, as the source stated it. Not the supplier:
 		-- one supplier ships many brands, and a buyer searches for the brand.
@@ -255,7 +259,10 @@ func (d *Database) migrate() error {
 		tile_aspect         TEXT NOT NULL DEFAULT 'square',
 		-- Who the shop sells to: private|company|both. 'private' is the safe
 		-- default - a shop that upgrades must look exactly as it did.
-		customer_kind       TEXT NOT NULL DEFAULT 'private'
+		customer_kind       TEXT NOT NULL DEFAULT 'private',
+		-- Which buttons close a sale on a product page, comma separated:
+		-- cart, msg, wb, ozon. The shop's default; a product may say its own.
+		buy_buttons         TEXT NOT NULL DEFAULT 'cart,msg'
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,
@@ -275,6 +282,9 @@ func (d *Database) migrate() error {
 	CREATE TABLE IF NOT EXISTS ozon_links (
 		product_id   INTEGER PRIMARY KEY,
 		offer_id     TEXT NOT NULL,
+		-- Ozon's own number for the card, the one its address is built from;
+		-- 0 means we have not read it yet and no button can be offered.
+		sku          INTEGER NOT NULL DEFAULT 0,
 		-- Price ON OZON in kopecks; 0 = we do not manage this product's price on
 		-- the platform (products.price is the shelf price, a different number).
 		price        INTEGER NOT NULL DEFAULT 0,
@@ -417,6 +427,9 @@ func (d *Database) migrate() error {
 	if err != nil {
 		return err
 	}
-	_, err = d.db.Exec(kComponentsSchema)
+	if _, err = d.db.Exec(kComponentsSchema); err != nil {
+		return err
+	}
+	_, err = d.db.Exec(kOutsideSchema)
 	return err
 }

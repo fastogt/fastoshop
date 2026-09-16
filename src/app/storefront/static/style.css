@@ -593,3 +593,16 @@ footer {
 .variants li .cur { color: var(--accent); }
 .variants li .each { color: var(--muted); font-size: 12px; }
 .variants li a.gone { color: var(--muted); }
+
+/* A button out of the shop: the seller's own card elsewhere, never our cart. */
+.btn-out {
+  display: block;
+  padding: 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+.btn-out:hover { background: var(--accent-soft); }
