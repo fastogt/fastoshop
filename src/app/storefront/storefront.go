@@ -224,6 +224,8 @@ type pageVM struct {
 	// Components of a set, and the visible sets a single product belongs to.
 	Components []database.Component
 	InSets     []database.SetRef
+	// Packs of the same goods, the unit included: the size row above the price.
+	Variants []variantVM
 	// Stored units as plain numbers: a template cannot deref a pointer, 0 means unset.
 	WeightG    int64
 	LengthMM   int64
@@ -720,6 +722,11 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	} else {
 		data.InSets, _ = s.db.SetsOf(p.ID)
 	}
+	if family, _ := s.db.PackFamily(p); len(family) > 0 {
+		data.Variants = variants(family, p.Slug)
+		// The size row carries the same links and says more, so the plain list goes.
+		data.InSets = nil
+	}
 	data.WeightG, data.LengthMM = value(p.WeightG), value(p.LengthMM)
 	data.WidthMM, data.HeightMM = value(p.WidthMM), value(p.HeightMM)
 	if p.Category != "" {
@@ -857,4 +864,22 @@ func (s *Storefront) LlmsTxt(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(w, "- [Карта сайта](%s/sitemap.xml): каждый товар с датой обновления\n", s.baseURL)
 	fmt.Fprintf(w, "\nСтраница товара (%s/p/<slug>) отдаётся сервером без скриптов и несёт разметку schema.org/Product с ценой и наличием.\n", s.baseURL)
+}
+
+// variantVM is one size in the row above the price, with what one piece costs in it.
+type variantVM struct {
+	Slug    string
+	Qty     int
+	Each    string
+	Current bool
+	Gone    bool
+}
+
+func variants(family []database.PackVariant, slug string) []variantVM {
+	out := make([]variantVM, 0, len(family))
+	for _, v := range family {
+		out = append(out, variantVM{Slug: v.Slug, Qty: v.Qty,
+			Each: priceStr(v.Price / int64(v.Qty)), Current: v.Slug == slug, Gone: v.Stock <= 0})
+	}
+	return out
 }

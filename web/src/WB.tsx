@@ -250,6 +250,16 @@ export default function WB() {
     })();
   }, [orderPage]);
 
+  // The picker is a text field until the list arrives, so an owner on this tab
+  // would have to guess the warehouse id; a shop without a token has none to ask for.
+  useEffect(() => {
+    if (tab !== "tabSetup" || !s?.token_set || warehouses !== null) return;
+    void api
+      .wbWarehouses()
+      .then(setWarehouses)
+      .catch(() => {});
+  }, [tab, s?.token_set, warehouses]);
+
   useEffect(() => void loadLinks(), [loadLinks]);
   useEffect(() => void loadCandidates(), [loadCandidates]);
 

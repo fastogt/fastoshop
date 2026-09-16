@@ -583,3 +583,13 @@ footer {
 
 /* A set line's count stays on one line next to a long product name. */
 .specs td.qty { white-space: nowrap; }
+
+/* The size row: same idea as a marketplace card's variant strip, links only. */
+.variants { margin: 8px 0 12px; }
+.variants .label { color: var(--muted); font-size: 13px; margin: 0 0 4px; }
+.variants ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.variants li { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; text-align: center; }
+.variants li a, .variants li .cur { display: block; font-weight: 600; text-decoration: none; }
+.variants li .cur { color: var(--accent); }
+.variants li .each { color: var(--muted); font-size: 12px; }
+.variants li a.gone { color: var(--muted); }

@@ -15,7 +15,7 @@ const kText = {
   tabPrices: { ru: "Цены", en: "Prices" },
   tabSales: { ru: "Продажи", en: "Sales" },
   pickWarehouse: { ru: "- выберите склад -", en: "- pick a warehouse -" },
-  loadWarehouses: { ru: "Загрузить склады", en: "Load warehouses" },
+  loadWarehouses: { ru: "Обновить список", en: "Refresh the list" },
 };
 
 export function ChannelTabs({

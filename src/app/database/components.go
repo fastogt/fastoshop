@@ -197,3 +197,61 @@ func drainStock(tx *sql.Tx, items []OrderItem) error {
 	}
 	return nil
 }
+
+// PackVariant is one size of the same goods: N of a single product per pack.
+type PackVariant struct {
+	Slug  string
+	Title string
+	Qty   int
+	Price int64
+	Stock int
+}
+
+// PackFamily lists the visible packs built from one and the same single product,
+// the unit included: platforms show exactly this as one card with a size to pick.
+func (d *Database) PackFamily(p *Product) ([]PackVariant, error) {
+	unit := p.ID
+	if p.IsSet {
+		rows, err := d.ListComponents(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		if len(rows) != 1 {
+			return nil, nil
+		}
+		unit = rows[0].ProductID
+	}
+	out := []PackVariant{}
+	var v PackVariant
+	err := d.db.QueryRow(`SELECT slug, title, price, stock FROM products
+		WHERE id = ? AND hidden = 0`, unit).Scan(&v.Slug, &v.Title, &v.Price, &v.Stock)
+	if err == nil {
+		v.Qty = 1
+		out = append(out, v)
+	} else if err != sql.ErrNoRows {
+		return nil, err
+	}
+	rows, err := d.db.Query(`SELECT p.slug, p.title, p.price, p.stock, c.qty
+		FROM product_components c JOIN products p ON p.id = c.set_id
+		WHERE c.product_id = ? AND p.hidden = 0
+		  AND (SELECT COUNT(*) FROM product_components x WHERE x.set_id = c.set_id) = 1
+		ORDER BY c.qty`, unit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var v PackVariant
+		if err := rows.Scan(&v.Slug, &v.Title, &v.Price, &v.Stock, &v.Qty); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(out) < 2 {
+		return nil, nil
+	}
+	return out, nil
+}

@@ -284,6 +284,16 @@ export default function Ozon() {
   useEffect(() => {
     api.ozonOrders(page).then(setOrders);
   }, [page]);
+  // The picker is a text field until the list arrives, so an owner on this tab
+  // would have to guess the warehouse id; a shop without keys has none to ask for.
+  useEffect(() => {
+    if (tab !== "tabSetup" || !s?.api_key_set || warehouses !== null) return;
+    void api
+      .ozonWarehouses()
+      .then(setWarehouses)
+      .catch(() => {});
+  }, [tab, s?.api_key_set, warehouses]);
+
   useEffect(() => {
     loadLinks();
   }, [loadLinks]);

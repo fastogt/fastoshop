@@ -1,3 +1,8 @@
+1.55.0 / September 16, 2026
+[Alexandr Topilski]
+- A product page now carries the size row: the same goods in one, four or twelve pieces stand side by side with what one piece costs in each, and the current size is not a link. It appears by itself wherever several packs are built from one and the same product, and is plain links, so the storefront still runs without JavaScript
+- The warehouse list on a channel's Connection tab loads as soon as the tab opens on a saved key, instead of waiting for a button nobody knew to press. The button stays as "Refresh the list", for a warehouse created in the cabinet a minute ago; a platform that does not answer leaves the field to be typed by hand, as before
+
 1.54.0 / September 15, 2026
 [Alexandr Topilski]
 - Sets and assortments are products with contents. A set is an ordinary product with its own name, price, photos, page and article, plus a list of the shop's products it is made of and how many of each: four cans of one kind, or three of pork and three of beef. On the "Price and stock" tab the owner answers "Is this a set?" with one of three choices: an ordinary product; a set put together per order; a set already packed

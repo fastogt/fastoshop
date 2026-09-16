@@ -2010,3 +2010,34 @@ func TestSetPageShowsCompositionAndLinks(t *testing.T) {
 		t.Errorf("unit page links: want the visible set only")
 	}
 }
+
+// Packs of one product show the size row with a price per piece; the current one is not a link.
+func TestPackSizeRow(t *testing.T) {
+	d, h := setup(t)
+	unit := &database.Product{Title: "Зонт", Price: 5000, Stock: 825}
+	six := &database.Product{Title: "Зонт, 6 шт", Price: 27000}
+	twelve := &database.Product{Title: "Зонт, 12 шт", Price: 48000}
+	for _, p := range []*database.Product{unit, six, twelve} {
+		if err := d.CreateProduct(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for set, qty := range map[int64]int{six.ID: 6, twelve.ID: 12} {
+		if err := d.SetComponents(set, []database.Component{{ProductID: unit.ID, Qty: qty}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	page := get(t, h, "/p/"+six.Slug)
+	for _, want := range []string{"Штук в товаре", `href="/p/` + unit.Slug + `"`, `href="/p/` + twelve.Slug + `"`,
+		"50.00/шт", "45.00/шт", "40.00/шт", `<span class="cur">6</span>`, "В наличии: 137 шт"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("size row lacks %q", want)
+		}
+	}
+	if strings.Contains(page, `href="/p/`+six.Slug+`"`) {
+		t.Error("the current size must not be a link to itself")
+	}
+	if strings.Contains(get(t, h, "/p/"+unit.Slug), "Также наборами") {
+		t.Error("the size row replaces the plain list of sets")
+	}
+}
