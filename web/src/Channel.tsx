@@ -15,7 +15,6 @@ const kText = {
   tabPrices: { ru: "Цены", en: "Prices" },
   tabSales: { ru: "Продажи", en: "Sales" },
   pickWarehouse: { ru: "- выберите склад -", en: "- pick a warehouse -" },
-  loadWarehouses: { ru: "Обновить список", en: "Refresh the list" },
 };
 
 export function ChannelTabs({
@@ -55,8 +54,6 @@ export function WarehousePicker({
   value,
   onChange,
   warehouses,
-  onLoad,
-  busy,
 }: {
   name: string;
   label: string;
@@ -64,8 +61,6 @@ export function WarehousePicker({
   value: string;
   onChange: (id: string) => void;
   warehouses: Warehouse[] | null;
-  onLoad: () => void;
-  busy: boolean;
 }) {
   const t = useT(kText);
   return (
@@ -100,9 +95,6 @@ export function WarehousePicker({
             onChange={(e) => onChange(e.target.value)}
           />
         )}
-        <button className="btn-ghost" disabled={busy} onClick={onLoad}>
-          {t("loadWarehouses")}
-        </button>
       </div>
       <p className="hint mt-1">{hint}</p>
     </div>

@@ -67,10 +67,6 @@ const kText = {
     ru: "Складов в кабинете может быть несколько - остатки уезжают на этот. У товара один остаток, разделить его между складами магазин не умеет.",
     en: "A cabinet may hold several warehouses - stock travels to this one. A product carries a single stock figure, and the shop cannot split it between warehouses.",
   },
-  noWarehouses: {
-    ru: "Складов не нашлось - впишите id вручную",
-    en: "No warehouses found - enter the id manually",
-  },
   // The cabinet's currency is not ours to keep: one shop is one legal entity is
   // one money. When the check disagrees with the shop, the shop is what is wrong.
   currencyMismatch: {
@@ -448,18 +444,6 @@ export default function Ozon() {
       return t("unpublishedResult", { n: r.unpublished });
     });
 
-  // If the method answers in a way we did not expect, the field stays manual
-  // and the owner sees why.
-  const loadWarehouses = () =>
-    run(setMsg, async () => {
-      const list = await api.ozonWarehouses().catch((e: unknown) => {
-        setWarehouses(null);
-        throw e;
-      });
-      setWarehouses(list);
-      return list.length === 0 ? t("noWarehouses") : "";
-    });
-
   const push = () =>
     run(setStockMsg, async () => {
       const r = await api.ozonPush();
@@ -517,8 +501,6 @@ export default function Ozon() {
             value={s.warehouse_id}
             onChange={(id) => setS({ ...s, warehouse_id: id })}
             warehouses={warehouses}
-            onLoad={loadWarehouses}
-            busy={busy}
           />
           <label className="flex items-center gap-2">
             <input

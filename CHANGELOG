@@ -1,3 +1,7 @@
+1.55.1 / September 16, 2026
+[Alexandr Topilski]
+- The warehouse button is gone from a channel's Connection tab: the list already loads itself, and the button only repeated that without a page reload. A warehouse created in the cabinet mid-session appears after reloading the page
+
 1.55.0 / September 16, 2026
 [Alexandr Topilski]
 - A product page now carries the size row: the same goods in one, four or twelve pieces stand side by side with what one piece costs in each, and the current size is not a link. It appears by itself wherever several packs are built from one and the same product, and is plain links, so the storefront still runs without JavaScript

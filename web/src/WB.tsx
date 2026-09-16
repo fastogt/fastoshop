@@ -325,12 +325,6 @@ export default function WB() {
       );
     });
 
-  const loadWarehouses = () =>
-    run(setMsg, async () => {
-      setWarehouses(await api.wbWarehouses());
-      return "";
-    });
-
   const push = () =>
     run(setSyncMsg, async () => {
       const r = await api.wbPush();
@@ -459,8 +453,6 @@ export default function WB() {
             value={s.warehouse_id}
             onChange={(id) => setS({ ...s, warehouse_id: id })}
             warehouses={warehouses}
-            onLoad={loadWarehouses}
-            busy={busy}
           />
 
           <label className="flex items-center gap-2">
