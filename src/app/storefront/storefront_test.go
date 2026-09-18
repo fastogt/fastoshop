@@ -2070,8 +2070,8 @@ func TestBuyButtonsAreArrangedByTheOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := get(t, h, "/p/"+p.Slug)
-	for _, want := range []string{"Купить в Instagram", "utm_source=fastoshop",
-		`rel="nofollow sponsored noopener"`, `ping="/go/out/1/` + p.Slug + `"`} {
+	for _, want := range []string{"Купить в Instagram",
+		`rel="nofollow sponsored noopener"`, `href="/go/out/1/` + p.Slug + `"`} {
 		if !strings.Contains(page, want) {
 			t.Errorf("page lacks %q", want)
 		}
@@ -2092,23 +2092,32 @@ func TestBuyButtonsAreArrangedByTheOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	page = get(t, h, "/p/"+p.Slug)
-	if !strings.Contains(page, "https://www.wildberries.ru/catalog/777/detail.aspx") ||
-		!strings.Contains(page, `ping="/go/out/wb/`+p.Slug+`"`) {
-		t.Error("the Wildberries button must carry the card and the count")
+	if !strings.Contains(page, `href="/go/out/wb/`+p.Slug+`"`) {
+		t.Error("the Wildberries button must go through the count")
 	}
 	if strings.Contains(page, "В корзину") {
 		t.Error("a shop with its checkout off must not draw the cart")
 	}
 
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest("POST", "/go/out/1/"+p.Slug, nil))
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("ping: %d", w.Code)
+	follow := func(path string) (int, string) {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		return w.Code, w.Header().Get("Location")
 	}
-	w = httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest("POST", "/go/out/99/"+p.Slug, nil))
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("ping for an unknown link: %d", w.Code)
+	if code, loc := follow("/go/out/wb/" + p.Slug); code != http.StatusFound ||
+		!strings.HasPrefix(loc, "https://www.wildberries.ru/catalog/777/detail.aspx?") ||
+		!strings.Contains(loc, "utm_source=fastoshop") {
+		t.Errorf("wb click: %d -> %q", code, loc)
+	}
+	if code, loc := follow("/go/out/1/" + p.Slug); code != http.StatusFound ||
+		!strings.HasPrefix(loc, "https://instagram.com/shop?") || !strings.Contains(loc, "utm_source=fastoshop") {
+		t.Errorf("own link click: %d -> %q", code, loc)
+	}
+	// The address is looked up, never taken from the request: nothing else can be reached.
+	for _, path := range []string{"/go/out/99/" + p.Slug, "/go/out/1/another-product", "/go/out/ozon/" + p.Slug} {
+		if code, _ := follow(path); code != http.StatusNotFound {
+			t.Errorf("%s: %d, want 404", path, code)
+		}
 	}
 	if err := d.SetOutsideLinks(p.ID, []database.OutsideLink{{Label: "x", URL: "javascript:alert(1)"}}); err == nil {
 		t.Error("a javascript: address must be refused")

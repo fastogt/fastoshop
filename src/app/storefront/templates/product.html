@@ -148,9 +148,9 @@
       {{end}}
       {{range .Buy}}
         {{if eq .Kind "msg"}}
-        <div class="msg-order"><a class="btn-msg" href="{{.URL}}" ping="{{.Ping}}" rel="nofollow noopener" target="_blank">{{.Label}}</a></div>
+        <div class="msg-order"><a class="btn-msg" href="{{.URL}}" rel="nofollow noopener" target="_blank">{{.Label}}</a></div>
         {{else}}
-        <div class="msg-order"><a class="btn-out" href="{{.URL}}" ping="{{.Ping}}" rel="nofollow sponsored noopener" target="_blank">{{.Label}}</a></div>
+        <div class="msg-order"><a class="btn-out" href="{{.URL}}" rel="nofollow sponsored noopener" target="_blank">{{.Label}}</a></div>
         {{end}}
       {{end}}
       {{if and (not .CanBuy) (not .Buy)}}

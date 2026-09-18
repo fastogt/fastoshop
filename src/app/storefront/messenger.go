@@ -19,13 +19,12 @@ const (
 
 // A plain link, never a widget: the storefront ships no JavaScript.
 //
-// Kind is what the buy box draws: "cart" is the form, everything else a button.
+// Kind is what the buy box draws: "msg" is a messenger button, anything else a way out.
 type orderLinkVM struct {
 	Kind string
-	// Label is what the button says; URL is already escaped and safe to print.
+	// Label is what the button says; URL is our own /go/ address, which counts and redirects.
 	Label string
 	URL   string
-	Ping  string
 }
 
 // "@shop", "shop" and "https://t.me/shop" all mean the same account.
@@ -67,17 +66,31 @@ func orderMessage(shop *database.Settings, p *database.Product, pageURL string) 
 
 // The same accounts without a product: a buyer who came to ask, not to order.
 func contactLinks(shop *database.Settings) []orderLinkVM {
-	if shop == nil {
-		return nil
-	}
 	var out []orderLinkVM
-	if h := telegramHandle(shop.Telegram); h != "" {
-		out = append(out, orderLinkVM{Label: "Telegram", URL: "https://t.me/" + h})
-	}
-	if n := whatsappNumber(shop.WhatsApp); n != "" {
-		out = append(out, orderLinkVM{Label: "WhatsApp", URL: "https://wa.me/" + n})
+	for _, m := range []struct{ kind, label string }{{kTelegram, "Telegram"}, {kWhatsApp, "WhatsApp"}} {
+		if contactURL(shop, m.kind) != "" {
+			out = append(out, orderLinkVM{Label: m.label, URL: "/go/" + m.kind})
+		}
 	}
 	return out
+}
+
+// contactURL is a bare account: the footer carries no product to fill a message with.
+func contactURL(shop *database.Settings, kind string) string {
+	if shop == nil {
+		return ""
+	}
+	switch kind {
+	case kTelegram:
+		if h := telegramHandle(shop.Telegram); h != "" {
+			return "https://t.me/" + h
+		}
+	case kWhatsApp:
+		if n := whatsappNumber(shop.WhatsApp); n != "" {
+			return "https://wa.me/" + n
+		}
+	}
+	return ""
 }
 
 // From settings and product only; a title's quotes are escaped here, not in the template.
@@ -97,8 +110,8 @@ func messengerURL(shop *database.Settings, p *database.Product, pageURL, kind st
 	return ""
 }
 
-// href stays the messenger for Metrika's messenger auto-goal; ping counts the click.
-func orderLinks(shop *database.Settings, p *database.Product, pageURL string) []orderLinkVM {
+// The button goes through us: a blocker drops a ping, never the navigation itself.
+func orderLinks(shop *database.Settings, p *database.Product) []orderLinkVM {
 	if shop == nil || p == nil {
 		return nil
 	}
@@ -107,9 +120,9 @@ func orderLinks(shop *database.Settings, p *database.Product, pageURL string) []
 		{kTelegram, "Заказать в Telegram"},
 		{kWhatsApp, "Заказать в WhatsApp"},
 	} {
-		if u := messengerURL(shop, p, pageURL, m.kind); u != "" {
-			out = append(out, orderLinkVM{Kind: database.BuyMsg, Label: m.label, URL: u,
-				Ping: "/go/" + m.kind + "/" + url.PathEscape(p.Slug)})
+		if contactURL(shop, m.kind) != "" {
+			out = append(out, orderLinkVM{Kind: database.BuyMsg, Label: m.label,
+				URL: "/go/" + m.kind + "/" + url.PathEscape(p.Slug)})
 		}
 	}
 	return out
@@ -118,7 +131,7 @@ func orderLinks(shop *database.Settings, p *database.Product, pageURL string) []
 // buyBox is the page's buttons in the order the owner arranged them. A button
 // whose card or account is missing simply does not appear: a dead button is
 // worse than none.
-func buyBox(names []string, shop *database.Settings, p *database.Product, pageURL string,
+func buyBox(names []string, shop *database.Settings, p *database.Product,
 	nmID, sku int64, links []database.OutsideLink) []orderLinkVM {
 	out := make([]orderLinkVM, 0, len(names))
 	// A list that names no link of the seller's keeps them all, in their own
@@ -132,15 +145,13 @@ func buyBox(names []string, shop *database.Settings, p *database.Product, pageUR
 	for _, name := range names {
 		switch {
 		case name == database.BuyMsg:
-			out = append(out, orderLinks(shop, p, pageURL)...)
+			out = append(out, orderLinks(shop, p)...)
 		case name == database.BuyWB && nmID > 0:
 			out = append(out, orderLinkVM{Kind: database.BuyWB, Label: "Купить на Wildberries",
-				URL:  withSource(fmt.Sprintf("https://www.wildberries.ru/catalog/%d/detail.aspx", nmID)),
-				Ping: "/go/out/wb/" + url.PathEscape(p.Slug)})
+				URL: "/go/out/wb/" + url.PathEscape(p.Slug)})
 		case name == database.BuyOzon && sku > 0:
 			out = append(out, orderLinkVM{Kind: database.BuyOzon, Label: "Купить на Ozon",
-				URL:  withSource(fmt.Sprintf("https://www.ozon.ru/product/%d/", sku)),
-				Ping: "/go/out/ozon/" + url.PathEscape(p.Slug)})
+				URL: "/go/out/ozon/" + url.PathEscape(p.Slug)})
 		case strings.HasPrefix(name, database.BuyLink):
 			// "link:1" is the second of the product's own links, in their order.
 			i, _ := strconv.Atoi(strings.TrimPrefix(name, database.BuyLink))
@@ -158,11 +169,21 @@ func buyBox(names []string, shop *database.Settings, p *database.Product, pageUR
 }
 
 // outsideLink is one of the seller's own buttons: their card on a marketplace,
-// their Instagram. The address is theirs, the ping is ours, and utm_source tells
-// them where the visitor came from if their own panel shows it.
+// their Instagram. The address stays theirs and is looked up again on the click.
 func outsideLink(l database.OutsideLink, slug string) orderLinkVM {
-	return orderLinkVM{Kind: database.BuyLink, Label: l.Label, URL: withSource(l.URL),
-		Ping: fmt.Sprintf("/go/out/%d/%s", l.ID, url.PathEscape(slug))}
+	return orderLinkVM{Kind: database.BuyLink, Label: l.Label,
+		URL: fmt.Sprintf("/go/out/%d/%s", l.ID, url.PathEscape(slug))}
+}
+
+// platformURL is the card's public address; zero means no card and no button.
+func platformURL(platform string, nmID, sku int64) string {
+	switch {
+	case platform == database.BuyWB && nmID > 0:
+		return fmt.Sprintf("https://www.wildberries.ru/catalog/%d/detail.aspx", nmID)
+	case platform == database.BuyOzon && sku > 0:
+		return fmt.Sprintf("https://www.ozon.ru/product/%d/", sku)
+	}
+	return ""
 }
 
 // withSource marks the click for the receiving side; an address that already
@@ -182,28 +203,50 @@ func withSource(raw string) string {
 	return u.String()
 }
 
-// OutsidePing answers a button's ping: nginx logs the POST, nothing is stored.
-// The id is a link of ours, or the name of a platform.
-func (s *Storefront) OutsidePing(w http.ResponseWriter, r *http.Request) {
-	raw := chi.URLParam(r, "id")
-	if raw == database.BuyWB || raw == database.BuyOzon {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	id, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil || !s.db.OutsideLinkExists(id) {
+// goTo is the count: nginx logs the GET, and nothing is stored. The target is
+// always built here from our own data, never read from the request, so this is
+// not an open redirect.
+func goTo(w http.ResponseWriter, r *http.Request, target string) {
+	if target == "" {
 		http.NotFound(w, r)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	// Every click must reach us again, and no search engine may keep the hop.
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Robots-Tag", "noindex, nofollow")
+	http.Redirect(w, r, target, http.StatusFound)
 }
 
-// OrderPing answers a button's ping: nginx logs the POST, and nothing is stored.
-func (s *Storefront) OrderPing(w http.ResponseWriter, r *http.Request) {
+// GoMessenger opens the messenger with the order already written.
+func (s *Storefront) GoMessenger(w http.ResponseWriter, r *http.Request) {
 	p, err := s.db.GetVisibleProductBySlug(chi.URLParam(r, "slug"))
-	if err != nil || messengerURL(s.shop(), p, "", chi.URLParam(r, "messenger")) == "" {
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	goTo(w, r, messengerURL(s.shop(), p, s.baseURL+"/p/"+p.Slug, chi.URLParam(r, "messenger")))
+}
+
+// GoContact opens the shop's account from the footer, with no product to name.
+func (s *Storefront) GoContact(w http.ResponseWriter, r *http.Request) {
+	goTo(w, r, contactURL(s.shop(), chi.URLParam(r, "messenger")))
+}
+
+// GoOutside leaves the shop for a card on a marketplace or the seller's own link.
+// The id is a link of ours, or the name of a platform.
+func (s *Storefront) GoOutside(w http.ResponseWriter, r *http.Request) {
+	slug, id := chi.URLParam(r, "slug"), chi.URLParam(r, "id")
+	target := ""
+	if id == database.BuyWB || id == database.BuyOzon {
+		if p, err := s.db.GetVisibleProductBySlug(slug); err == nil {
+			nmID, sku := s.db.PlatformCards(p.ID)
+			target = platformURL(id, nmID, sku)
+		}
+	} else if n, err := strconv.ParseInt(id, 10, 64); err == nil {
+		target = s.db.OutsideLinkURL(n, slug)
+	}
+	if target != "" {
+		target = withSource(target)
+	}
+	goTo(w, r, target)
 }

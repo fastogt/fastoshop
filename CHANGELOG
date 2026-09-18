@@ -1,3 +1,9 @@
+1.59.0 / September 18, 2026
+[Alexandr Topilski]
+- Every button that leaves the shop now goes through the shop first. "Order in Telegram", "Order in WhatsApp", the Wildberries and Ozon buttons, the seller's own links and the messenger links in the footer point at /go/ addresses that answer with a redirect to the real target, so the web server logs every click. The click used to be reported by the browser's ping, which ad blockers and Firefox drop, so part of the clicks were never seen
+- The redirect is not cacheable, carries noindex, and its target is always built from the shop's own data: an unknown link, a link of another product or a hidden product answers 404, so /go/ cannot be used to send a visitor anywhere else
+- The ping endpoints (POST /go/...) are removed; nothing outside the storefront's own pages used them
+
 1.58.1 / September 18, 2026
 [Alexandr Topilski]
 - The "Order in Telegram" and "Order in WhatsApp" buttons no longer fill the buyer's message with plus signs. The prepared text encoded spaces as "+", which Telegram does not read as a space, so the buyer saw "Здравствуйте!+Хочу+заказать:" in the input box before sending. Spaces now travel as %20; a real plus in a product title is still kept

@@ -95,8 +95,9 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/", s.Index)
 	r.Get("/p/{slug}", s.Product)
 	r.Get("/cart", s.Cart)
-	r.Post("/go/{messenger}/{slug}", s.OrderPing)
-	r.Post("/go/out/{id}/{slug}", s.OutsidePing)
+	r.Get("/go/{messenger}", s.GoContact)
+	r.Get("/go/{messenger}/{slug}", s.GoMessenger)
+	r.Get("/go/out/{id}/{slug}", s.GoOutside)
 	r.Get("/info", s.Info)
 	r.Get("/privacy", s.Privacy)
 	r.Get("/contacts", s.Contacts)
@@ -733,7 +734,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	nmID, sku := s.db.PlatformCards(p.ID)
 	links, _ := s.db.OutsideLinks(p.ID)
 	data.CanBuy = shop.CartEnabled && p.Stock > 0
-	data.Buy = buyBox(p.ButtonsWith(shop), shop, p, s.baseURL+"/p/"+p.Slug, nmID, sku, links)
+	data.Buy = buyBox(p.ButtonsWith(shop), shop, p, nmID, sku, links)
 	if family, _ := s.db.PackFamily(p); len(family) > 0 {
 		data.Variants = variants(family, p.Slug)
 		// The size row carries the same links and says more, so the plain list goes.

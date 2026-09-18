@@ -60,48 +60,51 @@ func TestMessengerURLEncodesSpacesAsPercent(t *testing.T) {
 	}
 }
 
-// The href must stay the messenger, or Metrika's messenger auto-goal stops seeing the click.
-func TestOrderLinksPingTheShop(t *testing.T) {
+// A blocker drops a ping but not a navigation, so the button's href is our own address.
+func TestOrderLinksGoThroughTheShop(t *testing.T) {
 	shop := &database.Settings{Telegram: "@lavka", WhatsApp: "+375291234567"}
-	links := orderLinks(shop, &database.Product{Slug: "ersh"}, "https://shop.example.com/p/ersh")
-	if len(links) != 2 {
+	links := orderLinks(shop, &database.Product{Slug: "ersh"})
+	if len(links) != 2 || links[0].URL != "/go/telegram/ersh" || links[1].URL != "/go/whatsapp/ersh" {
 		t.Fatalf("links: %+v", links)
-	}
-	if !strings.HasPrefix(links[0].URL, "https://t.me/lavka?") || links[0].Ping != "/go/telegram/ersh" {
-		t.Errorf("telegram: %+v", links[0])
-	}
-	if !strings.HasPrefix(links[1].URL, "https://wa.me/375291234567?") || links[1].Ping != "/go/whatsapp/ersh" {
-		t.Errorf("whatsapp: %+v", links[1])
 	}
 }
 
-func TestOrderPing(t *testing.T) {
+// The hop is the count: every button click is a GET that nginx logs, then a redirect.
+func TestGoRedirects(t *testing.T) {
 	d, h := setup(t)
 	s, _ := d.GetSettings()
 	s.Telegram = "@lavka"
 	if err := d.UpdateSettings(s); err != nil {
 		t.Fatal(err)
 	}
-	do := func(method, path string) int {
+	do := func(method, path string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest(method, path, nil))
-		return w.Code
+		return w
 	}
-	if code := do("POST", "/go/telegram/krasnyj-chajnik"); code != http.StatusNoContent {
-		t.Errorf("ping: %d, want 204", code)
+	w := do("GET", "/go/telegram/krasnyj-chajnik")
+	if w.Code != http.StatusFound || !strings.HasPrefix(w.Header().Get("Location"), "https://t.me/lavka?text=") {
+		t.Fatalf("click: %d -> %q", w.Code, w.Header().Get("Location"))
 	}
-	for _, path := range []string{"/go/whatsapp/krasnyj-chajnik", "/go/viber/krasnyj-chajnik", "/go/telegram/net-takogo"} {
-		if code := do("POST", path); code != http.StatusNotFound {
+	// A cached redirect would send the next click past us, uncounted.
+	if w.Header().Get("Cache-Control") != "no-store" {
+		t.Errorf("redirect is cacheable: %q", w.Header().Get("Cache-Control"))
+	}
+	if loc := w.Header().Get("Location"); !strings.Contains(loc, "krasnyj-chajnik") {
+		t.Errorf("the message lost the page address: %s", loc)
+	}
+	for _, path := range []string{"/go/whatsapp/krasnyj-chajnik", "/go/viber/krasnyj-chajnik",
+		"/go/telegram/net-takogo", "/go/whatsapp"} {
+		if code := do("GET", path).Code; code != http.StatusNotFound {
 			t.Errorf("%s: %d, want 404", path, code)
 		}
 	}
-	// Nothing to follow: a GET would be a crawler or a copied address, not a click.
-	if code := do("GET", "/go/telegram/krasnyj-chajnik"); code == http.StatusNoContent || code == http.StatusFound {
-		t.Errorf("GET /go/ answered %d", code)
+	if w := do("GET", "/go/telegram"); w.Code != http.StatusFound || w.Header().Get("Location") != "https://t.me/lavka" {
+		t.Errorf("footer contact: %d -> %q", w.Code, w.Header().Get("Location"))
 	}
 	body := get(t, h, "/p/krasnyj-chajnik")
-	if !strings.Contains(body, `ping="/go/telegram/krasnyj-chajnik"`) || !strings.Contains(body, `href="https://t.me/lavka?`) {
-		t.Error("the card button lost its messenger href or its ping")
+	if !strings.Contains(body, `href="/go/telegram/krasnyj-chajnik"`) || strings.Contains(body, "ping=") {
+		t.Error("the card button must lead through us, with no ping to double the count")
 	}
 	if !strings.Contains(get(t, h, "/robots.txt"), "Disallow: /go/") {
 		t.Error("robots.txt no longer closes /go/")
@@ -121,7 +124,7 @@ func TestTelegramHandleForms(t *testing.T) {
 func TestNoMessengerNoButtons(t *testing.T) {
 	shop := &database.Settings{Currency: "RUB"}
 	p := &database.Product{Title: "Чайник", Price: 100}
-	if links := orderLinks(shop, p, "https://shop.example.com/p/chajnik"); len(links) != 0 {
+	if links := orderLinks(shop, p); len(links) != 0 {
 		t.Errorf("buttons without a messenger: %+v", links)
 	}
 }
@@ -134,8 +137,11 @@ func TestContactLinksAreBare(t *testing.T) {
 	if len(links) != 2 {
 		t.Fatalf("links: %d, want telegram and whatsapp", len(links))
 	}
-	if links[0].URL != "https://t.me/lavka" || links[1].URL != "https://wa.me/375291234567" {
-		t.Errorf("not bare accounts: %+v", links)
+	if links[0].URL != "/go/telegram" || links[1].URL != "/go/whatsapp" {
+		t.Errorf("footer links must go through us: %+v", links)
+	}
+	if contactURL(shop, kTelegram) != "https://t.me/lavka" || contactURL(shop, kWhatsApp) != "https://wa.me/375291234567" {
+		t.Errorf("not bare accounts: %q %q", contactURL(shop, kTelegram), contactURL(shop, kWhatsApp))
 	}
 	if len(contactLinks(&database.Settings{})) != 0 {
 		t.Error("a shop without messengers got footer buttons")

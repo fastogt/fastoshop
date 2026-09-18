@@ -80,9 +80,12 @@ func (d *Database) SetOutsideLinks(productID int64, links []OutsideLink) error {
 	return tx.Commit()
 }
 
-// OutsideLinkExists answers the click counter: a ping for a link nobody has is a 404.
-func (d *Database) OutsideLinkExists(id int64) bool {
-	var ok bool
-	_ = d.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM product_outside_links WHERE id = ?)`, id).Scan(&ok)
-	return ok
+// OutsideLinkURL is where a click on a product's own button goes; empty when the
+// link is gone, or belongs to another product or a hidden one.
+func (d *Database) OutsideLinkURL(id int64, slug string) string {
+	var u string
+	_ = d.db.QueryRow(`SELECT l.url FROM product_outside_links l
+		JOIN products p ON p.id = l.product_id
+		WHERE l.id = ? AND p.slug = ? AND p.hidden = 0`, id, slug).Scan(&u)
+	return u
 }
