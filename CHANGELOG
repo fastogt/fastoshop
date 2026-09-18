@@ -1,3 +1,7 @@
+1.58.1 / September 18, 2026
+[Alexandr Topilski]
+- The "Order in Telegram" and "Order in WhatsApp" buttons no longer fill the buyer's message with plus signs. The prepared text encoded spaces as "+", which Telegram does not read as a space, so the buyer saw "Здравствуйте!+Хочу+заказать:" in the input box before sending. Spaces now travel as %20; a real plus in a product title is still kept
+
 1.58.0 / September 16, 2026
 [Alexandr Topilski]
 - The cart is no longer one button among others. It is the shop's own checkout and it is switched on or off for the whole shop, in the profile; the product's "Buying" tab arranges only what stands beside it - the messengers, a marketplace button, the seller's own links

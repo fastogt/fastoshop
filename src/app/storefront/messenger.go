@@ -82,7 +82,8 @@ func contactLinks(shop *database.Settings) []orderLinkVM {
 
 // From settings and product only; a title's quotes are escaped here, not in the template.
 func messengerURL(shop *database.Settings, p *database.Product, pageURL, kind string) string {
-	text := url.QueryEscape(orderMessage(shop, p, pageURL))
+	// Telegram keeps "+" literal in ?text=; QueryEscape already made real pluses %2B.
+	text := strings.ReplaceAll(url.QueryEscape(orderMessage(shop, p, pageURL)), "+", "%20")
 	switch kind {
 	case kTelegram:
 		if h := telegramHandle(shop.Telegram); h != "" {

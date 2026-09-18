@@ -43,6 +43,23 @@ func TestMessengerURLSurvivesQuotesAndSlashes(t *testing.T) {
 	}
 }
 
+// Telegram does not read "+" as a space in ?text=, so the buyer saw "Хочу+заказать".
+func TestMessengerURLEncodesSpacesAsPercent(t *testing.T) {
+	shop := &database.Settings{Currency: "BYN", Telegram: "@lavka", WhatsApp: "+375291234567"}
+	p := &database.Product{Title: "Кастрюля 2,9л C++ edition", SKU: "083497", Price: 3952}
+	for _, kind := range []string{kTelegram, kWhatsApp} {
+		link := messengerURL(shop, p, "https://shop.example.com/p/k", kind)
+		raw := link[strings.Index(link, "text=")+len("text="):]
+		if strings.Contains(raw, "+") {
+			t.Errorf("%s: a plus in the raw text reaches the buyer literally: %s", kind, raw)
+		}
+		text, err := url.PathUnescape(raw)
+		if err != nil || !strings.Contains(text, "Кастрюля 2,9л C++ edition") {
+			t.Errorf("%s: title did not survive: %q (%v)", kind, text, err)
+		}
+	}
+}
+
 // The href must stay the messenger, or Metrika's messenger auto-goal stops seeing the click.
 func TestOrderLinksPingTheShop(t *testing.T) {
 	shop := &database.Settings{Telegram: "@lavka", WhatsApp: "+375291234567"}
