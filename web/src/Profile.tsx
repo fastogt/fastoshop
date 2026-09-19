@@ -138,6 +138,18 @@ const kText = {
     ru: "Чем закрывать продажу по умолчанию. В самом товаре набор можно собрать свой, там же добавляются свои ссылки. Кнопки площадок появляются, только когда стоит ключ и товар связан с карточкой; переходы по ним считаются.",
     en: "How a sale is closed by default. A product can arrange its own set and add the seller's own links. Marketplace buttons appear only when a key is set and the product is linked to a card; clicks on them are counted.",
   },
+  deliveryNote: {
+    ru: "Доставка на карточке",
+    en: "Delivery on the product page",
+  },
+  deliveryNoteHint: {
+    ru: "Одна строка над кнопкой покупки, на каждой карточке. На площадках срок доставки стоит именно там, и покупатель решает в этот момент. Пустое поле - строки нет.",
+    en: "One line over the buy button on every product page. Marketplaces put the delivery date right there, and that is where the buyer decides. Empty means no line.",
+  },
+  deliveryNotePlaceholder: {
+    ru: "По Минску - завтра, по Беларуси - 2–3 дня, самовывоз бесплатно",
+    en: "Tomorrow in the city, 2–3 days nationwide, free pickup",
+  },
   tileAspectHint: {
     ru: "Пропорция рамки под фото в каталоге. 3:4 - формат Ozon и Wildberries: если каталог приехал с площадки, выбирайте его, иначе четверть плитки уйдёт в пустые поля. Для снимков «квадратом» оставьте 1:1.",
     en: "The proportion of the photo frame in the catalogue. 3:4 is what Ozon and Wildberries use: pick it if the catalogue came from a marketplace, otherwise a quarter of the tile goes to blank margins. Leave 1:1 for square photos.",
@@ -542,6 +554,14 @@ export default function Profile() {
               </div>
               <p className="hint mt-1">{t("buyButtonsHint")}</p>
             </div>
+            <Field
+              label={t("deliveryNote")}
+              hint={t("deliveryNoteHint")}
+              autoComplete="off"
+              placeholder={t("deliveryNotePlaceholder")}
+              value={s.delivery_note}
+              onChange={(v) => setS({ ...s, delivery_note: v })}
+            />
           </section>
 
           <section className="card flex flex-col gap-4">

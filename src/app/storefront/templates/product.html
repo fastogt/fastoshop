@@ -132,6 +132,8 @@
       {{else}}
       <span class="badge">Нет в наличии</span>
       {{end}}
+      {{/* Marketplaces print the delivery date over the button; a buyer decides here. */}}
+      {{if .Shop.DeliveryNote}}<p class="delivery">{{.Shop.DeliveryNote}}</p>{{end}}
       {{/* The buttons stand in the order the owner arranged them: a cart of ours,
            a messenger, the seller's own card elsewhere - whatever closes the sale. */}}
       {{if .CanBuy}}

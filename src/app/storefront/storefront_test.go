@@ -2123,3 +2123,19 @@ func TestBuyButtonsAreArrangedByTheOwner(t *testing.T) {
 		t.Error("a javascript: address must be refused")
 	}
 }
+
+// A buyer decides at the buy box: the delivery line must be there, and absent when unset.
+func TestDeliveryNoteInTheBuyBox(t *testing.T) {
+	d, h := setup(t)
+	if strings.Contains(get(t, h, "/p/krasnyj-chajnik"), `class="delivery"`) {
+		t.Fatal("an unset delivery note still renders")
+	}
+	s, _ := d.GetSettings()
+	s.DeliveryNote = "По Минску - завтра"
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(get(t, h, "/p/krasnyj-chajnik"), "По Минску - завтра") {
+		t.Error("product page missing the delivery note")
+	}
+}

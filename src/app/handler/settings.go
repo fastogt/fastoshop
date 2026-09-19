@@ -36,6 +36,7 @@ type settingsResponse struct {
 	CustomerKind    string `json:"customer_kind"`
 	CartEnabled     bool   `json:"cart_enabled"`
 	BuyButtons      string `json:"buy_buttons"`
+	DeliveryNote    string `json:"delivery_note"`
 }
 
 type settingsRequest struct {
@@ -61,6 +62,7 @@ type settingsRequest struct {
 	CustomerKind     *string `json:"customer_kind"`
 	CartEnabled      *bool   `json:"cart_enabled"`
 	BuyButtons       *string `json:"buy_buttons"`
+	DeliveryNote     *string `json:"delivery_note"`
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +87,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		CustomerKind:     s.CustomerKind,
 		CartEnabled:      s.CartEnabled,
 		BuyButtons:       s.BuyButtons,
+		DeliveryNote:     s.DeliveryNote,
 	})
 }
 
@@ -147,6 +150,9 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.BuyButtons = *req.BuyButtons
+	}
+	if req.DeliveryNote != nil {
+		s.DeliveryNote = *req.DeliveryNote
 	}
 	s.SMTPHost, s.SMTPPort, s.SMTPUser = req.SMTPHost, req.SMTPPort, req.SMTPUser
 	s.SMTPFrom = strings.TrimSpace(req.SMTPFrom)

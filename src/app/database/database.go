@@ -265,7 +265,9 @@ func (d *Database) migrate() error {
 		cart_enabled        INTEGER NOT NULL DEFAULT 1,
 		-- Buttons beside the cart, comma separated: msg, wb, ozon. The shop's
 		-- default; a product may arrange its own.
-		buy_buttons         TEXT NOT NULL DEFAULT 'msg'
+		buy_buttons         TEXT NOT NULL DEFAULT 'msg',
+		-- One owner-written line over the buy button; the shop promises no date it cannot compute.
+		delivery_note       TEXT NOT NULL DEFAULT ''
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,

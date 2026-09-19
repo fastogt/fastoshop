@@ -271,6 +271,8 @@ export interface Settings {
   cart_enabled: boolean;
   // msg, wb, ozon - comma separated, in the order they stand.
   buy_buttons: string;
+  // One line over the buy button, as the owner wrote it.
+  delivery_note: string;
   logo: string;
   smtp_host: string;
   smtp_port: number;

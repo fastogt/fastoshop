@@ -75,6 +75,8 @@ type Settings struct {
 	CartEnabled bool `json:"cart_enabled"`
 	// BuyButtons lists what stands beside the cart: BuyMsg, BuyWB, BuyOzon.
 	BuyButtons string `json:"buy_buttons"`
+	// DeliveryNote is shown over the buy button as the owner wrote it.
+	DeliveryNote string `json:"delivery_note"`
 }
 
 // Buttons that stand beside the cart. Which of them a page carries is the
@@ -203,12 +205,12 @@ func (d *Database) GetSettings() (*Settings, error) {
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
 		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms,
 		 adhunters_api_key, telegram, whatsapp, tile_aspect, customer_kind,
-		 cart_enabled, buy_buttons FROM settings WHERE id=1`).Scan(
+		 cart_enabled, buy_buttons, delivery_note FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
 		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms,
 		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp, &s.TileAspect, &s.CustomerKind,
-		&s.CartEnabled, &s.BuyButtons)
+		&s.CartEnabled, &s.BuyButtons, &s.DeliveryNote)
 	if err != nil {
 		return nil, err
 	}
@@ -257,13 +259,15 @@ func (d *Database) UpdateSettings(s *Settings) error {
 		 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?, currency=?,
 		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?,
 		 smtp_from=?, terms=?, adhunters_api_key=?, telegram=?, whatsapp=?,
-		 tile_aspect=?, customer_kind=?, cart_enabled=?, buy_buttons=?
+		 tile_aspect=?, customer_kind=?, cart_enabled=?, buy_buttons=?,
+		 delivery_note=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
 		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom, s.Terms,
 		s.AdHuntersAPIKey, strings.TrimSpace(s.Telegram), strings.TrimSpace(s.WhatsApp),
-		tile, customer, s.CartEnabled, buttons)
+		tile, customer, s.CartEnabled, buttons,
+		strings.TrimSpace(s.DeliveryNote))
 	return err
 }
 

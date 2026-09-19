@@ -1,3 +1,8 @@
+1.60.0 / September 19, 2026
+[Alexandr Topilski]
+- A product page can say when the goods arrive. The profile gains one line, "Delivery on the product page", shown over the buy button on every card as the owner wrote it; marketplaces print the delivery date right there, and a measured storefront lost most buyers between the card and the cart
+- Schema change, no automatic migration: settings gains delivery_note
+
 1.59.0 / September 18, 2026
 [Alexandr Topilski]
 - Every button that leaves the shop now goes through the shop first. "Order in Telegram", "Order in WhatsApp", the Wildberries and Ozon buttons, the seller's own links and the messenger links in the footer point at /go/ addresses that answer with a redirect to the real target, so the web server logs every click. The click used to be reported by the browser's ping, which ad blockers and Firefox drop, so part of the clicks were never seen
