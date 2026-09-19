@@ -37,7 +37,7 @@
        the page it sat above the fold while the empty field sat below it. */}}
   {{if .NoContact}}<p class="notice oos">Заполните телефон или почту — иначе мы не сможем подтвердить заказ.</p>{{end}}
   <p class="oos">Оплата при получении. Мы перезвоним и подтвердим.</p>
-  {{if .BadOrg}}<p class="notice oos">Укажите название организации и УНП — по ним продавец выставит счёт.</p>{{end}}
+  {{if .BadOrg}}<p class="notice oos">Укажите название организации и {{if eq .Shop.Currency "RUB"}}ИНН{{else}}УНП{{end}} — по ним продавец выставит счёт.</p>{{end}}
   {{/* enctype only because of the requisites file; a shop without organisations
        posts exactly what it posted before. */}}
   <form method="post" action="/cart/order"{{if or .Shop.OrgOnly .Shop.OrgChoice}} enctype="multipart/form-data"{{end}}>
@@ -100,8 +100,8 @@
       <input id="org_name" name="org_name" placeholder="ООО «Ромашка»" value="{{.FormOrgName}}"{{if .Shop.OrgOnly}} required{{end}}>
     </div>
     <div>
-      <label for="org_unp">УНП или ИНН</label>
-      <input id="org_unp" name="org_unp" placeholder="190304936" value="{{.FormOrgUNP}}"{{if .Shop.OrgOnly}} required{{end}}>
+      <label for="org_unp">{{if eq .Shop.Currency "RUB"}}ИНН{{else}}УНП{{end}}</label>
+      <input id="org_unp" name="org_unp" placeholder="{{if eq .Shop.Currency "RUB"}}7707083893{{else}}190304936{{end}}" value="{{.FormOrgUNP}}"{{if .Shop.OrgOnly}} required{{end}}>
     </div>
     <div>
       <label for="requisites">Реквизиты файлом</label>

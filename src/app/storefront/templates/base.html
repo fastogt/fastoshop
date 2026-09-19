@@ -81,7 +81,7 @@
 </form>
 <nav>
 {{if .Shop.ShopPhone}}<a href="tel:{{.Shop.ShopPhone}}" class="phone">{{.Shop.ShopPhone}}</a>{{end}}
-<a href="/cart" class="cart" rel="nofollow">Корзина{{if .CartCount}} ({{.CartCount}}){{end}}</a>
+{{if .Shop.CartEnabled}}<a href="/cart" class="cart" rel="nofollow">Корзина{{if .CartCount}} ({{.CartCount}}){{end}}</a>{{end}}
 </nav>
 </header>
 <main>{{block "content" .}}{{end}}</main>

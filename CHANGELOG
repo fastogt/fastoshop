@@ -1,3 +1,8 @@
+1.60.4 / September 19, 2026
+[Alexandr Topilski]
+- A shop without a cart no longer shows the "Cart" link in the header or the note offering an invoice for companies through the order form: both led to a checkout the shop does not have
+- A shop priced in roubles asks a company for its ИНН instead of the Belarusian УНП, on the product page and in the cart form; the owner's order email labels the field "УНП / ИНН"
+
 1.60.3 / September 19, 2026
 [Alexandr Topilski]
 - A returning visitor no longer gets an old page after a release or a settings change. Last-Modified stated only when the product changed, and behind a CDN, which strips the tag, it was the only validator left: a browser or a crawler holding an older copy was told "not modified" while the layout, the delivery line or the phone had changed. The date is now the latest of the product's change, the shop's settings saved and the process start, so any release refreshes every page

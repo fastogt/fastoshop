@@ -234,7 +234,7 @@ func TestOrderMailBodyCarriesOrg(t *testing.T) {
 	o := &database.Order{Name: "Пётр", Phone: "+375291112233",
 		OrgName: "ООО «Дилинс-М»", OrgUNP: "190304936", RequisitesFile: "abc.pdf"}
 	body := orderMailBody("ru", "Ерш x50 - 126.50 Br\n", "126.50 Br", o, "https://shop.by")
-	for _, want := range []string{"Организация: ООО «Дилинс-М»", "УНП: 190304936", "Реквизиты"} {
+	for _, want := range []string{"Организация: ООО «Дилинс-М»", "УНП / ИНН: 190304936", "Реквизиты"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("owner mail is missing %q:\n%s", want, body)
 		}

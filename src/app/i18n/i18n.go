@@ -117,7 +117,7 @@ var kMessages = map[string][2]string{
 	KeyOrderComment:    {"Комментарий", "Comment"},
 	KeyOrderEmail:      {"Почта", "Email"},
 	KeyOrderOrgName:    {"Организация", "Organisation"},
-	KeyOrderOrgUNP:     {"УНП", "Tax id"},
+	KeyOrderOrgUNP:     {"УНП / ИНН", "Tax id"},
 	KeyOrderRequisites: {"Реквизиты", "Requisites"},
 	// %s - the shop name.
 	KeyOrderConfirmSubject: {"Ваш заказ в «%s»", "Your order at %s"},

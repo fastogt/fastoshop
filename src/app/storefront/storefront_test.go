@@ -2175,6 +2175,20 @@ func TestNoOwnOrdersNoPaymentPromise(t *testing.T) {
 		t.Fatal("a shop with its cart on lost the payment line")
 	}
 	s, _ := d.GetSettings()
+	s.CustomerKind = database.CustomerBoth
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if body := get(t, h, "/p/krasnyj-chajnik"); !strings.Contains(body, `class="cart"`) || !strings.Contains(body, "Нужен счёт") {
+		t.Fatal("a shop with its cart on lost the cart link or the invoice note")
+	}
+	s.Currency = database.ShopCurrencyRUB
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(get(t, h, "/p/krasnyj-chajnik"), "название, ИНН и") {
+		t.Error("a shop in roubles asked for a Belarusian УНП")
+	}
 	s.CartEnabled, s.BuyButtons, s.Telegram, s.WhatsApp = false, "wb", "", ""
 	if err := d.UpdateSettings(s); err != nil {
 		t.Fatal(err)
@@ -2182,5 +2196,8 @@ func TestNoOwnOrdersNoPaymentPromise(t *testing.T) {
 	body := get(t, h, "/p/krasnyj-chajnik")
 	if strings.Contains(body, "Оплата при получении") || strings.Contains(body, "Подтверждаем заказ звонком") {
 		t.Error("a shop that takes no order promised payment on receipt and a call")
+	}
+	if strings.Contains(body, `class="cart"`) || strings.Contains(body, "Нужен счёт") {
+		t.Error("a shop without a cart still links to it and offers an invoice through it")
 	}
 }

@@ -171,8 +171,8 @@
       {{/* The one buyer we measured never opened the cart: he read the card,
            checked delivery and went to contacts. So the invoice is offered
            here, where he actually was. */}}
-      {{if or .OrgOnly .OrgChoice}}
-      <p class="oos">Нужен счёт для организации? Оформите заказ — в форме укажете название, УНП и приложите реквизиты.</p>
+      {{if and .Shop.CartEnabled (or .OrgOnly .OrgChoice)}}
+      <p class="oos">Нужен счёт для организации? Оформите заказ — в форме укажете название, {{if eq .Shop.Currency "RUB"}}ИНН{{else}}УНП{{end}} и приложите реквизиты.</p>
       {{end}}
   </div>
   {{/* Full width, below all three columns: a description belongs to the product,
