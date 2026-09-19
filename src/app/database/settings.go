@@ -268,6 +268,9 @@ func (d *Database) UpdateSettings(s *Settings) error {
 		s.AdHuntersAPIKey, strings.TrimSpace(s.Telegram), strings.TrimSpace(s.WhatsApp),
 		tile, customer, s.CartEnabled, buttons,
 		strings.TrimSpace(s.DeliveryNote))
+	if err == nil {
+		d.changed.Store(time.Now().Unix())
+	}
 	return err
 }
 

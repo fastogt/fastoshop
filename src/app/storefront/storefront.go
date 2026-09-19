@@ -235,7 +235,10 @@ type pageVM struct {
 	HeightMM int64
 	// The shop's own checkout on a product page, and the buttons beside it.
 	CanBuy bool
-	Buy    []orderLinkVM
+	// OwnOrders is true when the shop takes the order itself - cart or messenger -
+	// and so can promise payment on receipt and a confirming call.
+	OwnOrders bool
+	Buy       []orderLinkVM
 	// The seller's own buttons out of the shop, placed by the shop setting.
 	// Who this page asks the buyer to be: a company only, or their own choice.
 	OrgOnly   bool
@@ -471,10 +474,18 @@ func paragraphs(text string) []string {
 // conditional request behind a CDN has to go on: the tag is the hash of the
 // bytes and does not survive the edge recompressing them, while a date describes
 // the resource itself. Zero means we have nothing honest to claim.
-func setLastModified(w http.ResponseWriter, t time.Time) {
-	if !t.IsZero() {
-		w.Header().Set("Last-Modified", t.UTC().Format(http.TimeFormat))
+//
+// A page changes with its products and also with what every page shares: the
+// template (a release) and the shop's settings. Stating the products' date alone
+// answered 304 for a page whose layout or delivery line had changed.
+func (s *Storefront) setLastModified(w http.ResponseWriter, t time.Time) {
+	if t.IsZero() {
+		return
 	}
+	if c := s.db.PagesChangedAt(); c.After(t) {
+		t = c
+	}
+	w.Header().Set("Last-Modified", t.UTC().Format(http.TimeFormat))
 }
 
 // newest is the freshest change among the products a page shows.
@@ -549,7 +560,7 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
-	setLastModified(w, newest(products))
+	s.setLastModified(w, newest(products))
 	images, _ := s.db.ImagesFor(productIDs(products))
 	cards := make([]cardVM, 0, len(products))
 	for _, p := range products {
@@ -708,7 +719,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	setLastModified(w, p.UpdatedAt)
+	s.setLastModified(w, p.UpdatedAt)
 	raw, _ := s.db.ListImages(p.ID)
 	imgs := make([]imageVM, 0, len(raw))
 	for _, im := range raw {
@@ -735,6 +746,12 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	links, _ := s.db.OutsideLinks(p.ID)
 	data.CanBuy = shop.CartEnabled && p.Stock > 0
 	data.Buy = buyBox(p.ButtonsWith(shop), shop, p, nmID, sku, links)
+	data.OwnOrders = shop.CartEnabled
+	for _, b := range data.Buy {
+		if b.Kind == database.BuyMsg {
+			data.OwnOrders = true
+		}
+	}
 	if family, _ := s.db.PackFamily(p); len(family) > 0 {
 		data.Variants = variants(family, p.Slug)
 		// The size row carries the same links and says more, so the plain list goes.
@@ -827,7 +844,7 @@ func (s *Storefront) Sitemap(w http.ResponseWriter, r *http.Request) {
 		set.URLs = append(set.URLs, sitemapURL{
 			Loc: s.baseURL + "/p/" + p.Slug, LastMod: p.UpdatedAt.Format(time.DateOnly)})
 	}
-	setLastModified(w, newest(products))
+	s.setLastModified(w, newest(products))
 	w.Header().Set("Content-Type", "application/xml")
 	// An hour, as the product feeds already say: a crawler that re-reads the map
 	// on every hop through the catalogue costs a full pass over the products.

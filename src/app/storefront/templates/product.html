@@ -163,8 +163,9 @@
       {{/* WB and Ozon keep delivery right under the button, small; the details are a click away. */}}
       <ul class="trust">
         {{if .Shop.DeliveryNote}}<li class="delivery"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M2 6h11v10H2zM13 9h4l3 3v4h-7zM6 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01"/></svg><a href="/info">{{.Shop.DeliveryNote}}</a></li>{{end}}
-        <li>Оплата при получении — без предоплаты</li>
-        <li>Подтверждаем заказ звонком</li>
+        {{/* Only a shop that takes the order can promise how it is paid and confirmed. */}}
+        {{if .OwnOrders}}<li>Оплата при получении — без предоплаты</li>
+        <li>Подтверждаем заказ звонком</li>{{end}}
         {{if .Shop.ShopPhone}}<li>Вопросы: <a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a></li>{{end}}
       </ul>
       {{/* The one buyer we measured never opened the cart: he read the card,

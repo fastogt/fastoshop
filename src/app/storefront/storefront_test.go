@@ -1965,6 +1965,28 @@ func TestConditionalGetWorksOnTheDateAlone(t *testing.T) {
 	}
 }
 
+// The date must move when the settings do: a copy from before the delivery line
+// was changed is not the page the shop now serves.
+func TestSettingsChangeMovesTheDate(t *testing.T) {
+	d, h := setup(t)
+	first := httptest.NewRecorder()
+	h.ServeHTTP(first, httptest.NewRequest("GET", "/p/krasnyj-chajnik", nil))
+	stamp := first.Header().Get("Last-Modified")
+	time.Sleep(1100 * time.Millisecond) // HTTP dates hold whole seconds
+	s, _ := d.GetSettings()
+	s.DeliveryNote = "Минск - завтра"
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest("GET", "/p/krasnyj-chajnik", nil)
+	r.Header.Set("If-Modified-Since", stamp)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Errorf("settings changed, yet the old copy was confirmed: %d", w.Code)
+	}
+}
+
 // A client that offers a tag is asking about that tag; a date it also sends must
 // not override the answer, or a changed page would read as unchanged.
 func TestTagBeatsTheDateWhenBothAreOffered(t *testing.T) {
@@ -2142,5 +2164,23 @@ func TestDeliveryNoteInTheBuyBox(t *testing.T) {
 	// Under the buttons, as WB and Ozon keep it, not shouting over the price.
 	if strings.Index(body, `class="delivery"`) < strings.Index(body, "В корзину") {
 		t.Error("the delivery note must stand under the buy button")
+	}
+}
+
+// A showcase that sends buyers to a marketplace takes no order, so it must not
+// promise payment on receipt or a confirming call.
+func TestNoOwnOrdersNoPaymentPromise(t *testing.T) {
+	d, h := setup(t)
+	if !strings.Contains(get(t, h, "/p/krasnyj-chajnik"), "Оплата при получении") {
+		t.Fatal("a shop with its cart on lost the payment line")
+	}
+	s, _ := d.GetSettings()
+	s.CartEnabled, s.BuyButtons, s.Telegram, s.WhatsApp = false, "wb", "", ""
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	body := get(t, h, "/p/krasnyj-chajnik")
+	if strings.Contains(body, "Оплата при получении") || strings.Contains(body, "Подтверждаем заказ звонком") {
+		t.Error("a shop that takes no order promised payment on receipt and a call")
 	}
 }

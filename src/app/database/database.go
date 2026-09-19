@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/mattn/go-sqlite3"
 )
@@ -12,7 +14,12 @@ type Database struct {
 	db *sql.DB
 	// The stats page needs it; the caller has already expanded the config's "~".
 	path string
+	// Unix time every page last changed outside its products: settings saved, or this binary started.
+	changed atomic.Int64
 }
+
+// PagesChangedAt is when every page changed at once: a release, or the shop's settings saved.
+func (d *Database) PagesChangedAt() time.Time { return time.Unix(d.changed.Load(), 0) }
 
 // Path - the file the database opened. For ":memory:" it returns just that.
 func (d *Database) Path() string { return d.path }
@@ -43,6 +50,7 @@ func Open(path string) (*Database, error) {
 	// SQLite writes single-threaded, and ":memory:" is per-connection.
 	db.SetMaxOpenConns(1)
 	d := &Database{db: db, path: path}
+	d.changed.Store(time.Now().Unix())
 	if err := d.migrate(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)

@@ -1,3 +1,8 @@
+1.60.3 / September 19, 2026
+[Alexandr Topilski]
+- A returning visitor no longer gets an old page after a release or a settings change. Last-Modified stated only when the product changed, and behind a CDN, which strips the tag, it was the only validator left: a browser or a crawler holding an older copy was told "not modified" while the layout, the delivery line or the phone had changed. The date is now the latest of the product's change, the shop's settings saved and the process start, so any release refreshes every page
+- A shop that takes no order itself - no cart and no messenger button, only links to a marketplace - no longer promises "payment on receipt" and "we confirm the order by phone" under the buttons
+
 1.60.2 / September 19, 2026
 [Alexandr Topilski]
 - The delivery line now stands right under the buy buttons: the note about an invoice for companies moved below the list of delivery, payment and phone, so it no longer pushes the date down
