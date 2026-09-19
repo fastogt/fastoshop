@@ -2135,7 +2135,12 @@ func TestDeliveryNoteInTheBuyBox(t *testing.T) {
 	if err := d.UpdateSettings(s); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(get(t, h, "/p/krasnyj-chajnik"), "По Минску - завтра") {
-		t.Error("product page missing the delivery note")
+	body := get(t, h, "/p/krasnyj-chajnik")
+	if !strings.Contains(body, `<a href="/info">По Минску - завтра</a>`) {
+		t.Error("the delivery note must lead to the delivery terms")
+	}
+	// Under the buttons, as WB and Ozon keep it, not shouting over the price.
+	if strings.Index(body, `class="delivery"`) < strings.Index(body, "В корзину") {
+		t.Error("the delivery note must stand under the buy button")
 	}
 }

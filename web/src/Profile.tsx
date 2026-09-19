@@ -143,12 +143,12 @@ const kText = {
     en: "Delivery on the product page",
   },
   deliveryNoteHint: {
-    ru: "Одна строка над кнопкой покупки, на каждой карточке. На площадках срок доставки стоит именно там, и покупатель решает в этот момент. Пустое поле - строки нет.",
-    en: "One line over the buy button on every product page. Marketplaces put the delivery date right there, and that is where the buyer decides. Empty means no line.",
+    ru: "Одна короткая строка под кнопками покупки, на каждой карточке, со ссылкой на «Доставку и оплату». Так её держат Wildberries и Ozon: срок рядом с кнопкой, подробности в один клик. Пустое поле - строки нет.",
+    en: "One short line under the buy buttons on every product page, linking to the delivery terms. That is where Wildberries and Ozon keep it: the date next to the button, details a click away. Empty means no line.",
   },
   deliveryNotePlaceholder: {
-    ru: "По Минску - завтра, по Беларуси - 2–3 дня, самовывоз бесплатно",
-    en: "Tomorrow in the city, 2–3 days nationwide, free pickup",
+    ru: "Минск - завтра, Беларусь - 2–3 дня",
+    en: "Tomorrow in the city, 2–3 days nationwide",
   },
   tileAspectHint: {
     ru: "Пропорция рамки под фото в каталоге. 3:4 - формат Ozon и Wildberries: если каталог приехал с площадки, выбирайте его, иначе четверть плитки уйдёт в пустые поля. Для снимков «квадратом» оставьте 1:1.",

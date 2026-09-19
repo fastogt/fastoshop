@@ -212,7 +212,10 @@ main > h1 { margin-block: 28px 20px; }
 .badge.in { background: rgba(31, 122, 69, 0.12); color: var(--ok); }
 
 .oos { color: var(--muted); }
-.delivery { margin: 10px 0 0; font-weight: 600; }
+.delivery { display: flex; gap: 6px; align-items: flex-start; }
+.delivery svg { flex: none; margin-top: 2px; }
+.delivery a { color: var(--text); text-decoration: none; }
+.delivery a:hover { text-decoration: underline; }
 .ok { color: var(--ok); font-weight: 600; }
 
 .notice {

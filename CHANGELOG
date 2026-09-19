@@ -1,3 +1,7 @@
+1.60.1 / September 19, 2026
+[Alexandr Topilski]
+- The delivery line moved under the buy buttons and became quiet: a small truck icon and a link to the delivery terms, the first line of the list that already says payment is on receipt. It stood over the button in bold and read louder than the price; Wildberries and Ozon keep the date next to the button, small, with the details one click away
+
 1.60.0 / September 19, 2026
 [Alexandr Topilski]
 - A product page can say when the goods arrive. The profile gains one line, "Delivery on the product page", shown over the buy button on every card as the owner wrote it; marketplaces print the delivery date right there, and a measured storefront lost most buyers between the card and the cart
