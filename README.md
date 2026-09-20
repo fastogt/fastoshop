@@ -59,7 +59,7 @@ Search adds the second half. Someone typing an exact model with its characterist
 
 - Online payments and fiscal receipts. An order is a request: the buyer leaves a name and a phone or an email, you get a letter, the deal is closed by phone.
 - Promo codes and discount campaigns.
-- Product variants: size and colour are separate products for now.
+- Product variants: sets and pack sizes are there, size and colour are separate products for now.
 - Customer reviews. Without them a listing carries no stars in search results, and inventing a rating is both forbidden and pointless.
 - Delivery and return terms as structured data: both live as free text on the shop's own pages, so search engines cannot read them as fields.
 - FBO stock - goods on the platform's own warehouse are counted by the platform.
@@ -92,7 +92,18 @@ sudo -u fastocloud fastoshop -create-owner you@example.com   # prints a generate
 sudo -u fastocloud fastoshop -reset-password                 # forgot it? no mail server needed
 ```
 
-After the shop is live, add it to Yandex.Webmaster and Google Search Console and submit the sitemap. In Yandex, set the region to where you actually sell - for commercial queries it decides a great deal.
+Instead of a TCP port the service can listen on a unix socket: `host: "/run/fastoshop.sock"` in the config and `proxy_pass http://unix:/run/fastoshop.sock:;` in nginx (the trailing colon is part of the syntax). Then it is not reachable over the network at all.
+
+After the shop is live, add it to Yandex.Webmaster and Google Search Console and submit the sitemap. Verify the domain with a **TXT record in DNS**: it covers the subdomains too and needs nothing from the shop. In Yandex, set the region to where you actually sell - for commercial queries it decides a great deal.
+
+Analytics is two optional fields in **Profile → "Counters"**:
+
+| Field | Where to get it |
+|---|---|
+| Yandex.Metrica | [metrika.yandex.ru](https://metrika.yandex.ru/) → new counter → a number like `98765432` |
+| Google Analytics | [analytics.google.com](https://analytics.google.com/) → data stream → an id like `G-XXXXXXXXXX` |
+
+Paste **the id only**, not the whole snippet: the storefront builds the code itself. While both fields are empty the storefront carries no `<script>` at all.
 
 ## Everything else
 
@@ -100,7 +111,7 @@ After the shop is live, add it to Yandex.Webmaster and Google Search Console and
 - **Weight and parcel size** - optional and imported from Ozon or Wildberries, where they are mandatory on a card. Unstated stays unstated rather than becoming a zero.
 - **Search that matches words** - every word the buyer typed, in any order, in the title or the article.
 - **Long jobs do not hold the browser** - import and photo downloads run in the background with progress and a stop button.
-- **Admin in Russian and English**; the storefront speaks the shop's own language.
+- **Admin in Russian and English**; the storefront is in Russian.
 - **Sales export** - a CSV order journal for the accountant.
 
 ## Architecture

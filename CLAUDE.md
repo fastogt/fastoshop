@@ -1,6 +1,6 @@
 # CLAUDE.md - fastoshop
 
-Self-hosted shop for a single sole proprietor: SEO storefront + catalog import from WB/Ozon + request-style orders. Open source (AGPL-3.0), repository `git@github.com:fastogt/fastoshop.git`.
+Self-hosted shop for one small seller (ИП or a small ООО): SEO storefront + catalog import from WB/Ozon + request-style orders. Open source (AGPL-3.0), repository `git@github.com:fastogt/fastoshop.git`.
 
 ## Stack
 
@@ -52,7 +52,7 @@ Format - SemVer `vMAJOR.MINOR.PATCH`:
 
 A release is **not** cut for changes that never reach the user: README edits, screenshots, CI, tests, refactoring without a behavior change. A tag on such things is noise in the release list.
 
-**DB schema.** There is no migration framework, and until the first stable release none is needed: the schema is edited directly in the `CREATE TABLE` statements in `database.go`; live databases that would need catching up do not exist yet. A schema change is at minimum **MINOR**.
+**DB schema.** There is no migration framework, and until the first stable release none is needed: the schema is edited directly in the `CREATE TABLE` statements in `database.go`. Live databases that need catching up do exist (five shops on the platform as of 09.2026), and each such release is applied to them by hand. A schema change is at minimum **MINOR**.
 
 `ponytail:` after v1, columns are added to `settings` as a list of `ALTER TABLE ADD COLUMN` statements with a duplicate-column check (this is how `addSettingsColumns` lived before the release). As soon as we need to rename a column, change a type, or touch a table with data - a runner on `PRAGMA user_version`: an array of migrations, a fresh database is stamped with the current version immediately, an old one catches up one migration at a time. We do not write it ahead of time.
 
