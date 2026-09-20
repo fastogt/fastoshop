@@ -6,3 +6,6 @@ go.sum
 web/package-lock.json
 .env
 .claude
+
+# Browser-session artefacts from tooling, never part of the product.
+.playwright-mcp/
