@@ -8,8 +8,7 @@ server {
     gzip on;
     gzip_vary on;
     gzip_min_length 256;
-    # Everything here arrives through proxy_pass, and nginx does not compress a
-    # proxied response unless told to: without this line the whole block is dead.
+    # Requests relayed by a proxy or CDN carry Via, and by default nginx skips gzip for them.
     gzip_proxied any;
     gzip_types text/plain text/css text/xml application/xml application/json
                application/javascript image/svg+xml;

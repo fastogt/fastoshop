@@ -1,6 +1,6 @@
 1.60.5 / September 20, 2026
 [Alexandr Topilski]
-- The sample nginx config shipped with the package was missing two directives, so a hand-installed shop served every response uncompressed and lost the import progress stream: gzip needs gzip_proxied any to touch anything that arrives through proxy_pass, and the progress stream needs proxy_http_version 1.1 to stay open. Shops on the platform are unaffected, their config comes from elsewhere
+- The sample nginx config shipped with the package gained the two directives the platform's own config already had: gzip_proxied any, so a buyer who arrives through a proxy or a CDN (a request with a Via header) gets compressed pages too, and proxy_http_version 1.1 for the long-lived import progress stream. Shops on the platform are unaffected, their config comes from elsewhere
 
 1.60.4 / September 19, 2026
 [Alexandr Topilski]
