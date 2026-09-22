@@ -33,13 +33,14 @@ type Storefront struct {
 	uploads string
 	// Sibling of uploads and deliberately NOT served: a requisites file carries a
 	// bank account, and /uploads/ is a plain FileServer.
-	requisites string
-	index      *template.Template
-	product    *template.Template
-	cart       *template.Template
-	info       *template.Template
-	privacy    *template.Template
-	contacts   *template.Template
+	requisites  string
+	index       *template.Template
+	product     *template.Template
+	cart        *template.Template
+	info        *template.Template
+	privacy     *template.Template
+	contacts    *template.Template
+	notFoundTpl *template.Template
 	// Suffixed: a field may not share a name with the Category/Categories methods.
 	categoryTpl   *template.Template
 	categoriesTpl *template.Template
@@ -66,6 +67,7 @@ func New(db *database.Database, baseURL, uploadsDir string) *Storefront {
 		info:          template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/info.html")),
 		privacy:       template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/privacy.html")),
 		contacts:      template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/contacts.html")),
+		notFoundTpl:   template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/notfound.html")),
 		categoryTpl:   template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/category.html")),
 		categoriesTpl: template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/categories.html")),
 	}
@@ -114,6 +116,7 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/favicon.svg", s.Favicon)
 	r.Get("/favicon.ico", s.FaviconICO)
 	r.Get("/nophoto.svg", s.NoPhoto)
+	r.NotFound(s.notFound)
 	return r
 }
 
@@ -364,7 +367,7 @@ func (s *Storefront) Category(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// A 404, not an empty listing: a soft 404 keeps the address and burns crawl budget.
-	http.NotFound(w, r)
+	s.notFound(w, r)
 }
 
 // Without this index a crawler finds only the top level of the tree.
@@ -375,7 +378,7 @@ func (s *Storefront) Categories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(nodes) == 0 {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL, CSS: template.CSS(styleCSS),
@@ -535,7 +538,7 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 		n, err := strconv.Atoi(raw)
 		// Garbage in ?page= is a 404, not an empty listing: soft 404s poison the index.
 		if err != nil || n < 1 {
-			http.NotFound(w, r)
+			s.notFound(w, r)
 			return
 		}
 		if n == 1 {
@@ -551,7 +554,7 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 	}
 	pages := max((total+kCatalogPageSize-1)/kCatalogPageSize, 1)
 	if page > pages {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	products, err := s.db.ListVisibleProductsPage(filter,
@@ -716,7 +719,7 @@ func clipName(s string) string {
 func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 	p, err := s.db.GetVisibleProductBySlug(chi.URLParam(r, "slug"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	s.setLastModified(w, p.UpdatedAt)
@@ -772,13 +775,24 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 func (s *Storefront) Info(w http.ResponseWriter, r *http.Request) {
 	shop := s.shop()
 	if shop.Terms == "" {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	data := pageVM{Shop: shop, BaseURL: s.baseURL, CSS: template.CSS(styleCSS),
 		CartCount: cartCount(r), Canonical: s.baseURL + "/info"}
 	if err := s.info.ExecuteTemplate(w, "base", data); err != nil {
 		log.Errorf("render info: %v", err)
+	}
+}
+
+// notFound keeps the 404 status for crawlers and the shop around it for people.
+func (s *Storefront) notFound(w http.ResponseWriter, r *http.Request) {
+	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL, CSS: template.CSS(styleCSS),
+		CartCount: cartCount(r), NoIndex: true}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusNotFound)
+	if err := s.notFoundTpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Errorf("render not found: %v", err)
 	}
 }
 
@@ -795,7 +809,7 @@ func (s *Storefront) Privacy(w http.ResponseWriter, r *http.Request) {
 func (s *Storefront) Contacts(w http.ResponseWriter, r *http.Request) {
 	shop := s.shop()
 	if shop.ShopPhone == "" && shop.Requisites == "" {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	data := pageVM{Shop: shop, BaseURL: s.baseURL, CSS: template.CSS(styleCSS),

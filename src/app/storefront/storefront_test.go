@@ -2232,3 +2232,22 @@ func TestNoOwnOrdersNoPaymentPromise(t *testing.T) {
 		t.Error("a shop without a cart still links to it and offers an invoice through it")
 	}
 }
+
+// A dead address keeps its 404 for crawlers and the shop around it for people.
+func TestNotFoundKeepsTheShop(t *testing.T) {
+	_, h := setup(t)
+	for _, path := range []string{"/p/no-such-thing", "/c/no-such-section", "/no/such/page"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		body := w.Body.String()
+		if w.Code != http.StatusNotFound {
+			t.Errorf("%s answered %d, want 404", path, w.Code)
+		}
+		if !strings.Contains(body, "Такой страницы нет") || !strings.Contains(body, `name="q"`) {
+			t.Errorf("%s is a bare 404 with no way back into the shop", path)
+		}
+		if !strings.Contains(body, "noindex") {
+			t.Errorf("%s may be indexed", path)
+		}
+	}
+}

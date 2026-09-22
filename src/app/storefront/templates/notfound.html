@@ -1,0 +1,13 @@
+{{define "title"}}Страница не найдена — {{.Shop.ShopName}}{{end}}
+{{define "content"}}
+{{/* A dead address from an old search result is a buyer, not a bot: give them a way on. */}}
+<div class="prose">
+<h1>Такой страницы нет</h1>
+<p>Возможно, товар закончился или адрес изменился. Поищите его по названию или загляните в каталог.</p>
+<form action="/" method="get" class="search" role="search">
+<input type="search" name="q" placeholder="Поиск по товарам" aria-label="Поиск по товарам" maxlength="100">
+<button type="submit">Найти</button>
+</form>
+<p><a href="/">Перейти в каталог</a></p>
+</div>
+{{end}}

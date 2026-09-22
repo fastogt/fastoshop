@@ -432,7 +432,12 @@ form.qty button:hover { background: var(--accent-soft); }
 .terms { max-width: 60ch; margin-block: 20px; }
 
 /* Legal prose, laid out for reading rather than for the page width. */
-.prose { max-width: 70ch; }
+.prose { max-width: 70ch; padding-bottom: 48px; }
+.prose h1 { margin-block: 28px 20px; }
+.prose h2 { margin-block: 28px 8px; }
+.prose p + p { margin-top: 12px; }
+.prose a[href^="tel:"] { white-space: nowrap; }
+.prose .search { margin-block: 16px; max-width: 480px; }
 
 /* Subcategory links: a horizontal list above the product grid. */
 .cats { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px 24px; }

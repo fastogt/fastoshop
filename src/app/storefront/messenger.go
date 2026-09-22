@@ -221,7 +221,7 @@ func goTo(w http.ResponseWriter, r *http.Request, target string) {
 func (s *Storefront) GoMessenger(w http.ResponseWriter, r *http.Request) {
 	p, err := s.db.GetVisibleProductBySlug(chi.URLParam(r, "slug"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	goTo(w, r, messengerURL(s.shop(), p, s.baseURL+"/p/"+p.Slug, chi.URLParam(r, "messenger")))
