@@ -5,14 +5,17 @@
 {{if .SoldOut}}<p class="notice oos">Пока вы оформляли заказ, «{{.SoldOut}}» закончился — мы убрали его из корзины. Заказ не оформлен, проверьте состав и подтвердите ещё раз.</p>{{end}}
 {{if .Dropped}}<p class="notice oos">Часть товаров закончилась и была убрана из корзины.</p>{{end}}
 {{if .Cart}}
+{{/* List on the left, the sum and the form on the right, as on WB and Ozon: the
+     buyer sees the order button without scrolling past every line. */}}
+<div class="cart-layout">
 <table class="cart-table">
 {{range .Cart}}
   <tr>
-    <td>{{if .ImageURL}}<a href="/p/{{.Slug}}"><img class="nomark" src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy"></a>{{end}}</td>
-    <td><a href="/p/{{.Slug}}">{{.Title}}</a></td>
-    <td class="unit">{{.PriceStr}} {{$.Shop.Sign}}</td>
-    <td>
-      {{/* Minus, number, plus and a cross — the familiar set from any shop.
+    <td class="thumb">{{if .ImageURL}}<a href="/p/{{.Slug}}"><img class="nomark" src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy"></a>{{end}}</td>
+    <td class="item">
+      <a href="/p/{{.Slug}}">{{.Title}}</a>
+      <div class="unit">{{.PriceStr}} {{$.Shop.Sign}}</div>
+      {{/* Minus, number, plus, and "remove" on its own line, away from the plus.
            The hidden "set" button comes first because Enter in the quantity field
            presses the form's first button: without it typing a number would decrement it. */}}
       <form method="post" action="/cart/update" class="qty">
@@ -22,16 +25,15 @@
         <label for="qty-{{.Slug}}" hidden>Количество</label>
         <input id="qty-{{.Slug}}" name="qty" type="number" value="{{.Qty}}" min="1" max="{{.Stock}}">
         <button type="submit" name="action" value="inc" aria-label="Больше">+</button>
-        <button type="submit" name="action" value="remove" class="remove"
-                aria-label="Удалить из корзины" title="Удалить из корзины">×</button>
+        <button type="submit" name="action" value="remove" class="remove">Удалить</button>
       </form>
     </td>
     <td class="line">{{.LineStr}} {{$.Shop.Sign}}</td>
   </tr>
 {{end}}
 </table>
-<p class="total"><span class="oos">Итого:</span> <span class="price">{{.TotalStr}} {{$.Shop.Sign}}</span></p>
 <div class="checkout">
+  <p class="total"><span class="oos">Итого, {{.CartCount}} шт.:</span> <span class="price">{{.TotalStr}} {{$.Shop.Sign}}</span></p>
   <h2>Оформление заказа</h2>
   {{/* The error lives next to the form it talks about: rendered at the top of
        the page it sat above the fold while the empty field sat below it. */}}
@@ -83,6 +85,7 @@
     <p class="oos">Оформляя заказ, вы соглашаетесь на
       <a href="/privacy">обработку персональных данных</a>.</p>
   </form>
+</div>
 </div>
 {{else}}
 <div class="empty">

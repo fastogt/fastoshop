@@ -1,3 +1,7 @@
+1.60.7 / September 22, 2026
+[Alexandr Topilski]
+- The cart is laid out as on the marketplaces: the lines on the left, the total and the order form on the right, so the order button is visible without scrolling past every line. The photo in a line is larger and stays on a phone, where it used to be hidden; "remove" is a quiet link on its own line instead of a cross beside the plus
+
 1.60.6 / September 22, 2026
 [Alexandr Topilski]
 - The cart counter in the header now shows right after "Add to cart". A page the browser already held was confirmed unchanged by its date, which knows nothing of the cart, so the buyer kept seeing a header without the count - almost always behind a CDN, which strips the other validator. A page for a visitor with a cart no longer states a date; crawlers carry no cart and are answered as before
