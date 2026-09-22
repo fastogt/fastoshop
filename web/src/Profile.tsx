@@ -180,8 +180,12 @@ const kText = {
   smtpPort: { ru: "Порт", en: "Port" },
   smtpFrom: { ru: "Отправитель писем", en: "Sender address" },
   smtpFromHint: {
-    ru: "Адрес в поле «От кого». Пусто - берётся логин. Заполните, если логин не адрес: сервисы рассылок пускают по API-ключу, а почта Google - по основному ящику, тогда как письмо должно приходить от адреса магазина.",
-    en: "The address in the From field. Empty means the login is used. Fill it in when the login is not an address: relays sign in by an API key and Google mail by the main mailbox, while the letter should come from the shop's address.",
+    ru: "Адрес в поле «От кого» у всех писем: и вам о заказе, и покупателю с подтверждением. Пусто - берётся логин. Заказы приходят на почту владельца, по ней же вход в админку, и её покупатель видит на витрине в «Контактах». Лучше, чтобы отправитель совпадал с ней.",
+    en: "The address in the From field of every letter: yours about an order and the buyer's confirmation. Empty means the login is used. Orders arrive at the owner's email, which is also the admin login and what buyers see under Contacts on the storefront. Best keep the sender the same.",
+  },
+  senderDiffers: {
+    ru: "Покупатель увидит на витрине {owner}, а письмо получит от {sender}.",
+    en: "Buyers will see {owner} on the storefront but get letters from {sender}.",
   },
   smtpUser: { ru: "Логин (полный email)", en: "Login (full email)" },
   smtpPassword: { ru: "Пароль приложения", en: "App password" },
@@ -638,6 +642,15 @@ export default function Profile() {
               value={s.smtp_from}
               onChange={(v) => setS({ ...s, smtp_from: v })}
             />
+            {(s.smtp_from || s.smtp_user) &&
+              (s.smtp_from || s.smtp_user).toLowerCase() !==
+                s.owner_email.toLowerCase() && (
+                <p className="text-sm text-red-600">
+                  {t("senderDiffers")
+                    .replace("{owner}", s.owner_email)
+                    .replace("{sender}", s.smtp_from || s.smtp_user)}
+                </p>
+              )}
             <Field
               label={t("smtpPassword")}
               type="password"
