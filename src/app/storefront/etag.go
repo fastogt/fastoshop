@@ -24,6 +24,10 @@ func ETag(next http.Handler) http.Handler {
 		}
 		rec := &etagRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
+		// The date knows nothing of the cart counter in the header, so a buyer's page gets none.
+		if _, err := r.Cookie(kCartCookie); err == nil {
+			w.Header().Del("Last-Modified")
+		}
 
 		// Only a plain 200 is worth a tag: a redirect or a 404 carries no body
 		// a client would want to keep.

@@ -1987,6 +1987,37 @@ func TestSettingsChangeMovesTheDate(t *testing.T) {
 	}
 }
 
+// A page cached before "add to cart" must not come back by its date without the counter.
+func TestCartCounterBeatsTheDate(t *testing.T) {
+	_, h := setup(t)
+	first := httptest.NewRecorder()
+	h.ServeHTTP(first, httptest.NewRequest("GET", "/p/krasnyj-chajnik", nil))
+	stamp := first.Header().Get("Last-Modified")
+
+	r := httptest.NewRequest("POST", "/cart/add", strings.NewReader("slug=krasnyj-chajnik"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	add := httptest.NewRecorder()
+	h.ServeHTTP(add, r)
+	cookies := add.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("adding to the cart set no cookie")
+	}
+
+	r = httptest.NewRequest("GET", "/p/krasnyj-chajnik", nil)
+	r.Header.Set("If-Modified-Since", stamp)
+	for _, c := range cookies {
+		r.AddCookie(c)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Корзина (1)") {
+		t.Errorf("a buyer with a cart got %d and no counter", w.Code)
+	}
+	if w.Header().Get("Last-Modified") != "" {
+		t.Error("a page with the cart counter carries a date a browser would revalidate by")
+	}
+}
+
 // A client that offers a tag is asking about that tag; a date it also sends must
 // not override the answer, or a changed page would read as unchanged.
 func TestTagBeatsTheDateWhenBothAreOffered(t *testing.T) {
