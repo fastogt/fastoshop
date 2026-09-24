@@ -181,3 +181,18 @@ func TestCabinetWithAnEmptyCabinet(t *testing.T) {
 		t.Fatalf("empty cabinet: %+v", got)
 	}
 }
+
+// Without the card number the storefront cannot build the "Buy on Ozon" address,
+// so the button never appears: publishing has to fetch and store it.
+func TestPublishStoresTheCardNumber(t *testing.T) {
+	h, d, _ := publishTest(t, "A")
+	id := seedProduct(t, d, "A", 5)
+
+	body, _ := json.Marshal(channel.PublishRequest{ProductIDs: []int64{id}})
+	if got := decode[publishResponse](t, do(t, h, "POST", "/publish", string(body))); got.Published != 1 {
+		t.Fatalf("publish: %+v", got)
+	}
+	if _, sku := d.PlatformCards(id); sku == 0 {
+		t.Error("the link carries no card number, the Ozon button will never show")
+	}
+}

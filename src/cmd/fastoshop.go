@@ -76,6 +76,10 @@ func run(cfg *config.Config) error {
 	uploadsDir := filepath.Join(filepath.Dir(dbPath), "uploads")
 	h := handler.NewHandler(db, uploadsDir)
 	h.LogPath = logPath
+	if cfg.Settings.LocalBaseURL() {
+		log.Warnf("base_url is %q: sitemap, canonical and the order emails will carry it - "+
+			"put the shop's public address in the config", cfg.Settings.BaseURL)
+	}
 	sf := storefront.New(db, cfg.Settings.BaseURL, uploadsDir)
 
 	// Settings are read on every pass: enabling pushes must not require a restart.

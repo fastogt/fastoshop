@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -745,5 +746,60 @@ func TestYMLParams(t *testing.T) {
 		if it.SKU == "TR-4" && it.Params != nil {
 			t.Errorf("товар без характеристик получил набор: %+v", it.Params)
 		}
+	}
+}
+
+// A catalogue larger than one page must arrive whole: WB answers 100 cards at a
+// time and expects the last card of a page back as the cursor.
+func TestWBImportWalksEveryPage(t *testing.T) {
+	card := func(i int) string {
+		return fmt.Sprintf(`{"nmID":%d,"vendorCode":"WB-%d","title":"Товар %d",
+			"sizes":[{"chrtID":%d,"techSize":"0","skus":["200000000%04d"]}]}`, i, i, i, i, i)
+	}
+	page := func(from, n int, updated string, nm int64) string {
+		cards := make([]string, 0, n)
+		for i := from; i < from+n; i++ {
+			cards = append(cards, card(i))
+		}
+		return fmt.Sprintf(`{"cards":[%s],"cursor":{"total":%d,"updatedAt":%q,"nmID":%d}}`,
+			strings.Join(cards, ","), n, updated, nm)
+	}
+	asked := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("/content/v2/get/cards/list", func(w http.ResponseWriter, r *http.Request) {
+		var req wbCardsRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		asked++
+		if asked == 1 {
+			_, _ = w.Write([]byte(page(1, 100, "2026-09-01T00:00:00Z", 100)))
+			return
+		}
+		if req.Settings.Cursor.NmID != 100 || req.Settings.Cursor.UpdatedAt != "2026-09-01T00:00:00Z" {
+			t.Errorf("second page asked without the first page's cursor: %+v", req.Settings.Cursor)
+		}
+		_, _ = w.Write([]byte(page(101, 20, "", 0)))
+	})
+	mux.HandleFunc("/api/v2/list/goods/filter", func(w http.ResponseWriter, _ *http.Request) {
+		goods := make([]string, 0, 120)
+		for i := 1; i <= 120; i++ {
+			goods = append(goods, fmt.Sprintf(`{"nmID":%d,"sizes":[{"sizeID":%d,"discountedPrice":100}]}`, i, i))
+		}
+		_, _ = fmt.Fprintf(w, `{"data":{"listGoods":[%s]}}`, strings.Join(goods, ","))
+	})
+	mux.HandleFunc("/api/v3/warehouses", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[]`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	d, _ := database.OpenInMemory()
+	defer func() { _ = d.Close() }()
+	imp := &WB{Token: "tok", ContentURL: srv.URL, PricesURL: srv.URL, MarketplaceURL: srv.URL}
+	res, err := Run(context.Background(), imp, d, "Ромашка", 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Imported != 120 {
+		t.Errorf("imported %d of 120 cards: the catalogue was cut at a page", res.Imported)
 	}
 }

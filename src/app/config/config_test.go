@@ -33,3 +33,16 @@ func TestLoadRequiresBaseURL(t *testing.T) {
 		t.Fatal("want an error without base_url, got none")
 	}
 }
+
+// The sample config ships with a localhost address; a shop left on it would
+// publish that address in its sitemap.
+func TestLocalBaseURLIsNoticed(t *testing.T) {
+	for _, u := range []string{"", "  ", "http://localhost:9097", "http://127.0.0.1:9097", "HTTP://LocalHost/"} {
+		if !(Settings{BaseURL: u}).LocalBaseURL() {
+			t.Errorf("%q passed as a public address", u)
+		}
+	}
+	if (Settings{BaseURL: "https://shop.example.com"}).LocalBaseURL() {
+		t.Error("a real address was called local")
+	}
+}

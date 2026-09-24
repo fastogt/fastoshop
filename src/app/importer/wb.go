@@ -107,12 +107,18 @@ type wbCardsResponse struct {
 		} `json:"characteristics"`
 	} `json:"cards"`
 	Cursor struct {
-		Total int `json:"total"`
+		Total     int    `json:"total"`
+		UpdatedAt string `json:"updatedAt"`
+		NmID      int64  `json:"nmID"`
 	} `json:"cursor"`
 }
 
+// The page is what WB caps a single answer at; the next one is asked for by the
+// last card of the previous, which is why the cursor travels back in the request.
 type wbCursor struct {
-	Limit int `json:"limit"`
+	Limit     int    `json:"limit"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
+	NmID      int64  `json:"nmID,omitempty"`
 }
 
 type wbFilter struct {
@@ -128,13 +134,30 @@ type wbCardsRequest struct {
 	Settings wbSettings `json:"settings"`
 }
 
+const kWBCardsPage = 100
+
+// ponytail: 100 pages, ten thousand cards; a bigger catalogue needs the job to
+// report progress, not a larger constant.
+const kWBMaxPages = 100
+
 func (w *WB) cards() (*wbCardsResponse, error) {
-	var out wbCardsResponse
-	// ponytail: one page (100 cards); pagination comes when it is needed.
-	err := w.do("POST", w.content()+"/content/v2/get/cards/list",
-		wbCardsRequest{Settings: wbSettings{
-			Cursor: wbCursor{Limit: 100}, Filter: wbFilter{WithPhoto: -1}}}, &out)
-	return &out, err
+	all := &wbCardsResponse{}
+	cursor := wbCursor{Limit: kWBCardsPage}
+	for range kWBMaxPages {
+		var page wbCardsResponse
+		err := w.do("POST", w.content()+"/content/v2/get/cards/list",
+			wbCardsRequest{Settings: wbSettings{Cursor: cursor, Filter: wbFilter{WithPhoto: -1}}}, &page)
+		if err != nil {
+			return nil, err
+		}
+		all.Cards = append(all.Cards, page.Cards...)
+		if len(page.Cards) < kWBCardsPage || page.Cursor.UpdatedAt == "" {
+			break
+		}
+		cursor.UpdatedAt, cursor.NmID = page.Cursor.UpdatedAt, page.Cursor.NmID
+	}
+	all.Cursor.Total = len(all.Cards)
+	return all, nil
 }
 
 type wbWarehouse struct {

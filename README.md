@@ -35,7 +35,7 @@ None of this is an argument for leaving. The marketplace is where buyers find yo
 
 ## What you get
 
-**Your catalogue, moved for you.** Cards, photos, prices and stock come from where they already live: an Ozon or Wildberries seller account by API key, a YML feed of an existing site, or the supplier's own Excel price list - the real kind, with a logo on top, missing cells and photos pasted inside the sheet. Measured on a live 143 MB file: **23,699 products with 23,647 photos in five seconds**.
+**Your catalogue, moved for you.** Cards, photos, prices and stock come from where they already live: an Ozon or Wildberries seller account by API key, a YML feed of an existing site, or the supplier's own Excel price list - the real kind, with a logo on top, missing cells and photos pasted inside the sheet. Measured on a live 143 MB file: **23,699 products with 23,647 photos in five seconds**. From an Ozon seller account the import takes the first 1,000 products.
 
 **Pages built to be found.** The storefront sends no JavaScript at all: a catalogue page is about **16 KB gzipped** and paints immediately, which is what mobile ranking is scored on. Product markup, a sitemap with change dates, canonical addresses and human-readable URLs are there from the start, not as a plugin. Categories arrive with the catalogue - one supplier price list produced **570 category pages**, each a landing page for a broad query.
 

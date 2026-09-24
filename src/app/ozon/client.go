@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -130,6 +131,49 @@ func (c *Client) ListProducts() ([]Offer, error) {
 	}
 	return out, nil
 }
+
+// Ozon builds the public address of a card from the sku, and the listing does
+// not carry it: only /v3/product/info/list does, inside the sources of a card.
+type infoListRequest struct {
+	OfferID []string `json:"offer_id"`
+}
+
+type infoListResponse struct {
+	Items []struct {
+		OfferID string `json:"offer_id"`
+		SKU     int64  `json:"sku"`
+		Sources []struct {
+			SKU int64 `json:"sku"`
+		} `json:"sources"`
+	} `json:"items"`
+}
+
+// SKUs answers the card numbers of the given articles; an article Ozon does not
+// know is simply absent from the map.
+func (c *Client) SKUs(offerIDs []string) (map[string]int64, error) {
+	out := make(map[string]int64, len(offerIDs))
+	for chunk := range slices.Chunk(offerIDs, kInfoBatch) {
+		var page infoListResponse
+		if err := c.Post("/v3/product/info/list", infoListRequest{OfferID: chunk}, &page); err != nil {
+			return nil, err
+		}
+		for _, it := range page.Items {
+			sku := it.SKU
+			for _, src := range it.Sources {
+				if sku == 0 {
+					sku = src.SKU
+				}
+			}
+			if sku != 0 {
+				out[it.OfferID] = sku
+			}
+		}
+	}
+	return out, nil
+}
+
+// kInfoBatch is the ceiling of /v3/product/info/list per call.
+const kInfoBatch = 1000
 
 // kBatchSize is the ceiling of /v2/products/stocks per call.
 const kBatchSize = 100

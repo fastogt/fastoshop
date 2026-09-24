@@ -69,6 +69,26 @@ func newOzonMock(t *testing.T) *ozonMock {
 		}
 		_ = json.NewEncoder(w).Encode(resp)
 	})
+	// The card number the storefront builds the "Buy on Ozon" address from.
+	mux.HandleFunc("/v3/product/info/list", func(w http.ResponseWriter, r *http.Request) {
+		var req infoListRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		var resp infoListResponse
+		for i, o := range req.OfferID {
+			item := struct {
+				OfferID string `json:"offer_id"`
+				SKU     int64  `json:"sku"`
+				Sources []struct {
+					SKU int64 `json:"sku"`
+				} `json:"sources"`
+			}{OfferID: o}
+			item.Sources = append(item.Sources, struct {
+				SKU int64 `json:"sku"`
+			}{SKU: int64(900 + i)})
+			resp.Items = append(resp.Items, item)
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+	})
 	mux.HandleFunc("/v2/products/stocks", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Client-Id") != "cid" || r.Header.Get("Api-Key") != "key" {
 			w.WriteHeader(http.StatusUnauthorized)

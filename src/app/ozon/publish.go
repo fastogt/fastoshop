@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/fastogt/fastoshop/app/channel"
 	"github.com/fastogt/fastoshop/app/database"
 	"github.com/fastogt/fastoshop/app/httpjson"
@@ -150,8 +152,33 @@ func (h *Handlers) Publish(w http.ResponseWriter, r *http.Request) {
 		}
 		res.Published++
 	}
+	h.fillSKUs(c, products)
 	h.worker.StockChanged()
 	httpjson.WriteOK(w, res)
+}
+
+// fillSKUs stores the number the "Buy on Ozon" button is built from. A failure
+// here costs the button, not the link, so it is logged and not returned.
+func (h *Handlers) fillSKUs(c *Client, products []database.Product) {
+	offers := make([]string, 0, len(products))
+	for _, p := range products {
+		if p.SKU != "" {
+			offers = append(offers, p.SKU)
+		}
+	}
+	if len(offers) == 0 {
+		return
+	}
+	skus, err := c.SKUs(offers)
+	if err != nil {
+		log.Warnf("ozon card numbers: %v", err)
+		return
+	}
+	for offer, sku := range skus {
+		if err := h.db.SetOzonSKU(offer, sku); err != nil {
+			log.Warnf("ozon card number %s: %v", offer, err)
+		}
+	}
 }
 
 // The link is dropped only after the platform has been told the stock is zero.

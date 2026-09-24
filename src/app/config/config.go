@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -45,4 +46,12 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("%s: base_url is required", path)
 	}
 	return &cfg, nil
+}
+
+// LocalBaseURL reports an address that must not reach a sitemap: every public
+// address of the shop is built from it, and a left-over sample sends search
+// engines to a machine that is not the shop.
+func (s Settings) LocalBaseURL() bool {
+	u := strings.ToLower(strings.TrimSpace(s.BaseURL))
+	return u == "" || strings.Contains(u, "localhost") || strings.Contains(u, "127.0.0.1")
 }
