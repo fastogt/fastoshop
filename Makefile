@@ -6,8 +6,7 @@ RELEASE ?= $(shell git rev-parse --short=8 HEAD 2>/dev/null || echo "0")
 BINARY := fastoshop
 BIN_DIR := build/bin
 MODULE := github.com/fastogt/fastoshop
-# Версия вшивается линковщиком: иначе `fastoshop -version` врёт о том,
-# какой релиз стоит у клиента.
+# The linker injects the version, otherwise `fastoshop -version` lies about the installed release.
 LDFLAGS := -ldflags "-s -w -X $(MODULE)/app/version.VersionApp=$(VERSION)-$(RELEASE)"
 
 check-version:

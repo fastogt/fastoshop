@@ -67,7 +67,7 @@ Keep fields like `BaseURL` configurable - mocks in tests point at them. Prices a
 
 The version lives only in the git tag (`vMAJOR.MINOR.PATCH`); it is not in the sources, the number is injected at build time. The rule: **PATCH** - a fix with no behavior change, **MINOR** - a new compatible capability (e.g. an adapter for a new marketplace), **MAJOR** - the upgrade requires action from the shop owner (an incompatible config, a removed endpoint).
 
-Changed the DB schema - that is at minimum MINOR. Until the first stable release the schema is edited directly in `CREATE TABLE`; live databases already exist, so the release description needs a ready-to-paste `ALTER TABLE` - there are no migrations, and an upgraded instance will not grow the new column on its own.
+Changed the DB schema - that is at minimum MINOR. Until the first stable release the schema is edited directly in `CREATE TABLE`, and the live databases are caught up by hand (see «DB schema» in [CLAUDE.md](CLAUDE.md)).
 
 No release is cut for edits to documentation, screenshots, CI, or tests.
 
