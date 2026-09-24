@@ -1,3 +1,9 @@
+1.61.0 / September 24, 2026
+[Alexandr Topilski]
+- Import from a Wildberries seller account brings the whole catalogue. It used to take the first page and stop, so a seller with 120 cards silently got 100 and never learned which twenty were missing. The pages are walked by the cursor Wildberries hands back, up to ten thousand cards
+- "Buy on Ozon" on a product page now appears. The button is built from the card number Ozon publishes its own address from, and nothing ever stored it, so the button was dead for every shop. Publishing to the channel reads the numbers and keeps them; a failure there costs the button, not the link
+- A shop started with the sample base_url says so in the log: sitemap, canonical and the order emails are all built from that address, and the sample points at the machine itself
+
 1.60.8 / September 22, 2026
 [Alexandr Topilski]
 - A missing page is now a page of the shop: the header, a search box and a link to the catalogue instead of a bare "404 page not found". Addresses of removed products stay in search results for weeks, and a buyer who followed one met a dead end. The status is still 404 and the page is closed from indexing
