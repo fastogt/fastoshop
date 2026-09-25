@@ -69,7 +69,7 @@ The version lives only in the git tag (`vMAJOR.MINOR.PATCH`); it is not in the s
 
 Changed the DB schema - that is at minimum MINOR. Until the first stable release the schema is edited directly in `CREATE TABLE`, and the live databases are caught up by hand (see «DB schema» in [CLAUDE.md](CLAUDE.md)).
 
-No release is cut for edits to documentation, screenshots, CI, or tests.
+No release is cut for edits to documentation, screenshots, CI, or tests. Fixes accumulate in `main` and ship together, about once a week; a CHANGELOG entry is one line per change, and the details go into the commit message.
 
 ## Contacts
 

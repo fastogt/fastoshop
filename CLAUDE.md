@@ -52,11 +52,15 @@ Format - SemVer `vMAJOR.MINOR.PATCH`:
 
 A release is **not** cut for changes that never reach the user: README edits, screenshots, CI, tests, refactoring without a behavior change. A tag on such things is noise in the release list.
 
+**Releases are batched, not per fix.** Changes accumulate in `main`; a release is cut when a meaningful set has gathered, about once a week. One tag per fix is how the project reached 95 tags in six weeks. An out-of-band PATCH is only for something urgent on live shops: orders not arriving, a data or secret leak, a broken import or sync, a service that does not start.
+
+**A CHANGELOG entry is one line** saying what changed for the owner or the buyer. The story of the bug - what was wrong, how it was found, what it measured - goes into the commit message, not the CHANGELOG. Schema changes and manual upgrade steps are always listed, as `Schema:` and `Upgrade:` lines.
+
 **DB schema.** There is no migration framework, and until the first stable release none is needed: the schema is edited directly in the `CREATE TABLE` statements in `database.go`. Live databases that need catching up do exist (five shops on the platform as of 09.2026), and each such release is applied to them by hand. A schema change is at minimum **MINOR**.
 
 `ponytail:` after v1, columns are added to `settings` as a list of `ALTER TABLE ADD COLUMN` statements with a duplicate-column check (this is how `addSettingsColumns` lived before the release). As soon as we need to rename a column, change a type, or touch a table with data - a runner on `PRAGMA user_version`: an array of migrations, a fresh database is stamped with the current version immediately, an old one catches up one migration at a time. We do not write it ahead of time.
 
-Cutting a release: append a block to `CHANGELOG` (format as in fastometa: `X.Y.Z / Month D, YYYY`, author in square brackets, list of changes), then `git tag -a vX.Y.Z -F notes.md` and `git push origin vX.Y.Z` - from there the `Release` workflow builds the `.deb`, runs the tests, and attaches the package to the release.
+Cutting a release: add a block to the top of `CHANGELOG` (format as in fastometa: `X.Y.Z / Month D, YYYY`, author in square brackets, list of changes), then `git tag -a vX.Y.Z -F notes.md` and `git push origin vX.Y.Z` - from there the `Release` workflow builds the `.deb`, runs the tests, and attaches the package to the release.
 
 **The tag annotation does not end up in the release description.** The workflow generates the body itself, as a single line with a version-comparison link. After the build, the description must be set explicitly: `gh release edit vX.Y.Z --notes-file notes.md`. We got burned by this twice: a release sat there with no description.
 
