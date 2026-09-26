@@ -2,6 +2,17 @@
 [Alexandr Topilski]
 - The catalogue page declares the shop's own search, so a search box can appear under the site in results; a search results page does not declare one
 - Headings on a product card are h2, not h3: description, characteristics and set contents are page sections, and the ladder no longer skips a level
+- The cart shows what delivery costs before the order: free above the threshold, the sum below it, and "we will tell you when we confirm" when the shop stated nothing
+- Every page carries the shop's promise in one line - free delivery from a sum, how fast, how long to return - and the buyer can close it for good
+- A public offer page, built from the shop's own settings, and a tick in the order that accepts it together with the privacy policy; the wording accepted is stored with the order
+- Buyers can ask for the shop's letters: a form in the footer and an optional tick in the order, with one-click unsubscribe. The admin shows how many there are and exports them with the date, the source and the consent
+- The shop's city and street address reach the organisation markup, which is what a local or AI answer is built from
+- Schema: four columns added by hand (see below); the subscribers table is created on start
+- Upgrade:
+    ALTER TABLE orders ADD COLUMN consent_at DATETIME;
+    ALTER TABLE orders ADD COLUMN consent_text TEXT NOT NULL DEFAULT '';
+    ALTER TABLE settings ADD COLUMN shop_city TEXT NOT NULL DEFAULT '';
+    ALTER TABLE settings ADD COLUMN shop_address TEXT NOT NULL DEFAULT '';
 
 1.62.0 / September 26, 2026
 [Alexandr Topilski]
