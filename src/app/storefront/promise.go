@@ -57,8 +57,11 @@ func (s *Storefront) PromiseOff(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
-// promiseFor fills the line unless this buyer has already closed it.
-func (v *pageVM) promiseFor(r *http.Request) {
+// fromRequest fills what the page takes from the request itself: the promise
+// line unless this buyer closed it, and the answer to the footer subscription.
+func (v *pageVM) fromRequest(r *http.Request) {
+	q := r.URL.Query()
+	v.Subscribed, v.BadEmail = q.Get("subscribed"), q.Get("subscribe") == "bad"
 	if _, err := r.Cookie(kPromiseCookie); err == nil {
 		return
 	}

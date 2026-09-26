@@ -96,6 +96,9 @@ type Settings struct {
 	DeliveryFreeFrom int64 `json:"delivery_free_from"`
 	DeliveryDays     int   `json:"delivery_days"`
 	ReturnDays       int   `json:"return_days"`
+	// Where the shop is, for the organisation's address in structured data.
+	ShopCity    string `json:"shop_city"`
+	ShopAddress string `json:"shop_address"`
 }
 
 // Buttons that stand beside the cart. Which of them a page carries is the
@@ -225,13 +228,14 @@ func (d *Database) GetSettings() (*Settings, error) {
 		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms,
 		 adhunters_api_key, telegram, whatsapp, tile_aspect, customer_kind,
 		 cart_enabled, buy_buttons, delivery_note, delivery_cost,
-		 delivery_free_from, delivery_days, return_days FROM settings WHERE id=1`).Scan(
+		 delivery_free_from, delivery_days, return_days, shop_city,
+		 shop_address FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
 		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms,
 		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp, &s.TileAspect, &s.CustomerKind,
 		&s.CartEnabled, &s.BuyButtons, &s.DeliveryNote, &s.DeliveryCost,
-		&s.DeliveryFreeFrom, &s.DeliveryDays, &s.ReturnDays)
+		&s.DeliveryFreeFrom, &s.DeliveryDays, &s.ReturnDays, &s.ShopCity, &s.ShopAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +286,7 @@ func (d *Database) UpdateSettings(s *Settings) error {
 		 smtp_from=?, terms=?, adhunters_api_key=?, telegram=?, whatsapp=?,
 		 tile_aspect=?, customer_kind=?, cart_enabled=?, buy_buttons=?,
 		 delivery_note=?, delivery_cost=?, delivery_free_from=?,
-		 delivery_days=?, return_days=?
+		 delivery_days=?, return_days=?, shop_city=?, shop_address=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
@@ -290,7 +294,8 @@ func (d *Database) UpdateSettings(s *Settings) error {
 		s.AdHuntersAPIKey, strings.TrimSpace(s.Telegram), strings.TrimSpace(s.WhatsApp),
 		tile, customer, s.CartEnabled, buttons,
 		strings.TrimSpace(s.DeliveryNote), max(s.DeliveryCost, 0), max(s.DeliveryFreeFrom, 0),
-		max(s.DeliveryDays, 0), max(s.ReturnDays, 0))
+		max(s.DeliveryDays, 0), max(s.ReturnDays, 0),
+		strings.TrimSpace(s.ShopCity), strings.TrimSpace(s.ShopAddress))
 	if err == nil {
 		d.changed.Store(time.Now().Unix())
 	}

@@ -93,6 +93,9 @@
     <label class="consent"><input type="checkbox" name="consent"{{if .NoConsent}}{{else}} checked{{end}}>
       <span>Принимаю условия <a href="/offer">публичной оферты</a> и даю согласие на
       <a href="/privacy">обработку персональных данных</a>.</span></label>
+    {{/* Never pre-ticked: an order is not a reason to write to somebody. */}}
+    <label class="consent"><input type="checkbox" name="subscribe">
+      <span>Хочу получать письма магазина: новинки, скидки и полезные материалы.</span></label>
     <button type="submit">Оформить заказ</button>
   </form>
 </div>

@@ -38,10 +38,12 @@ type settingsResponse struct {
 	BuyButtons      string `json:"buy_buttons"`
 	DeliveryNote    string `json:"delivery_note"`
 	// Delivery and returns in numbers: money in minor units, time in days.
-	DeliveryCost     int64 `json:"delivery_cost"`
-	DeliveryFreeFrom int64 `json:"delivery_free_from"`
-	DeliveryDays     int   `json:"delivery_days"`
-	ReturnDays       int   `json:"return_days"`
+	DeliveryCost     int64  `json:"delivery_cost"`
+	DeliveryFreeFrom int64  `json:"delivery_free_from"`
+	DeliveryDays     int    `json:"delivery_days"`
+	ReturnDays       int    `json:"return_days"`
+	ShopCity         string `json:"shop_city"`
+	ShopAddress      string `json:"shop_address"`
 }
 
 type settingsRequest struct {
@@ -72,6 +74,8 @@ type settingsRequest struct {
 	DeliveryFreeFrom *int64  `json:"delivery_free_from"`
 	DeliveryDays     *int    `json:"delivery_days"`
 	ReturnDays       *int    `json:"return_days"`
+	ShopCity         *string `json:"shop_city"`
+	ShopAddress      *string `json:"shop_address"`
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +105,8 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		DeliveryFreeFrom: s.DeliveryFreeFrom,
 		DeliveryDays:     s.DeliveryDays,
 		ReturnDays:       s.ReturnDays,
+		ShopCity:         s.ShopCity,
+		ShopAddress:      s.ShopAddress,
 	})
 }
 
@@ -178,6 +184,12 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.ReturnDays != nil {
 		s.ReturnDays = *req.ReturnDays
+	}
+	if req.ShopCity != nil {
+		s.ShopCity = *req.ShopCity
+	}
+	if req.ShopAddress != nil {
+		s.ShopAddress = *req.ShopAddress
 	}
 	s.SMTPHost, s.SMTPPort, s.SMTPUser = req.SMTPHost, req.SMTPPort, req.SMTPUser
 	s.SMTPFrom = strings.TrimSpace(req.SMTPFrom)

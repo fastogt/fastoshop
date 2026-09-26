@@ -150,7 +150,7 @@ func (s *Storefront) renderCart(w http.ResponseWriter, r *http.Request, rows []c
 	data.deliveryLine(total)
 	// Robots lives in one place, or a page ends up carrying two contradicting tags.
 	data.NoIndex = true
-	data.promiseFor(r)
+	data.fromRequest(r)
 	if err := s.cart.ExecuteTemplate(w, "base", data); err != nil {
 		log.Errorf("render cart: %v", err)
 	}
@@ -248,6 +248,13 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 		s.renderCart(w, r, rows, total, typed)
 		return
 	}
+	// The letters are a separate tick, never pre-ticked: an order is not a reason
+	// to write to somebody, and consent bundled into another consent is not one.
+	if strings.TrimSpace(r.FormValue("subscribe")) == "on" && email != "" {
+		if err := s.db.Subscribe(email, database.SubscribeOrder, kOrderSubscribeConsent); err != nil {
+			log.Warnf("subscribe from order: %v", err)
+		}
+	}
 	// The offer and the policy are accepted by a tick, not by a line of small
 	// print: this is the moment the contract is made and the data handed over.
 	if r.FormValue("consent") != "on" {
@@ -281,7 +288,7 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	raw, _ := json.Marshal(items)
 	o := &database.Order{Name: name, Phone: phone, Email: email,
 		Comment: comment, ItemsJSON: string(raw), Source: sourceOf(r),
-		OrgName: org.Name, OrgUNP: org.UNP}
+		OrgName: org.Name, OrgUNP: org.UNP, ConsentText: kOrderConsent}
 	if org.Chosen {
 		o.RequisitesFile = s.saveRequisites(r)
 	}

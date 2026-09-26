@@ -2478,3 +2478,75 @@ func TestOfferPageIsPublished(t *testing.T) {
 		t.Error("the footer does not lead to the offer")
 	}
 }
+
+// The letters a buyer asks for: the footer form stores the address with the
+// wording accepted, and the link from a letter unsubscribes in one click.
+func TestSubscribeFromFooterAndUnsubscribe(t *testing.T) {
+	d, h := setup(t)
+	s, _ := d.GetSettings()
+	s.SMTPHost = "smtp.example.com"
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(get(t, h, "/"), `action="/subscribe"`) {
+		t.Fatal("a shop with mail configured shows no subscribe form")
+	}
+
+	r := httptest.NewRequest("POST", "/subscribe", strings.NewReader("email=buyer@example.com"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Set("Referer", "https://shop.example.com/c")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusSeeOther || !strings.HasPrefix(w.Header().Get("Location"), "/c?subscribed=") {
+		t.Fatalf("subscribing answered %d to %q", w.Code, w.Header().Get("Location"))
+	}
+	list, _ := d.Subscribers()
+	if len(list) != 1 || list[0].Email != "buyer@example.com" || list[0].ConsentText == "" {
+		t.Fatalf("stored: %+v", list)
+	}
+
+	// A referer from another site never becomes a redirect target.
+	r = httptest.NewRequest("POST", "/subscribe", strings.NewReader("email=x@example.com"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Set("Referer", "https://evil.example/c")
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if loc := w.Header().Get("Location"); !strings.HasPrefix(loc, "/?subscribed=") {
+		t.Errorf("open redirect: %q", loc)
+	}
+
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/unsubscribe?t="+list[0].Token, nil))
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Вы отписаны") {
+		t.Fatalf("unsubscribing answered %d", w.Code)
+	}
+	if active, total, _ := d.SubscriberCount(); active != 1 || total != 2 {
+		t.Errorf("after one unsubscribe: %d active of %d", active, total)
+	}
+}
+
+// An order records what the buyer accepted, and subscribes them only if they
+// asked for letters themselves.
+func TestOrderStoresConsentAndOptionalSubscription(t *testing.T) {
+	d, h := setup(t)
+	c := &client{h: h}
+	c.add(t, "krasnyj-chajnik", "1")
+	c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"}, "name": {"Иван"},
+		"email": {"ivan@example.com"}})
+	orders, _ := d.ListOrders()
+	if len(orders) != 1 || !strings.Contains(orders[0].ConsentText, "оферты") {
+		t.Fatalf("the order carries no consent: %+v", orders)
+	}
+	if list, _ := d.Subscribers(); len(list) != 0 {
+		t.Errorf("an order subscribed a buyer who never asked: %+v", list)
+	}
+
+	c2 := &client{h: h}
+	c2.add(t, "krasnyj-chajnik", "1")
+	c2.do(t, "POST", "/cart/order", url.Values{"consent": {"on"}, "subscribe": {"on"},
+		"name": {"Пётр"}, "email": {"petr@example.com"}})
+	list, _ := d.Subscribers()
+	if len(list) != 1 || list[0].Email != "petr@example.com" || list[0].Source != "order" {
+		t.Fatalf("subscribers: %+v", list)
+	}
+}

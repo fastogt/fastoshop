@@ -257,6 +257,11 @@ export interface Order {
   created_at: string;
 }
 
+export interface SubscriberCount {
+  active: number;
+  total: number;
+}
+
 export interface Settings {
   owner_email: string;
   shop_name: string;
@@ -279,6 +284,8 @@ export interface Settings {
   delivery_free_from: number;
   delivery_days: number;
   return_days: number;
+  shop_city: string;
+  shop_address: string;
   logo: string;
   smtp_host: string;
   smtp_port: number;
@@ -626,6 +633,7 @@ export const api = {
       }>,
     ),
   settings: () => http.get("/settings").then(data<Settings>),
+  subscribers: () => http.get("/subscribers").then(data<SubscriberCount>),
   updateSettings: (s: Record<string, unknown>) =>
     http.put("/settings", s).then(data<Settings>),
   uploadLogo: (f: File) => {

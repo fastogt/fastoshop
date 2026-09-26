@@ -202,12 +202,29 @@ func (d *Database) migrate() error {
 		-- File name inside the requisites directory, which is NOT served: it
 		-- carries a bank account and a signatory.
 		requisites_file TEXT NOT NULL DEFAULT '',
+		-- What the buyer accepted and when. The wording of the offer and of the
+		-- policy changes; an order has to carry the text that was on the page at
+		-- the moment it was placed, or the consent cannot be shown afterwards.
+		consent_at   DATETIME,
+		consent_text TEXT NOT NULL DEFAULT '',
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 	-- Duplicates the order contents from items_json deliberately: items_json is
 	-- an immutable legal snapshot for the tax CSV (it outlives a deleted
 	-- product), order_items is the working link to products used to take stock
 	-- off and put it back.
+	-- Who asked for the shop's letters. A subscription is consent, so it carries
+	-- the same proof an order does: when, from where, and under which wording.
+	-- The token is what an unsubscribe link is built from: one click, no login.
+	CREATE TABLE IF NOT EXISTS subscribers (
+		id              INTEGER PRIMARY KEY AUTOINCREMENT,
+		email           TEXT NOT NULL UNIQUE,
+		source          TEXT NOT NULL DEFAULT '', -- footer|order
+		consent_text    TEXT NOT NULL DEFAULT '',
+		token           TEXT NOT NULL UNIQUE,
+		created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		unsubscribed_at DATETIME
+	);
 	CREATE TABLE IF NOT EXISTS order_items (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
 		order_id   INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
@@ -282,7 +299,11 @@ func (d *Database) migrate() error {
 		delivery_cost       INTEGER NOT NULL DEFAULT 0,
 		delivery_free_from  INTEGER NOT NULL DEFAULT 0,
 		delivery_days       INTEGER NOT NULL DEFAULT 0,
-		return_days         INTEGER NOT NULL DEFAULT 0
+		return_days         INTEGER NOT NULL DEFAULT 0,
+		-- Where the shop is, for the organisation's address in structured data.
+		-- Two fields, not one: a city alone is what a local query matches on.
+		shop_city    TEXT NOT NULL DEFAULT '',
+		shop_address TEXT NOT NULL DEFAULT ''
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,

@@ -58,6 +58,7 @@ function Field({
 const kText = {
   title: { ru: "Профиль", en: "Profile" },
   tabShop: { ru: "Магазин", en: "Shop" },
+  tabStorefront: { ru: "Витрина", en: "Storefront" },
   tabMail: { ru: "Почта", en: "Mail" },
   tabSeo: { ru: "Продвижение", en: "Promotion" },
   tabParams: { ru: "Характеристики", en: "Characteristics" },
@@ -150,6 +151,18 @@ const kText = {
     ru: "Минск - завтра, Беларусь - 2–3 дня",
     en: "Tomorrow in the city, 2–3 days nationwide",
   },
+  shopCity: { ru: "Город", en: "City" },
+  shopAddress: { ru: "Адрес", en: "Street address" },
+  addressHint: {
+    ru: "Где находится магазин. Уходит в разметку организации: по городу поисковики и нейросети отвечают на запросы «где купить рядом». Пусто - адрес не заявлен.",
+    en: "Where the shop is. Goes into the organisation markup: a city is what local queries match on. Empty means no address is stated.",
+  },
+  subscribers: { ru: "Подписчики", en: "Subscribers" },
+  subscribersHint: {
+    ru: "Адреса, которые оставили сами: формой в подвале витрины или галочкой в заказе. Выгрузка содержит дату, источник и текст согласия - то, чем подтверждается согласие.",
+    en: "Addresses left by buyers themselves: the footer form or the tick in an order. The export carries the date, the source and the wording accepted.",
+  },
+  subscribersExport: { ru: "Скачать CSV", en: "Download CSV" },
   deliveryTerms: {
     ru: "Условия доставки и возврата",
     en: "Delivery and return terms",
@@ -270,6 +283,7 @@ const kText = {
 
 const kProfileTabs = [
   "tabShop",
+  "tabStorefront",
   "tabMail",
   "tabSeo",
   "tabParams",
@@ -342,6 +356,16 @@ export default function Profile() {
   const [passwordMsg, setPasswordMsg] = useState("");
   const [copied, setCopied] = useState("");
   const [tab, setTab] = useState<ProfileTab>("tabShop");
+  const [subs, setSubs] = useState<{ active: number; total: number } | null>(
+    null,
+  );
+  useEffect(() => {
+    if (tab === "tabMail" && !subs)
+      api
+        .subscribers()
+        .then(setSubs)
+        .catch(() => {});
+  }, [tab, subs]);
   const t = useT(kText);
 
   useEffect(() => {
@@ -444,181 +468,25 @@ export default function Profile() {
               value={s.requisites}
               onChange={(v) => setS({ ...s, requisites: v })}
             />
-            <Field
-              label={t("terms")}
-              hint={t("termsHint")}
-              rows={5}
-              autoComplete="off"
-              placeholder={t("termsPlaceholder")}
-              value={s.terms}
-              onChange={(v) => setS({ ...s, terms: v })}
-            />
-            <div>
-              <label className="label">{t("logo")}</label>
-              <div className="flex flex-wrap items-center gap-3">
-                {s.logo && (
-                  <img
-                    src={`/uploads/${s.logo}`}
-                    alt=""
-                    className="border-line h-12 w-auto max-w-52 rounded border object-contain"
-                  />
-                )}
-                <label className="btn-ghost cursor-pointer">
-                  {t("logoUpload")}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/svg+xml"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      if (f) setS(await api.uploadLogo(f));
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-                {s.logo && (
-                  <button
-                    className="text-muted cursor-pointer text-sm hover:text-red-600"
-                    onClick={async () => setS(await api.deleteLogo())}
-                  >
-                    {t("logoRemove")}
-                  </button>
-                )}
-              </div>
-              <p className="hint mt-1">{t("logoHint")}</p>
-            </div>
-            <div>
-              <label className="label">{t("currency")}</label>
-              <select
-                className="field"
-                value={s.currency}
-                onChange={(e) => setS({ ...s, currency: e.target.value })}
-              >
-                <option value="RUB">{t("currencyRub")}</option>
-                <option value="BYN">{t("currencyByn")}</option>
-                <option value="PLN">{t("currencyPln")}</option>
-                <option value="KZT">{t("currencyKzt")}</option>
-              </select>
-              <p className="hint mt-1">{t("currencyHint")}</p>
-            </div>
-            <div>
-              <label className="label">{t("customerKind")}</label>
-              <select
-                className="field"
-                value={s.customer_kind || "private"}
-                onChange={(e) => setS({ ...s, customer_kind: e.target.value })}
-              >
-                <option value="private">{t("customerPrivate")}</option>
-                <option value="company">{t("customerCompany")}</option>
-                <option value="both">{t("customerBoth")}</option>
-              </select>
-              <p className="hint mt-1">{t("customerKindHint")}</p>
-            </div>
-            <div>
-              <label className="label">{t("tileAspect")}</label>
-              <select
-                className="field"
-                value={s.tile_aspect || "square"}
-                onChange={(e) => setS({ ...s, tile_aspect: e.target.value })}
-              >
-                <option value="square">{t("tileSquare")}</option>
-                <option value="portrait">{t("tilePortrait")}</option>
-              </select>
-              <p className="hint mt-1">{t("tileAspectHint")}</p>
-            </div>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={s.cart_enabled}
-                onChange={(e) => setS({ ...s, cart_enabled: e.target.checked })}
-              />
-              <span>{t("buyCart")}</span>
-            </label>
-            <p className="hint -mt-2">{t("buyCartHint")}</p>
-            <div>
-              <label className="label">{t("buyButtons")}</label>
-              <div className="flex flex-wrap gap-4">
-                {(
-                  [
-                    ["msg", "buyMsg"],
-                    ["wb", "buyWB"],
-                    ["ozon", "buyOzon"],
-                  ] as const
-                ).map(([key, label]) => {
-                  const on = (s.buy_buttons || "msg")
-                    .split(",")
-                    .filter(Boolean);
-                  return (
-                    <label key={key} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={on.includes(key)}
-                        onChange={(e) =>
-                          setS({
-                            ...s,
-                            buy_buttons: (e.target.checked
-                              ? [...on, key]
-                              : on.filter((x) => x !== key)
-                            ).join(","),
-                          })
-                        }
-                      />
-                      <span>{t(label)}</span>
-                    </label>
-                  );
-                })}
-              </div>
-              <p className="hint mt-1">{t("buyButtonsHint")}</p>
-            </div>
-            <Field
-              label={t("deliveryNote")}
-              hint={t("deliveryNoteHint")}
-              autoComplete="off"
-              placeholder={t("deliveryNotePlaceholder")}
-              value={s.delivery_note}
-              onChange={(v) => setS({ ...s, delivery_note: v })}
-            />
-            <div>
-              <h3 className="font-bold">{t("deliveryTerms")}</h3>
-              <p className="hint">{t("deliveryTermsHint")}</p>
-            </div>
             <div className="flex flex-wrap gap-3">
               <Field
-                className="w-40"
-                label={t("deliveryCost")}
-                type="number"
-                value={s.delivery_cost / 100}
-                onChange={(v) =>
-                  setS({ ...s, delivery_cost: Math.round(Number(v) * 100) })
-                }
+                className="w-56"
+                label={t("shopCity")}
+                autoComplete="off"
+                placeholder="Минск"
+                value={s.shop_city}
+                onChange={(v) => setS({ ...s, shop_city: v })}
               />
               <Field
-                className="w-40"
-                label={t("deliveryFreeFrom")}
-                type="number"
-                value={s.delivery_free_from / 100}
-                onChange={(v) =>
-                  setS({
-                    ...s,
-                    delivery_free_from: Math.round(Number(v) * 100),
-                  })
-                }
-              />
-              <Field
-                className="w-40"
-                label={t("deliveryDays")}
-                type="number"
-                value={s.delivery_days}
-                onChange={(v) => setS({ ...s, delivery_days: Number(v) })}
-              />
-              <Field
-                className="w-40"
-                label={t("returnDays")}
-                type="number"
-                value={s.return_days}
-                onChange={(v) => setS({ ...s, return_days: Number(v) })}
+                className="flex-1"
+                label={t("shopAddress")}
+                autoComplete="off"
+                placeholder="ул. Притыцкого, 105"
+                value={s.shop_address}
+                onChange={(v) => setS({ ...s, shop_address: v })}
               />
             </div>
+            <p className="hint -mt-2">{t("addressHint")}</p>
           </section>
 
           <section className="card flex flex-col gap-4">
@@ -651,6 +519,184 @@ export default function Profile() {
           </section>
         </>
       )}
+      {tab === "tabStorefront" && (
+        <section className="card flex flex-col gap-4">
+          <Field
+            label={t("terms")}
+            hint={t("termsHint")}
+            rows={5}
+            autoComplete="off"
+            placeholder={t("termsPlaceholder")}
+            value={s.terms}
+            onChange={(v) => setS({ ...s, terms: v })}
+          />
+          <div>
+            <label className="label">{t("logo")}</label>
+            <div className="flex flex-wrap items-center gap-3">
+              {s.logo && (
+                <img
+                  src={`/uploads/${s.logo}`}
+                  alt=""
+                  className="border-line h-12 w-auto max-w-52 rounded border object-contain"
+                />
+              )}
+              <label className="btn-ghost cursor-pointer">
+                {t("logoUpload")}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setS(await api.uploadLogo(f));
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {s.logo && (
+                <button
+                  className="text-muted cursor-pointer text-sm hover:text-red-600"
+                  onClick={async () => setS(await api.deleteLogo())}
+                >
+                  {t("logoRemove")}
+                </button>
+              )}
+            </div>
+            <p className="hint mt-1">{t("logoHint")}</p>
+          </div>
+          <div>
+            <label className="label">{t("currency")}</label>
+            <select
+              className="field"
+              value={s.currency}
+              onChange={(e) => setS({ ...s, currency: e.target.value })}
+            >
+              <option value="RUB">{t("currencyRub")}</option>
+              <option value="BYN">{t("currencyByn")}</option>
+              <option value="PLN">{t("currencyPln")}</option>
+              <option value="KZT">{t("currencyKzt")}</option>
+            </select>
+            <p className="hint mt-1">{t("currencyHint")}</p>
+          </div>
+          <div>
+            <label className="label">{t("customerKind")}</label>
+            <select
+              className="field"
+              value={s.customer_kind || "private"}
+              onChange={(e) => setS({ ...s, customer_kind: e.target.value })}
+            >
+              <option value="private">{t("customerPrivate")}</option>
+              <option value="company">{t("customerCompany")}</option>
+              <option value="both">{t("customerBoth")}</option>
+            </select>
+            <p className="hint mt-1">{t("customerKindHint")}</p>
+          </div>
+          <div>
+            <label className="label">{t("tileAspect")}</label>
+            <select
+              className="field"
+              value={s.tile_aspect || "square"}
+              onChange={(e) => setS({ ...s, tile_aspect: e.target.value })}
+            >
+              <option value="square">{t("tileSquare")}</option>
+              <option value="portrait">{t("tilePortrait")}</option>
+            </select>
+            <p className="hint mt-1">{t("tileAspectHint")}</p>
+          </div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={s.cart_enabled}
+              onChange={(e) => setS({ ...s, cart_enabled: e.target.checked })}
+            />
+            <span>{t("buyCart")}</span>
+          </label>
+          <p className="hint -mt-2">{t("buyCartHint")}</p>
+          <div>
+            <label className="label">{t("buyButtons")}</label>
+            <div className="flex flex-wrap gap-4">
+              {(
+                [
+                  ["msg", "buyMsg"],
+                  ["wb", "buyWB"],
+                  ["ozon", "buyOzon"],
+                ] as const
+              ).map(([key, label]) => {
+                const on = (s.buy_buttons || "msg").split(",").filter(Boolean);
+                return (
+                  <label key={key} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={on.includes(key)}
+                      onChange={(e) =>
+                        setS({
+                          ...s,
+                          buy_buttons: (e.target.checked
+                            ? [...on, key]
+                            : on.filter((x) => x !== key)
+                          ).join(","),
+                        })
+                      }
+                    />
+                    <span>{t(label)}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <p className="hint mt-1">{t("buyButtonsHint")}</p>
+          </div>
+          <Field
+            label={t("deliveryNote")}
+            hint={t("deliveryNoteHint")}
+            autoComplete="off"
+            placeholder={t("deliveryNotePlaceholder")}
+            value={s.delivery_note}
+            onChange={(v) => setS({ ...s, delivery_note: v })}
+          />
+          <div>
+            <h3 className="font-bold">{t("deliveryTerms")}</h3>
+            <p className="hint">{t("deliveryTermsHint")}</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Field
+              className="w-40"
+              label={t("deliveryCost")}
+              type="number"
+              value={s.delivery_cost / 100}
+              onChange={(v) =>
+                setS({ ...s, delivery_cost: Math.round(Number(v) * 100) })
+              }
+            />
+            <Field
+              className="w-40"
+              label={t("deliveryFreeFrom")}
+              type="number"
+              value={s.delivery_free_from / 100}
+              onChange={(v) =>
+                setS({
+                  ...s,
+                  delivery_free_from: Math.round(Number(v) * 100),
+                })
+              }
+            />
+            <Field
+              className="w-40"
+              label={t("deliveryDays")}
+              type="number"
+              value={s.delivery_days}
+              onChange={(v) => setS({ ...s, delivery_days: Number(v) })}
+            />
+            <Field
+              className="w-40"
+              label={t("returnDays")}
+              type="number"
+              value={s.return_days}
+              onChange={(v) => setS({ ...s, return_days: Number(v) })}
+            />
+          </div>
+        </section>
+      )}
+
       {tab === "tabMail" && (
         <>
           <section className="card flex flex-col gap-4">
@@ -725,6 +771,16 @@ export default function Profile() {
               >
                 {t("testMail")}
               </button>
+            </div>
+            <div className="border-line mt-2 border-t pt-4">
+              <h3 className="font-bold">{t("subscribers")}</h3>
+              <p className="hint">{t("subscribersHint")}</p>
+              <p className="mt-2">
+                {subs ? `${subs.active} / ${subs.total}` : "—"}{" "}
+                <a href="/api/subscribers.csv" className="btn-ghost ml-2">
+                  {t("subscribersExport")}
+                </a>
+              </p>
             </div>
           </section>
         </>

@@ -88,6 +88,21 @@
 {{/* The shop's own promise, on every page until the buyer closes it. Closing is a
 link, not a script: the storefront ships no JavaScript, and a cookie remembers it. */}}
 {{if .Promise}}<div class="promise"><span>{{.Promise}}</span><a href="/promise/off?back={{.PromiseBack}}" rel="nofollow">Понятно</a></div>{{end}}
+{{/* The letters a buyer asks for themselves. One field and a tick: the address
+     is the whole subscription, and the wording accepted travels with it. */}}
+{{if .Shop.SMTPHost}}<section class="subscribe">
+  {{if .Subscribed}}<p class="notice good ok">Подписались. Письма будут приходить на {{.Subscribed}}.</p>
+  {{else if .BadEmail}}<p class="notice oos">Проверьте адрес почты.</p>{{end}}
+  <form method="post" action="/subscribe">
+    <label for="sub-email">Новинки и скидки на почту</label>
+    <div class="sub-row">
+      <input id="sub-email" type="email" name="email" placeholder="ваша почта" required>
+      <button type="submit">Подписаться</button>
+    </div>
+    <p class="oos">Нажимая кнопку, вы соглашаетесь получать письма магазина и принимаете
+      <a href="/privacy">политику обработки данных</a>. Отписаться можно одной ссылкой из любого письма.</p>
+  </form>
+</section>{{end}}
 <footer>
 <span>© {{.Shop.ShopName}}</span>
 {{if .Shop.Requisites}}<div class="requisites">{{.Shop.Requisites}}</div>{{end}}
@@ -110,6 +125,12 @@ in the markup. */}}
   "url": {{.BaseURL}},
   {{if .Shop.Logo}}"logo": {{printf "%s/uploads/%s" .BaseURL .Shop.Logo}},{{end}}
   {{if .Shop.ShopPhone}}"telephone": {{.Shop.ShopPhone}},{{end}}
+  {{if .Shop.ShopCity}}"address": {
+    "@type": "PostalAddress",
+    "addressLocality": {{.Shop.ShopCity}}{{if .Shop.ShopAddress}},
+    "streetAddress": {{.Shop.ShopAddress}}{{end}}{{if .ShipCountry}},
+    "addressCountry": "{{.ShipCountry}}"{{end}}
+  },{{end}}
   "description": {{.Shop.Requisites}}
 }
 </script>{{end}}

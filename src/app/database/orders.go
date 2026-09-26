@@ -21,6 +21,9 @@ type Order struct {
 	// Name inside the requisites directory; optional, and the seller calls back
 	// whether or not it is there.
 	RequisitesFile string `json:"requisites_file"`
+	// The wording the buyer accepted when they placed the order. Kept because the
+	// offer and the policy are edited, and consent has to be shown as it was given.
+	ConsentText string `json:"consent_text"`
 	// The snapshot stays on the server: the admin receives it parsed.
 	ItemsJSON string    `json:"-"`
 	Status    string    `json:"status"`
@@ -31,9 +34,10 @@ type Order struct {
 func (d *Database) CreateOrder(o *Order) error {
 	res, err := d.db.Exec(
 		`INSERT INTO orders (name, phone, email, comment, items_json, source,
-		 org_name, org_unp, requisites_file) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 org_name, org_unp, requisites_file, consent_text, consent_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ?='' THEN NULL ELSE CURRENT_TIMESTAMP END)`,
 		o.Name, o.Phone, o.Email, o.Comment, o.ItemsJSON, o.Source,
-		o.OrgName, o.OrgUNP, o.RequisitesFile)
+		o.OrgName, o.OrgUNP, o.RequisitesFile, o.ConsentText, o.ConsentText)
 	if err != nil {
 		return err
 	}
@@ -102,13 +106,13 @@ func (d *Database) ListOrdersPage(status, sort string, desc bool, limit, offset 
 	}
 	args = append(args, limit, offset)
 	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, source,
-		 org_name, org_unp, requisites_file, created_at
+		 org_name, org_unp, requisites_file, consent_text, created_at
 		 FROM orders`+where+orderBy(kOrderSortable, sort, desc)+` LIMIT ? OFFSET ?`, args...)
 }
 
 func (d *Database) ListOrders() ([]Order, error) {
 	return d.scanOrders(`SELECT id, name, phone, email, comment, items_json, status, source,
-		 org_name, org_unp, requisites_file, created_at
+		 org_name, org_unp, requisites_file, consent_text, created_at
 		 FROM orders ORDER BY created_at DESC, id DESC`)
 }
 
@@ -123,7 +127,7 @@ func (d *Database) scanOrders(query string, args ...any) ([]Order, error) {
 		var o Order
 		if err := rows.Scan(&o.ID, &o.Name, &o.Phone, &o.Email, &o.Comment, &o.ItemsJSON,
 			&o.Status, &o.Source, &o.OrgName, &o.OrgUNP, &o.RequisitesFile,
-			&o.CreatedAt); err != nil {
+			&o.ConsentText, &o.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, o)

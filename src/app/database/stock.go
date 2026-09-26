@@ -96,10 +96,10 @@ func (d *Database) CreateOrderWithStock(o *Order, items []OrderItem) error {
 	err := d.withTx(func(tx *sql.Tx) error {
 		res, err := tx.Exec(
 			`INSERT INTO orders (name, phone, email, comment, items_json, source,
-			 org_name, org_unp, requisites_file, stock_applied)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+			 org_name, org_unp, requisites_file, stock_applied, consent_text, consent_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)`,
 			o.Name, o.Phone, o.Email, o.Comment, o.ItemsJSON, o.Source,
-			o.OrgName, o.OrgUNP, o.RequisitesFile)
+			o.OrgName, o.OrgUNP, o.RequisitesFile, o.ConsentText)
 		if err != nil {
 			return err
 		}

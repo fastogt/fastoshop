@@ -143,6 +143,8 @@ func run(cfg *config.Config) error {
 			r.Post("/orders/bulk/status", h.BulkOrderStatus)
 			r.Post("/orders/bulk/delete", h.BulkDeleteOrders)
 			r.Get("/orders.csv", h.ExportOrdersCSV)
+			r.Get("/subscribers", h.Subscribers)
+			r.Get("/subscribers.csv", h.ExportSubscribersCSV)
 			r.Get("/orders/{id}/requisites", h.OrderRequisites)
 			r.Get("/stats", h.Stats)
 			r.Get("/logs", h.Logs)
