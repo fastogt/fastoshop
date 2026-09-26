@@ -86,12 +86,14 @@
       <label for="comment">Комментарий</label>
       <textarea id="comment" name="comment" placeholder="Удобное время для звонка, пожелания к доставке">{{.FormComment}}</textarea>
     </div>
-    <button type="submit">Оформить заказ</button>
     {{/* The consent has to sit where the data is handed over, not on a page
          nobody opens: the buyer types a name and a phone into this form, and
-         this line is the moment they agree to it being used. */}}
-    <p class="oos">Оформляя заказ, вы соглашаетесь на
-      <a href="/privacy">обработку персональных данных</a>.</p>
+         this tick is the moment the contract is made. */}}
+    {{if .NoConsent}}<p class="notice oos">Чтобы оформить заказ, примите оферту и согласие на обработку данных.</p>{{end}}
+    <label class="consent"><input type="checkbox" name="consent"{{if .NoConsent}}{{else}} checked{{end}}>
+      <span>Принимаю условия <a href="/offer">публичной оферты</a> и даю согласие на
+      <a href="/privacy">обработку персональных данных</a>.</span></label>
+    <button type="submit">Оформить заказ</button>
   </form>
 </div>
 </div>

@@ -98,7 +98,7 @@ func TestOrderGoalFiresOncePerOrder(t *testing.T) {
 		t.Error("goal fires on a cart nobody ordered from")
 	}
 	if w := c.do(t, "POST", "/cart/order",
-		url.Values{"name": {"Иван"}, "phone": {"+79990001122"}}); w.Code != http.StatusSeeOther {
+		url.Values{"consent": {"on"}, "name": {"Иван"}, "phone": {"+79990001122"}}); w.Code != http.StatusSeeOther {
 		t.Fatalf("checkout: %d", w.Code)
 	}
 	body := c.cart(t)
@@ -121,7 +121,7 @@ func TestConfirmationShipsNoScriptsWithoutCounters(t *testing.T) {
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "1")
 	if w := c.do(t, "POST", "/cart/order",
-		url.Values{"name": {"Иван"}, "phone": {"+79990001122"}}); w.Code != http.StatusSeeOther {
+		url.Values{"consent": {"on"}, "name": {"Иван"}, "phone": {"+79990001122"}}); w.Code != http.StatusSeeOther {
 		t.Fatalf("checkout: %d", w.Code)
 	}
 	if n := executableScripts(c.cart(t)); n != 0 {
@@ -506,7 +506,7 @@ func TestCartCheckoutCreatesSingleOrder(t *testing.T) {
 	c.add(t, "krasnyj-chajnik", "2")
 	c.add(t, "sinij-stakan", "3")
 	w := c.do(t, "POST", "/cart/order",
-		url.Values{"name": {"Иван"}, "phone": {"+79990001122"}, "comment": {"звонить утром"}})
+		url.Values{"consent": {"on"}, "name": {"Иван"}, "phone": {"+79990001122"}, "comment": {"звонить утром"}})
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("checkout: %d %s", w.Code, w.Body.String())
 	}
@@ -548,7 +548,7 @@ func TestCartTamperedCookieCannotSetPrice(t *testing.T) {
 	if !strings.Contains(c.cart(t), "2500.00") {
 		t.Error("cart must price from DB")
 	}
-	c.do(t, "POST", "/cart/order", url.Values{"name": {"И"}, "phone": {"+7"}})
+	c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"}, "name": {"И"}, "phone": {"+7"}})
 	orders, _ := d.ListOrders()
 	if len(orders) != 1 {
 		t.Fatalf("orders: %+v", orders)
@@ -591,7 +591,7 @@ func TestCartDropsVanishedProduct(t *testing.T) {
 	if strings.Contains(body, "Красный чайник") {
 		t.Errorf("out-of-stock line must be dropped\n%s", body)
 	}
-	c.do(t, "POST", "/cart/order", url.Values{"name": {"И"}, "phone": {"+7"}})
+	c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"}, "name": {"И"}, "phone": {"+7"}})
 	orders, _ := d.ListOrders()
 	var items []orderItemJSON
 	_ = json.Unmarshal([]byte(orders[0].ItemsJSON), &items)
@@ -604,7 +604,7 @@ func TestCartCheckoutRequiresPhoneAndItems(t *testing.T) {
 	d, h := setup(t)
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "1")
-	w := c.do(t, "POST", "/cart/order", url.Values{"name": {"Иван"},
+	w := c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"}, "name": {"Иван"},
 		"comment": {"привезите к обеду"}})
 	if orders, _ := d.ListOrders(); len(orders) != 0 {
 		t.Fatal("order without phone must be rejected")
@@ -616,7 +616,7 @@ func TestCartCheckoutRequiresPhoneAndItems(t *testing.T) {
 		t.Error("typed name and comment lost on the no-contact error")
 	}
 	empty := &client{h: h}
-	empty.do(t, "POST", "/cart/order", url.Values{"name": {"И"}, "phone": {"+7"}})
+	empty.do(t, "POST", "/cart/order", url.Values{"consent": {"on"}, "name": {"И"}, "phone": {"+7"}})
 	if orders, _ := d.ListOrders(); len(orders) != 0 {
 		t.Fatal("empty cart must not create an order")
 	}
@@ -695,7 +695,7 @@ func TestCheckoutDecrementsStock(t *testing.T) {
 	d, h := setup(t)
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "2")
-	w := c.do(t, "POST", "/cart/order", url.Values{"name": {"Иван"}, "phone": {"+7"}})
+	w := c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"}, "name": {"Иван"}, "phone": {"+7"}})
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("checkout: %d", w.Code)
 	}
@@ -713,7 +713,7 @@ func TestCheckoutSoldOutRace(t *testing.T) {
 	c.cookie = &http.Cookie{Name: "cart", Value: url.QueryEscape(
 		`[{"slug":"krasnyj-chajnik","qty":3},{"slug":"krasnyj-chajnik","qty":3},{"slug":"sinij-stakan","qty":1}]`)}
 
-	w := c.do(t, "POST", "/cart/order", url.Values{"name": {"Иван"}, "phone": {"+7"}})
+	w := c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"}, "name": {"Иван"}, "phone": {"+7"}})
 	if w.Code != http.StatusOK {
 		t.Fatalf("sold-out checkout must re-render the cart: %d", w.Code)
 	}
@@ -1390,6 +1390,10 @@ func TestOrderContacts(t *testing.T) {
 		add.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, add)
+		// Every buyer ticks the offer and the policy; the cases here are contacts.
+		if !strings.Contains(form, "consent=") {
+			form = "consent=on&" + form
+		}
 		req := httptest.NewRequest("POST", "/cart/order", strings.NewReader(form))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		for _, c := range w.Result().Cookies() {
@@ -2432,5 +2436,45 @@ func TestPromiseLineAndItsDismissal(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/promise/off?back=https://evil.example", nil))
 	if loc := w.Header().Get("Location"); loc != "/" {
 		t.Errorf("open redirect: %q", loc)
+	}
+}
+
+// A distance sale is a contract: without the tick there is no order, and the
+// buyer is told why instead of losing what they typed.
+func TestOrderNeedsTheOfferAccepted(t *testing.T) {
+	d, h := setup(t)
+	c := &client{h: h}
+	c.add(t, "krasnyj-chajnik", "1")
+
+	w := c.do(t, "POST", "/cart/order", url.Values{"name": {"Иван"}, "phone": {"+79990001122"}})
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "примите оферту") {
+		t.Fatalf("an order without consent answered %d", w.Code)
+	}
+	if orders, _ := d.ListOrders(); len(orders) != 0 {
+		t.Fatalf("the order was created anyway: %+v", orders)
+	}
+	if !strings.Contains(w.Body.String(), `value="Иван"`) {
+		t.Error("the buyer has to type their name again")
+	}
+
+	w = c.do(t, "POST", "/cart/order",
+		url.Values{"consent": {"on"}, "name": {"Иван"}, "phone": {"+79990001122"}})
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("an order with consent answered %d", w.Code)
+	}
+}
+
+// The offer is a page of the shop, and the footer leads to it: a contract nobody
+// can find is not a contract.
+func TestOfferPageIsPublished(t *testing.T) {
+	_, h := setup(t)
+	body := get(t, h, "/offer")
+	for _, want := range []string{"Публичная оферта", "Оплата при получении", "/privacy"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the offer does not mention %q", want)
+		}
+	}
+	if !strings.Contains(get(t, h, "/"), `href="/offer"`) {
+		t.Error("the footer does not lead to the offer")
 	}
 }

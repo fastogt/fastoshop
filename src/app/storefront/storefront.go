@@ -33,12 +33,14 @@ type Storefront struct {
 	uploads string
 	// Sibling of uploads and deliberately NOT served: a requisites file carries a
 	// bank account, and /uploads/ is a plain FileServer.
-	requisites  string
-	index       *template.Template
-	product     *template.Template
-	cart        *template.Template
-	info        *template.Template
-	privacy     *template.Template
+	requisites string
+	index      *template.Template
+	product    *template.Template
+	cart       *template.Template
+	info       *template.Template
+	privacy    *template.Template
+	// Suffixed: a field may not share a name with the Offer method.
+	offerTpl    *template.Template
 	contacts    *template.Template
 	notFoundTpl *template.Template
 	// Suffixed: a field may not share a name with the Category/Categories methods.
@@ -66,6 +68,7 @@ func New(db *database.Database, baseURL, uploadsDir string) *Storefront {
 		cart:          template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/cart.html")),
 		info:          template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/info.html")),
 		privacy:       template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/privacy.html")),
+		offerTpl:      template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/offer.html")),
 		contacts:      template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/contacts.html")),
 		notFoundTpl:   template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/notfound.html")),
 		categoryTpl:   template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/category.html")),
@@ -102,6 +105,7 @@ func (s *Storefront) Router() http.Handler {
 	r.Get("/go/out/{id}/{slug}", s.GoOutside)
 	r.Get("/info", s.Info)
 	r.Get("/privacy", s.Privacy)
+	r.Get("/offer", s.Offer)
 	r.Get("/contacts", s.Contacts)
 	r.Get("/c", s.Categories)
 	r.Get("/c/*", s.Category)
@@ -294,6 +298,9 @@ type pageVM struct {
 	Org bool
 	// The organisation was named without a usable tax id, or the other way round.
 	BadOrg bool
+	// NoConsent: the buyer sent the form without accepting the offer and the
+	// privacy policy. A distance sale is a contract, so the acceptance is explicit.
+	NoConsent bool
 	// Typed before the order was refused, rendered back so nothing has to be retyped.
 	FormName    string
 	FormComment string
@@ -827,6 +834,19 @@ func (s *Storefront) Privacy(w http.ResponseWriter, r *http.Request) {
 	data.promiseFor(r)
 	if err := s.privacy.ExecuteTemplate(w, "base", data); err != nil {
 		log.Errorf("render privacy: %v", err)
+	}
+}
+
+// Offer is the contract a distance sale needs: the shop takes an order from a
+// buyer it never meets, and the terms of that deal have to be readable before it.
+func (s *Storefront) Offer(w http.ResponseWriter, r *http.Request) {
+	shop := s.shop()
+	data := pageVM{Shop: shop, BaseURL: s.baseURL, CSS: template.CSS(styleCSS),
+		CartCount: cartCount(r), Canonical: s.baseURL + "/offer",
+		ShipFreeFromStr: priceStr(shop.DeliveryFreeFrom)}
+	data.promiseFor(r)
+	if err := s.offerTpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Errorf("render offer: %v", err)
 	}
 }
 

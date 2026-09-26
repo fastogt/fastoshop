@@ -74,7 +74,7 @@ func TestOrgOrderStoresNameAndUNP(t *testing.T) {
 	sellTo(t, d, database.CustomerBoth)
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "1")
-	w := c.do(t, "POST", "/cart/order", url.Values{
+	w := c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"},
 		"name": {"Пётр"}, "phone": {"+375291112233"}, "customer": {"company"},
 		"org_name": {"ООО «Дилинс-М»"}, "org_unp": {"190304936"}})
 	if w.Code != http.StatusSeeOther {
@@ -95,7 +95,7 @@ func TestOrgOrderWithoutFileIsAccepted(t *testing.T) {
 	sellTo(t, d, database.CustomerCompany)
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "1")
-	w := c.do(t, "POST", "/cart/order", url.Values{
+	w := c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"},
 		"name": {"Пётр"}, "email": {"p@d.by"},
 		"org_name": {"ООО «Ромашка»"}, "org_unp": {"190304936"}})
 	if w.Code != http.StatusSeeOther {
@@ -127,7 +127,7 @@ func TestRequisitesFileLandsOutsideUploads(t *testing.T) {
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	for k, v := range map[string]string{"name": "Пётр", "phone": "+375291112233",
-		"org_name": "ООО «Ромашка»", "org_unp": "190304936"} {
+		"org_name": "ООО «Ромашка»", "org_unp": "190304936", "consent": "on"} {
 		_ = mw.WriteField(k, v)
 	}
 	f, _ := mw.CreateFormFile("requisites", "kartochka.pdf")
@@ -164,7 +164,7 @@ func TestBadUNPRefusesAndRefills(t *testing.T) {
 	sellTo(t, d, database.CustomerBoth)
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "1")
-	w := c.do(t, "POST", "/cart/order", url.Values{
+	w := c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"},
 		"name": {"Пётр"}, "phone": {"+375291112233"}, "customer": {"company"},
 		"org_name": {"ООО «Дилинс-М»"}, "org_unp": {"19030"}})
 	if w.Code != http.StatusOK {
@@ -187,7 +187,7 @@ func TestPrivateOnlyShopIgnoresOrgFields(t *testing.T) {
 	d, h := setup(t)
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "1")
-	w := c.do(t, "POST", "/cart/order", url.Values{
+	w := c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"},
 		"name": {"Пётр"}, "phone": {"+375291112233"}, "customer": {"company"},
 		"org_name": {"ООО «Чужое»"}, "org_unp": {"190304936"}})
 	if w.Code != http.StatusSeeOther {
@@ -205,7 +205,7 @@ func TestOrgOrderStillNeedsPhoneOrEmail(t *testing.T) {
 	sellTo(t, d, database.CustomerCompany)
 	c := &client{h: h}
 	c.add(t, "krasnyj-chajnik", "1")
-	w := c.do(t, "POST", "/cart/order", url.Values{
+	w := c.do(t, "POST", "/cart/order", url.Values{"consent": {"on"},
 		"name": {"Пётр"}, "org_name": {"ООО «Ромашка»"}, "org_unp": {"190304936"}})
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected the form back, got %d", w.Code)

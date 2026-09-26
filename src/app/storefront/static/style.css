@@ -640,3 +640,7 @@ footer {
   font-size: 0.9rem;
 }
 .promise a { font-weight: 600; }
+
+/* The consent tick: the box keeps its own size next to a wrapping line. */
+.consent { display: flex; gap: 10px; align-items: flex-start; font-size: 0.9rem; }
+.consent input { margin-top: 3px; width: 16px; height: 16px; flex: none; }

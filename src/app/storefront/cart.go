@@ -248,6 +248,13 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 		s.renderCart(w, r, rows, total, typed)
 		return
 	}
+	// The offer and the policy are accepted by a tick, not by a line of small
+	// print: this is the moment the contract is made and the data handed over.
+	if r.FormValue("consent") != "on" {
+		typed.NoConsent = true
+		s.renderCart(w, r, rows, total, typed)
+		return
+	}
 	// An organisation half-introduced is worse than none: the seller would have a
 	// company order they cannot put on an invoice.
 	if !org.Valid() {
