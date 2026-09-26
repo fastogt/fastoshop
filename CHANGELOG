@@ -1,3 +1,8 @@
+1.63.2 / September 26, 2026
+[Alexandr Topilski]
+- The line pinned under the page appears only when the shop promises something about delivery; a shop that states a return window alone no longer shows a bar with a "got it" button that closes nothing
+- The footer states the terms on every page - free delivery from a sum, how fast, how long to return - from the same settings, whether or not the pinned line was closed
+
 1.63.1 / September 26, 2026
 [Alexandr Topilski]
 - The new Storefront tab in the profile has its Save button: settings typed there could not be saved at all
