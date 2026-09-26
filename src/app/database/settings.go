@@ -33,6 +33,19 @@ var kCurrencySigns = map[string]string{
 	ShopCurrencyKZT: "₸",
 }
 
+// kCurrencyCountry is where a shop that prices in this currency delivers: one
+// shop, one currency, one country (see the shop's own rule), and structured
+// data demands a country rather than a guess.
+var kCurrencyCountry = map[string]string{
+	ShopCurrencyRUB: "RU",
+	ShopCurrencyBYN: "BY",
+	ShopCurrencyPLN: "PL",
+	ShopCurrencyKZT: "KZ",
+}
+
+// Country is the delivery country for structured data; empty when unknown.
+func (s *Settings) Country() string { return kCurrencyCountry[s.Currency] }
+
 func IsValidShopCurrency(c string) bool {
 	_, ok := kCurrencySigns[c]
 	return ok
@@ -77,6 +90,12 @@ type Settings struct {
 	BuyButtons string `json:"buy_buttons"`
 	// DeliveryNote is shown over the buy button as the owner wrote it.
 	DeliveryNote string `json:"delivery_note"`
+	// Delivery and returns in numbers, for the card's structured data: money in
+	// minor units, time in days. Zero means the owner has not stated it.
+	DeliveryCost     int64 `json:"delivery_cost"`
+	DeliveryFreeFrom int64 `json:"delivery_free_from"`
+	DeliveryDays     int   `json:"delivery_days"`
+	ReturnDays       int   `json:"return_days"`
 }
 
 // Buttons that stand beside the cart. Which of them a page carries is the
@@ -205,12 +224,14 @@ func (d *Database) GetSettings() (*Settings, error) {
 		 smtp_port, smtp_user, smtp_password, currency, lang, logo,
 		 ga_measurement_id, metrika_counter_id, requisites, smtp_from, terms,
 		 adhunters_api_key, telegram, whatsapp, tile_aspect, customer_kind,
-		 cart_enabled, buy_buttons, delivery_note FROM settings WHERE id=1`).Scan(
+		 cart_enabled, buy_buttons, delivery_note, delivery_cost,
+		 delivery_free_from, delivery_days, return_days FROM settings WHERE id=1`).Scan(
 		&s.OwnerEmail, &s.PasswordHash, &s.ShopName, &s.ShopPhone, &s.SMTPHost,
 		&s.SMTPPort, &s.SMTPUser, &s.SMTPPassword, &s.Currency, &s.Lang, &s.Logo,
 		&s.GAMeasurementID, &s.MetrikaCounterID, &s.Requisites, &s.SMTPFrom, &s.Terms,
 		&s.AdHuntersAPIKey, &s.Telegram, &s.WhatsApp, &s.TileAspect, &s.CustomerKind,
-		&s.CartEnabled, &s.BuyButtons, &s.DeliveryNote)
+		&s.CartEnabled, &s.BuyButtons, &s.DeliveryNote, &s.DeliveryCost,
+		&s.DeliveryFreeFrom, &s.DeliveryDays, &s.ReturnDays)
 	if err != nil {
 		return nil, err
 	}
@@ -260,14 +281,16 @@ func (d *Database) UpdateSettings(s *Settings) error {
 		 lang=?, logo=?, ga_measurement_id=?, metrika_counter_id=?, requisites=?,
 		 smtp_from=?, terms=?, adhunters_api_key=?, telegram=?, whatsapp=?,
 		 tile_aspect=?, customer_kind=?, cart_enabled=?, buy_buttons=?,
-		 delivery_note=?
+		 delivery_note=?, delivery_cost=?, delivery_free_from=?,
+		 delivery_days=?, return_days=?
 		 WHERE id=1`,
 		s.OwnerEmail, s.PasswordHash, s.ShopName, s.ShopPhone, s.SMTPHost,
 		s.SMTPPort, s.SMTPUser, s.SMTPPassword, currency, lang, s.Logo,
 		s.GAMeasurementID, s.MetrikaCounterID, s.Requisites, s.SMTPFrom, s.Terms,
 		s.AdHuntersAPIKey, strings.TrimSpace(s.Telegram), strings.TrimSpace(s.WhatsApp),
 		tile, customer, s.CartEnabled, buttons,
-		strings.TrimSpace(s.DeliveryNote))
+		strings.TrimSpace(s.DeliveryNote), max(s.DeliveryCost, 0), max(s.DeliveryFreeFrom, 0),
+		max(s.DeliveryDays, 0), max(s.ReturnDays, 0))
 	if err == nil {
 		d.changed.Store(time.Now().Unix())
 	}

@@ -222,6 +222,11 @@ type pageVM struct {
 	PriceValidUntil string
 	// Search engines ask for it; the card's last change is the closest date we have.
 	PriceValidFrom string
+	// Delivery and returns for the offer, printed only when the owner stated them:
+	// an AI answer sends a buyer to delivery and warranty pages, so these are facts.
+	ShipCountry     string
+	ShipCostStr     string
+	ShipFreeFromStr string
 	// The title cut to what structured data accepts; stays a prefix of the heading.
 	SchemaName      string
 	MetaDescription string
@@ -733,6 +738,9 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		CSS: template.CSS(styleCSS), P: p, Images: imgs,
 		PriceStr: priceStr(p.Price), PriceValidUntil: endOfMonth(time.Now()),
 		PriceValidFrom:  p.UpdatedAt.Format(time.DateOnly),
+		ShipCountry:     shop.Country(),
+		ShipCostStr:     priceStr(shop.DeliveryCost),
+		ShipFreeFromStr: priceStr(shop.DeliveryFreeFrom),
 		SchemaName:      clipName(p.Title),
 		MetaDescription: metaFrom(p.Description),
 		DescParas:       paragraphs(p.Description),

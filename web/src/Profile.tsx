@@ -150,6 +150,18 @@ const kText = {
     ru: "Минск - завтра, Беларусь - 2–3 дня",
     en: "Tomorrow in the city, 2–3 days nationwide",
   },
+  deliveryTerms: {
+    ru: "Условия доставки и возврата",
+    en: "Delivery and return terms",
+  },
+  deliveryTermsHint: {
+    ru: "Числами, для поисковиков и ответов нейросетей: они читают эти поля, а текст на странице «Доставка и оплата» - нет. По исследованию ИИ-выдачи на карточки товаров приходится 4% ссылок, а ведут нейросети как раз на доставку, возврат и разделы. Ноль в поле - условие не заявлено и на карточке не печатается.",
+    en: "As numbers, for search engines and AI answers: they read these fields, while the prose on the delivery page tells them nothing. Zero means the term is not stated and nothing is printed on the card.",
+  },
+  deliveryCost: { ru: "Стоимость доставки", en: "Delivery cost" },
+  deliveryFreeFrom: { ru: "Бесплатно от суммы", en: "Free from" },
+  deliveryDays: { ru: "Срок доставки, дней", en: "Delivery, days" },
+  returnDays: { ru: "Возврат в течение, дней", en: "Returns within, days" },
   tileAspectHint: {
     ru: "Пропорция рамки под фото в каталоге. 3:4 - формат Ozon и Wildberries: если каталог приехал с площадки, выбирайте его, иначе четверть плитки уйдёт в пустые поля. Для снимков «квадратом» оставьте 1:1.",
     en: "The proportion of the photo frame in the catalogue. 3:4 is what Ozon and Wildberries use: pick it if the catalogue came from a marketplace, otherwise a quarter of the tile goes to blank margins. Leave 1:1 for square photos.",
@@ -566,6 +578,47 @@ export default function Profile() {
               value={s.delivery_note}
               onChange={(v) => setS({ ...s, delivery_note: v })}
             />
+            <div>
+              <h3 className="font-bold">{t("deliveryTerms")}</h3>
+              <p className="hint">{t("deliveryTermsHint")}</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Field
+                className="w-40"
+                label={t("deliveryCost")}
+                type="number"
+                value={s.delivery_cost / 100}
+                onChange={(v) =>
+                  setS({ ...s, delivery_cost: Math.round(Number(v) * 100) })
+                }
+              />
+              <Field
+                className="w-40"
+                label={t("deliveryFreeFrom")}
+                type="number"
+                value={s.delivery_free_from / 100}
+                onChange={(v) =>
+                  setS({
+                    ...s,
+                    delivery_free_from: Math.round(Number(v) * 100),
+                  })
+                }
+              />
+              <Field
+                className="w-40"
+                label={t("deliveryDays")}
+                type="number"
+                value={s.delivery_days}
+                onChange={(v) => setS({ ...s, delivery_days: Number(v) })}
+              />
+              <Field
+                className="w-40"
+                label={t("returnDays")}
+                type="number"
+                value={s.return_days}
+                onChange={(v) => setS({ ...s, return_days: Number(v) })}
+              />
+            </div>
           </section>
 
           <section className="card flex flex-col gap-4">

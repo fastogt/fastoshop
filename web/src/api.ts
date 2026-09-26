@@ -273,6 +273,12 @@ export interface Settings {
   buy_buttons: string;
   // One line over the buy button, as the owner wrote it.
   delivery_note: string;
+  // Delivery and returns as numbers for the card's structured data: money in
+  // minor units, time in days. Zero means the owner stated nothing.
+  delivery_cost: number;
+  delivery_free_from: number;
+  delivery_days: number;
+  return_days: number;
   logo: string;
   smtp_host: string;
   smtp_port: number;

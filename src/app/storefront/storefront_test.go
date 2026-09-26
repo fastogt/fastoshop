@@ -2251,3 +2251,85 @@ func TestNotFoundKeepsTheShop(t *testing.T) {
 		}
 	}
 }
+
+// An answer engine sends a buyer to delivery and returns, and it reads them as
+// fields. Stated ones are printed; what the owner never stated is not invented.
+func TestDeliveryAndReturnsAreStructuredData(t *testing.T) {
+	d, h := setup(t)
+	body := get(t, h, "/p/krasnyj-chajnik")
+	for _, gone := range []string{"OfferShippingDetails", "MerchantReturnPolicy"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("a shop that stated no terms printed %s", gone)
+		}
+	}
+
+	s, _ := d.GetSettings()
+	s.Currency = database.ShopCurrencyBYN
+	s.DeliveryCost, s.DeliveryFreeFrom, s.DeliveryDays, s.ReturnDays = 590, 5000, 3, 14
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	var card struct {
+		Offers struct {
+			ShippingDetails struct {
+				ShippingRate struct {
+					Value    string `json:"value"`
+					Currency string `json:"currency"`
+				} `json:"shippingRate"`
+				Destination struct {
+					Country string `json:"addressCountry"`
+				} `json:"shippingDestination"`
+				FreeFrom struct {
+					Volume struct {
+						Price string `json:"price"`
+					} `json:"eligibleTransactionVolume"`
+				} `json:"freeShippingThreshold"`
+				DeliveryTime struct {
+					Transit struct {
+						Max int `json:"maxValue"`
+					} `json:"transitTime"`
+				} `json:"deliveryTime"`
+			} `json:"shippingDetails"`
+			Returns struct {
+				Country string `json:"applicableCountry"`
+				Days    int    `json:"merchantReturnDays"`
+			} `json:"hasMerchantReturnPolicy"`
+		} `json:"offers"`
+	}
+	if err := json.Unmarshal(jsonLD(t, get(t, h, "/p/krasnyj-chajnik")), &card); err != nil {
+		t.Fatalf("the product JSON-LD is not valid JSON: %v", err)
+	}
+	ship := card.Offers.ShippingDetails
+	if ship.ShippingRate.Value != "5.90" || ship.ShippingRate.Currency != "BYN" {
+		t.Errorf("delivery price: %+v", ship.ShippingRate)
+	}
+	if ship.Destination.Country != "BY" || card.Offers.Returns.Country != "BY" {
+		t.Errorf("country: %q / %q", ship.Destination.Country, card.Offers.Returns.Country)
+	}
+	if ship.FreeFrom.Volume.Price != "50.00" {
+		t.Errorf("free delivery threshold: %q", ship.FreeFrom.Volume.Price)
+	}
+	if ship.DeliveryTime.Transit.Max != 3 {
+		t.Errorf("delivery days: %d", ship.DeliveryTime.Transit.Max)
+	}
+	if card.Offers.Returns.Days != 14 {
+		t.Errorf("return days: %d", card.Offers.Returns.Days)
+	}
+}
+
+// jsonLD returns the first ld+json block of a page.
+func jsonLD(t *testing.T, body string) []byte {
+	t.Helper()
+	const open = `<script type="application/ld+json">`
+	i := strings.Index(body, open)
+	if i < 0 {
+		t.Fatal("no JSON-LD on the page")
+	}
+	rest := body[i+len(open):]
+	end := strings.Index(rest, "</script>")
+	if end < 0 {
+		t.Fatal("the JSON-LD block is not closed")
+	}
+	return []byte(rest[:end])
+}

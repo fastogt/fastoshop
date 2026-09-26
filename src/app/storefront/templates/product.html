@@ -46,7 +46,31 @@
       "validFrom": "{{.PriceValidFrom}}"
     },
     "itemCondition": "https://schema.org/NewCondition",
-    "availability": "https://schema.org/{{if gt .P.Stock 0}}InStock{{else}}OutOfStock{{end}}"
+    "availability": "https://schema.org/{{if gt .P.Stock 0}}InStock{{else}}OutOfStock{{end}}"{{if and .ShipCountry .Shop.DeliveryDays}},
+    {{/* Delivery as fields, not as a line of the owner's prose: this is what a
+         rich result and an answer engine read. Printed only when stated. */}}
+    "shippingDetails": {
+      "@type": "OfferShippingDetails",
+      "shippingRate": {"@type": "MonetaryAmount", "value": "{{.ShipCostStr}}", "currency": "{{.Shop.Currency}}"},
+      "shippingDestination": {"@type": "DefinedRegion", "addressCountry": "{{.ShipCountry}}"},
+      {{if .Shop.DeliveryFreeFrom}}"freeShippingThreshold": {
+        "@type": "DeliveryChargeSpecification",
+        "eligibleTransactionVolume": {"@type": "PriceSpecification", "price": "{{.ShipFreeFromStr}}", "priceCurrency": "{{.Shop.Currency}}"}
+      },{{end}}
+      "deliveryTime": {
+        "@type": "ShippingDeliveryTime",
+        "handlingTime": {"@type": "QuantitativeValue", "minValue": 0, "maxValue": 1, "unitCode": "DAY"},
+        "transitTime": {"@type": "QuantitativeValue", "minValue": 1, "maxValue": {{.Shop.DeliveryDays}}, "unitCode": "DAY"}
+      }
+    }{{end}}{{if and .ShipCountry .Shop.ReturnDays}},
+    "hasMerchantReturnPolicy": {
+      "@type": "MerchantReturnPolicy",
+      "applicableCountry": "{{.ShipCountry}}",
+      "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+      "merchantReturnDays": {{.Shop.ReturnDays}},
+      "returnMethod": "https://schema.org/ReturnByMail",
+      "returnFees": "https://schema.org/ReturnShippingFees"
+    }{{end}}
   }
 }
 </script>

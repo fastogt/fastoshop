@@ -37,6 +37,11 @@ type settingsResponse struct {
 	CartEnabled     bool   `json:"cart_enabled"`
 	BuyButtons      string `json:"buy_buttons"`
 	DeliveryNote    string `json:"delivery_note"`
+	// Delivery and returns in numbers: money in minor units, time in days.
+	DeliveryCost     int64 `json:"delivery_cost"`
+	DeliveryFreeFrom int64 `json:"delivery_free_from"`
+	DeliveryDays     int   `json:"delivery_days"`
+	ReturnDays       int   `json:"return_days"`
 }
 
 type settingsRequest struct {
@@ -63,6 +68,10 @@ type settingsRequest struct {
 	CartEnabled      *bool   `json:"cart_enabled"`
 	BuyButtons       *string `json:"buy_buttons"`
 	DeliveryNote     *string `json:"delivery_note"`
+	DeliveryCost     *int64  `json:"delivery_cost"`
+	DeliveryFreeFrom *int64  `json:"delivery_free_from"`
+	DeliveryDays     *int    `json:"delivery_days"`
+	ReturnDays       *int    `json:"return_days"`
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +97,10 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		CartEnabled:      s.CartEnabled,
 		BuyButtons:       s.BuyButtons,
 		DeliveryNote:     s.DeliveryNote,
+		DeliveryCost:     s.DeliveryCost,
+		DeliveryFreeFrom: s.DeliveryFreeFrom,
+		DeliveryDays:     s.DeliveryDays,
+		ReturnDays:       s.ReturnDays,
 	})
 }
 
@@ -153,6 +166,18 @@ func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.DeliveryNote != nil {
 		s.DeliveryNote = *req.DeliveryNote
+	}
+	if req.DeliveryCost != nil {
+		s.DeliveryCost = *req.DeliveryCost
+	}
+	if req.DeliveryFreeFrom != nil {
+		s.DeliveryFreeFrom = *req.DeliveryFreeFrom
+	}
+	if req.DeliveryDays != nil {
+		s.DeliveryDays = *req.DeliveryDays
+	}
+	if req.ReturnDays != nil {
+		s.ReturnDays = *req.ReturnDays
 	}
 	s.SMTPHost, s.SMTPPort, s.SMTPUser = req.SMTPHost, req.SMTPPort, req.SMTPUser
 	s.SMTPFrom = strings.TrimSpace(req.SMTPFrom)

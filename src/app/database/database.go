@@ -275,7 +275,14 @@ func (d *Database) migrate() error {
 		-- default; a product may arrange its own.
 		buy_buttons         TEXT NOT NULL DEFAULT 'msg',
 		-- One owner-written line over the buy button; the shop promises no date it cannot compute.
-		delivery_note       TEXT NOT NULL DEFAULT ''
+		delivery_note       TEXT NOT NULL DEFAULT '',
+		-- Delivery and returns as numbers, not prose: an AI answer and a rich result
+		-- read them as fields, and the owner's free text on /info reads as nothing.
+		-- 0 everywhere means "not stated" and prints nothing.
+		delivery_cost       INTEGER NOT NULL DEFAULT 0,
+		delivery_free_from  INTEGER NOT NULL DEFAULT 0,
+		delivery_days       INTEGER NOT NULL DEFAULT 0,
+		return_days         INTEGER NOT NULL DEFAULT 0
 	);
 	CREATE TABLE IF NOT EXISTS auth_tokens (
 		token      TEXT PRIMARY KEY,

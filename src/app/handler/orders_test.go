@@ -158,3 +158,40 @@ func TestListOrdersParsesSnapshot(t *testing.T) {
 		t.Fatalf("the raw snapshot must stay on the server: %s", body)
 	}
 }
+
+// The delivery and return terms are what the storefront prints as structured
+// data, so they have to survive the round trip through the settings API.
+func TestSettingsCarryDeliveryTerms(t *testing.T) {
+	h := newTestHandler(t)
+	r := chi.NewRouter()
+	r.Get("/api/settings", h.GetSettings)
+	r.Put("/api/settings", h.UpdateSettings)
+	if _, err := h.db.CreateOwner("a@b.c"); err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest("PUT", "/api/settings", strings.NewReader(
+		`{"shop_name":"Ромашка","delivery_cost":590,"delivery_free_from":5000,
+		  "delivery_days":3,"return_days":14}`)))
+	if w.Code != http.StatusOK {
+		t.Fatalf("save: %d %s", w.Code, w.Body.String())
+	}
+
+	s, err := h.db.GetSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.DeliveryCost != 590 || s.DeliveryFreeFrom != 5000 || s.DeliveryDays != 3 || s.ReturnDays != 14 {
+		t.Fatalf("stored: %+v", s)
+	}
+
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/api/settings", nil))
+	for _, want := range []string{`"delivery_cost":590`, `"delivery_free_from":5000`,
+		`"delivery_days":3`, `"return_days":14`} {
+		if !strings.Contains(w.Body.String(), want) {
+			t.Errorf("the admin never sees %s", want)
+		}
+	}
+}
