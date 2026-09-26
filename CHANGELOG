@@ -1,3 +1,15 @@
+1.62.0 / September 26, 2026
+[Alexandr Topilski]
+- Delivery and returns are structured data: four numbers in the profile (delivery cost, free from, delivery days, return days) and the product card carries OfferShippingDetails and MerchantReturnPolicy. Answer engines and rich results read fields, not the owner's prose on the delivery page; a field left at zero is not stated and prints nothing
+- The delivery country comes from the shop currency, so there is nothing else to fill in
+
+Upgrading a live shop needs four columns added by hand:
+
+    ALTER TABLE settings ADD COLUMN delivery_cost INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE settings ADD COLUMN delivery_free_from INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE settings ADD COLUMN delivery_days INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE settings ADD COLUMN return_days INTEGER NOT NULL DEFAULT 0;
+
 1.61.0 / September 24, 2026
 [Alexandr Topilski]
 - Wildberries import walks every page by cursor, up to ten thousand cards
