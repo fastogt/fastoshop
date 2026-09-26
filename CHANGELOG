@@ -1,3 +1,8 @@
+1.63.1 / September 26, 2026
+[Alexandr Topilski]
+- The new Storefront tab in the profile has its Save button: settings typed there could not be saved at all
+- The subscription block keeps the page width instead of running edge to edge, and its field and button sit on one line
+
 1.63.0 / September 26, 2026
 [Alexandr Topilski]
 - The catalogue page declares the shop's own search, so a search box can appear under the site in results; a search results page does not declare one
