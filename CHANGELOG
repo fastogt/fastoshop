@@ -1,3 +1,8 @@
+1.63.0 / September 26, 2026
+[Alexandr Topilski]
+- The catalogue page declares the shop's own search, so a search box can appear under the site in results; a search results page does not declare one
+- Headings on a product card are h2, not h3: description, characteristics and set contents are page sections, and the ladder no longer skips a level
+
 1.62.0 / September 26, 2026
 [Alexandr Topilski]
 - Delivery and returns are structured data: four numbers in the profile (delivery cost, free from, delivery days, return days) and the product card carries OfferShippingDetails and MerchantReturnPolicy. Answer engines and rich results read fields, not the owner's prose on the delivery page; a field left at zero is not stated and prints nothing

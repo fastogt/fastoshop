@@ -132,7 +132,7 @@
     {{with .InSets}}<p class="sku">Также наборами:{{range $i, $s := .}}{{if $i}},{{end}} <a href="/p/{{$s.Slug}}">{{$s.Title}}</a>{{end}}</p>{{end}}
     {{with .Components}}
     <div class="specs">
-      <h3>Состав набора</h3>
+      <h2>Состав набора</h2>
       <table>
         {{range .}}<tr><td>{{if .Hidden}}{{.Title}}{{else}}<a href="/p/{{.Slug}}">{{.Title}}</a>{{end}}</td><td class="qty">{{.Qty}} шт</td></tr>{{end}}
       </table>
@@ -140,7 +140,7 @@
     {{end}}
     {{if not .Specs.Empty}}
     <div class="specs">
-      <h3>Характеристики</h3>
+      <h2>Характеристики</h2>
       <table>
         {{if .Specs.Weight}}<tr><td>Вес</td><td>{{.Specs.Weight}}</td></tr>{{end}}
         {{if .Specs.Size}}<tr><td>Габариты</td><td>{{.Specs.Size}}</td></tr>{{end}}
@@ -203,7 +203,7 @@
        not to the buy box. */}}
   {{if .DescParas}}
   <div class="desc">
-    <h3>Описание</h3>
+    <h2>Описание</h2>
     {{range .DescParas}}<p>{{.}}</p>{{end}}
   </div>
   {{end}}

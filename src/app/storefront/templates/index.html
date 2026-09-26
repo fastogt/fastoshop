@@ -2,6 +2,25 @@
 {{define "head"}}
 <meta name="description" content="{{.Shop.ShopName}}: каталог товаров, цены, наличие.{{if gt .Page 1}} Страница {{.Page}}.{{end}}">
 {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">{{end}}
+{{/* The search box Google may draw under the site in its results. Declared on
+the first catalogue page only: a search result page offering a search of itself
+is noise, and the action points at the shop's own /?q= which needs no script. */}}
+{{if and (not .Query) (eq .Page 1)}}<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": {{.Shop.ShopName}},
+  "url": {{.BaseURL}},
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": {{printf "%s/?q={search_term_string}" .BaseURL}}
+    },
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>{{end}}
 {{end}}
 {{define "content"}}
 {{if .Query}}

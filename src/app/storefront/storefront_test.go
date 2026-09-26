@@ -282,8 +282,19 @@ func TestCatalogPagination(t *testing.T) {
 			t.Errorf("page 1 missing %q", want)
 		}
 	}
-	if strings.Contains(first, "<script") {
+	// Data, not code: the page declares a search box for the results and still
+	// carries nothing executable.
+	if strings.Contains(strings.ReplaceAll(first, `<script type="application/ld+json">`, ""), "<script") {
 		t.Error("storefront must stay JS-free")
+	}
+	for _, want := range []string{`"@type": "WebSite"`, `"@type": "SearchAction"`,
+		"https://shop.example.com/?q={search_term_string}"} {
+		if !strings.Contains(first, want) {
+			t.Errorf("page 1 missing %q", want)
+		}
+	}
+	if strings.Contains(get(t, h, "/?q=товар"), `"@type": "SearchAction"`) {
+		t.Error("a search results page must not declare a search box")
 	}
 
 	second := get(t, h, "/?page=2")

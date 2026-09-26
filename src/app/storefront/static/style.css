@@ -337,7 +337,7 @@ main > h1 { margin-block: 28px 20px; }
    the label muted, the value in the text colour, no borders — a spec sheet is
    a list, not a spreadsheet. */
 .specs { margin-top: 16px; }
-.specs h3 { font-size: 1rem; margin-bottom: 6px; }
+.specs h2 { font-size: 1rem; margin-bottom: 6px; }
 .specs table { border-collapse: collapse; }
 .specs td { padding: 4px 0; }
 .specs td:first-child { color: var(--muted); padding-right: 24px; }
@@ -350,7 +350,7 @@ main > h1 { margin-block: 28px 20px; }
    stops being readable long before 1440px. */
 .desc { grid-column: 1 / -1; margin-top: 8px; max-width: 70ch; color: var(--muted); }
 .desc p { margin-block: 0 12px; line-height: 1.6; }
-.desc h3 { font-size: 1rem; color: var(--text); margin-bottom: 6px; }
+.desc h2 { font-size: 1rem; color: var(--text); margin-bottom: 6px; }
 
 .trust { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--muted); }
 
