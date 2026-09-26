@@ -644,3 +644,26 @@ footer {
 /* The consent tick: the box keeps its own size next to a wrapping line. */
 .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 0.9rem; }
 .consent input { margin-top: 3px; width: 16px; height: 16px; flex: none; }
+
+/* The subscription sits inside the page, not across it: the same width as the
+   header and the footer, the form on one line. */
+.subscribe {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+}
+.subscribe .sub-text p { margin-top: 2px; }
+.subscribe form { flex: 1; min-width: 280px; max-width: 520px; }
+.sub-row { display: flex; gap: 8px; }
+.sub-row input { flex: 1; }
+.sub-hint { margin-top: 6px; font-size: 0.8rem; line-height: 1.4; }
+@media (max-width: 780px) {
+  .subscribe { padding: 20px; }
+  .subscribe form { max-width: none; }
+}

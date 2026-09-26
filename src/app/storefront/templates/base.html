@@ -91,15 +91,19 @@ link, not a script: the storefront ships no JavaScript, and a cookie remembers i
 {{/* The letters a buyer asks for themselves. One field and a tick: the address
      is the whole subscription, and the wording accepted travels with it. */}}
 {{if .Shop.SMTPHost}}<section class="subscribe">
-  {{if .Subscribed}}<p class="notice good ok">Подписались. Письма будут приходить на {{.Subscribed}}.</p>
-  {{else if .BadEmail}}<p class="notice oos">Проверьте адрес почты.</p>{{end}}
+  <div class="sub-text">
+    <strong>Новинки и скидки на почту</strong>
+    <p class="oos">Пишем редко - только когда есть что показать.</p>
+  </div>
   <form method="post" action="/subscribe">
-    <label for="sub-email">Новинки и скидки на почту</label>
+    {{if .Subscribed}}<p class="notice good ok">Подписались. Письма будут приходить на {{.Subscribed}}.</p>
+    {{else if .BadEmail}}<p class="notice oos">Проверьте адрес почты.</p>{{end}}
     <div class="sub-row">
+      <label for="sub-email" hidden>Почта</label>
       <input id="sub-email" type="email" name="email" placeholder="ваша почта" required>
       <button type="submit">Подписаться</button>
     </div>
-    <p class="oos">Нажимая кнопку, вы соглашаетесь получать письма магазина и принимаете
+    <p class="oos sub-hint">Нажимая кнопку, вы соглашаетесь получать письма магазина и принимаете
       <a href="/privacy">политику обработки данных</a>. Отписаться можно одной ссылкой из любого письма.</p>
   </form>
 </section>{{end}}

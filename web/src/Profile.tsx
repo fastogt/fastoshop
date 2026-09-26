@@ -852,7 +852,10 @@ export default function Profile() {
         </>
       )}
       {/* One settings object across three tabs: the button follows the fields. */}
-      {(tab === "tabShop" || tab === "tabMail" || tab === "tabSeo") && (
+      {(tab === "tabShop" ||
+        tab === "tabStorefront" ||
+        tab === "tabMail" ||
+        tab === "tabSeo") && (
         <div className="flex items-center gap-4">
           <button className="btn" onClick={save}>
             {t("save")}
