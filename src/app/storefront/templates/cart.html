@@ -33,7 +33,15 @@
 {{end}}
 </table>
 <div class="checkout">
-  <p class="total"><span class="oos">Итого, {{.CartCount}} шт.:</span> <span class="price">{{.TotalStr}} {{$.Shop.Sign}}</span></p>
+  <p class="total"><span class="oos">Товары, {{.CartCount}} шт.:</span> <span class="price">{{.TotalStr}} {{.Shop.Sign}}</span></p>
+  {{/* The delivery sum belongs here, before the order: on a marketplace the buyer
+       sees it in the cart, and a shop that names it only on the phone loses them. */}}
+  <p class="delivery-row"><span class="oos">Доставка:</span>
+    {{if .DeliveryFree}}<span class="free">бесплатно</span>
+    {{else if .DeliveryUnknown}}<span class="oos">рассчитаем при подтверждении заказа</span>
+    {{else}}<span>{{.DeliveryStr}} {{.Shop.Sign}}</span>{{end}}</p>
+  {{if .DeliveryFreeFromStr}}<p class="oos hint-free">Бесплатно от {{.DeliveryFreeFromStr}} {{.Shop.Sign}}</p>{{end}}
+  {{if .PayableStr}}<p class="total"><span class="oos">К оплате:</span> <span class="price">{{.PayableStr}} {{.Shop.Sign}}</span></p>{{end}}
   <h2>Оформление заказа</h2>
   {{/* The error lives next to the form it talks about: rendered at the top of
        the page it sat above the fold while the empty field sat below it. */}}

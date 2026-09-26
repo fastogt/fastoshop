@@ -85,6 +85,9 @@
 </nav>
 </header>
 <main>{{block "content" .}}{{end}}</main>
+{{/* The shop's own promise, on every page until the buyer closes it. Closing is a
+link, not a script: the storefront ships no JavaScript, and a cookie remembers it. */}}
+{{if .Promise}}<div class="promise"><span>{{.Promise}}</span><a href="/promise/off?back={{.PromiseBack}}" rel="nofollow">Понятно</a></div>{{end}}
 <footer>
 <span>© {{.Shop.ShopName}}</span>
 {{if .Shop.Requisites}}<div class="requisites">{{.Shop.Requisites}}</div>{{end}}

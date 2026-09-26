@@ -2344,3 +2344,93 @@ func jsonLD(t *testing.T, body string) []byte {
 	}
 	return []byte(rest[:end])
 }
+
+// The buyer learns the delivery sum in the cart, not on a phone call after the
+// order; and a shop that stated nothing does not promise free delivery.
+func TestCartShowsDelivery(t *testing.T) {
+	d, h := setup(t)
+	add := func() []*http.Cookie {
+		r := httptest.NewRequest("POST", "/cart/add", strings.NewReader("slug=krasnyj-chajnik&qty=1"))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w.Result().Cookies()
+	}
+	cart := func(cookies []*http.Cookie) string {
+		r := httptest.NewRequest("GET", "/cart", nil)
+		for _, c := range cookies {
+			r.AddCookie(c)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w.Body.String()
+	}
+
+	cookies := add()
+	if body := cart(cookies); !strings.Contains(body, "рассчитаем при подтверждении") {
+		t.Error("a shop that stated no delivery either hid the row or promised free delivery")
+	}
+
+	s, _ := d.GetSettings()
+	s.DeliveryCost, s.DeliveryFreeFrom = 590, 500000
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	body := cart(cookies)
+	// The kettle is 2500.00, delivery 5.90: below the threshold, so both are shown.
+	for _, want := range []string{"Доставка:", "5.90", "Бесплатно от 5000.00", "К оплате:", "2505.90"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the cart does not show %q", want)
+		}
+	}
+
+	s.DeliveryFreeFrom = 100000
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if body := cart(cookies); !strings.Contains(body, "бесплатно") {
+		t.Error("an order over the free-delivery threshold was still charged for delivery")
+	}
+}
+
+// The promise line carries the shop's own numbers and closes without a script.
+func TestPromiseLineAndItsDismissal(t *testing.T) {
+	d, h := setup(t)
+	if strings.Contains(get(t, h, "/"), `class="promise"`) {
+		t.Error("a shop that stated nothing still showed a promise")
+	}
+
+	s, _ := d.GetSettings()
+	s.DeliveryFreeFrom, s.DeliveryDays, s.ReturnDays = 5000, 2, 14
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	body := get(t, h, "/")
+	for _, want := range []string{"Доставка бесплатно от 50.00", "доставим за 2 дня", "возврат в течение 14 дней"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the promise does not say %q", want)
+		}
+	}
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/promise/off?back=%2Fc", nil))
+	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/c" {
+		t.Fatalf("closing the line answered %d to %q", w.Code, w.Header().Get("Location"))
+	}
+	r := httptest.NewRequest("GET", "/", nil)
+	for _, c := range w.Result().Cookies() {
+		r.AddCookie(c)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if strings.Contains(w.Body.String(), `class="promise"`) {
+		t.Error("the line came back after the buyer closed it")
+	}
+
+	// A redirect target is our own address only, never one from the query.
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/promise/off?back=https://evil.example", nil))
+	if loc := w.Header().Get("Location"); loc != "/" {
+		t.Errorf("open redirect: %q", loc)
+	}
+}

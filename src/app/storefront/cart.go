@@ -125,7 +125,7 @@ func (s *Storefront) Cart(w http.ResponseWriter, r *http.Request) {
 	if changed {
 		writeCart(w, rowsToLines(rows))
 	}
-	s.renderCart(w, rows, total, pageVM{
+	s.renderCart(w, r, rows, total, pageVM{
 		Dropped: changed && len(rows) > 0,
 		Goal:    takeGoal(w, r),
 		Ordered: r.URL.Query().Get("ordered") == "1"})
@@ -141,14 +141,16 @@ func (s *Storefront) cartSoldOut(w http.ResponseWriter, r *http.Request, slug, t
 	}
 	rows, total, _ := s.resolveCart(lines)
 	writeCart(w, rowsToLines(rows))
-	s.renderCart(w, rows, total, pageVM{SoldOut: title})
+	s.renderCart(w, r, rows, total, pageVM{SoldOut: title})
 }
 
-func (s *Storefront) renderCart(w http.ResponseWriter, rows []cartRowVM, total int64, data pageVM) {
+func (s *Storefront) renderCart(w http.ResponseWriter, r *http.Request, rows []cartRowVM, total int64, data pageVM) {
 	data.Shop, data.BaseURL, data.CSS = s.shop(), s.baseURL, template.CSS(styleCSS)
 	data.Cart, data.TotalStr, data.CartCount = rows, priceStr(total), countRows(rows)
+	data.deliveryLine(total)
 	// Robots lives in one place, or a page ends up carrying two contradicting tags.
 	data.NoIndex = true
+	data.promiseFor(r)
 	if err := s.cart.ExecuteTemplate(w, "base", data); err != nil {
 		log.Errorf("render cart: %v", err)
 	}
@@ -243,14 +245,14 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	// One contact is enough, but not none: an unreachable order is a lost sale.
 	if phone == "" && email == "" {
 		typed.NoContact = true
-		s.renderCart(w, rows, total, typed)
+		s.renderCart(w, r, rows, total, typed)
 		return
 	}
 	// An organisation half-introduced is worse than none: the seller would have a
 	// company order they cannot put on an invoice.
 	if !org.Valid() {
 		typed.BadOrg = true
-		s.renderCart(w, rows, total, typed)
+		s.renderCart(w, r, rows, total, typed)
 		return
 	}
 	items := make([]orderItemJSON, 0, len(rows))
@@ -322,4 +324,25 @@ func productIDs(products []database.Product) []int64 {
 		ids = append(ids, p.ID)
 	}
 	return ids
+}
+
+// deliveryLine is the cart's own delivery row, built from the same numbers the
+// product card publishes. The buyer is told the sum before the order, not after:
+// a shop that hides it until a phone call loses the order at the cart.
+func (v *pageVM) deliveryLine(total int64) {
+	free := v.Shop.DeliveryFreeFrom
+	switch {
+	case free > 0 && total >= free:
+		v.DeliveryFree = true
+	case v.Shop.DeliveryCost > 0:
+		v.DeliveryStr = priceStr(v.Shop.DeliveryCost)
+		v.PayableStr = priceStr(total + v.Shop.DeliveryCost)
+		if free > 0 {
+			v.DeliveryFreeFromStr = priceStr(free)
+		}
+	default:
+		// Nothing stated: the owner names the sum on the confirming call, and
+		// saying "0" here would promise free delivery they never offered.
+		v.DeliveryUnknown = true
+	}
 }

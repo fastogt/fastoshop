@@ -409,6 +409,9 @@ form.qty button:not(.remove) { height: 36px; }
 form.qty button { padding: 9px 12px; font-size: 0.9rem; background: transparent; color: var(--accent); border: 1px solid var(--line); }
 form.qty button:hover { background: var(--accent-soft); }
 
+.delivery-row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 8px; }
+.delivery-row .free { color: var(--ok, #2e7d32); font-weight: 600; }
+.hint-free { font-size: 0.85rem; margin-bottom: 12px; }
 .total { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
 .checkout { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); position: sticky; top: 20px; }
 .checkout h2 { margin-bottom: 4px; }
@@ -621,3 +624,19 @@ footer {
   text-decoration: none;
 }
 .btn-out:hover { background: var(--accent-soft); }
+
+/* The shop's promise, pinned under the page until the buyer closes it. */
+.promise {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+  background: var(--accent-soft);
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+.promise a { font-weight: 600; }
