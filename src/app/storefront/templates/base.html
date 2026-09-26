@@ -110,6 +110,7 @@ link, not a script: the storefront ships no JavaScript, and a cookie remembers i
 <footer>
 <span>© {{.Shop.ShopName}}</span>
 {{if .Shop.Requisites}}<div class="requisites">{{.Shop.Requisites}}</div>{{end}}
+{{if .Terms}}<span class="terms-line">{{.Terms}}</span>{{end}}
 {{if .Shop.Terms}}<a href="/info">Доставка и оплата</a>{{end}}
 <a href="/offer">Оферта</a>
 <a href="/privacy">Обработка данных</a>

@@ -2404,8 +2404,21 @@ func TestPromiseLineAndItsDismissal(t *testing.T) {
 		t.Error("a shop that stated nothing still showed a promise")
 	}
 
+	// A return window alone is not a promise: it goes to the footer, not over the page.
 	s, _ := d.GetSettings()
-	s.DeliveryFreeFrom, s.DeliveryDays, s.ReturnDays = 5000, 2, 14
+	s.ReturnDays = 14
+	if err := d.UpdateSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	only := get(t, h, "/")
+	if strings.Contains(only, `class="promise"`) {
+		t.Error("a shop promising nothing about delivery still pinned a line")
+	}
+	if !strings.Contains(only, "возврат 14 дней") {
+		t.Error("the footer does not state the return window")
+	}
+
+	s.DeliveryFreeFrom, s.DeliveryDays = 5000, 2
 	if err := d.UpdateSettings(s); err != nil {
 		t.Fatal(err)
 	}

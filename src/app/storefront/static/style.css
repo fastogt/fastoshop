@@ -667,3 +667,7 @@ footer {
   .subscribe { padding: 20px; }
   .subscribe form { max-width: none; }
 }
+
+/* The conditions in the footer: a fact, not a link, so it does not compete with
+   the pages next to it. */
+.terms-line { color: var(--muted); }

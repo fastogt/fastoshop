@@ -287,6 +287,8 @@ type pageVM struct {
 	Subscribed   string
 	BadEmail     bool
 	Unsubscribed bool
+	// The conditions the footer states on every page, the same numbers as the card.
+	Terms string
 	// The shop's promise line under the page, and where "got it" returns to.
 	Promise     string
 	PromiseBack string

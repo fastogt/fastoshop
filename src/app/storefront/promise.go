@@ -17,6 +17,12 @@ const kPromiseCookie = "promise"
 // the shop ships, how long the buyer has to return. Built from the same numbers
 // the card publishes as data, so the page and the markup cannot disagree.
 func promise(shop *database.Settings) string {
+	// Delivery is what makes the line worth pinning and worth closing once. A
+	// shop that states only a return window has nothing to promise here: that
+	// fact belongs in the footer and on the card, not in a bar over the page.
+	if shop.DeliveryFreeFrom == 0 && shop.DeliveryDays == 0 {
+		return ""
+	}
 	parts := make([]string, 0, 3)
 	if shop.DeliveryFreeFrom > 0 {
 		parts = append(parts, "Доставка бесплатно от "+priceStr(shop.DeliveryFreeFrom)+" "+shop.Sign())
@@ -26,9 +32,6 @@ func promise(shop *database.Settings) string {
 	}
 	if shop.ReturnDays > 0 {
 		parts = append(parts, "возврат в течение "+plural(shop.ReturnDays, "дня", "дней", "дней"))
-	}
-	if len(parts) == 0 {
-		return ""
 	}
 	return strings.Join(parts, " · ")
 }
@@ -62,9 +65,27 @@ func (s *Storefront) PromiseOff(w http.ResponseWriter, r *http.Request) {
 func (v *pageVM) fromRequest(r *http.Request) {
 	q := r.URL.Query()
 	v.Subscribed, v.BadEmail = q.Get("subscribed"), q.Get("subscribe") == "bad"
+	// The footer states the terms whatever the buyer did with the pinned line.
+	v.Terms = terms(v.Shop)
 	if _, err := r.Cookie(kPromiseCookie); err == nil {
 		return
 	}
 	v.Promise = promise(v.Shop)
 	v.PromiseBack = url.QueryEscape(r.URL.RequestURI())
+}
+
+// terms is the footer's own line: the same facts as the promise, including a
+// shop that only states a return window.
+func terms(shop *database.Settings) string {
+	parts := make([]string, 0, 3)
+	if shop.DeliveryFreeFrom > 0 {
+		parts = append(parts, "бесплатная доставка от "+priceStr(shop.DeliveryFreeFrom)+" "+shop.Sign())
+	}
+	if shop.DeliveryDays > 0 {
+		parts = append(parts, "доставка за "+plural(shop.DeliveryDays, "день", "дня", "дней"))
+	}
+	if shop.ReturnDays > 0 {
+		parts = append(parts, "возврат "+plural(shop.ReturnDays, "день", "дня", "дней"))
+	}
+	return strings.Join(parts, " · ")
 }
