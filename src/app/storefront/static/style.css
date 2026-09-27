@@ -256,23 +256,15 @@ main > h1 { margin-block: 28px 20px; }
    the big photo must stay first in the DOM for screen readers and for og:image. */
 .gallery { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 12px; }
 
-/* Scroll-snap strip: photos swipe with a finger on the phone and the wheel on
-   desktop, thumbnails are plain anchors. Not a line of JavaScript. */
-.slides {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  border-radius: var(--radius);
-  /* Paged by the thumbnails and by a finger, so the system scrollbar under the
-     photo is one more line cutting the card in half. */
-  scrollbar-width: none;
-}
-.slides::-webkit-scrollbar { display: none; }
-.slides .slide {
-  flex: 0 0 100%;
-  scroll-snap-align: center;
+/* One photo at a time, switched by the radio that stands right before it: a
+   thumbnail must not scroll the page, and that is what an anchor always does. */
+.slides { flex: 1 1 auto; min-width: 0; border-radius: var(--radius); }
+.photo-pick { display: none; }
+.slides .slide { display: none; }
+/* A card with no photos at all keeps its empty frame: it has no radio to check. */
+.photo-pick:checked + .slide,
+.slides .slide:only-child {
+  display: block;
   /* Height is capped: supplier photos can be vertical, and without a ceiling one
      picture filled the whole screen and pushed the price below the fold. The
      frame, not the picture, owns that height now — an image that fails to load
@@ -309,8 +301,9 @@ main > h1 { margin-block: 28px 20px; }
    white squares says nothing about which photo is missing. */
 /* flex-shrink off: inside a capped column the thumbnails would squeeze to slivers
    instead of making the strip scroll. */
-.thumbs a {
+.thumbs label {
   display: block;
+  cursor: pointer;
   flex: 0 0 auto;
   border-radius: 8px;
   overflow: hidden;
@@ -325,7 +318,7 @@ main > h1 { margin-block: 28px 20px; }
   aspect-ratio: 3 / 4;
   object-fit: contain;
 }
-.thumbs a:hover { border-color: var(--accent); }
+.thumbs label:hover { border-color: var(--accent); }
 
 /* Travels with the screen while a long description scrolls past, so the price and
    the button are never off-screen. Works because .product is align-items: start. */

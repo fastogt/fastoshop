@@ -956,7 +956,7 @@ func TestProductBreadcrumbsAndGallery(t *testing.T) {
 	body := get(t, h, "/p/krasnyj-chajnik")
 	for _, want := range []string{
 		`class="crumbs"`, `href="/c/kitchen"`, `"@type": "BreadcrumbList"`,
-		`id="photo-0"`, `href="#photo-1"`, `class="thumbs"`,
+		`id="photo-0"`, `for="photo-1"`, `class="thumbs"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("product page missing %q", want)
