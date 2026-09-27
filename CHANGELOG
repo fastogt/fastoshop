@@ -1,3 +1,7 @@
+1.64.3 / September 27, 2026
+[Alexandr Topilski]
+- A product with no characteristics no longer shows an empty middle column: the description fills it, right under the title. A product that has them keeps the description across the whole card
+
 1.64.2 / September 27, 2026
 [Alexandr Topilski]
 - The description spans the whole product card again, with the line length capped: in the middle column it read as a 380 px ribbon, across the full card it would run 1400 px wide
