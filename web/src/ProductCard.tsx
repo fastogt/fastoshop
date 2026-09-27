@@ -56,8 +56,6 @@ const kText = {
     en: "A button to the seller's own page for this product: a marketplace, Instagram, their own site. Two at most. Whether they show at all is the shop setting in the profile; clicks are counted.",
   },
   outsideLabel: { ru: "Надпись на кнопке", en: "Button text" },
-  outsideURL: { ru: "Адрес", en: "Address" },
-  outsideAdd: { ru: "Добавить ссылку", en: "Add a link" },
   labelWeight: { ru: "Вес, г", en: "Weight, g" },
   labelSize: { ru: "Габариты, мм", en: "Size, mm" },
   sizeHint: {

@@ -5,7 +5,7 @@ export type Lang = "ru" | "en";
 // Each screen owns its own dictionary and passes it to useT: no global key
 // namespace to collide in, and a string lives next to the markup that shows it.
 export type Phrase = Record<Lang, string>;
-export type Dict = Record<string, Phrase>;
+type Dict = Record<string, Phrase>;
 
 const kStorageKey = "fastoshop.lang";
 

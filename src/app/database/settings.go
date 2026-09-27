@@ -188,21 +188,6 @@ func (p *Product) ButtonsWith(shop *Settings) []string {
 	return splitButtons(list)
 }
 
-// StrictestKind is what a cart of several products asks of the buyer: one
-// company-only line makes the whole order a company one.
-func StrictestKind(kinds []string) string {
-	out := CustomerPrivate
-	for _, k := range kinds {
-		switch k {
-		case CustomerCompany:
-			return CustomerCompany
-		case CustomerBoth:
-			out = CustomerBoth
-		}
-	}
-	return out
-}
-
 // Portrait tiles are 3:4, so the reserved height is the width times four thirds.
 // The <img> needs it as a number to stop the grid jumping while photos load.
 func (s *Settings) TileHeight() int {

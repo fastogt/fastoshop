@@ -257,7 +257,7 @@ export interface Order {
   created_at: string;
 }
 
-export interface SubscriberCount {
+interface SubscriberCount {
   active: number;
   total: number;
 }
