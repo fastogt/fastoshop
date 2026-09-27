@@ -1,3 +1,7 @@
+1.64.1 / September 27, 2026
+[Alexandr Topilski]
+- The description on a product page follows the characteristics instead of starting below the whole card: a short spec list left a gap as tall as the buy box between them
+
 1.64.0 / September 27, 2026
 [Alexandr Topilski]
 - The delivery page answers the questions a buyer asks before paying - cost, term, returns, how to order, how to pay, the phone - and carries them as FAQPage data. Every answer is built from a number the owner already stated; a field left at zero asks nothing and promises nothing
