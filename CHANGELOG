@@ -1,3 +1,7 @@
+1.64.5 / September 27, 2026
+[Alexandr Topilski]
+- Clicking a photo thumbnail on a product card no longer jumps the page: the big picture changes in place
+
 1.64.4 / September 27, 2026
 [Alexandr Topilski]
 - The product card is laid out the way a marketplace builds one: the gallery on the left, the buy box on the right, and everything about the goods - title, characteristics, description - flowing down the middle column. Whatever the card holds, no column is left empty
