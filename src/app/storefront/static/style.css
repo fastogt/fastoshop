@@ -434,6 +434,11 @@ form.qty button:hover { background: var(--accent-soft); }
 
 .terms { max-width: 60ch; margin-block: 20px; }
 
+.faq { max-width: 60ch; padding-bottom: 32px; }
+.faq h2 { margin-block: 28px 8px; }
+.faq h3 { margin-block: 20px 4px; font-size: 1rem; }
+.faq p { line-height: 1.5; }
+
 /* Legal prose, laid out for reading rather than for the page width. */
 .prose { max-width: 70ch; padding-bottom: 48px; }
 .prose h1 { margin-block: 28px 20px; }

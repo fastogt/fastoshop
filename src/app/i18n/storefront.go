@@ -136,6 +136,46 @@ var kPage = map[string][2]string{
 		"returns: %d day|returns: %d days",
 	},
 
+	// FAQ on the delivery page: answers assembled from the stated numbers
+	"faq_title":      {"Частые вопросы", "Frequently asked questions"},
+	"faq_delivery_q": {"Сколько стоит доставка?", "How much is delivery?"},
+	"faq_delivery_a": {"Доставка стоит %s.", "Delivery costs %s."},
+	"faq_delivery_free_a": {
+		"От %s доставим бесплатно.",
+		"From %s we deliver free of charge.",
+	},
+	"faq_delivery_free_only_a": {
+		"От %s доставка бесплатная, при меньшей сумме стоимость назовём при подтверждении заказа.",
+		"From %s delivery is free; below that we name the cost when we confirm the order.",
+	},
+	"faq_days_q": {"Как быстро вы доставляете?", "How fast do you deliver?"},
+	"faq_days_a": {
+		"Обычно за %d день после подтверждения заказа.|Обычно за %d дня после подтверждения заказа.|Обычно за %d дней после подтверждения заказа.",
+		"Usually in %d day after the order is confirmed.|Usually in %d days after the order is confirmed.",
+	},
+	"faq_return_q": {"Можно ли вернуть товар?", "Can I return an item?"},
+	"faq_return_a": {
+		"Да, в течение %d дня после получения.|Да, в течение %d дней после получения.|Да, в течение %d дней после получения.",
+		"Yes, within %d day of receiving it.|Yes, within %d days of receiving it.",
+	},
+	"faq_order_q": {"Как оформить заказ?", "How do I place an order?"},
+	"faq_order_a": {
+		"Положите товар в корзину и оставьте имя и телефон или почту - регистрация не нужна. Мы перезвоним и подтвердим заказ.",
+		"Put the item in the cart and leave a name and a phone or an email - no registration needed. We will call back and confirm the order.",
+	},
+	"faq_pay_q": {"Как оплатить?", "How do I pay?"},
+	"faq_pay_a": {
+		"Оплата при получении, предоплата не нужна.",
+		"Payment on receipt, no prepayment needed.",
+	},
+	"faq_org_q": {"Работаете ли вы с организациями?", "Do you work with companies?"},
+	"faq_org_a": {
+		"Да. В форме заказа выберите «организация», укажите название и УНП или ИНН и приложите реквизиты - выставим счёт.",
+		"Yes. Choose “company” in the order form, give the name and the tax id and attach the details - we will issue an invoice.",
+	},
+	"faq_contact_q": {"Как с вами связаться?", "How do I contact you?"},
+	"faq_contact_a": {"Позвоните по телефону %s.", "Call us at %s."},
+
 	// Cart
 	"cart_ordered": {
 		"Спасибо! Заказ принят, мы свяжемся с вами по телефону.",

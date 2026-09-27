@@ -290,6 +290,8 @@ type pageVM struct {
 	Unsubscribed bool
 	// The conditions the footer states on every page, the same numbers as the card.
 	Terms string
+	// The delivery page's questions and answers, built from those same numbers.
+	FAQ []faqVM
 	// The shop's promise line under the page, and where "got it" returns to.
 	Promise     string
 	PromiseBack string
@@ -834,7 +836,7 @@ func (s *Storefront) Info(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := pageVM{Shop: shop, BaseURL: s.baseURL, CSS: template.CSS(styleCSS),
-		CartCount: cartCount(r), Canonical: s.baseURL + "/info"}
+		CartCount: cartCount(r), Canonical: s.baseURL + "/info", FAQ: faq(shop)}
 	data.fromRequest(r)
 	if err := s.info.ExecuteTemplate(w, "base", data); err != nil {
 		log.Errorf("render info: %v", err)

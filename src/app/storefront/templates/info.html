@@ -1,5 +1,25 @@
 {{define "title"}}{{.T "delivery_payment"}} — {{.Shop.ShopName}}{{end}}
+{{define "head"}}
+{{/* The answers a buyer asks for before paying, as data. Assistants send people
+to delivery and returns rather than to a card, and they quote pairs like these. */}}
+{{if .FAQ}}<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [{{range $i, $f := .FAQ}}{{if $i}},{{end}}
+    {"@type": "Question", "name": {{$f.Q}},
+     "acceptedAnswer": {"@type": "Answer", "text": {{$f.A}}}}{{end}}
+  ]
+}
+</script>{{end}}
+{{end}}
 {{define "content"}}
 <h1>{{.T "delivery_payment"}}</h1>
 <div class="terms">{{.Shop.Terms}}</div>
+{{if .FAQ}}
+<section class="faq">
+<h2>{{.T "faq_title"}}</h2>
+{{range .FAQ}}<h3>{{.Q}}</h3><p>{{.A}}</p>{{end}}
+</section>
+{{end}}
 {{end}}

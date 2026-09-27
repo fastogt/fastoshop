@@ -1,3 +1,7 @@
+1.64.0 / September 27, 2026
+[Alexandr Topilski]
+- The delivery page answers the questions a buyer asks before paying - cost, term, returns, how to order, how to pay, the phone - and carries them as FAQPage data. Every answer is built from a number the owner already stated; a field left at zero asks nothing and promises nothing
+
 1.63.2 / September 26, 2026
 [Alexandr Topilski]
 - The line pinned under the page appears only when the shop promises something about delivery; a shop that states a return window alone no longer shows a bar with a "got it" button that closes nothing
