@@ -1,3 +1,7 @@
+1.64.4 / September 27, 2026
+[Alexandr Topilski]
+- The product card is laid out the way a marketplace builds one: the gallery on the left, the buy box on the right, and everything about the goods - title, characteristics, description - flowing down the middle column. Whatever the card holds, no column is left empty
+
 1.64.3 / September 27, 2026
 [Alexandr Topilski]
 - A product with no characteristics no longer shows an empty middle column: the description fills it, right under the title. A product that has them keeps the description across the whole card
