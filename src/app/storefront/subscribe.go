@@ -9,27 +9,17 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/i18n"
 )
-
-// kSubscribeConsent is stored with the address, word for word. The page text is
-// edited over time; what the buyer agreed to is what was in front of them.
-const kSubscribeConsent = "Согласен получать письма магазина: новинки, скидки и полезные материалы. " +
-	"Принимаю политику обработки персональных данных. Отписаться можно ссылкой из любого письма."
-
-// kOrderConsent is what the buyer accepts to place an order; stored with it,
-// because both documents are edited and the consent has to be shown as given.
-const kOrderConsent = "Принимаю условия публичной оферты и даю согласие на обработку персональных данных."
-
-// kOrderSubscribeConsent is the wording of the optional tick in the order form.
-const kOrderSubscribeConsent = "Хочу получать письма магазина: новинки, скидки и полезные материалы. " +
-	"Отписаться можно ссылкой из любого письма."
 
 // Subscribe takes the address from the footer form and returns the buyer to the
 // page they were reading: a subscription must not cost them their place.
 func (s *Storefront) Subscribe(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.FormValue("email"))
 	back := backTo(r.Referer(), s.baseURL)
-	if err := s.db.Subscribe(email, database.SubscribeFooter, kSubscribeConsent); err != nil {
+	// Stored word for word: the page text is edited over time, the consent was given once.
+	consent := i18n.Page(s.shop().Lang, "consent_subscribe")
+	if err := s.db.Subscribe(email, database.SubscribeFooter, consent); err != nil {
 		log.Warnf("subscribe: %v", err)
 		http.Redirect(w, r, back+"?subscribe=bad", http.StatusSeeOther)
 		return

@@ -1,0 +1,39 @@
+{{define "offer_en"}}
+<div class="prose">
+<h1>Terms of sale (public offer)</h1>
+<p>A retail sale contract concluded at a distance. The Seller is {{if .Shop.Requisites}}{{.Shop.Requisites}}{{else}}the shop “{{.Shop.ShopName}}”{{end}} (the “Seller”), website {{.BaseURL}}.</p>
+
+<h2>1. What makes the contract</h2>
+<p>This page is an offer to conclude a contract on the terms below, made to anyone
+who places an order. The contract is concluded when the Seller confirms the order
+by phone or in writing. Until it is confirmed, an order is a request.</p>
+
+<h2>2. Goods and price</h2>
+<p>The goods are described on their page. The price is stated there too and applies
+as of the moment the order is confirmed. If the goods turn out to be out of stock,
+the Seller says so when confirming, and the order is cancelled or changed by mutual
+agreement.</p>
+
+<h2>3. Payment</h2>
+<p>Payment on receipt, unless agreed otherwise when the order is confirmed.
+Organisations pay by invoice, by bank transfer. The Seller does not accept online
+payment on the website.</p>
+
+<h2>4. Delivery</h2>
+{{if .Shop.DeliveryDays}}<p>Delivery takes up to {{.Shop.DeliveryDays}} days from the confirmation of the order.{{if .Shop.DeliveryFreeFrom}} Delivery is free for orders from {{.ShipFreeFromStr}} {{.Shop.Sign}}.{{end}}</p>{{end}}
+<p>The terms and the cost of delivery{{if .Shop.Terms}} are given on the <a href="/info">“Delivery and payment”</a> page and{{end}} are stated when the order is confirmed.</p>
+
+<h2>5. Returns and exchanges</h2>
+{{if .Shop.ReturnDays}}<p>The Buyer may return goods of proper quality within {{.Shop.ReturnDays}} days of receipt, provided their presentation, consumer properties and proof of purchase are preserved. Goods that the law excludes from exchange and return cannot be returned.</p>{{end}}
+<p>If you find a defect, contact the Seller{{if .Shop.OwnerEmail}} at <a href="mailto:{{.Shop.OwnerEmail}}">{{.Shop.OwnerEmail}}</a>{{end}}{{if .Shop.ShopPhone}} or by phone at <a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a>{{end}}.</p>
+
+<h2>6. Personal data</h2>
+<p>The data the Buyer leaves in an order is processed under the
+<a href="/privacy">personal data processing policy</a>.</p>
+
+<h2>7. Liability</h2>
+<p>The Seller is liable for the goods within the limits set by consumer protection
+law. Descriptions and photos of the goods are for information; minor differences
+in shade and packaging are not a defect.</p>
+</div>
+{{end}}

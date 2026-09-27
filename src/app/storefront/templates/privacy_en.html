@@ -1,0 +1,51 @@
+{{define "privacy_en"}}
+<div class="prose">
+<h1>Personal data processing policy</h1>
+
+<h2>Who processes the data</h2>
+<p>The shop “{{.Shop.ShopName}}”.{{if .Shop.Requisites}} The owner's details are given in the site footer.{{end}}
+You can reach us at <a href="mailto:{{.Shop.OwnerEmail}}">{{.Shop.OwnerEmail}}</a>{{if .Shop.ShopPhone}}
+or by phone at <a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a>{{end}}.</p>
+
+<h2>What data we collect</h2>
+<p>Only what you enter yourself when placing an order: your name, phone number or
+email address, and a comment on the order. We do not collect or store payment
+details: payment happens outside the website.</p>
+
+<p>Together with the order we store where you came from: the address of the site
+that referred you and the page you arrived at. We need it to understand which pages
+of the shop work. This record contains no name, no number and no device.</p>
+{{if or .Shop.GAMeasurementID .Shop.MetrikaCounterID}}
+<p>In addition, the website uses visitor counters
+({{if .Shop.MetrikaCounterID}}Yandex Metrica{{end}}{{if and .Shop.MetrikaCounterID .Shop.GAMeasurementID}},
+{{end}}{{if .Shop.GAMeasurementID}}Google Analytics{{end}}). They collect
+anonymised information about visits: pages, device, referral source.
+You can switch this collection off in your browser.</p>
+{{end}}
+
+<h2>Why we collect it</h2>
+<p>To contact you about your order and to agree on delivery and payment. The data
+is not used for any other purpose, and it is not passed on or sold to third parties.</p>
+
+<h2>On what grounds</h2>
+<p>On the grounds of your consent. You give it by submitting the order form, and you
+can withdraw it at any time by writing to us.</p>
+
+<h2>Who else has access</h2>
+<p>The shop's hosting provider has technical access: it stores the data on our
+behalf and may not use it for its own purposes.</p>
+
+<h2>How long we keep it</h2>
+<p>As long as it is needed to handle the order and to answer possible questions
+about it. An order that is fully settled and has no claims against it is deleted
+at your request.</p>
+
+<h2>Your rights</h2>
+<p>You can find out what data we hold about you, have it corrected or deleted, and
+withdraw your consent to its processing. Write to
+<a href="mailto:{{.Shop.OwnerEmail}}">{{.Shop.OwnerEmail}}</a> and we will reply.</p>
+
+<h2>Changes</h2>
+<p>The current version is always on this page.</p>
+</div>
+{{end}}

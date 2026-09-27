@@ -1,9 +1,9 @@
-{{define "title"}}Корзина — {{.Shop.ShopName}}{{end}}
+{{define "title"}}{{.T "cart"}} — {{.Shop.ShopName}}{{end}}
 {{define "content"}}
-<h1>Корзина</h1>
-{{if .Ordered}}<p class="notice good ok">Спасибо! Заказ принят, мы свяжемся с вами по телефону.</p>{{end}}
-{{if .SoldOut}}<p class="notice oos">Пока вы оформляли заказ, «{{.SoldOut}}» закончился — мы убрали его из корзины. Заказ не оформлен, проверьте состав и подтвердите ещё раз.</p>{{end}}
-{{if .Dropped}}<p class="notice oos">Часть товаров закончилась и была убрана из корзины.</p>{{end}}
+<h1>{{.T "cart"}}</h1>
+{{if .Ordered}}<p class="notice good ok">{{.T "cart_ordered"}}</p>{{end}}
+{{if .SoldOut}}<p class="notice oos">{{.T "cart_sold_out" .SoldOut}}</p>{{end}}
+{{if .Dropped}}<p class="notice oos">{{.T "cart_dropped"}}</p>{{end}}
 {{if .Cart}}
 {{/* List on the left, the sum and the form on the right, as on WB and Ozon: the
      buyer sees the order button without scrolling past every line. */}}
@@ -21,11 +21,11 @@
       <form method="post" action="/cart/update" class="qty">
         <input type="hidden" name="slug" value="{{.Slug}}">
         <button type="submit" name="action" value="set" hidden></button>
-        <button type="submit" name="action" value="dec" aria-label="Меньше">−</button>
-        <label for="qty-{{.Slug}}" hidden>Количество</label>
+        <button type="submit" name="action" value="dec" aria-label="{{$.T "qty_less"}}">−</button>
+        <label for="qty-{{.Slug}}" hidden>{{$.T "quantity"}}</label>
         <input id="qty-{{.Slug}}" name="qty" type="number" value="{{.Qty}}" min="1" max="{{.Stock}}">
-        <button type="submit" name="action" value="inc" aria-label="Больше">+</button>
-        <button type="submit" name="action" value="remove" class="remove">Удалить</button>
+        <button type="submit" name="action" value="inc" aria-label="{{$.T "qty_more"}}">+</button>
+        <button type="submit" name="action" value="remove" class="remove">{{$.T "remove"}}</button>
       </form>
     </td>
     <td class="line">{{.LineStr}} {{$.Shop.Sign}}</td>
@@ -33,21 +33,21 @@
 {{end}}
 </table>
 <div class="checkout">
-  <p class="total"><span class="oos">Товары, {{.CartCount}} шт.:</span> <span class="price">{{.TotalStr}} {{.Shop.Sign}}</span></p>
+  <p class="total"><span class="oos">{{.T "cart_items" .CartCount}}</span> <span class="price">{{.TotalStr}} {{.Shop.Sign}}</span></p>
   {{/* The delivery sum belongs here, before the order: on a marketplace the buyer
        sees it in the cart, and a shop that names it only on the phone loses them. */}}
-  <p class="delivery-row"><span class="oos">Доставка:</span>
-    {{if .DeliveryFree}}<span class="free">бесплатно</span>
-    {{else if .DeliveryUnknown}}<span class="oos">рассчитаем при подтверждении заказа</span>
+  <p class="delivery-row"><span class="oos">{{.T "delivery"}}</span>
+    {{if .DeliveryFree}}<span class="free">{{.T "delivery_free"}}</span>
+    {{else if .DeliveryUnknown}}<span class="oos">{{.T "delivery_unknown"}}</span>
     {{else}}<span>{{.DeliveryStr}} {{.Shop.Sign}}</span>{{end}}</p>
-  {{if .DeliveryFreeFromStr}}<p class="oos hint-free">Бесплатно от {{.DeliveryFreeFromStr}} {{.Shop.Sign}}</p>{{end}}
-  {{if .PayableStr}}<p class="total"><span class="oos">К оплате:</span> <span class="price">{{.PayableStr}} {{.Shop.Sign}}</span></p>{{end}}
-  <h2>Оформление заказа</h2>
+  {{if .DeliveryFreeFromStr}}<p class="oos hint-free">{{.T "free_from" .DeliveryFreeFromStr}} {{.Shop.Sign}}</p>{{end}}
+  {{if .PayableStr}}<p class="total"><span class="oos">{{.T "payable"}}</span> <span class="price">{{.PayableStr}} {{.Shop.Sign}}</span></p>{{end}}
+  <h2>{{.T "checkout"}}</h2>
   {{/* The error lives next to the form it talks about: rendered at the top of
        the page it sat above the fold while the empty field sat below it. */}}
-  {{if .NoContact}}<p class="notice oos">Заполните телефон или почту — иначе мы не сможем подтвердить заказ.</p>{{end}}
-  <p class="oos">Оплата при получении. Мы перезвоним и подтвердим.</p>
-  {{if .BadOrg}}<p class="notice oos">Укажите название организации и {{if eq .Shop.Currency "RUB"}}ИНН{{else}}УНП{{end}} — по ним продавец выставит счёт.</p>{{end}}
+  {{if .NoContact}}<p class="notice oos">{{.T "no_contact"}}</p>{{end}}
+  <p class="oos">{{.T "pay_and_call"}}</p>
+  {{if .BadOrg}}<p class="notice oos">{{.T "bad_org" .TaxID}}</p>{{end}}
   {{/* enctype only because of the requisites file; a shop without organisations
        posts exactly what it posted before. */}}
   <form method="post" action="/cart/order"{{if or .Shop.OrgOnly .Shop.OrgChoice}} enctype="multipart/form-data"{{end}}>
@@ -61,49 +61,48 @@
          good. */}}
     <div class="buyer-kind">
       <input type="radio" name="customer" value="private" id="kind-private"{{if not .Org}} checked{{end}}>
-      <label class="kind" for="kind-private">Частное лицо</label>
+      <label class="kind" for="kind-private">{{.T "private_person"}}</label>
       <input type="radio" name="customer" value="company" id="kind-company"{{if .Org}} checked{{end}}>
-      <label class="kind" for="kind-company">Организация</label>
+      <label class="kind" for="kind-company">{{.T "organisation"}}</label>
       <div class="org-fields">{{template "orgFields" .}}</div>
     </div>
     {{end}}
     <div>
-      <label for="name">Ваше имя</label>
-      <input id="name" name="name" placeholder="Иван" autocomplete="name" required value="{{.FormName}}">
+      <label for="name">{{.T "your_name"}}</label>
+      <input id="name" name="name" placeholder="{{.T "name_placeholder"}}" autocomplete="name" required value="{{.FormName}}">
     </div>
     <div>
-      <label for="phone">Телефон</label>
+      <label for="phone">{{.T "phone"}}</label>
       {{/* The sample number matches the shop's own money: +7 on a shop that
            sells in Br tells the buyer the shop is not for them. */}}
       <input id="phone" name="phone" type="tel" autocomplete="tel" value="{{.FormPhone}}" placeholder="{{if eq .Shop.Currency "BYN"}}+375 29 000-00-00{{else}}+7 999 000-00-00{{end}}">
     </div>
     <div>
-      <label for="email">Почта</label>
+      <label for="email">{{.T "email"}}</label>
       <input id="email" name="email" type="email" autocomplete="email" value="{{.FormEmail}}" placeholder="ivan@example.com">
-      <p class="oos">Оставьте телефон или почту — можно и то, и другое. На почту пришлём подтверждение заказа.</p>
+      <p class="oos">{{.T "contact_hint"}}</p>
     </div>
     <div>
-      <label for="comment">Комментарий</label>
-      <textarea id="comment" name="comment" placeholder="Удобное время для звонка, пожелания к доставке">{{.FormComment}}</textarea>
+      <label for="comment">{{.T "comment"}}</label>
+      <textarea id="comment" name="comment" placeholder="{{.T "comment_placeholder"}}">{{.FormComment}}</textarea>
     </div>
     {{/* The consent has to sit where the data is handed over, not on a page
          nobody opens: the buyer types a name and a phone into this form, and
          this tick is the moment the contract is made. */}}
-    {{if .NoConsent}}<p class="notice oos">Чтобы оформить заказ, примите оферту и согласие на обработку данных.</p>{{end}}
+    {{if .NoConsent}}<p class="notice oos">{{.T "no_consent"}}</p>{{end}}
     <label class="consent"><input type="checkbox" name="consent"{{if .NoConsent}}{{else}} checked{{end}}>
-      <span>Принимаю условия <a href="/offer">публичной оферты</a> и даю согласие на
-      <a href="/privacy">обработку персональных данных</a>.</span></label>
+      <span>{{.TH "consent_order_html"}}</span></label>
     {{/* Never pre-ticked: an order is not a reason to write to somebody. */}}
     <label class="consent"><input type="checkbox" name="subscribe">
-      <span>Хочу получать письма магазина: новинки, скидки и полезные материалы.</span></label>
-    <button type="submit">Оформить заказ</button>
+      <span>{{.T "subscribe_tick"}}</span></label>
+    <button type="submit">{{.T "place_order"}}</button>
   </form>
 </div>
 </div>
 {{else}}
 <div class="empty">
-  <p>Корзина пуста.</p>
-  <p><a href="/">Перейти в каталог</a></p>
+  <p>{{.T "cart_empty"}}</p>
+  <p><a href="/">{{.T "to_catalog"}}</a></p>
 </div>
 {{end}}
 {{end}}
@@ -112,16 +111,16 @@
      buyer already has, and the seller asks the delivery address on the call. */}}
 {{define "orgFields"}}
     <div>
-      <label for="org_name">Название организации</label>
-      <input id="org_name" name="org_name" placeholder="ООО «Ромашка»" value="{{.FormOrgName}}"{{if .Shop.OrgOnly}} required{{end}}>
+      <label for="org_name">{{.T "org_name"}}</label>
+      <input id="org_name" name="org_name" placeholder="{{.T "org_placeholder"}}" value="{{.FormOrgName}}"{{if .Shop.OrgOnly}} required{{end}}>
     </div>
     <div>
-      <label for="org_unp">{{if eq .Shop.Currency "RUB"}}ИНН{{else}}УНП{{end}}</label>
+      <label for="org_unp">{{.TaxID}}</label>
       <input id="org_unp" name="org_unp" placeholder="{{if eq .Shop.Currency "RUB"}}7707083893{{else}}190304936{{end}}" value="{{.FormOrgUNP}}"{{if .Shop.OrgOnly}} required{{end}}>
     </div>
     <div>
-      <label for="requisites">Реквизиты файлом</label>
+      <label for="requisites">{{.T "requisites_file"}}</label>
       <input id="requisites" name="requisites" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.odt">
-      <p class="oos">Необязательно. Можно приложить карточку предприятия — или просто написать реквизиты в комментарии.</p>
+      <p class="oos">{{.T "requisites_hint"}}</p>
     </div>
 {{end}}

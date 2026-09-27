@@ -1,4 +1,4 @@
-{{define "title"}}{{.P.Title}} — купить в {{.Shop.ShopName}}{{end}}
+{{define "title"}}{{.T "title_buy" .P.Title .Shop.ShopName}}{{end}}
 {{define "head"}}
 <meta name="description" content="{{.MetaDescription}}">
 <link rel="canonical" href="{{.BaseURL}}/p/{{.P.Slug}}">
@@ -80,7 +80,7 @@
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   "itemListElement": [
-    {"@type": "ListItem", "position": 1, "name": "Каталог", "item": "{{.BaseURL}}/"}{{range .Crumbs}},
+    {"@type": "ListItem", "position": 1, "name": {{.T "catalog"}}, "item": "{{.BaseURL}}/"}{{range .Crumbs}},
     {"@type": "ListItem", "position": {{.Position}}, "name": {{.Name}}, "item": "{{$.BaseURL}}{{.URL}}"}{{end}},
     {"@type": "ListItem", "position": {{.CrumbsEnd}}, "name": {{.P.Title}}}
   ]
@@ -106,7 +106,7 @@
     </div>
     {{if gt (len .Images) 1}}
     <div class="thumbs">
-    {{range $i, $im := .Images}}<a href="#photo-{{$i}}" aria-label="Фото {{$i}}"><img class="nomark" src="{{$im.URL}}" alt="" loading="lazy"></a>{{end}}
+    {{range $i, $im := .Images}}<a href="#photo-{{$i}}" aria-label="{{$.T "photo_n" $i}}"><img class="nomark" src="{{$im.URL}}" alt="" loading="lazy"></a>{{end}}
     </div>
     {{end}}
   </div>
@@ -114,36 +114,36 @@
        so the facts can grow without stretching the price. */}}
   <div class="facts">
     <h1>{{.P.Title}}</h1>
-    {{if .P.SKU}}<p class="sku">Артикул: {{.P.SKU}}</p>{{end}}
+    {{if .P.SKU}}<p class="sku">{{.T "sku" .P.SKU}}</p>{{end}}
     {{with .Variants}}
     <div class="variants">
-      <p class="label">Штук в товаре</p>
+      <p class="label">{{$.T "pcs_in_product"}}</p>
       <ul>
         {{range .}}
         <li>
           {{if .Current}}<span class="cur">{{.Qty}}</span>
           {{else}}<a href="/p/{{.Slug}}"{{if .Gone}} class="gone"{{end}}>{{.Qty}}</a>{{end}}
-          <span class="each">{{.Each}}/шт</span>
+          <span class="each">{{$.T "per_pc" .Each}}</span>
         </li>
         {{end}}
       </ul>
     </div>
     {{end}}
-    {{with .InSets}}<p class="sku">Также наборами:{{range $i, $s := .}}{{if $i}},{{end}} <a href="/p/{{$s.Slug}}">{{$s.Title}}</a>{{end}}</p>{{end}}
+    {{with .InSets}}<p class="sku">{{$.T "in_sets"}}{{range $i, $s := .}}{{if $i}},{{end}} <a href="/p/{{$s.Slug}}">{{$s.Title}}</a>{{end}}</p>{{end}}
     {{with .Components}}
     <div class="specs">
-      <h2>Состав набора</h2>
+      <h2>{{$.T "set_contents"}}</h2>
       <table>
-        {{range .}}<tr><td>{{if .Hidden}}{{.Title}}{{else}}<a href="/p/{{.Slug}}">{{.Title}}</a>{{end}}</td><td class="qty">{{.Qty}} шт</td></tr>{{end}}
+        {{range .}}<tr><td>{{if .Hidden}}{{.Title}}{{else}}<a href="/p/{{.Slug}}">{{.Title}}</a>{{end}}</td><td class="qty">{{$.T "qty_pcs" .Qty}}</td></tr>{{end}}
       </table>
     </div>
     {{end}}
     {{if not .Specs.Empty}}
     <div class="specs">
-      <h2>Характеристики</h2>
+      <h2>{{.T "specs"}}</h2>
       <table>
-        {{if .Specs.Weight}}<tr><td>Вес</td><td>{{.Specs.Weight}}</td></tr>{{end}}
-        {{if .Specs.Size}}<tr><td>Габариты</td><td>{{.Specs.Size}}</td></tr>{{end}}
+        {{if .Specs.Weight}}<tr><td>{{.T "weight"}}</td><td>{{.Specs.Weight}}</td></tr>{{end}}
+        {{if .Specs.Size}}<tr><td>{{.T "size"}}</td><td>{{.Specs.Size}}</td></tr>{{end}}
         {{range .Specs.Props}}<tr><td>{{.Name}}</td><td>{{.Value}}</td></tr>{{end}}
       </table>
     </div>
@@ -152,9 +152,9 @@
   <div class="buybox">
       <p class="price">{{.PriceStr}} {{.Shop.Sign}}</p>
       {{if gt .P.Stock 0}}
-      <span class="badge in">В наличии: {{.P.Stock}} шт</span>
+      <span class="badge in">{{.T "in_stock" .P.Stock}}</span>
       {{else}}
-      <span class="badge">Нет в наличии</span>
+      <span class="badge">{{.T "out_of_stock"}}</span>
       {{end}}
       {{/* The buttons stand in the order the owner arranged them: a cart of ours,
            a messenger, the seller's own card elsewhere - whatever closes the sale. */}}
@@ -163,10 +163,10 @@
         <input type="hidden" name="slug" value="{{.P.Slug}}">
         <div class="qty-row">
           <div class="field">
-            <label for="qty">Количество</label>
+            <label for="qty">{{.T "quantity"}}</label>
             <input id="qty" name="qty" type="number" value="1" min="1" max="{{.P.Stock}}">
           </div>
-          <button type="submit">В корзину</button>
+          <button type="submit">{{.T "add_to_cart"}}</button>
         </div>
       </form>
       {{end}}
@@ -178,7 +178,7 @@
         {{end}}
       {{end}}
       {{if and (not .CanBuy) (not .Buy)}}
-      <p class="oos">Напишите нам — сообщим, когда товар вернётся.</p>
+      <p class="oos">{{.T "write_us"}}</p>
       {{end}}
       {{/* A messenger button is a link, not a widget: the storefront ships no
            JavaScript, and a deep link needs none. Shown only when the owner
@@ -188,22 +188,22 @@
       <ul class="trust">
         {{if .Shop.DeliveryNote}}<li class="delivery"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M2 6h11v10H2zM13 9h4l3 3v4h-7zM6 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01"/></svg><a href="/info">{{.Shop.DeliveryNote}}</a></li>{{end}}
         {{/* Only a shop that takes the order can promise how it is paid and confirmed. */}}
-        {{if .OwnOrders}}<li>Оплата при получении — без предоплаты</li>
-        <li>Подтверждаем заказ звонком</li>{{end}}
-        {{if .Shop.ShopPhone}}<li>Вопросы: <a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a></li>{{end}}
+        {{if .OwnOrders}}<li>{{.T "pay_on_receipt"}}</li>
+        <li>{{.T "confirm_by_call"}}</li>{{end}}
+        {{if .Shop.ShopPhone}}<li>{{.T "questions"}} <a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a></li>{{end}}
       </ul>
       {{/* The one buyer we measured never opened the cart: he read the card,
            checked delivery and went to contacts. So the invoice is offered
            here, where he actually was. */}}
       {{if and .Shop.CartEnabled (or .OrgOnly .OrgChoice)}}
-      <p class="oos">Нужен счёт для организации? Оформите заказ — в форме укажете название, {{if eq .Shop.Currency "RUB"}}ИНН{{else}}УНП{{end}} и приложите реквизиты.</p>
+      <p class="oos">{{.T "invoice_hint" .TaxID}}</p>
       {{end}}
   </div>
   {{/* Full width, below all three columns: a description belongs to the product,
        not to the buy box. */}}
   {{if .DescParas}}
   <div class="desc">
-    <h2>Описание</h2>
+    <h2>{{.T "description"}}</h2>
     {{range .DescParas}}<p>{{.}}</p>{{end}}
   </div>
   {{end}}

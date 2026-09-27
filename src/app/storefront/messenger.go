@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/i18n"
 )
 
 const (
@@ -53,11 +54,11 @@ func whatsappNumber(raw string) string {
 
 func orderMessage(shop *database.Settings, p *database.Product, pageURL string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Здравствуйте! Хочу заказать: %s", p.Title)
+	b.WriteString(i18n.Page(shop.Lang, "msg_order", p.Title))
 	if p.SKU != "" {
-		fmt.Fprintf(&b, ", артикул %s", p.SKU)
+		b.WriteString(i18n.Page(shop.Lang, "msg_sku", p.SKU))
 	}
-	fmt.Fprintf(&b, ", цена %s", priceStr(p.Price)+" "+shop.Sign())
+	b.WriteString(i18n.Page(shop.Lang, "msg_price", priceStr(p.Price)+" "+shop.Sign()))
 	if pageURL != "" {
 		fmt.Fprintf(&b, "\n%s", pageURL)
 	}
@@ -117,11 +118,11 @@ func orderLinks(shop *database.Settings, p *database.Product) []orderLinkVM {
 	}
 	var out []orderLinkVM
 	for _, m := range []struct{ kind, label string }{
-		{kTelegram, "Заказать в Telegram"},
-		{kWhatsApp, "Заказать в WhatsApp"},
+		{kTelegram, "order_telegram"},
+		{kWhatsApp, "order_whatsapp"},
 	} {
 		if contactURL(shop, m.kind) != "" {
-			out = append(out, orderLinkVM{Kind: database.BuyMsg, Label: m.label,
+			out = append(out, orderLinkVM{Kind: database.BuyMsg, Label: i18n.Page(shop.Lang, m.label),
 				URL: "/go/" + m.kind + "/" + url.PathEscape(p.Slug)})
 		}
 	}
@@ -147,10 +148,10 @@ func buyBox(names []string, shop *database.Settings, p *database.Product,
 		case name == database.BuyMsg:
 			out = append(out, orderLinks(shop, p)...)
 		case name == database.BuyWB && nmID > 0:
-			out = append(out, orderLinkVM{Kind: database.BuyWB, Label: "Купить на Wildberries",
+			out = append(out, orderLinkVM{Kind: database.BuyWB, Label: i18n.Page(shop.Lang, "buy_wb"),
 				URL: "/go/out/wb/" + url.PathEscape(p.Slug)})
 		case name == database.BuyOzon && sku > 0:
-			out = append(out, orderLinkVM{Kind: database.BuyOzon, Label: "Купить на Ozon",
+			out = append(out, orderLinkVM{Kind: database.BuyOzon, Label: i18n.Page(shop.Lang, "buy_ozon"),
 				URL: "/go/out/ozon/" + url.PathEscape(p.Slug)})
 		case strings.HasPrefix(name, database.BuyLink):
 			// "link:1" is the second of the product's own links, in their order.

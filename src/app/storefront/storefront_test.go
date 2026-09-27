@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/i18n"
 	"github.com/fastogt/fastoshop/app/media"
 	"time"
 )
@@ -928,16 +929,16 @@ func TestSearchResultCount(t *testing.T) {
 			t.Errorf("result page missing %q", want)
 		}
 	}
-	if got := foundStr(1); got != "нашлось 1 товар" {
+	if got := foundStr(i18n.LangRU, 1); got != "нашлось 1 товар" {
 		t.Errorf("one: %q", got)
 	}
-	if got := foundStr(5); got != "нашлось 5 товаров" {
+	if got := foundStr(i18n.LangRU, 5); got != "нашлось 5 товаров" {
 		t.Errorf("five: %q", got)
 	}
-	if got := foundStr(11); got != "нашлось 11 товаров" {
+	if got := foundStr(i18n.LangRU, 11); got != "нашлось 11 товаров" {
 		t.Errorf("eleven: %q", got)
 	}
-	if got := foundStr(21); got != "нашлось 21 товар" {
+	if got := foundStr(i18n.LangRU, 21); got != "нашлось 21 товар" {
 		t.Errorf("twenty one: %q", got)
 	}
 }

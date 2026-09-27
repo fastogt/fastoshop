@@ -67,7 +67,7 @@ type Settings struct {
 	Logo string `json:"logo"`
 	// Shop-wide currency: one shop sells in one country's money.
 	Currency string `json:"currency"`
-	// Owner's language; drives the admin and the text the server renders for them.
+	// Shop language: the admin, the owner's messages and the storefront.
 	Lang     string `json:"lang"`
 	SMTPHost string `json:"smtp_host"`
 	SMTPPort int    `json:"smtp_port"`

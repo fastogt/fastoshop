@@ -1,6 +1,6 @@
-{{define "title"}}{{if .Query}}{{.Query}} — поиск{{else}}{{.Category}} — купить в {{.Shop.ShopName}}{{end}}{{if gt .Page 1}} - страница {{.Page}}{{end}}{{end}}
+{{define "title"}}{{if .Query}}{{.T "title_search" .Query}}{{else}}{{.T "title_buy" .Category .Shop.ShopName}}{{end}}{{if gt .Page 1}}{{.T "title_page" .Page}}{{end}}{{end}}
 {{define "head"}}
-<meta name="description" content="{{if .MetaDescription}}{{.MetaDescription}}{{else}}{{.Category}} — {{.FoundStr}} в магазине «{{.Shop.ShopName}}»: цены, наличие, доставка.{{end}}{{if gt .Page 1}} Страница {{.Page}}.{{end}}">
+<meta name="description" content="{{if .MetaDescription}}{{.MetaDescription}}{{else}}{{.T "category_meta" .Category .FoundStr .Shop.ShopName}}{{end}}{{if gt .Page 1}}{{.T "meta_page" .Page}}{{end}}">
 {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">{{end}}
 {{/* The path a buyer walked, spelled out for the search engine: the snippet
      shows it instead of a bare address. */}}
@@ -9,7 +9,7 @@
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   "itemListElement": [
-    {"@type": "ListItem", "position": 1, "name": "Каталог", "item": "{{.BaseURL}}/"}{{range .Crumbs}},
+    {"@type": "ListItem", "position": 1, "name": {{.T "catalog"}}, "item": "{{.BaseURL}}/"}{{range .Crumbs}},
     {"@type": "ListItem", "position": {{.Position}}, "name": {{.Name}}, "item": "{{$.BaseURL}}{{.URL}}"}{{end}}
   ]
 }

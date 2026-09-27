@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/i18n"
 	"github.com/fastogt/fastoshop/app/media"
 )
 
@@ -68,8 +69,8 @@ func New(db *database.Database, baseURL, uploadsDir string) *Storefront {
 		product:        template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/product.html")),
 		cart:           template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/cart.html")),
 		info:           template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/info.html")),
-		privacy:        template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/privacy.html")),
-		offerTpl:       template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/offer.html")),
+		privacy:        template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/privacy.html", "templates/privacy_ru.html", "templates/privacy_en.html")),
+		offerTpl:       template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/offer.html", "templates/offer_ru.html", "templates/offer_en.html")),
 		unsubscribeTpl: template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/unsubscribe.html")),
 		contacts:       template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/contacts.html")),
 		notFoundTpl:    template.Must(template.Must(base.Clone()).ParseFS(templatesFS, "templates/notfound.html")),
@@ -178,10 +179,10 @@ type orderItemJSON struct {
 func (s *Storefront) shop() *database.Settings {
 	st, err := s.db.GetSettings()
 	if err != nil {
-		return &database.Settings{ShopName: "Магазин"}
+		return &database.Settings{ShopName: i18n.Page(i18n.LangRU, "default_shop")}
 	}
 	if st.ShopName == "" {
-		st.ShopName = "Магазин"
+		st.ShopName = i18n.Page(st.Lang, "default_shop")
 	}
 	return st
 }
@@ -320,6 +321,29 @@ type pageVM struct {
 	FormOrgUNP  string
 }
 
+// The storefront speaks the shop language: one owner, one shop, one audience.
+func (v pageVM) lang() string {
+	if v.Shop == nil {
+		return i18n.LangRU
+	}
+	return v.Shop.Lang
+}
+
+func (v pageVM) T(key string, args ...any) string { return i18n.Page(v.lang(), key, args...) }
+
+// TH is for our own phrases that carry links; it takes no args, so nothing foreign gets in.
+func (v pageVM) TH(key string) template.HTML { return template.HTML(i18n.Page(v.lang(), key)) }
+
+func (v pageVM) N(key string, n int) string { return i18n.PageN(v.lang(), key, n) }
+
+// TaxID names the organisation's tax number the way the shop's country does.
+func (v pageVM) TaxID() string {
+	if v.Shop != nil && v.Shop.Currency == "RUB" {
+		return v.T("tax_id_rub")
+	}
+	return v.T("tax_id_byn")
+}
+
 // A category is a page of its own, not a query parameter on the catalogue.
 func categoryURL(path string) string {
 	if path == "" {
@@ -358,16 +382,8 @@ func canonicalURL(category string, page int) string {
 	return catalogURL(database.CatalogFilter{Category: category}, page)
 }
 
-// Pluralization here, not in the template: html/template cannot pick a numeral form.
-func foundStr(n int) string {
-	word := "товаров"
-	switch {
-	case n%10 == 1 && n%100 != 11:
-		word = "товар"
-	case n%10 >= 2 && n%10 <= 4 && (n%100 < 12 || n%100 > 14):
-		word = "товара"
-	}
-	return fmt.Sprintf("нашлось %d %s", n, word)
+func foundStr(lang string, n int) string {
+	return i18n.PageN(lang, "found", n)
 }
 
 func (s *Storefront) Index(w http.ResponseWriter, r *http.Request) {
@@ -463,27 +479,27 @@ func crumbs(path string) []crumbVM {
 }
 
 // Clicking a filter drops the page number: page 7 of another ordering is unrelated.
-func filterLinks(f database.CatalogFilter) []filterVM {
+func filterLinks(lang string, f database.CatalogFilter) []filterVM {
 	sorts := []struct {
-		name string
+		key  string
 		sort string
 		desc bool
 	}{
-		{"по умолчанию", "", false},
-		{"сначала дешёвые", "price", false},
-		{"сначала дорогие", "price", true},
-		{"по названию", "title", false},
+		{"sort_default", "", false},
+		{"sort_cheap", "price", false},
+		{"sort_dear", "price", true},
+		{"sort_title", "title", false},
 	}
 	out := make([]filterVM, 0, len(sorts)+1)
 	for _, s := range sorts {
 		v := f
 		v.Sort, v.Desc = s.sort, s.desc
-		out = append(out, filterVM{Name: s.name, URL: catalogURL(v, 1),
+		out = append(out, filterVM{Name: i18n.Page(lang, s.key), URL: catalogURL(v, 1),
 			Active: f.Sort == s.sort && f.Desc == s.desc})
 	}
 	stock := f
 	stock.InStock = !f.InStock
-	out = append(out, filterVM{Name: "только в наличии", URL: catalogURL(stock, 1),
+	out = append(out, filterVM{Name: i18n.Page(lang, "in_stock_only"), URL: catalogURL(stock, 1),
 		Active: f.InStock})
 	return out
 }
@@ -606,11 +622,12 @@ func (s *Storefront) listing(w http.ResponseWriter, r *http.Request, category st
 		}
 		cards = append(cards, vm)
 	}
-	data := pageVM{Shop: s.shop(), BaseURL: s.baseURL,
+	shop := s.shop()
+	data := pageVM{Shop: shop, BaseURL: s.baseURL,
 		CSS: template.CSS(styleCSS), Products: cards, CartCount: cartCount(r),
 		Canonical: s.baseURL + canonicalURL(category, page), Page: page, Pages: pages,
-		Query: query, FoundStr: foundStr(total)}
-	data.Filters = filterLinks(filter)
+		Query: query, FoundStr: foundStr(shop.Lang, total)}
+	data.Filters = filterLinks(shop.Lang, filter)
 	if nodes, err := s.db.VisibleCategories(); err == nil {
 		data.Children = children(nodes, category)
 	}
@@ -661,21 +678,21 @@ func (s specVM) Empty() bool {
 }
 
 // We store grams and millimetres; a buyer reads kilograms and centimetres.
-func specs(p *database.Product, hidden map[string]bool) specVM {
+func specs(lang string, p *database.Product, hidden map[string]bool) specVM {
 	var out specVM
 	if p.WeightG != nil {
-		out.Weight = weightStr(*p.WeightG)
+		out.Weight = weightStr(lang, *p.WeightG)
 	}
 	// All three or none: one side on its own does not tell a buyer whether it fits.
 	if p.LengthMM != nil && p.WidthMM != nil && p.HeightMM != nil {
-		out.Size = fmt.Sprintf("%s × %s × %s см",
+		out.Size = i18n.Page(lang, "size_cm",
 			cmStr(*p.LengthMM), cmStr(*p.WidthMM), cmStr(*p.HeightMM))
 	}
 	for _, prm := range p.Params {
 		if hidden[prm.Name] {
 			continue
 		}
-		if v := propStr(prm.Value); v != "" {
+		if v := propStr(lang, prm.Value); v != "" {
 			out.Props = append(out.Props, specProp{Name: prm.Name, Value: v})
 		}
 	}
@@ -692,7 +709,7 @@ func (s *Storefront) hiddenParams() map[string]bool {
 }
 
 // A marketplace states a single value as a list of one; unreadable values are dropped.
-func propStr(v any) string {
+func propStr(lang string, v any) string {
 	switch x := v.(type) {
 	case string:
 		return strings.TrimSpace(x)
@@ -700,13 +717,13 @@ func propStr(v any) string {
 		return strconv.FormatFloat(x, 'f', -1, 64)
 	case bool:
 		if x {
-			return "да"
+			return i18n.Page(lang, "yes")
 		}
-		return "нет"
+		return i18n.Page(lang, "no")
 	case []any:
 		parts := make([]string, 0, len(x))
 		for _, e := range x {
-			if s := propStr(e); s != "" {
+			if s := propStr(lang, e); s != "" {
 				parts = append(parts, s)
 			}
 		}
@@ -723,11 +740,11 @@ func value(v *int64) int64 {
 	return *v
 }
 
-func weightStr(g int64) string {
+func weightStr(lang string, g int64) string {
 	if g >= 1000 {
-		return strconv.FormatFloat(math.Round(float64(g)/10)/100, 'f', -1, 64) + " кг"
+		return i18n.Page(lang, "weight_kg", strconv.FormatFloat(math.Round(float64(g)/10)/100, 'f', -1, 64))
 	}
-	return fmt.Sprintf("%d г", g)
+	return i18n.Page(lang, "weight_g", g)
 }
 
 func cmStr(mm int64) string {
@@ -773,7 +790,7 @@ func (s *Storefront) Product(w http.ResponseWriter, r *http.Request) {
 		SchemaName:      clipName(p.Title),
 		MetaDescription: metaFrom(p.Description),
 		DescParas:       paragraphs(p.Description),
-		Specs:           specs(p, s.hiddenParams()),
+		Specs:           specs(shop.Lang, p, s.hiddenParams()),
 		CartCount:       cartCount(r)}
 	if p.IsSet {
 		data.Components, _ = s.db.ListComponents(p.ID)
@@ -931,7 +948,7 @@ func (s *Storefront) Robots(w http.ResponseWriter, r *http.Request) {
 		kCleanParams, s.baseURL)
 }
 
-// The shop's shape in one read for AI assistants; Russian, like the storefront.
+// The shop's shape in one read for AI assistants, in the storefront's language.
 func (s *Storefront) LlmsTxt(w http.ResponseWriter, r *http.Request) {
 	shop := s.shop()
 	total, err := s.db.CountVisibleProducts(database.CatalogFilter{})
@@ -941,28 +958,28 @@ func (s *Storefront) LlmsTxt(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprintf(w, "# %s\n\n", shop.ShopName)
-	fmt.Fprintf(w, "> Интернет-магазин: %d товаров в наличии. Оплата при получении, без предоплаты; заказ подтверждается звонком. Цены в %s.\n\n",
-		total, shop.Currency)
-	fmt.Fprintf(w, "Заказ оформляется на сайте без регистрации: корзина → имя и телефон или почта.\n")
+	t := func(key string, args ...any) string { return i18n.Page(shop.Lang, key, args...) }
+	fmt.Fprintf(w, "> %s\n\n", t("llms_intro", total, shop.Currency))
+	fmt.Fprintf(w, "%s\n", t("llms_order"))
 	if shop.ShopPhone != "" {
-		fmt.Fprintf(w, "Телефон магазина: %s\n", shop.ShopPhone)
+		fmt.Fprintf(w, "%s\n", t("llms_phone", shop.ShopPhone))
 	}
-	fmt.Fprintf(w, "\n## Каталог\n\n")
+	fmt.Fprintf(w, "\n## %s\n\n", t("catalog"))
 	if nodes, err := s.db.VisibleCategories(); err == nil {
 		for _, c := range children(nodes, "") {
-			fmt.Fprintf(w, "- [%s](%s%s): %d товаров\n", c.Name, s.baseURL, c.URL, c.Count)
+			fmt.Fprintf(w, "- [%s](%s%s): %s\n", c.Name, s.baseURL, c.URL, t("llms_count", c.Count))
 		}
 	}
-	fmt.Fprintf(w, "\n## Страницы\n\n")
-	fmt.Fprintf(w, "- [Все категории](%s/c)\n", s.baseURL)
+	fmt.Fprintf(w, "\n## %s\n\n", t("llms_pages"))
+	fmt.Fprintf(w, "- [%s](%s/c)\n", t("llms_all_categories"), s.baseURL)
 	if shop.Terms != "" {
-		fmt.Fprintf(w, "- [Доставка и оплата](%s/info)\n", s.baseURL)
+		fmt.Fprintf(w, "- [%s](%s/info)\n", t("delivery_payment"), s.baseURL)
 	}
 	if shop.ShopPhone != "" || shop.Requisites != "" {
-		fmt.Fprintf(w, "- [Контакты](%s/contacts)\n", s.baseURL)
+		fmt.Fprintf(w, "- [%s](%s/contacts)\n", t("contacts"), s.baseURL)
 	}
-	fmt.Fprintf(w, "- [Карта сайта](%s/sitemap.xml): каждый товар с датой обновления\n", s.baseURL)
-	fmt.Fprintf(w, "\nСтраница товара (%s/p/<slug>) отдаётся сервером без скриптов и несёт разметку schema.org/Product с ценой и наличием.\n", s.baseURL)
+	fmt.Fprintf(w, "- [%s](%s/sitemap.xml): %s\n", t("llms_sitemap"), s.baseURL, t("llms_sitemap_note"))
+	fmt.Fprintf(w, "\n%s\n", t("llms_product", s.baseURL))
 }
 
 // variantVM is one size in the row above the price, with what one piece costs in it.

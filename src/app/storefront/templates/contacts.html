@@ -1,10 +1,10 @@
-{{define "title"}}Контакты — {{.Shop.ShopName}}{{end}}
+{{define "title"}}{{.T "contacts"}} — {{.Shop.ShopName}}{{end}}
 {{define "content"}}
-<h1>Контакты</h1>
+<h1>{{.T "contacts"}}</h1>
 <div class="contacts">
-{{if .Shop.ShopPhone}}<p>Телефон: <a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a></p>{{end}}
-{{if .Shop.OwnerEmail}}<p>Почта: <a href="mailto:{{.Shop.OwnerEmail}}">{{.Shop.OwnerEmail}}</a></p>{{end}}
+{{if .Shop.ShopPhone}}<p>{{.T "phone"}}: <a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a></p>{{end}}
+{{if .Shop.OwnerEmail}}<p>{{.T "email"}}: <a href="mailto:{{.Shop.OwnerEmail}}">{{.Shop.OwnerEmail}}</a></p>{{end}}
 {{if .Shop.Requisites}}<div class="requisites">{{.Shop.Requisites}}</div>{{end}}
-{{if .Shop.Terms}}<p><a href="/info">Доставка и оплата</a></p>{{end}}
+{{if .Shop.Terms}}<p><a href="/info">{{.T "delivery_payment"}}</a></p>{{end}}
 </div>
 {{end}}

@@ -253,9 +253,8 @@ func (d *Database) migrate() error {
 		-- Uploaded logo file name in the uploads dir. Empty means the storefront
 		-- shows the shop name as text, which is also the SEO-safe default.
 		logo          TEXT NOT NULL DEFAULT '',
-		-- Owner's language, used by the admin and by every message the server
-		-- renders for them. The storefront is not affected: it speaks the
-		-- language of the products.
+		-- Shop language: the admin, every message the server renders for the
+		-- owner, and the storefront the buyer reads.
 		lang          TEXT NOT NULL DEFAULT 'ru',
 		-- Multiplier from the source price to the shelf price: exchange rate,
 		-- import costs and anything else the owner folds into one number.

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/i18n"
 )
 
 // ponytail: rendered per request like the sitemap; pre-generate when a real
@@ -15,9 +16,6 @@ import (
 
 // Both providers cap the pictures per offer at around ten; the tail is ignored.
 const kMaxFeedPictures = 10
-
-// <categoryId> is mandatory per offer. Product language, like the storefront.
-const kFeedCatchAllCategory = "Товары"
 
 type ymlCurrency struct {
 	ID   string `xml:"id,attr"`
@@ -148,13 +146,13 @@ func feedDimensionsCM(l, w, h *int64) string {
 }
 
 // A marketplace shows these in the card, so the owner's hidden-param choice holds.
-func feedParams(params []database.Param, hidden map[string]bool) []ymlParam {
+func feedParams(lang string, params []database.Param, hidden map[string]bool) []ymlParam {
 	out := make([]ymlParam, 0, len(params))
 	for _, p := range params {
 		if p.Name == "" || hidden[p.Name] {
 			continue
 		}
-		if v := propStr(p.Value); v != "" {
+		if v := propStr(lang, p.Value); v != "" {
 			out = append(out, ymlParam{Name: p.Name, Value: v})
 		}
 	}
@@ -216,15 +214,16 @@ func (s *Storefront) YML(w http.ResponseWriter, r *http.Request) {
 	for _, c := range cats {
 		ensure(c)
 	}
+	shop := s.shop()
+	// <categoryId> is mandatory per offer, so uncategorised goods get one of their own.
 	catchAll := 0
 	for _, p := range products {
 		if p.Category == "" {
 			catchAll = len(catIDs) + 1
-			categories = append(categories, ymlCategory{ID: catchAll, Name: kFeedCatchAllCategory})
+			categories = append(categories, ymlCategory{ID: catchAll, Name: i18n.Page(shop.Lang, "feed_catch_all")})
 			break
 		}
 	}
-	shop := s.shop()
 	catalog := ymlCatalog{
 		Date: feedDate(products),
 		Shop: ymlShop{
@@ -248,7 +247,7 @@ func (s *Storefront) YML(w http.ResponseWriter, r *http.Request) {
 			Count:      p.Stock,
 			Weight:     feedWeightKG(p.WeightG),
 			Dimensions: feedDimensionsCM(p.LengthMM, p.WidthMM, p.HeightMM),
-			Params:     feedParams(p.Params, hidden),
+			Params:     feedParams(shop.Lang, p.Params, hidden),
 		})
 	}
 	writeFeed(w, catalog)

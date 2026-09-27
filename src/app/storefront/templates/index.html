@@ -1,6 +1,6 @@
-{{define "title"}}{{if .Query}}{{.Query}} — поиск{{else}}{{.Shop.ShopName}} — каталог товаров{{end}}{{if gt .Page 1}} - страница {{.Page}}{{end}}{{end}}
+{{define "title"}}{{if .Query}}{{.T "title_search" .Query}}{{else}}{{.T "title_catalog" .Shop.ShopName}}{{end}}{{if gt .Page 1}}{{.T "title_page" .Page}}{{end}}{{end}}
 {{define "head"}}
-<meta name="description" content="{{.Shop.ShopName}}: каталог товаров, цены, наличие.{{if gt .Page 1}} Страница {{.Page}}.{{end}}">
+<meta name="description" content="{{.T "index_meta" .Shop.ShopName}}{{if gt .Page 1}}{{.T "meta_page" .Page}}{{end}}">
 {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">{{end}}
 {{/* The search box Google may draw under the site in its results. Declared on
 the first catalogue page only: a search result page offering a search of itself
@@ -24,9 +24,9 @@ is noise, and the action points at the shop's own /?q= which needs no script. */
 {{end}}
 {{define "content"}}
 {{if .Query}}
-<h1>Поиск: {{.Query}}</h1>
-{{if .FoundStr}}<p class="found">{{.FoundStr}} · <a href="/">весь каталог</a></p>{{end}}
-{{else}}<h1>Каталог</h1>{{end}}
+<h1>{{.T "search_heading" .Query}}</h1>
+{{if .FoundStr}}<p class="found">{{.FoundStr}} · <a href="/">{{.T "whole_catalog_lc"}}</a></p>{{end}}
+{{else}}<h1>{{.T "catalog"}}</h1>{{end}}
 {{template "children" .}}
 {{template "filters" .}}
 {{template "grid" .}}

@@ -1,13 +1,13 @@
-{{define "title"}}Страница не найдена — {{.Shop.ShopName}}{{end}}
+{{define "title"}}{{.T "notfound_title"}} — {{.Shop.ShopName}}{{end}}
 {{define "content"}}
 {{/* A dead address from an old search result is a buyer, not a bot: give them a way on. */}}
 <div class="prose">
-<h1>Такой страницы нет</h1>
-<p>Возможно, товар закончился или адрес изменился. Поищите его по названию или загляните в каталог.</p>
+<h1>{{.T "notfound_heading"}}</h1>
+<p>{{.T "notfound_text"}}</p>
 <form action="/" method="get" class="search" role="search">
-<input type="search" name="q" placeholder="Поиск по товарам" aria-label="Поиск по товарам" maxlength="100">
-<button type="submit">Найти</button>
+<input type="search" name="q" placeholder="{{.T "search_placeholder"}}" aria-label="{{.T "search_placeholder"}}" maxlength="100">
+<button type="submit">{{.T "search_button"}}</button>
 </form>
-<p><a href="/">Перейти в каталог</a></p>
+<p><a href="/">{{.T "to_catalog"}}</a></p>
 </div>
 {{end}}

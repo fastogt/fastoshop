@@ -1,9 +1,8 @@
-{{define "title"}}Отписка - {{.Shop.ShopName}}{{end}}
+{{define "title"}}{{.T "unsub_title"}} - {{.Shop.ShopName}}{{end}}
 {{define "content"}}
 <div class="prose">
-<h1>Вы отписаны</h1>
-<p>Писем от магазина «{{.Shop.ShopName}}» больше не будет. Если это вышло случайно,
-подписаться снова можно внизу любой страницы.</p>
-<p><a href="/">Перейти в каталог</a></p>
+<h1>{{.T "unsub_heading"}}</h1>
+<p>{{.T "unsub_text" .Shop.ShopName}}</p>
+<p><a href="/">{{.T "to_catalog"}}</a></p>
 </div>
 {{end}}

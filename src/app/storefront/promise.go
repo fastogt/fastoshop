@@ -3,10 +3,10 @@ package storefront
 import (
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/fastogt/fastoshop/app/database"
+	"github.com/fastogt/fastoshop/app/i18n"
 )
 
 // kPromiseCookie remembers that the buyer closed the line; a year is long enough
@@ -25,27 +25,15 @@ func promise(shop *database.Settings) string {
 	}
 	parts := make([]string, 0, 3)
 	if shop.DeliveryFreeFrom > 0 {
-		parts = append(parts, "Доставка бесплатно от "+priceStr(shop.DeliveryFreeFrom)+" "+shop.Sign())
+		parts = append(parts, i18n.Page(shop.Lang, "promise_free_from", priceStr(shop.DeliveryFreeFrom)+" "+shop.Sign()))
 	}
 	if shop.DeliveryDays > 0 {
-		parts = append(parts, "доставим за "+plural(shop.DeliveryDays, "день", "дня", "дней"))
+		parts = append(parts, i18n.PageN(shop.Lang, "promise_days", shop.DeliveryDays))
 	}
 	if shop.ReturnDays > 0 {
-		parts = append(parts, "возврат в течение "+plural(shop.ReturnDays, "дня", "дней", "дней"))
+		parts = append(parts, i18n.PageN(shop.Lang, "promise_return", shop.ReturnDays))
 	}
 	return strings.Join(parts, " · ")
-}
-
-// plural picks the Russian form: 1 день, 2 дня, 5 дней.
-func plural(n int, one, few, many string) string {
-	word := many
-	switch {
-	case n%10 == 1 && n%100 != 11:
-		word = one
-	case n%10 >= 2 && n%10 <= 4 && (n%100 < 12 || n%100 > 14):
-		word = few
-	}
-	return strconv.Itoa(n) + " " + word
 }
 
 // PromiseOff hides the line for a year and returns the buyer to the page they read.
@@ -79,13 +67,13 @@ func (v *pageVM) fromRequest(r *http.Request) {
 func terms(shop *database.Settings) string {
 	parts := make([]string, 0, 3)
 	if shop.DeliveryFreeFrom > 0 {
-		parts = append(parts, "бесплатная доставка от "+priceStr(shop.DeliveryFreeFrom)+" "+shop.Sign())
+		parts = append(parts, i18n.Page(shop.Lang, "terms_free_from", priceStr(shop.DeliveryFreeFrom)+" "+shop.Sign()))
 	}
 	if shop.DeliveryDays > 0 {
-		parts = append(parts, "доставка за "+plural(shop.DeliveryDays, "день", "дня", "дней"))
+		parts = append(parts, i18n.PageN(shop.Lang, "terms_days", shop.DeliveryDays))
 	}
 	if shop.ReturnDays > 0 {
-		parts = append(parts, "возврат "+plural(shop.ReturnDays, "день", "дня", "дней"))
+		parts = append(parts, i18n.PageN(shop.Lang, "terms_return", shop.ReturnDays))
 	}
 	return strings.Join(parts, " · ")
 }

@@ -251,7 +251,8 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	// The letters are a separate tick, never pre-ticked: an order is not a reason
 	// to write to somebody, and consent bundled into another consent is not one.
 	if strings.TrimSpace(r.FormValue("subscribe")) == "on" && email != "" {
-		if err := s.db.Subscribe(email, database.SubscribeOrder, kOrderSubscribeConsent); err != nil {
+		consent := i18n.Page(shop.Lang, "consent_order_subscribe")
+		if err := s.db.Subscribe(email, database.SubscribeOrder, consent); err != nil {
 			log.Warnf("subscribe from order: %v", err)
 		}
 	}
@@ -288,7 +289,7 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	raw, _ := json.Marshal(items)
 	o := &database.Order{Name: name, Phone: phone, Email: email,
 		Comment: comment, ItemsJSON: string(raw), Source: sourceOf(r),
-		OrgName: org.Name, OrgUNP: org.UNP, ConsentText: kOrderConsent}
+		OrgName: org.Name, OrgUNP: org.UNP, ConsentText: i18n.Page(shop.Lang, "consent_order")}
 	if org.Chosen {
 		o.RequisitesFile = s.saveRequisites(r)
 	}
@@ -304,7 +305,6 @@ func (s *Storefront) CartOrder(w http.ResponseWriter, r *http.Request) {
 	writeCart(w, nil)
 	writeGoal(w, o.ID, total)
 	s.stockChanged()
-	// This email goes to the owner, so it uses the owner's language, not the product one.
 	lang := shop.Lang
 	body := orderMailBody(lang, summary.String(), priceStr(total)+" "+sign, o, s.baseURL)
 	subject := fmt.Sprintf(i18n.T(lang, i18n.KeyNewOrderSubject), o.ID)

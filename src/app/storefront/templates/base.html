@@ -17,35 +17,35 @@
     <div class="body">
       <p class="price">{{.PriceStr}} {{$.Shop.Sign}}</p>
       <h2>{{.Title}}</h2>
-      {{if le .Stock 0}}<span class="badge">Нет в наличии</span>{{end}}
+      {{if le .Stock 0}}<span class="badge">{{$.T "out_of_stock"}}</span>{{end}}
     </div>
   </a></li>
 {{end}}
 </ul>
 {{if gt .Pages 1}}
 <nav class="pager">
-  {{if .PrevURL}}<a href="{{.PrevURL}}" rel="prev">← Назад</a>{{end}}
-  <span class="oos">Страница {{.Page}} из {{.Pages}}</span>
-  {{if .NextURL}}<a href="{{.NextURL}}" rel="next">Дальше →</a>{{end}}
+  {{if .PrevURL}}<a href="{{.PrevURL}}" rel="prev">{{.T "page_prev"}}</a>{{end}}
+  <span class="oos">{{.T "page_of" .Page .Pages}}</span>
+  {{if .NextURL}}<a href="{{.NextURL}}" rel="next">{{.T "page_next"}}</a>{{end}}
 </nav>
 {{end}}
 {{else if .Query}}
-<p class="empty">По запросу «{{.Query}}» ничего не нашлось. <a href="/">Весь каталог</a></p>
+<p class="empty">{{.T "nothing_found" .Query}} <a href="/">{{.T "whole_catalog"}}</a></p>
 {{else}}
-<p class="empty">Товары скоро появятся.</p>
+<p class="empty">{{.T "coming_soon"}}</p>
 {{end}}
 {{end}}
 
 {{define "crumbs"}}
-<nav class="crumbs" aria-label="Хлебные крошки">
-  <a href="/">Каталог</a>
+<nav class="crumbs" aria-label="{{.T "aria_crumbs"}}">
+  <a href="/">{{.T "catalog"}}</a>
   {{range .Crumbs}} › <a href="{{.URL}}">{{.Name}}</a>{{end}}
 </nav>
 {{end}}
 
 {{define "filters"}}
 {{if .Products}}
-<nav class="filters" aria-label="Сортировка и фильтры">
+<nav class="filters" aria-label="{{.T "aria_filters"}}">
 {{range .Filters}}<a href="{{.URL}}"{{if .Active}} class="on" aria-current="true"{{end}} rel="nofollow">{{.Name}}</a>{{end}}
 </nav>
 {{end}}
@@ -53,7 +53,7 @@
 
 {{define "children"}}
 {{if .Children}}
-<nav class="cats" aria-label="Категории">
+<nav class="cats" aria-label="{{.T "categories"}}">
 {{range .Children}}<a href="{{.URL}}">{{.Name}} <span class="oos">{{.Count}}</span></a>{{end}}
 </nav>
 {{end}}
@@ -76,45 +76,44 @@
 <header>
 <a href="/" class="logo">{{if .Shop.Logo}}<img src="/uploads/{{.Shop.Logo}}" alt="{{.Shop.ShopName}}" class="logo-img">{{else}}{{.Shop.ShopName}}{{end}}</a>
 <form action="/" method="get" class="search" role="search">
-<input type="search" name="q" value="{{.Query}}" placeholder="Поиск по товарам" aria-label="Поиск по товарам" maxlength="100">
-<button type="submit">Найти</button>
+<input type="search" name="q" value="{{.Query}}" placeholder="{{.T "search_placeholder"}}" aria-label="{{.T "search_placeholder"}}" maxlength="100">
+<button type="submit">{{.T "search_button"}}</button>
 </form>
 <nav>
 {{if .Shop.ShopPhone}}<a href="tel:{{.Shop.ShopPhone}}" class="phone">{{.Shop.ShopPhone}}</a>{{end}}
-{{if .Shop.CartEnabled}}<a href="/cart" class="cart" rel="nofollow">Корзина{{if .CartCount}} ({{.CartCount}}){{end}}</a>{{end}}
+{{if .Shop.CartEnabled}}<a href="/cart" class="cart" rel="nofollow">{{.T "cart"}}{{if .CartCount}} ({{.CartCount}}){{end}}</a>{{end}}
 </nav>
 </header>
 <main>{{block "content" .}}{{end}}</main>
 {{/* The shop's own promise, on every page until the buyer closes it. Closing is a
 link, not a script: the storefront ships no JavaScript, and a cookie remembers it. */}}
-{{if .Promise}}<div class="promise"><span>{{.Promise}}</span><a href="/promise/off?back={{.PromiseBack}}" rel="nofollow">Понятно</a></div>{{end}}
+{{if .Promise}}<div class="promise"><span>{{.Promise}}</span><a href="/promise/off?back={{.PromiseBack}}" rel="nofollow">{{.T "promise_ok"}}</a></div>{{end}}
 {{/* The letters a buyer asks for themselves. One field and a tick: the address
      is the whole subscription, and the wording accepted travels with it. */}}
 {{if .Shop.SMTPHost}}<section class="subscribe">
   <div class="sub-text">
-    <strong>Новинки и скидки на почту</strong>
-    <p class="oos">Пишем редко - только когда есть что показать.</p>
+    <strong>{{.T "sub_title"}}</strong>
+    <p class="oos">{{.T "sub_text"}}</p>
   </div>
   <form method="post" action="/subscribe">
-    {{if .Subscribed}}<p class="notice good ok">Подписались. Письма будут приходить на {{.Subscribed}}.</p>
-    {{else if .BadEmail}}<p class="notice oos">Проверьте адрес почты.</p>{{end}}
+    {{if .Subscribed}}<p class="notice good ok">{{.T "sub_done" .Subscribed}}</p>
+    {{else if .BadEmail}}<p class="notice oos">{{.T "sub_bad_email"}}</p>{{end}}
     <div class="sub-row">
-      <label for="sub-email" hidden>Почта</label>
-      <input id="sub-email" type="email" name="email" placeholder="ваша почта" required>
-      <button type="submit">Подписаться</button>
+      <label for="sub-email" hidden>{{.T "email"}}</label>
+      <input id="sub-email" type="email" name="email" placeholder="{{.T "sub_placeholder"}}" required>
+      <button type="submit">{{.T "sub_button"}}</button>
     </div>
-    <p class="oos sub-hint">Нажимая кнопку, вы соглашаетесь получать письма магазина и принимаете
-      <a href="/privacy">политику обработки данных</a>. Отписаться можно одной ссылкой из любого письма.</p>
+    <p class="oos sub-hint">{{.TH "sub_hint"}}</p>
   </form>
 </section>{{end}}
 <footer>
 <span>© {{.Shop.ShopName}}</span>
 {{if .Shop.Requisites}}<div class="requisites">{{.Shop.Requisites}}</div>{{end}}
 {{if .Terms}}<span class="terms-line">{{.Terms}}</span>{{end}}
-{{if .Shop.Terms}}<a href="/info">Доставка и оплата</a>{{end}}
-<a href="/offer">Оферта</a>
-<a href="/privacy">Обработка данных</a>
-{{if or .Shop.ShopPhone .Shop.Requisites}}<a href="/contacts">Контакты</a>{{end}}
+{{if .Shop.Terms}}<a href="/info">{{.T "delivery_payment"}}</a>{{end}}
+<a href="/offer">{{.T "offer"}}</a>
+<a href="/privacy">{{.T "privacy_short"}}</a>
+{{if or .Shop.ShopPhone .Shop.Requisites}}<a href="/contacts">{{.T "contacts"}}</a>{{end}}
 {{if .Shop.ShopPhone}}<a href="tel:{{.Shop.ShopPhone}}">{{.Shop.ShopPhone}}</a>{{end}}
 {{range contactLinks .Shop}}<a href="{{.URL}}" rel="nofollow noopener" target="_blank">{{.Label}}</a>{{end}}
 </footer>
@@ -145,11 +144,7 @@ single script on the page, which is the point of the storefront. */}}
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','{{.Shop.GAMeasurementID}}');</script>{{end}}
 {{if .Shop.MetrikaCounterID}}<script>(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<e.scripts.length;j++){if(e.scripts[j].src===r){return}}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');ym('{{.Shop.MetrikaCounterID}}','init',{clickmap:true,trackLinks:true,accurateTrackBounce:true});</script>
 <noscript><div><img src="https://mc.yandex.ru/watch/{{.Shop.MetrikaCounterID}}" style="position:absolute;left:-9999px" alt=""></div></noscript>{{end}}
-{{/* Цель заказа. Без неё контекстная реклама магазина неизмерима: система
-     не на чем оптимизироваться, а владелец не посчитает цену заказа.
-     По .Goal, а не по адресу: страница подтверждения остаётся в истории, и
-     каждое её открытие заново засчитывалось бы как ещё один заказ.
-     Номер заказа обязателен - по нему площадка отбрасывает дубли. */}}
+{{/* By .Goal, not by URL: a reopened confirmation page must not count again; the id dedupes. */}}
 {{with .Goal}}{{if $.Shop.MetrikaCounterID}}<script>ym('{{$.Shop.MetrikaCounterID}}','reachGoal','order',{order_id:'{{.IDStr}}',order_price:{{.Value}},currency:'{{$.Shop.Currency}}'});</script>{{end}}{{if $.Shop.GAMeasurementID}}<script>gtag('event','purchase',{transaction_id:'{{.IDStr}}',value:{{.Value}},currency:'{{$.Shop.Currency}}'});</script>{{end}}{{end}}
 </body>
 </html>{{end}}
