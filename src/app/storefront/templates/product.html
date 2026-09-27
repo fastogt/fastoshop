@@ -148,14 +148,6 @@
       </table>
     </div>
     {{end}}
-    {{/* Under the characteristics, in their column: below the whole grid it left a
-         hole as tall as the buy box on any card with a short spec list. */}}
-    {{if .DescParas}}
-    <div class="desc">
-      <h2>{{.T "description"}}</h2>
-      {{range .DescParas}}<p>{{.}}</p>{{end}}
-    </div>
-    {{end}}
   </div>
   <div class="buybox">
       <p class="price">{{.PriceStr}} {{.Shop.Sign}}</p>
@@ -207,5 +199,13 @@
       <p class="oos">{{.T "invoice_hint" .TaxID}}</p>
       {{end}}
   </div>
+  {{/* Under the characteristics, in their column: below the whole grid it left a
+       hole as tall as the buy box on any card with a short spec list. */}}
+  {{if .DescParas}}
+  <div class="desc">
+    <h2>{{.T "description"}}</h2>
+    {{range .DescParas}}<p>{{.}}</p>{{end}}
+  </div>
+  {{end}}
 </article>
 {{end}}

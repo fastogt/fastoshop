@@ -238,9 +238,12 @@ main > h1 { margin-block: 28px 20px; }
   margin-block: 28px 48px;
   align-items: start;
 }
-/* The description continues the middle column: as a child of the grid it landed
-   in the next row and left a hole as tall as the buy box. */
-.product .desc { margin-top: 24px; }
+/* The description spans the whole card under the columns, with the line length
+   capped: 1400 px of running text is as hard to read as a 380 px ribbon. */
+.product .desc { grid-column: 1 / -1; max-width: 80ch; margin-top: 8px; }
+@media (max-width: 1100px) {
+  .product .desc { grid-column: auto; max-width: none; }
+}
 
 .crumbs { color: var(--muted); font-size: 0.9rem; margin-top: 20px; }
 .crumbs a { color: inherit; }
