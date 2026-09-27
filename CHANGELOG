@@ -1,6 +1,7 @@
 1.64.0 / September 27, 2026
 [Alexandr Topilski]
 - The delivery page answers the questions a buyer asks before paying - cost, term, returns, how to order, how to pay, the phone - and carries them as FAQPage data. Every answer is built from a number the owner already stated; a field left at zero asks nothing and promises nothing
+- The storefront speaks the shop's language: every buyer-facing string moved into translations and follows the language set in the profile, English included, with English versions of the offer and the privacy policy
 
 1.63.2 / September 26, 2026
 [Alexandr Topilski]

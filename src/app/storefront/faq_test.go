@@ -65,10 +65,18 @@ func TestFAQAnswersOnlyStatedFacts(t *testing.T) {
 			} `json:"acceptedAnswer"`
 		} `json:"mainEntity"`
 	}
-	raw := body[strings.Index(body, `{
+	start := strings.Index(body, `{
   "@context": "https://schema.org",
-  "@type": "FAQPage"`):]
-	raw = raw[:strings.Index(raw, "</script>")]
+  "@type": "FAQPage"`)
+	if start < 0 {
+		t.Fatal("the page carries no FAQ markup")
+	}
+	raw := body[start:]
+	end := strings.Index(raw, "</script>")
+	if end < 0 {
+		t.Fatal("the FAQ block is not closed")
+	}
+	raw = raw[:end]
 	if err := json.Unmarshal([]byte(raw), &page); err != nil {
 		t.Fatalf("the markup is not valid JSON: %v", err)
 	}
