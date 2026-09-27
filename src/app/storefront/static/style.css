@@ -233,16 +233,16 @@ main > h1 { margin-block: 28px 20px; }
    "48px 1020px 340px"; ours keeps the middle fluid and the rail in that range. */
 .product {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(300px, 380px);
+  /* The gallery takes what a photo needs and no more: the middle column carries
+     the text and wants the room. */
+  grid-template-columns: minmax(280px, 440px) minmax(0, 1fr) minmax(300px, 380px);
   gap: 40px;
   margin-block: 28px 48px;
   align-items: start;
 }
 /* The description spans the whole card under the columns, with the line length
    capped: 1400 px of running text is as hard to read as a 380 px ribbon. */
-.product .desc { grid-column: 1 / -1; max-width: 80ch; margin-top: 8px; }
-/* Inside the facts column it is not a grid item and needs no span. */
-.product .facts .desc { grid-column: auto; max-width: none; margin-top: 20px; }
+.product .desc { margin-top: 22px; max-width: 72ch; }
 @media (max-width: 1100px) {
   .product .desc { grid-column: auto; max-width: none; }
 }

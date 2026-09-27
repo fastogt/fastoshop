@@ -148,7 +148,10 @@
       </table>
     </div>
     {{end}}
-    {{if and .DescParas .Specs.Empty}}{{template "desc" .}}{{end}}
+    {{/* The middle column carries everything about the goods - title, facts,
+         description - the way a marketplace card does: one flow, so a short spec
+         list cannot leave a hole next to the buy box. */}}
+    {{if .DescParas}}{{template "desc" .}}{{end}}
   </div>
   <div class="buybox">
       <p class="price">{{.PriceStr}} {{.Shop.Sign}}</p>
@@ -200,10 +203,6 @@
       <p class="oos">{{.T "invoice_hint" .TaxID}}</p>
       {{end}}
   </div>
-  {{/* A card with characteristics reads the description across the whole width,
-       under the columns. A card without them has an empty middle column, so the
-       description fills it instead of leaving a void beside the buy box. */}}
-  {{if and .DescParas (not .Specs.Empty)}}{{template "desc" .}}{{end}}
 </article>
 {{end}}
 
