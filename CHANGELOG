@@ -1,3 +1,7 @@
+1.64.2 / September 27, 2026
+[Alexandr Topilski]
+- The description spans the whole product card again, with the line length capped: in the middle column it read as a 380 px ribbon, across the full card it would run 1400 px wide
+
 1.64.1 / September 27, 2026
 [Alexandr Topilski]
 - The description on a product page follows the characteristics instead of starting below the whole card: a short spec list left a gap as tall as the buy box between them
