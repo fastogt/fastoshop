@@ -241,6 +241,8 @@ main > h1 { margin-block: 28px 20px; }
 /* The description spans the whole card under the columns, with the line length
    capped: 1400 px of running text is as hard to read as a 380 px ribbon. */
 .product .desc { grid-column: 1 / -1; max-width: 80ch; margin-top: 8px; }
+/* Inside the facts column it is not a grid item and needs no span. */
+.product .facts .desc { grid-column: auto; max-width: none; margin-top: 20px; }
 @media (max-width: 1100px) {
   .product .desc { grid-column: auto; max-width: none; }
 }
