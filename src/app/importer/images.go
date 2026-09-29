@@ -46,26 +46,35 @@ func extByContent(head []byte) string {
 	return ""
 }
 
-func fetchImage(im database.ProductImage, uploadsDir string) (string, error) {
-	resp, err := kHTTP.Get(im.Path)
+// FetchImageBytes is shared with the photo archive, which sends the file instead of storing it.
+func FetchImageBytes(url string) ([]byte, string, error) {
+	resp, err := kHTTP.Get(url)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("http %d", resp.StatusCode)
+		return nil, "", fmt.Errorf("http %d", resp.StatusCode)
 	}
 	// One byte over the cap is enough to tell "too big" from "exactly at the cap".
 	data, err := io.ReadAll(io.LimitReader(resp.Body, kMaxImageBytes+1))
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 	if len(data) > kMaxImageBytes {
-		return "", fmt.Errorf("larger than %d MB", kMaxImageBytes>>20)
+		return nil, "", fmt.Errorf("larger than %d MB", kMaxImageBytes>>20)
 	}
 	ext := extByContent(data)
 	if ext == "" {
-		return "", fmt.Errorf("not a jpeg, png or webp")
+		return nil, "", fmt.Errorf("not a jpeg, png or webp")
+	}
+	return data, ext, nil
+}
+
+func fetchImage(im database.ProductImage, uploadsDir string) (string, error) {
+	data, ext, err := FetchImageBytes(im.Path)
+	if err != nil {
+		return "", err
 	}
 	name, err := localName(im.ProductID, ext)
 	if err != nil {

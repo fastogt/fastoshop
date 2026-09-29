@@ -56,6 +56,8 @@ const (
 	KeyBadStock         = "bad_stock"
 	KeyNothingSelected  = "nothing_selected"
 	KeyJobBusy          = "job_busy"
+	KeyNoPhotos         = "no_photos"
+	KeyPhotoFailed      = "photo_failed"
 	KeyBadCurrency      = "bad_currency"
 	KeyBadTileAspect    = "bad_tile_aspect"
 	KeyBadCustomerKind  = "bad_customer_kind"
@@ -218,6 +220,13 @@ var kMessages = map[string][2]string{
 	KeyJobBusy: {
 		"дождитесь окончания текущей задачи",
 		"wait for the running task to finish",
+	},
+	KeyNoPhotos: {
+		"у товара нет фотографий", "the product has no photos",
+	},
+	KeyPhotoFailed: {
+		"эти фотографии скачать не удалось:",
+		"these photos could not be downloaded:",
 	},
 	KeyBadCurrency: {
 		"этой валютой магазин торговать не умеет",

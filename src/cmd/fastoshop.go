@@ -118,6 +118,7 @@ func run(cfg *config.Config) error {
 			r.Get("/products/{id}/components", h.ListComponents)
 			r.Get("/products/{id}/outside", h.ListOutside)
 			r.Get("/products/{id}/cards", h.ListPlatformCards)
+			r.Get("/products/{id}/photos.zip", h.ExportProductPhotos)
 			r.Delete("/products/{id}/images/{imageID}", h.DeleteImage)
 			r.Put("/products/{id}/images/order", h.SetImageOrder)
 			r.Post("/products/{id}/enrich", h.EnrichProduct)

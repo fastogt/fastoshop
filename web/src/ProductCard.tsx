@@ -124,6 +124,7 @@ const kText = {
   },
   labelPhotos: { ru: "Фотографии", en: "Photos" },
   addPhoto: { ru: "Добавить", en: "Add" },
+  downloadPhotos: { ru: "Скачать все фото", en: "Download all photos" },
   removePhoto: { ru: "Удалить фото", en: "Remove photo" },
   dragHint: {
     ru: "Фотографии можно перетаскивать: первая уходит в поиск, в каталог и в карточку канала.",
@@ -881,6 +882,15 @@ export default function ProductCard({
                     />
                   </label>
                 </div>
+                {(edit.images?.length ?? 0) > 0 && (
+                  <a
+                    href={`/api/products/${edit.id}/photos.zip`}
+                    className="btn-ghost mt-2 inline-block"
+                    download
+                  >
+                    {t("downloadPhotos")}
+                  </a>
+                )}
                 <p className="hint mt-1">{t("photosHint")}</p>
               </div>
             ) : (
