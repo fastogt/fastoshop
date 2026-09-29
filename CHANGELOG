@@ -1,3 +1,7 @@
+1.65.0 / September 29, 2026
+[Alexandr Topilski]
+- The Photos tab of a product has a "Download all photos" button: one zip with every photo in the card's order, supplier links included, and a note naming any photo that could not be fetched
+
 1.64.5 / September 27, 2026
 [Alexandr Topilski]
 - Clicking a photo thumbnail on a product card no longer jumps the page: the big picture changes in place
