@@ -77,6 +77,8 @@ func (d *Database) migrate() error {
 		-- and would be wrong outright for batches imported at another rate.
 		-- 0 means the product was created by hand and has no source.
 		source_price INTEGER NOT NULL DEFAULT 0,
+		-- What one unit costs the owner, minor units, typed by hand; no import touches it.
+		cost_price  INTEGER NOT NULL DEFAULT 0,
 		-- 1 = the owner set this price themselves; a recompute must not overwrite
 		-- their work.
 		price_manual INTEGER NOT NULL DEFAULT 0,

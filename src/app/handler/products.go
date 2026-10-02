@@ -41,6 +41,8 @@ type productRequest struct {
 	// How this product is bought; nil leaves it as it is, "" hands it back to the shop.
 	CustomerKind *string `json:"customer_kind"`
 	BuyButtons   *string `json:"buy_buttons"`
+	// The owner's unit cost in minor units; nil leaves it, 0 clears it.
+	CostPrice *int64 `json:"cost_price"`
 	// Grams and millimetres. Here nil means "clear it" rather than "leave as is".
 	WeightG  *int64 `json:"weight_g"`
 	LengthMM *int64 `json:"length_mm"`
@@ -253,6 +255,10 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteBadRequest(w, "title required")
 		return
 	}
+	if req.CostPrice != nil && *req.CostPrice < 0 {
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadCostPrice))
+		return
+	}
 	p := &database.Product{SKU: req.SKU, Title: req.Title, Description: req.Description,
 		Price: req.Price, Category: req.Category, Brand: req.Brand,
 		WeightG: positive(req.WeightG), LengthMM: positive(req.LengthMM),
@@ -260,6 +266,9 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		Params: cleanParams(req.Params)}
 	if req.Stock != nil {
 		p.Stock = *req.Stock
+	}
+	if req.CostPrice != nil {
+		p.CostPrice = *req.CostPrice
 	}
 	if req.Hidden != nil {
 		p.Hidden = *req.Hidden
@@ -310,12 +319,16 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteBadRequest(w, "title required")
 		return
 	}
+	if req.CostPrice != nil && *req.CostPrice < 0 {
+		httpjson.WriteBadRequest(w, h.msg(i18n.KeyBadCostPrice))
+		return
+	}
 	p := &database.Product{ID: id, SKU: req.SKU, Title: req.Title,
 		Description: req.Description, Price: req.Price,
 		Stock: old.Stock, Category: req.Category, Brand: req.Brand, Hidden: old.Hidden,
 		Packed: old.Packed, CustomerKind: old.CustomerKind, BuyButtons: old.BuyButtons,
 		// The admin form has no source price; dropping it would skip later recomputes.
-		SourcePrice: old.SourcePrice, PriceManual: old.PriceManual,
+		SourcePrice: old.SourcePrice, PriceManual: old.PriceManual, CostPrice: old.CostPrice,
 		Supplier: old.Supplier,
 		WeightG:  positive(req.WeightG),
 		LengthMM: positive(req.LengthMM),
@@ -327,6 +340,9 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Stock != nil {
 		p.Stock = *req.Stock
+	}
+	if req.CostPrice != nil {
+		p.CostPrice = *req.CostPrice
 	}
 	if req.Hidden != nil {
 		p.Hidden = *req.Hidden

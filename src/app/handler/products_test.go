@@ -243,6 +243,48 @@ func TestUpdateProductStockOptional(t *testing.T) {
 	}
 }
 
+// The cost is the owner's number: a form that does not send it must not wipe it.
+func TestProductCostPrice(t *testing.T) {
+	h := newTestHandler(t)
+	r := router(h)
+	send := func(method, path, body string) int {
+		t.Helper()
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(method, path, strings.NewReader(body)))
+		return w.Code
+	}
+	cost := func() int64 {
+		t.Helper()
+		p, err := h.db.GetProduct(1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p.CostPrice
+	}
+
+	if code := send("POST", "/api/products", `{"title":"Чайник","price":1000,"cost_price":420}`); code != http.StatusOK {
+		t.Fatalf("create: %d", code)
+	}
+	if got := cost(); got != 420 {
+		t.Fatalf("created with %d, want 420", got)
+	}
+	if code := send("PUT", "/api/products/1", `{"title":"Чайник","price":1100}`); code != http.StatusOK {
+		t.Fatalf("update: %d", code)
+	}
+	if got := cost(); got != 420 {
+		t.Fatalf("a form without the field wiped the cost: %d", got)
+	}
+	if code := send("PUT", "/api/products/1", `{"title":"Чайник","price":1100,"cost_price":0}`); code != http.StatusOK {
+		t.Fatalf("clear: %d", code)
+	}
+	if got := cost(); got != 0 {
+		t.Fatalf("an explicit zero must clear it: %d", got)
+	}
+	if code := send("PUT", "/api/products/1", `{"title":"Чайник","price":1100,"cost_price":-5}`); code != http.StatusBadRequest {
+		t.Fatalf("a negative cost was accepted: %d", code)
+	}
+}
+
 // A file from our own upload leaves the disk when the photo is removed.
 func TestUploadAndDeleteImage(t *testing.T) {
 	h := newTestHandler(t)

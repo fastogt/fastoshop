@@ -28,6 +28,11 @@ const kText = {
   },
   labelSku: { ru: "Артикул (SKU)", en: "SKU" },
   labelPrice: { ru: "Цена, {sign}", en: "Price, {sign}" },
+  labelCost: { ru: "Себестоимость, {sign}", en: "Unit cost, {sign}" },
+  costHint: {
+    ru: "Видите только вы: из неё отчёт по деньгам считает прибыль",
+    en: "Only you see it: the money report counts profit from it",
+  },
   labelStock: { ru: "Остаток", en: "In stock" },
   setTitle: { ru: "Это набор?", en: "Is this a set?" },
   modeNone: { ru: "Нет, обычный товар", en: "No, an ordinary product" },
@@ -214,6 +219,10 @@ export default function ProductCard({
   const [enriching, setEnriching] = useState(false);
   const [enrichMsg, setEnrichMsg] = useState("");
   const [priceRub, setPriceRub] = useState(toRubles(initial.price ?? 0));
+  // Empty means "not stated", which the report shows as such instead of as a free item.
+  const [costRub, setCostRub] = useState(
+    initial.cost_price ? toRubles(initial.cost_price) : "",
+  );
   // null = the stock field was never touched. Sending it means re-declaring the
   // physical stock: a form opened before a sale would resurrect sold units.
   const [stock, setStock] = useState<number | null>(null);
@@ -327,7 +336,11 @@ export default function ProductCard({
     if (!edit.title) return;
     const p: Partial<Product> & {
       components?: { product_id: number; qty: number }[];
-    } = { ...edit, price: toMinor(priceRub) };
+    } = {
+      ...edit,
+      price: toMinor(priceRub),
+      cost_price: costRub.trim() ? toMinor(costRub) : 0,
+    };
     delete p.stock;
     if (stock !== null && !isSet) p.stock = stock;
     // supplier is always sent explicitly: the field is in the form, and an
@@ -499,6 +512,16 @@ export default function ProductCard({
                   value={priceRub}
                   onChange={(e) => setPriceRub(e.target.value)}
                 />
+              </div>
+              <div className="w-36">
+                <label className="label">{t("labelCost", { sign })}</label>
+                <input
+                  className="field"
+                  inputMode="decimal"
+                  value={costRub}
+                  onChange={(e) => setCostRub(e.target.value)}
+                />
+                <p className="hint mt-1">{t("costHint")}</p>
               </div>
               <div className="w-28">
                 <label className="label">{t("labelStock")}</label>

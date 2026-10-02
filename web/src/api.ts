@@ -142,6 +142,8 @@ export interface Product {
   // What the supplier charged, in minor units: the shelf price is derived from
   // it, so the pricing block can show the whole chain on a real row.
   source_price?: number;
+  // What one unit costs the owner, minor units; 0 means not stated. Never shown to buyers.
+  cost_price?: number;
   title: string;
   slug: string;
   description: string;

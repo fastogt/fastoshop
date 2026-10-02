@@ -2564,3 +2564,24 @@ func TestOrderStoresConsentAndOptionalSubscription(t *testing.T) {
 		t.Fatalf("subscribers: %+v", list)
 	}
 }
+
+// What the goods cost the owner is a trade secret: no page or feed may carry it.
+func TestCostPriceNeverLeaves(t *testing.T) {
+	d, h := setup(t)
+	p, err := d.GetVisibleProductBySlug("krasnyj-chajnik")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.CostPrice = 777111
+	if err := d.UpdateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"/", "/p/krasnyj-chajnik", "/yml.xml", "/gmc.xml", "/llms.txt"} {
+		body := get(t, h, path)
+		for _, leak := range []string{"7771.11", "7 771", "777111", "cost_price"} {
+			if strings.Contains(body, leak) {
+				t.Errorf("%s carries the cost price (%q)", path, leak)
+			}
+		}
+	}
+}

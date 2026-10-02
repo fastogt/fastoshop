@@ -333,6 +333,42 @@ func TestYMLImport(t *testing.T) {
 }
 
 // A refresh may move only the numbers the supplier owns, never the owner's card.
+// A feed owns the price it charges, never what the goods cost the owner.
+func TestReimportKeepsTheCostPrice(t *testing.T) {
+	srv := ymlServer(t, kYMLFeed)
+	defer srv.Close()
+	d, _ := database.OpenInMemory()
+	defer func() { _ = d.Close() }()
+
+	imp := &YML{URL: srv.URL + "/feed.xml", DefaultStock: 7}
+	if _, err := Run(context.Background(), imp, d, "Ромашка", 1, nil); err != nil {
+		t.Fatal(err)
+	}
+	p, err := d.GetVisibleProductBySlug("terka-plastmassovaya")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.CostPrice = 1234
+	// A stale source price makes the next run write the row, not skip it as unchanged.
+	p.SourcePrice++
+	if err := d.UpdateProduct(p); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(context.Background(), imp, d, "Ромашка", 1, nil); err != nil {
+		t.Fatal(err)
+	}
+	after, err := d.GetProduct(p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.SourcePrice == p.SourcePrice {
+		t.Fatal("the run skipped the row, so the test proves nothing")
+	}
+	if after.CostPrice != 1234 {
+		t.Errorf("the import took the cost price: %d", after.CostPrice)
+	}
+}
+
 func TestReimportKeepsTheOwnersWords(t *testing.T) {
 	srv := ymlServer(t, kYMLFeed)
 	defer srv.Close()

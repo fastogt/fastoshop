@@ -54,6 +54,7 @@ const (
 	KeyWBNoOrdersScope  = "wb_no_orders_scope"
 	KeySupplierRequired = "supplier_required"
 	KeyBadStock         = "bad_stock"
+	KeyBadCostPrice     = "bad_cost_price"
 	KeyNothingSelected  = "nothing_selected"
 	KeyJobBusy          = "job_busy"
 	KeyNoPhotos         = "no_photos"
@@ -213,6 +214,9 @@ var kMessages = map[string][2]string{
 	},
 	KeyBadStock: {
 		"остаток не может быть отрицательным", "stock cannot be negative",
+	},
+	KeyBadCostPrice: {
+		"себестоимость не может быть отрицательной", "cost price cannot be negative",
 	},
 	KeyNothingSelected: {
 		"не выбрано ни одной строки", "no rows selected",

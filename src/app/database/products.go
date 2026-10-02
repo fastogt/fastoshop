@@ -16,7 +16,9 @@ type Product struct {
 	Description string `json:"description"`
 	Price       int64  `json:"price"` // minor units
 	// SourcePrice is the feed's price; PriceManual marks a price a recompute leaves alone.
-	SourcePrice int64  `json:"source_price"`
+	SourcePrice int64 `json:"source_price"`
+	// CostPrice is the owner's own unit cost, not the feed's price; 0 means not stated.
+	CostPrice   int64  `json:"cost_price"`
 	PriceManual bool   `json:"price_manual"`
 	Stock       int    `json:"stock"`
 	Category    string `json:"category"`
@@ -110,12 +112,12 @@ func (d *Database) CreateProduct(p *Product) error {
 
 func insertProduct(q execer, p *Product) error {
 	res, err := q.Exec(
-		`INSERT INTO products (sku, title, slug, description, price, source_price,
+		`INSERT INTO products (sku, title, slug, description, price, source_price, cost_price,
 		 price_manual, stock, packed, customer_kind, buy_buttons,
 		 category, brand, supplier, hidden, weight_g, length_mm, width_mm,
 		 height_mm, params)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.SKU, p.Title, p.Slug, p.Description, p.Price, p.SourcePrice,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.SKU, p.Title, p.Slug, p.Description, p.Price, p.SourcePrice, p.CostPrice,
 		p.PriceManual, p.Stock, p.Packed, p.CustomerKind, p.BuyButtons,
 		p.Category, p.Brand, p.Supplier, p.Hidden,
 		p.WeightG, p.LengthMM, p.WidthMM, p.HeightMM, paramsJSON(p.Params))
@@ -131,13 +133,14 @@ func (d *Database) UpdateProduct(p *Product) error { return updateProduct(d.db, 
 
 func updateProduct(q execer, p *Product) error {
 	_, err := q.Exec(
-		`UPDATE products SET sku=?, title=?, description=?, price=?, source_price=?,
+		`UPDATE products SET sku=?, title=?, description=?, price=?, source_price=?, cost_price=?,
 		 stock=CASE WHEN ? = 0 AND `+kIsSet+` THEN stock ELSE ? END, packed=?,
 		 customer_kind=?, buy_buttons=?,
 		 category=?, brand=?, supplier=?, hidden=?, price_manual=?,
 		 weight_g=?, length_mm=?, width_mm=?, height_mm=?, params=?,
 		 updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-		p.SKU, p.Title, p.Description, p.Price, p.SourcePrice, p.Packed, p.Stock, p.Packed,
+		p.SKU, p.Title, p.Description, p.Price, p.SourcePrice, p.CostPrice, p.Packed, p.Stock,
+		p.Packed,
 		p.CustomerKind, p.BuyButtons, p.Category, p.Brand, p.Supplier, p.Hidden, p.PriceManual,
 		p.WeightG, p.LengthMM, p.WidthMM, p.HeightMM, paramsJSON(p.Params), p.ID)
 	return err
@@ -148,7 +151,7 @@ func (d *Database) DeleteProduct(id int64) error {
 	return err
 }
 
-const kProductCols = `id, sku, title, slug, description, price, source_price,
+const kProductCols = `id, sku, title, slug, description, price, source_price, cost_price,
 	price_manual, stock, packed, customer_kind, buy_buttons, category, brand, supplier, hidden,
 	weight_g, length_mm, width_mm, height_mm, params, created_at, updated_at, ` + kIsSet
 
@@ -156,7 +159,7 @@ func scanProduct(row interface{ Scan(...any) error }) (*Product, error) {
 	var p Product
 	var params string
 	err := row.Scan(&p.ID, &p.SKU, &p.Title, &p.Slug, &p.Description, &p.Price,
-		&p.SourcePrice, &p.PriceManual, &p.Stock, &p.Packed, &p.CustomerKind,
+		&p.SourcePrice, &p.CostPrice, &p.PriceManual, &p.Stock, &p.Packed, &p.CustomerKind,
 		&p.BuyButtons, &p.Category, &p.Brand,
 		&p.Supplier, &p.Hidden, &p.WeightG, &p.LengthMM, &p.WidthMM, &p.HeightMM,
 		&params, &p.CreatedAt, &p.UpdatedAt, &p.IsSet)
