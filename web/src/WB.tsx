@@ -8,6 +8,7 @@ import {
   type WBLink,
   type WBOrder,
   type WBSettings,
+  type WBTokenInfo,
   type UnlinkedProduct,
   type Warehouse,
   type CandidateView,
@@ -31,8 +32,66 @@ const kText = {
   connection: { ru: "Подключение", en: "Connection" },
   token: { ru: "Токен API", en: "API token" },
   tokenHint: {
-    ru: "Кабинет WB Партнёры → Настройки → Доступ к API. Нужны разделы «Контент», «Маркетплейс» и «Цены и скидки». Токен показывается один раз.",
-    en: "WB Partners → Settings → API access. The Content, Marketplace and Prices sections are required. The token is shown once.",
+    ru: "Кабинет WB Партнёры → Настройки → Доступ к API → «Создать токен». Хватает базового токена, отметьте разделы ниже. Токен показывается один раз.",
+    en: "WB Partners → Settings → API access → Create token. A basic token is enough; tick the sections below. The token is shown once.",
+  },
+  groupSync: { ru: "Синхронизация", en: "Sync" },
+  groupReports: { ru: "Отчёты", en: "Reports" },
+  secContent: { ru: "Контент", en: "Content" },
+  secPrices: { ru: "Цены и скидки", en: "Prices and discounts" },
+  secMarketplace: { ru: "Маркетплейс", en: "Marketplace" },
+  secStatistics: { ru: "Статистика", en: "Statistics" },
+  secAnalytics: { ru: "Аналитика", en: "Analytics" },
+  secFinance: { ru: "Финансы", en: "Finance" },
+  useContent: {
+    ru: "карточки, связь по артикулу, импорт каталога",
+    en: "cards, linking by article, catalogue import",
+  },
+  usePrices: { ru: "отправка цен", en: "sending prices" },
+  useMarketplace: {
+    ru: "склады, остатки, заказы",
+    en: "warehouses, stock, orders",
+  },
+  useStatistics: {
+    ru: "продажи и заказы по дням",
+    en: "sales and orders by day",
+  },
+  useAnalytics: {
+    ru: "воронка карточки: просмотры, корзина, заказы",
+    en: "card funnel: views, cart, orders",
+  },
+  useFinance: {
+    ru: "отчёт о реализации: деньги по товарам",
+    en: "realization report: money per product",
+  },
+  // Without a sync section part of the tab is dead; without a report section only that report is.
+  missingSync: {
+    ru: "Нет в ключе - {use} работать не будет. Выпустите ключ заново, отметив этот раздел.",
+    en: "Not in the token - {use} will not work. Issue the token again with this section ticked.",
+  },
+  missingReport: {
+    ru: "нет в ключе - этот отчёт не соберётся, остальное работает",
+    en: "not in the token - this report will not build, the rest works",
+  },
+  moreSections: {
+    ru: "Ещё в ключе разделов: {n}",
+    en: "More sections in the token: {n}",
+  },
+  kindBasic: { ru: "Базовый ключ", en: "Basic token" },
+  kindPersonal: { ru: "Персональный ключ", en: "Personal token" },
+  kindUnknown: { ru: "Ключ", en: "Token" },
+  validUntil: { ru: "действует до {date}", en: "valid until {date}" },
+  expiresSoon: {
+    ru: "Ключ истекает {date}: выпустите новый в кабинете Wildberries заранее, иначе остатки и цены перестанут уходить.",
+    en: "The token expires on {date}: issue a new one in the Wildberries account in advance, or stock and prices stop going out.",
+  },
+  sandboxMismatchOn: {
+    ru: "Это ключ тестового контура, а галка «Тестовый контур» снята.",
+    en: "This is a sandbox token, but Sandbox is not ticked.",
+  },
+  sandboxMismatchOff: {
+    ru: "Это боевой ключ, а галка «Тестовый контур» стоит.",
+    en: "This is a production token, but Sandbox is ticked.",
   },
   tokenSet: { ru: "токен сохранён", en: "token saved" },
   sandbox: { ru: "Тестовый контур", en: "Sandbox" },
@@ -149,6 +208,120 @@ const kText = {
   },
   emptyOrders: { ru: "Продаж пока нет", en: "No sales yet" },
 };
+
+// Sync sections first: the shop's own calls go only there.
+const kSections: {
+  key: string;
+  label: TKey;
+  use: TKey;
+  sync: boolean;
+}[] = [
+  { key: "content", label: "secContent", use: "useContent", sync: true },
+  { key: "prices", label: "secPrices", use: "usePrices", sync: true },
+  {
+    key: "marketplace",
+    label: "secMarketplace",
+    use: "useMarketplace",
+    sync: true,
+  },
+  {
+    key: "statistics",
+    label: "secStatistics",
+    use: "useStatistics",
+    sync: false,
+  },
+  { key: "analytics", label: "secAnalytics", use: "useAnalytics", sync: false },
+  { key: "finance", label: "secFinance", use: "useFinance", sync: false },
+];
+
+// Days before expiry when the tab starts asking for a new token.
+const kExpiryWarnDays = 14;
+
+type TKey = keyof typeof kText;
+
+// Without a saved token it is the list to tick in the cabinet; with one, the token's own answer.
+function TokenSections({
+  info,
+  sandbox,
+}: {
+  info: WBTokenInfo | null | undefined;
+  sandbox: boolean;
+}) {
+  const t = useT(kText);
+  const lang = useLang();
+  const has = (key: string) => info?.sections.includes(key) ?? false;
+  const mark = (key: string) => (!info ? "☐" : has(key) ? "✓" : "✗");
+  const expires = info?.expires_at ? new Date(info.expires_at) : null;
+  const date = expires?.toLocaleDateString(lang) ?? "";
+  const soon =
+    expires !== null &&
+    expires.getTime() - Date.now() < kExpiryWarnDays * 24 * 3600 * 1000;
+  const group = (sync: boolean) => (
+    <div>
+      <p className="label mt-2">{t(sync ? "groupSync" : "groupReports")}</p>
+      <ul className="flex flex-col gap-1 text-sm">
+        {kSections
+          .filter((x) => x.sync === sync)
+          .map((x) => (
+            <li key={x.key}>
+              <span
+                className={
+                  !info
+                    ? "text-muted"
+                    : has(x.key)
+                      ? "text-green-700"
+                      : sync
+                        ? "text-red-700"
+                        : "text-muted"
+                }
+              >
+                {mark(x.key)} {t(x.label)}
+              </span>
+              <span className="hint"> - {t(x.use)}</span>
+              {info && !has(x.key) && (
+                <p className={sync ? "hint text-red-700" : "hint"}>
+                  {sync
+                    ? t("missingSync", { use: t(x.use) })
+                    : t("missingReport")}
+                </p>
+              )}
+            </li>
+          ))}
+      </ul>
+    </div>
+  );
+  return (
+    <div className="mt-2">
+      {group(true)}
+      {group(false)}
+      {info && (
+        <div className="mt-2 flex flex-col gap-1 text-sm">
+          {info.unknown > 0 && (
+            <p className="hint">{t("moreSections", { n: info.unknown })}</p>
+          )}
+          <p>
+            {t(
+              info.kind === "basic"
+                ? "kindBasic"
+                : info.kind === "personal"
+                  ? "kindPersonal"
+                  : "kindUnknown",
+            )}
+            {date && <> · {t("validUntil", { date })}</>}
+          </p>
+          {soon && (
+            <p className="hint text-red-700">{t("expiresSoon", { date })}</p>
+          )}
+          {info.sandbox !== sandbox && (
+            <p className="hint text-red-700">
+              {t(info.sandbox ? "sandboxMismatchOn" : "sandboxMismatchOff")}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function WB() {
   const t = useT(kText);
@@ -444,6 +617,10 @@ export default function WB() {
             {s.token_set && !token && (
               <p className="hint text-green-700">{t("tokenSet")}</p>
             )}
+            <TokenSections
+              info={token ? null : s.token_info}
+              sandbox={s.sandbox}
+            />
           </div>
 
           <WarehousePicker

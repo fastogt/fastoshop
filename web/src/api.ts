@@ -65,9 +65,19 @@ interface WBPriceError {
   retry_at: string | null;
 }
 
+// What the stored WB token says about itself; the token never comes back.
+export interface WBTokenInfo {
+  sections: string[];
+  unknown: number;
+  kind: string;
+  expires_at: string | null;
+  sandbox: boolean;
+}
+
 export interface WBSettings {
   enabled: boolean;
   token_set: boolean;
+  token_info: WBTokenInfo | null;
   sandbox: boolean;
   warehouse_id: string;
   linked: number;

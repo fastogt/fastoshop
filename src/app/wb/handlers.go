@@ -76,8 +76,10 @@ type priceErrorRow struct {
 }
 
 type settingsResponse struct {
-	Enabled     bool            `json:"enabled"`
-	TokenSet    bool            `json:"token_set"`
+	Enabled  bool `json:"enabled"`
+	TokenSet bool `json:"token_set"`
+	// TokenInfo is what the token says about its sections, type and expiry; nil without one.
+	TokenInfo   *tokenInfo      `json:"token_info"`
 	Sandbox     bool            `json:"sandbox"`
 	WarehouseID string          `json:"warehouse_id"`
 	Linked      int             `json:"linked"`
@@ -216,7 +218,8 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpjson.WriteOK(w, settingsResponse{
-		Enabled: s.Enabled, TokenSet: s.Token != "", Sandbox: s.Sandbox,
+		Enabled: s.Enabled, TokenSet: s.Token != "", TokenInfo: describeToken(s.Token),
+		Sandbox:     s.Sandbox,
 		WarehouseID: s.WarehouseID, Linked: linked, Unlinked: unlinked,
 		Pending: pending, Failed: failed, StockErrors: errs,
 		PricePending: pricePending, PriceInFlight: priceInFlight,

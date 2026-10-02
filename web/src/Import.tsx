@@ -15,8 +15,8 @@ const kGuide: Record<Src, Phrase> = {
     en: "Ozon seller account → Settings → API keys → “Generate key”. Copy the Client-Id and the Api-Key.",
   },
   wb: {
-    ru: "Кабинет WB → Настройки → Доступ к API → «Создать токен», отметьте категории «Контент» и «Цены и скидки». Скопируйте токен.",
-    en: "Wildberries account → Settings → API access → “Create token”, tick the “Content” and “Prices and discounts” scopes. Copy the token.",
+    ru: "Кабинет WB Партнёры → Настройки → Доступ к API → «Создать токен», отметьте разделы «Контент» и «Цены и скидки»; с разделом «Маркетплейс» перенесутся и остатки. Токен показывается один раз.",
+    en: "WB Partners → Settings → API access → Create token, tick the Content and Prices and discounts sections; with Marketplace the stock comes across too. The token is shown once.",
   },
   csv: {
     ru: "Файл: прайс поставщика в Excel или таблица по нашему шаблону. XLSX разбираем как есть, вместе с фотографиями внутри ячеек: колонки ищем по заголовкам, а сам заголовок - по содержимому, поэтому логотип и контакты сверху не мешают. CSV из русского Excel в кодировке Windows и с точкой с запятой тоже поймём.",
