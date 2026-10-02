@@ -1,3 +1,8 @@
+1.67.0 / October 2, 2026
+[Alexandr Topilski]
+- The Wildberries connection tab shows what the saved token holds: each section ticked or missing with what it is for, the token type and its expiry, with a warning two weeks before it runs out
+- A Wildberries tab whose token section is missing says so in one line instead of failing product by product
+
 1.66.0 / October 2, 2026
 [Alexandr Topilski]
 - A product card has a "Unit cost" field next to the price: the owner's own cost per unit, seen only in the admin and never touched by an import
