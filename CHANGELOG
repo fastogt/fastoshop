@@ -1,3 +1,9 @@
+1.66.0 / October 2, 2026
+[Alexandr Topilski]
+- A product card has a "Unit cost" field next to the price: the owner's own cost per unit, seen only in the admin and never touched by an import
+- Schema: products.cost_price INTEGER NOT NULL DEFAULT 0
+- Upgrade: before installing, on every shop database: ALTER TABLE products ADD COLUMN cost_price INTEGER NOT NULL DEFAULT 0;
+
 1.65.0 / September 29, 2026
 [Alexandr Topilski]
 - The Photos tab of a product has a "Download all photos" button: one zip with every photo in the card's order, supplier links included, and a note naming any photo that could not be fetched
