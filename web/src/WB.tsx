@@ -73,6 +73,11 @@ const kText = {
     ru: "нет в ключе - этот отчёт не соберётся, остальное работает",
     en: "not in the token - this report will not build, the rest works",
   },
+  // One line where the dead part lives, instead of an empty list or an error per product.
+  noSection: {
+    ru: "В ключе нет раздела «{section}»: {use} работать не будет. Выпустите ключ заново, отметив этот раздел.",
+    en: "The token has no {section} section: {use} will not work. Issue the token again with it ticked.",
+  },
   moreSections: {
     ru: "Ещё в ключе разделов: {n}",
     en: "More sections in the token: {n}",
@@ -238,6 +243,18 @@ const kSections: {
 const kExpiryWarnDays = 14;
 
 type TKey = keyof typeof kText;
+
+// Hints only, never a lock: the bit map is our reading of WB's format, a 403 is WB's own answer.
+function NoSection({ info, k }: { info: WBTokenInfo | null; k: string }) {
+  const t = useT(kText);
+  const sec = kSections.find((x) => x.key === k);
+  if (!info || !sec || info.sections.includes(k)) return null;
+  return (
+    <p className="hint text-red-700">
+      {t("noSection", { section: t(sec.label), use: t(sec.use) })}
+    </p>
+  );
+}
 
 // Without a saved token it is the list to tick in the cabinet; with one, the token's own answer.
 function TokenSections({
@@ -663,6 +680,7 @@ export default function WB() {
         </section>
       )}
 
+      {tab === "tabPublish" && <NoSection info={s.token_info} k="content" />}
       {tab === "tabPublish" && (
         <PublicationPanel
           summaryExtra={
@@ -693,6 +711,7 @@ export default function WB() {
 
       {tab === "tabPrices" && (
         <section className="card flex flex-col gap-4">
+          <NoSection info={s.token_info} k="prices" />
           <div className="flex flex-wrap items-end gap-2">
             <div>
               <label className="label" htmlFor="wb-markup">
@@ -808,6 +827,7 @@ export default function WB() {
         <>
           <section className="card flex flex-col gap-4">
             <h2 className="font-bold">{t("sync")}</h2>
+            <NoSection info={s.token_info} k="marketplace" />
             <p className="hint">
               {t("stockCounters", { n: s.pending, m: s.failed })}
             </p>
